@@ -79,6 +79,7 @@ export type Database = {
           created_at: string
           domain: string
           id: string
+          monetization_status: string
           name: string
           owner_id: string
           site_type: string | null
@@ -91,6 +92,7 @@ export type Database = {
           created_at?: string
           domain: string
           id?: string
+          monetization_status?: string
           name: string
           owner_id: string
           site_type?: string | null
@@ -103,6 +105,7 @@ export type Database = {
           created_at?: string
           domain?: string
           id?: string
+          monetization_status?: string
           name?: string
           owner_id?: string
           site_type?: string | null
@@ -111,6 +114,253 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rr_clients: {
+        Row: {
+          address: string | null
+          billing_model: string
+          company_name: string
+          contact_name: string
+          created_at: string
+          email: string | null
+          id: string
+          niche: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_model?: string
+          company_name: string
+          contact_name: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          niche?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_model?: string
+          company_name?: string
+          contact_name?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          niche?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      rr_contracts: {
+        Row: {
+          client_id: string | null
+          contract_type: string
+          created_at: string
+          end_date: string | null
+          id: string
+          monthly_value: number
+          next_billing: string | null
+          notes: string | null
+          owner_id: string
+          project_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          contract_type?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          monthly_value?: number
+          next_billing?: string | null
+          notes?: string | null
+          owner_id: string
+          project_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          contract_type?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          monthly_value?: number
+          next_billing?: string | null
+          notes?: string | null
+          owner_id?: string
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rr_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rr_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rr_invoices: {
+        Row: {
+          amount: number
+          client_id: string | null
+          contract_id: string
+          created_at: string
+          due_date: string
+          id: string
+          owner_id: string
+          paid_date: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          client_id?: string | null
+          contract_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          owner_id: string
+          paid_date?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string | null
+          contract_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          owner_id?: string
+          paid_date?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rr_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rr_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_invoices_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rr_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rr_pages: {
+        Row: {
+          client_id: string | null
+          contract_id: string | null
+          conversions: number
+          created_at: string
+          id: string
+          leads: number
+          location: string | null
+          monthly_value: number
+          niche: string | null
+          owner_id: string
+          priority: string
+          project_id: string
+          roi_estimated: number | null
+          status: string
+          suggested_price: number | null
+          traffic: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          client_id?: string | null
+          contract_id?: string | null
+          conversions?: number
+          created_at?: string
+          id?: string
+          leads?: number
+          location?: string | null
+          monthly_value?: number
+          niche?: string | null
+          owner_id: string
+          priority?: string
+          project_id: string
+          roi_estimated?: number | null
+          status?: string
+          suggested_price?: number | null
+          traffic?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          client_id?: string | null
+          contract_id?: string | null
+          conversions?: number
+          created_at?: string
+          id?: string
+          leads?: number
+          location?: string | null
+          monthly_value?: number
+          niche?: string | null
+          owner_id?: string
+          priority?: string
+          project_id?: string
+          roi_estimated?: number | null
+          status?: string
+          suggested_price?: number | null
+          traffic?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rr_pages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rr_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_pages_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rr_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

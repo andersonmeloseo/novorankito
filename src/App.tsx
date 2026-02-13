@@ -24,6 +24,14 @@ import UsersPage from "@/pages/UsersPage";
 import BillingPage from "@/pages/BillingPage";
 import AdminPage from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
+// Rank & Rent
+import RROverviewPage from "@/pages/rank-rent/RROverviewPage";
+import RRClientsPage from "@/pages/rank-rent/RRClientsPage";
+import RRContractsPage from "@/pages/rank-rent/RRContractsPage";
+import RRPagesPage from "@/pages/rank-rent/RRPagesPage";
+import RRFinancialPage from "@/pages/rank-rent/RRFinancialPage";
+import RRAvailabilityPage from "@/pages/rank-rent/RRAvailabilityPage";
+import RRPerformancePage from "@/pages/rank-rent/RRPerformancePage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +62,14 @@ const App = () => (
               <Route path="/account/billing" element={<BillingPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/onboarding" element={<Onboarding />} />
+              {/* Rank & Rent */}
+              <Route path="/rank-rent" element={<RROverviewPage />} />
+              <Route path="/rank-rent/clients" element={<RRClientsPage />} />
+              <Route path="/rank-rent/contracts" element={<RRContractsPage />} />
+              <Route path="/rank-rent/pages" element={<RRPagesPage />} />
+              <Route path="/rank-rent/financial" element={<RRFinancialPage />} />
+              <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
+              <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
