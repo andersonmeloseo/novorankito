@@ -12,9 +12,9 @@ export default function ProjectSettingsPage() {
   return (
     <>
       <TopBar title="Configurações do Projeto" subtitle="Domínio, integrações e preferências" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="general">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="general" className="text-xs">Geral</TabsTrigger>
             <TabsTrigger value="integrations" className="text-xs">Integrações</TabsTrigger>
             <TabsTrigger value="tracking" className="text-xs">Tracking</TabsTrigger>

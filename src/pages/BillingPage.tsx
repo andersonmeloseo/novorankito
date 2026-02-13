@@ -38,7 +38,7 @@ export default function BillingPage() {
   return (
     <>
       <TopBar title="Billing & Planos" subtitle="Assinatura e faturas" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Plans */}
         <div>
           <h2 className="text-sm font-medium text-foreground mb-3">Planos Disponíveis</h2>

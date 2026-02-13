@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
-  Shield, ChevronDown, Zap
+  Shield, ChevronDown, Zap, LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/sidebar";
 import { mockProjects } from "@/lib/mock-data";
 import { ThemeToggle } from "./ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
@@ -36,6 +38,9 @@ const accountNav = [
 
 export function AppSidebar() {
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Usuário";
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
@@ -47,11 +52,11 @@ export function AppSidebar() {
           <span className="font-semibold text-sm text-foreground tracking-tight">Rankito</span>
         </div>
         <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-success" />
-            <span>{mockProjects[0].name}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-2 w-2 rounded-full bg-success shrink-0" />
+            <span className="truncate">{mockProjects[0].name}</span>
           </div>
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
         </button>
       </SidebarHeader>
 
@@ -107,15 +112,22 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">R</div>
-            <div className="text-xs">
-              <div className="font-medium text-foreground">Rafael</div>
-              <div className="text-muted-foreground">Owner</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+              {displayName[0]?.toUpperCase()}
+            </div>
+            <div className="text-xs min-w-0">
+              <div className="font-medium text-foreground truncate">{displayName}</div>
+              <div className="text-muted-foreground truncate">{user?.email}</div>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-1 shrink-0">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={signOut} title="Sair">
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
