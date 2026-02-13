@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { InsightCard } from "@/components/dashboard/InsightCard";
 import { mockInsights } from "@/lib/mock-data";
 import {
@@ -21,17 +20,17 @@ const MOCK_MESSAGES = [
 ];
 
 const MOCK_TASKS = [
-  { id: "1", title: "Reescrever title tag da /products/smart-speaker", status: "todo" as const, priority: "high", assignee: "João", due: "2026-02-15" },
-  { id: "2", title: "Adicionar FAQ schema na página de smart speaker", status: "in_progress" as const, priority: "high", assignee: "Maria", due: "2026-02-16" },
-  { id: "3", title: "Otimizar meta descriptions do grupo 'Blog'", status: "done" as const, priority: "medium", assignee: "João", due: "2026-02-12" },
-  { id: "4", title: "Criar internal links para /products/smart-speaker", status: "todo" as const, priority: "high", assignee: "—", due: "2026-02-17" },
-  { id: "5", title: "Revisar canibalizacão em 'headphones' queries", status: "todo" as const, priority: "medium", assignee: "—", due: "2026-02-18" },
+  { id: "1", title: "Reescrever title tag da /products/smart-speaker", status: "a_fazer" as const, priority: "alta", assignee: "João", due: "2026-02-15" },
+  { id: "2", title: "Adicionar FAQ schema na página de smart speaker", status: "em_progresso" as const, priority: "alta", assignee: "Maria", due: "2026-02-16" },
+  { id: "3", title: "Otimizar meta descriptions do grupo 'Blog'", status: "concluido" as const, priority: "média", assignee: "João", due: "2026-02-12" },
+  { id: "4", title: "Criar internal links para /products/smart-speaker", status: "a_fazer" as const, priority: "alta", assignee: "—", due: "2026-02-17" },
+  { id: "5", title: "Revisar canibalizacão em 'headphones' queries", status: "a_fazer" as const, priority: "média", assignee: "—", due: "2026-02-18" },
 ];
 
-const TASK_STATUS_STYLE: Record<string, { bg: string; icon: React.ElementType }> = {
-  todo: { bg: "bg-muted text-muted-foreground", icon: Clock },
-  in_progress: { bg: "bg-primary/10 text-primary", icon: AlertCircle },
-  done: { bg: "bg-success/10 text-success", icon: CheckCircle2 },
+const TASK_STATUS_STYLE: Record<string, { bg: string; icon: React.ElementType; label: string }> = {
+  a_fazer: { bg: "bg-muted text-muted-foreground", icon: Clock, label: "A fazer" },
+  em_progresso: { bg: "bg-primary/10 text-primary", icon: AlertCircle, label: "Em progresso" },
+  concluido: { bg: "bg-success/10 text-success", icon: CheckCircle2, label: "Concluído" },
 };
 
 export default function AiAgentPage() {
@@ -40,26 +39,26 @@ export default function AiAgentPage() {
 
   return (
     <>
-      <TopBar title="AI Agent" subtitle="Insights & Actions" />
-      <div className="p-6 space-y-6">
+      <TopBar title="Agente IA" subtitle="Insights & Ações" />
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Mode Toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
               onClick={() => setMode("executive")}
               className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", mode === "executive" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
             >
-              Executive
+              Executivo
             </button>
             <button
               onClick={() => setMode("technical")}
               className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", mode === "technical" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
             >
-              Technical
+              Técnico
             </button>
           </div>
           <Button variant="outline" size="sm" className="text-xs gap-1.5 ml-auto">
-            <Settings2 className="h-3 w-3" /> Configure
+            <Settings2 className="h-3 w-3" /> Configurar
           </Button>
         </div>
 
@@ -67,12 +66,11 @@ export default function AiAgentPage() {
           <TabsList>
             <TabsTrigger value="chat" className="text-xs gap-1.5"><Bot className="h-3 w-3" /> Chat</TabsTrigger>
             <TabsTrigger value="insights" className="text-xs gap-1.5"><Lightbulb className="h-3 w-3" /> Insights</TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs gap-1.5"><ListChecks className="h-3 w-3" /> Tasks</TabsTrigger>
+            <TabsTrigger value="tasks" className="text-xs gap-1.5"><ListChecks className="h-3 w-3" /> Tarefas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chat" className="mt-4">
             <Card className="flex flex-col h-[520px]">
-              {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
                 {MOCK_MESSAGES.map((msg, i) => (
                   <div key={i} className={cn("flex gap-3", msg.role === "user" && "justify-end")}>
@@ -95,9 +93,8 @@ export default function AiAgentPage() {
                   </div>
                 ))}
               </div>
-              {/* Input */}
               <div className="border-t border-border p-3 flex gap-2">
-                <Input placeholder="Ask the Rankito Agent..." className="flex-1 text-sm" />
+                <Input placeholder="Pergunte ao Agente Rankito..." className="flex-1 text-sm" />
                 <Button size="sm" className="gap-1.5">
                   <Send className="h-3.5 w-3.5" />
                 </Button>
@@ -114,17 +111,17 @@ export default function AiAgentPage() {
           <TabsContent value="tasks" className="mt-4">
             <Card className="overflow-hidden">
               <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground">Task Center</h3>
-                <Badge variant="secondary" className="text-[10px]">{MOCK_TASKS.length} tasks</Badge>
+                <h3 className="text-sm font-medium text-foreground">Central de Tarefas</h3>
+                <Badge variant="secondary" className="text-[10px]">{MOCK_TASKS.length} tarefas</Badge>
               </div>
               <div className="divide-y divide-border">
                 {MOCK_TASKS.map((task) => {
                   const statusStyle = TASK_STATUS_STYLE[task.status];
                   const StatusIcon = statusStyle.icon;
                   return (
-                    <div key={task.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${statusStyle.bg}`}>
-                        <StatusIcon className="h-2.5 w-2.5" /> {task.status.replace("_", " ")}
+                    <div key={task.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors flex-wrap sm:flex-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusStyle.bg}`}>
+                        <StatusIcon className="h-2.5 w-2.5" /> {statusStyle.label}
                       </span>
                       <span className="text-sm text-foreground flex-1">{task.title}</span>
                       <span className="text-[10px] text-muted-foreground">{task.assignee}</span>

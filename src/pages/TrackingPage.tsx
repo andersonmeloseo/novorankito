@@ -3,10 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTrackingEvents } from "@/lib/mock-data";
-import { Activity, MousePointerClick, ArrowDown, MonitorSmartphone, Flame } from "lucide-react";
+import { MonitorSmartphone, Flame } from "lucide-react";
 
 const HEATMAP_HOURS = Array.from({ length: 24 }, (_, h) => h);
-const HEATMAP_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HEATMAP_DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 function generateHeatmapData() {
   return HEATMAP_DAYS.map((day) => ({
@@ -23,23 +23,23 @@ const heatmapData = generateHeatmapData();
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Tracking" subtitle="Behavioral Events" />
-      <div className="p-6 space-y-6">
+      <TopBar title="Tracking" subtitle="Eventos Comportamentais" />
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Live events indicator */}
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
           </span>
-          <span className="text-sm font-medium text-foreground">Live Events</span>
-          <Badge variant="secondary" className="text-[10px]">{mockTrackingEvents.length} recent</Badge>
+          <span className="text-sm font-medium text-foreground">Eventos ao Vivo</span>
+          <Badge variant="secondary" className="text-[10px]">{mockTrackingEvents.length} recentes</Badge>
         </Card>
 
         <Tabs defaultValue="events">
           <TabsList>
-            <TabsTrigger value="events" className="text-xs">Events</TabsTrigger>
-            <TabsTrigger value="heatmap" className="text-xs">Heatmap</TabsTrigger>
-            <TabsTrigger value="sessions" className="text-xs">Sessions</TabsTrigger>
+            <TabsTrigger value="events" className="text-xs">Eventos</TabsTrigger>
+            <TabsTrigger value="heatmap" className="text-xs">Mapa de Calor</TabsTrigger>
+            <TabsTrigger value="sessions" className="text-xs">Sessões</TabsTrigger>
           </TabsList>
 
           <TabsContent value="events" className="mt-4">
@@ -48,7 +48,7 @@ export default function TrackingPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      {["Event", "Element", "Page", "Device", "Country", "Time"].map((col) => (
+                      {["Evento", "Elemento", "Página", "Dispositivo", "País", "Horário"].map((col) => (
                         <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
                       ))}
                     </tr>
@@ -61,7 +61,7 @@ export default function TrackingPage() {
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-foreground">{"element" in ev ? ev.element : `${(ev as any).depth}`}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{ev.page}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.device}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.device === "mobile" ? "Celular" : ev.device === "desktop" ? "Desktop" : "Tablet"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{ev.country}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{ev.timestamp}</td>
                       </tr>
@@ -75,7 +75,7 @@ export default function TrackingPage() {
           <TabsContent value="heatmap" className="mt-4 space-y-4">
             <Card className="p-5">
               <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                <Flame className="h-4 w-4 text-warning" /> Volume Heatmap (Day × Hour)
+                <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Volume (Dia × Hora)
               </h3>
               <div className="overflow-x-auto">
                 <div className="min-w-[600px]">
@@ -94,7 +94,7 @@ export default function TrackingPage() {
                           style={{
                             backgroundColor: `hsl(var(--primary) / ${Math.max(0.05, cell.value / 100)})`,
                           }}
-                          title={`${row.day} ${cell.hour}:00 — ${cell.value} events`}
+                          title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
                         />
                       ))}
                     </div>
@@ -107,7 +107,7 @@ export default function TrackingPage() {
           <TabsContent value="sessions" className="mt-4">
             <Card className="p-6 text-center">
               <MonitorSmartphone className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Session replay will be available when the tracking script is installed.</p>
+              <p className="text-sm text-muted-foreground">O replay de sessões estará disponível quando o script de tracking for instalado.</p>
             </Card>
           </TabsContent>
         </Tabs>
