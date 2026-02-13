@@ -12,7 +12,7 @@ export default function ProjectsList() {
   return (
     <>
       <TopBar title="Projetos" subtitle="Gerencie seus sites" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Todos os Projetos</h2>
           <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate("/onboarding")}>

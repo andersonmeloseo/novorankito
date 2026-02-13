@@ -29,9 +29,9 @@ export default function AdminPage() {
   return (
     <>
       <TopBar title="Admin Backoffice" subtitle="Administração do Sistema" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Global KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label="Total Usuários" value={847} change={12.4} />
           <KpiCard label="Total Projetos" value={1284} change={8.6} />
           <KpiCard label="Eventos/dia" value={2840000} change={15.2} />
@@ -39,7 +39,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="users">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="users" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Usuários</TabsTrigger>
             <TabsTrigger value="projects" className="text-xs gap-1.5"><FolderOpen className="h-3 w-3" /> Projetos</TabsTrigger>
             <TabsTrigger value="billing" className="text-xs gap-1.5"><CreditCard className="h-3 w-3" /> Billing</TabsTrigger>

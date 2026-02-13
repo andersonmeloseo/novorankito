@@ -86,7 +86,7 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-lg font-semibold text-foreground tracking-tight">Rankito</span>
           <span className="text-muted-foreground text-sm">/ Novo Projeto</span>
@@ -94,7 +94,7 @@ export default function Onboarding() {
         <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>Cancelar</Button>
       </header>
 
-      <div className="border-b border-border px-6 py-3">
+      <div className="border-b border-border px-4 sm:px-6 py-3 overflow-x-auto">
         <div className="max-w-3xl mx-auto flex items-center gap-1">
           {STEPS.map((s, i) => {
             const Icon = s.icon;
@@ -129,7 +129,7 @@ export default function Onboarding() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto">
+      <div className="flex-1 flex items-start justify-center px-4 sm:px-6 py-6 sm:py-10 overflow-y-auto">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
             <motion.div
@@ -152,7 +152,7 @@ export default function Onboarding() {
         </div>
       </div>
 
-      <footer className="border-t border-border px-6 py-4">
+      <footer className="border-t border-border px-4 sm:px-6 py-3 sm:py-4">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => (step > 0 ? setStep(step - 1) : navigate("/projects"))} className="gap-1.5">
             <ArrowLeft className="h-3.5 w-3.5" /> Voltar
@@ -192,7 +192,7 @@ function StepCreateProject({ project, setProject }: {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">Tipo de site</Label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {SITE_TYPES.map((t) => (
               <button key={t.value} onClick={() => setProject((p) => ({ ...p, type: t.value }))}
                 className={cn("flex flex-col items-center gap-1 rounded-lg border p-3 text-xs font-medium transition-all",

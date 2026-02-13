@@ -17,9 +17,9 @@ export default function Overview() {
   return (
     <>
       <TopBar title="Visão Geral" subtitle="acme.com — Últimos 30 dias" />
-      <div className="p-6 space-y-6 overflow-auto">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-auto">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpiList.map((kpi) => (
             <KpiCard key={kpi.label} {...kpi} />
           ))}

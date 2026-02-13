@@ -36,9 +36,9 @@ export default function SeoPage() {
   return (
     <>
       <TopBar title="SEO" subtitle="Google Search Console" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label="Clicks" value={mockKpis.clicks.value} change={mockKpis.clicks.change} />
           <KpiCard label="Impressions" value={mockKpis.impressions.value} change={mockKpis.impressions.change} />
           <KpiCard label="CTR" value={mockKpis.ctr.value} change={mockKpis.ctr.change} suffix="%" />
