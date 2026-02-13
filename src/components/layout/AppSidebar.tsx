@@ -49,7 +49,7 @@ export function AppSidebar() {
           <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
             <Zap className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-sm text-foreground tracking-tight">Rankito</span>
+          <span className="font-bold text-sm text-foreground tracking-tight">Rankito</span>
         </div>
         <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors">
           <div className="flex items-center gap-2 min-w-0">

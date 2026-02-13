@@ -12,7 +12,7 @@ export default function AdsPage() {
 
   return (
     <>
-      <TopBar title="Ads" subtitle="Google Ads & Meta" />
+      <TopBar title="Ads" subtitle="Performance das suas campanhas de mídia paga" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label="Investimento Total" value={totalCost} change={-4.2} prefix="R$" />

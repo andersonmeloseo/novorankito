@@ -14,7 +14,7 @@ const REPORT_TEMPLATES = [
 export default function ReportsPage() {
   return (
     <>
-      <TopBar title="Relatórios" subtitle="Exportação & Agendamento" />
+      <TopBar title="Relatórios" subtitle="Crie, exporte e agende relatórios personalizados" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Templates */}
         <div>

@@ -11,11 +11,14 @@ export default function ProjectsList() {
 
   return (
     <>
-      <TopBar title="Projetos" subtitle="Gerencie seus sites" />
-      <div className="p-4 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Todos os Projetos</h2>
-          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate("/onboarding")}>
+      <TopBar title="Projetos" subtitle="Gerencie e acompanhe todos os seus sites" />
+      <div className="p-4 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">Todos os Projetos</h2>
+            <p className="text-sm text-muted-foreground mt-1">Selecione um projeto para visualizar métricas detalhadas.</p>
+          </div>
+          <Button size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => navigate("/onboarding")}>
             <Plus className="h-3.5 w-3.5" /> Novo Projeto
           </Button>
         </div>
