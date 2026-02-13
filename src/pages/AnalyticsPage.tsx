@@ -6,9 +6,13 @@ import { useAnalyticsSessions } from "@/hooks/use-data-modules";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
+import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { Activity } from "lucide-react";
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -106,70 +110,86 @@ export default function AnalyticsPage() {
     <>
       <TopBar title="Analytics" subtitle="Comportamento de usuários, canais de aquisição e engajamento" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label="Usuários" value={totalUsers} change={0} />
-          <KpiCard label="Sessões" value={totalSessions} change={0} />
-          <KpiCard label="Conversões" value={totalConversions} change={0} />
-          <KpiCard label="Receita" value={totalRevenue} change={0} prefix="R$" />
-        </div>
-
-        {hasData && trendData.length > 1 && (
-          <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Sessões</h3>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
-                  <defs>
-                    <linearGradient id="sessionsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="sessions" stroke="hsl(var(--chart-2))" fill="url(#sessionsGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
-
-        {!hasData && !isLoading && (
-          <Card className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nenhuma sessão registrada. Conecte o Google Analytics ou adicione dados manualmente.</p>
-          </Card>
-        )}
-
-        {hasData && (
+        {isLoading ? (
           <>
-            <Tabs defaultValue="channels">
-              <TabsList>
-                <TabsTrigger value="channels" className="text-xs">Canais</TabsTrigger>
-                <TabsTrigger value="sources" className="text-xs">Origem / Mídia</TabsTrigger>
-                <TabsTrigger value="pages" className="text-xs">Páginas de Entrada</TabsTrigger>
-              </TabsList>
-              <TabsContent value="channels" className="mt-4">
-                <SimpleTable columns={["Canal", "Usuários", "Sessões", "Engajamento", "Conversões"]} rows={channelRows} />
-              </TabsContent>
-              <TabsContent value="sources" className="mt-4">
-                <SimpleTable columns={["Origem / Mídia", "Usuários", "Sessões", "Conversões"]} rows={sourceRows} />
-              </TabsContent>
-              <TabsContent value="pages" className="mt-4">
-                <SimpleTable columns={["Página", "Usuários", "Sessões", "Taxa de Rejeição", "Conversões"]} rows={pageRows} />
-              </TabsContent>
-            </Tabs>
+            <KpiSkeleton />
+            <ChartSkeleton />
+            <TableSkeleton />
+          </>
+        ) : (
+          <>
+            <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <KpiCard label="Usuários" value={totalUsers} change={0} />
+              <KpiCard label="Sessões" value={totalSessions} change={0} />
+              <KpiCard label="Conversões" value={totalConversions} change={0} />
+              <KpiCard label="Receita" value={totalRevenue} change={0} prefix="R$" />
+            </StaggeredGrid>
 
-            {deviceBreakdown.length > 0 && (
-              <div className="grid sm:grid-cols-3 gap-4">
-                {deviceBreakdown.map((d) => (
-                  <Card key={d.device} className="p-4 text-center">
-                    <div className="text-2xl font-bold text-foreground">{d.pct}%</div>
-                    <div className="text-xs text-muted-foreground mt-1">{d.device}</div>
-                  </Card>
-                ))}
-              </div>
+            {hasData && trendData.length > 1 && (
+              <AnimatedContainer delay={0.15}>
+                <Card className="p-5">
+                  <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Sessões</h3>
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData}>
+                        <defs>
+                          <linearGradient id="sessionsGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
+                        <Area type="monotone" dataKey="sessions" stroke="hsl(var(--chart-2))" fill="url(#sessionsGrad)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </AnimatedContainer>
+            )}
+
+            {!hasData && (
+              <EmptyState
+                icon={Activity}
+                title="Nenhuma sessão registrada"
+                description="Conecte o Google Analytics ou instale o script de tracking para começar."
+              />
+            )}
+
+            {hasData && (
+              <AnimatedContainer delay={0.2}>
+                <>
+                  <Tabs defaultValue="channels">
+                    <TabsList>
+                      <TabsTrigger value="channels" className="text-xs">Canais</TabsTrigger>
+                      <TabsTrigger value="sources" className="text-xs">Origem / Mídia</TabsTrigger>
+                      <TabsTrigger value="pages" className="text-xs">Páginas de Entrada</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="channels" className="mt-4">
+                      <SimpleTable columns={["Canal", "Usuários", "Sessões", "Engajamento", "Conversões"]} rows={channelRows} />
+                    </TabsContent>
+                    <TabsContent value="sources" className="mt-4">
+                      <SimpleTable columns={["Origem / Mídia", "Usuários", "Sessões", "Conversões"]} rows={sourceRows} />
+                    </TabsContent>
+                    <TabsContent value="pages" className="mt-4">
+                      <SimpleTable columns={["Página", "Usuários", "Sessões", "Taxa de Rejeição", "Conversões"]} rows={pageRows} />
+                    </TabsContent>
+                  </Tabs>
+
+                  {deviceBreakdown.length > 0 && (
+                    <StaggeredGrid className="grid sm:grid-cols-3 gap-4 mt-4">
+                      {deviceBreakdown.map((d) => (
+                        <Card key={d.device} className="p-4 text-center">
+                          <div className="text-2xl font-bold text-foreground">{d.pct}%</div>
+                          <div className="text-xs text-muted-foreground mt-1">{d.device}</div>
+                        </Card>
+                      ))}
+                    </StaggeredGrid>
+                  )}
+                </>
+              </AnimatedContainer>
             )}
           </>
         )}

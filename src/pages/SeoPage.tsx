@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -7,11 +6,13 @@ import { useSeoMetrics } from "@/hooks/use-data-modules";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { InsightCard } from "@/components/dashboard/InsightCard";
+import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
+import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Lightbulb } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default function SeoPage() {
   const { user } = useAuth();
@@ -32,7 +33,6 @@ export default function SeoPage() {
   const avgCtr = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / metrics.length : 0;
   const avgPosition = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / metrics.length : 0;
 
-  // Group by URL
   const byUrl = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   metrics.forEach((m: any) => {
     if (!m.url) return;
@@ -49,7 +49,6 @@ export default function SeoPage() {
     (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
   ]).slice(0, 20);
 
-  // Group by query
   const byQuery = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   metrics.forEach((m: any) => {
     if (!m.query) return;
@@ -66,7 +65,6 @@ export default function SeoPage() {
     (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
   ]).slice(0, 20);
 
-  // Group by country
   const byCountry = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   metrics.forEach((m: any) => {
     if (!m.country) return;
@@ -83,7 +81,6 @@ export default function SeoPage() {
     (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
   ]);
 
-  // Group by device
   const byDevice = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   metrics.forEach((m: any) => {
     if (!m.device) return;
@@ -100,7 +97,6 @@ export default function SeoPage() {
     (data.ctr / data.count).toFixed(2) + "%", (data.position / data.count).toFixed(1),
   ]);
 
-  // Trend data by date
   const byDate = new Map<string, { clicks: number; impressions: number }>();
   metrics.forEach((m: any) => {
     const d = m.metric_date;
@@ -119,63 +115,79 @@ export default function SeoPage() {
     <>
       <TopBar title="SEO" subtitle="Monitore cliques, impressões e posições via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label="Cliques" value={totalClicks} change={0} />
-          <KpiCard label="Impressões" value={totalImpressions} change={0} />
-          <KpiCard label="CTR" value={Number(avgCtr.toFixed(2))} change={0} suffix="%" />
-          <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={0} />
-        </div>
+        {isLoading ? (
+          <>
+            <KpiSkeleton />
+            <ChartSkeleton />
+            <TableSkeleton />
+          </>
+        ) : (
+          <>
+            <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <KpiCard label="Cliques" value={totalClicks} change={0} />
+              <KpiCard label="Impressões" value={totalImpressions} change={0} />
+              <KpiCard label="CTR" value={Number(avgCtr.toFixed(2))} change={0} suffix="%" />
+              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={0} />
+            </StaggeredGrid>
 
-        {hasData && trendData.length > 1 && (
-          <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
-                  <defs>
-                    <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" fill="url(#clicksGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
+            {hasData && trendData.length > 1 && (
+              <AnimatedContainer delay={0.15}>
+                <Card className="p-5">
+                  <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData}>
+                        <defs>
+                          <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
+                        <Area type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" fill="url(#clicksGrad)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </AnimatedContainer>
+            )}
 
-        {!hasData && !isLoading && (
-          <Card className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nenhuma métrica SEO registrada. Conecte o Google Search Console ou adicione dados manualmente.</p>
-          </Card>
-        )}
+            {!hasData && (
+              <EmptyState
+                icon={Search}
+                title="Nenhuma métrica SEO"
+                description="Conecte o Google Search Console ou adicione dados manualmente para visualizar performance."
+              />
+            )}
 
-        {hasData && (
-          <Tabs defaultValue="pages">
-            <TabsList>
-              <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
-              <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
-              <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
-              <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
-            </TabsList>
-            <TabsContent value="pages" className="mt-4">
-              <DataTable columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]} rows={urlRows} />
-            </TabsContent>
-            <TabsContent value="queries" className="mt-4">
-              <DataTable columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]} rows={queryRows} />
-            </TabsContent>
-            <TabsContent value="countries" className="mt-4">
-              <DataTable columns={["País", "Cliques", "Impressões", "CTR", "Posição"]} rows={countryRows} />
-            </TabsContent>
-            <TabsContent value="devices" className="mt-4">
-              <DataTable columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]} rows={deviceRows} />
-            </TabsContent>
-          </Tabs>
+            {hasData && (
+              <AnimatedContainer delay={0.2}>
+                <Tabs defaultValue="pages">
+                  <TabsList>
+                    <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
+                    <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
+                    <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
+                    <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="pages" className="mt-4">
+                    <DataTable columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]} rows={urlRows} />
+                  </TabsContent>
+                  <TabsContent value="queries" className="mt-4">
+                    <DataTable columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]} rows={queryRows} />
+                  </TabsContent>
+                  <TabsContent value="countries" className="mt-4">
+                    <DataTable columns={["País", "Cliques", "Impressões", "CTR", "Posição"]} rows={countryRows} />
+                  </TabsContent>
+                  <TabsContent value="devices" className="mt-4">
+                    <DataTable columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]} rows={deviceRows} />
+                  </TabsContent>
+                </Tabs>
+              </AnimatedContainer>
+            )}
+          </>
         )}
       </div>
     </>
