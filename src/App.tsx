@@ -9,6 +9,15 @@ import Overview from "@/pages/Overview";
 import ProjectsList from "@/pages/ProjectsList";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import Onboarding from "@/pages/Onboarding";
+import UrlsPage from "@/pages/UrlsPage";
+import SeoPage from "@/pages/SeoPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
+import IndexingPage from "@/pages/IndexingPage";
+import AiAgentPage from "@/pages/AiAgentPage";
+import TrackingPage from "@/pages/TrackingPage";
+import ConversionsPage from "@/pages/ConversionsPage";
+import AdsPage from "@/pages/AdsPage";
+import ReportsPage from "@/pages/ReportsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,15 +34,15 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/overview" element={<Overview />} />
             <Route path="/projects" element={<ProjectsList />} />
-            <Route path="/urls" element={<PlaceholderPage title="URLs" subtitle="Sitemap & Inventory" />} />
-            <Route path="/seo" element={<PlaceholderPage title="SEO" subtitle="Google Search Console" />} />
-            <Route path="/analytics" element={<PlaceholderPage title="Analytics" subtitle="GA4 Dashboard" />} />
-            <Route path="/indexing" element={<PlaceholderPage title="Indexing" subtitle="GSC API Queue" />} />
-            <Route path="/ai-agent" element={<PlaceholderPage title="AI Agent" subtitle="Insights & Actions" />} />
-            <Route path="/tracking" element={<PlaceholderPage title="Tracking" subtitle="Behavioral Events" />} />
-            <Route path="/conversions" element={<PlaceholderPage title="Conversions" subtitle="Goals & Funnels" />} />
-            <Route path="/ads" element={<PlaceholderPage title="Ads" subtitle="Google Ads & Meta" />} />
-            <Route path="/reports" element={<PlaceholderPage title="Reports" subtitle="Export & Scheduling" />} />
+            <Route path="/urls" element={<UrlsPage />} />
+            <Route path="/seo" element={<SeoPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/indexing" element={<IndexingPage />} />
+            <Route path="/ai-agent" element={<AiAgentPage />} />
+            <Route path="/tracking" element={<TrackingPage />} />
+            <Route path="/conversions" element={<ConversionsPage />} />
+            <Route path="/ads" element={<AdsPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/project-settings" element={<PlaceholderPage title="Project Settings" />} />
             <Route path="/account/users" element={<PlaceholderPage title="Users & Permissions" />} />
             <Route path="/account/billing" element={<PlaceholderPage title="Billing & Plans" />} />
