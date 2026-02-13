@@ -28,7 +28,7 @@ const ADMIN_LOGS = [
 export default function AdminPage() {
   return (
     <>
-      <TopBar title="Admin Backoffice" subtitle="Administração do Sistema" />
+      <TopBar title="Admin" subtitle="Visão completa de usuários, projetos e logs do sistema" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Global KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

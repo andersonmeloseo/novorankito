@@ -21,7 +21,7 @@ const ROLE_COLORS: Record<string, string> = {
 export default function UsersPage() {
   return (
     <>
-      <TopBar title="Usuários & Permissões" subtitle="Gerencie membros e acessos" />
+      <TopBar title="Usuários & Permissões" subtitle="Gerencie membros da equipe e controle de acessos" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-foreground">{USERS.length} membros</h2>

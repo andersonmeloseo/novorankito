@@ -39,7 +39,7 @@ export default function AiAgentPage() {
 
   return (
     <>
-      <TopBar title="Agente IA" subtitle="Insights & Ações" />
+      <TopBar title="Agente IA" subtitle="Converse com a IA para obter insights e criar tarefas automaticamente" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Mode Toggle */}
         <div className="flex items-center gap-3 flex-wrap">

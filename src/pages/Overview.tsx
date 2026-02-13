@@ -16,8 +16,8 @@ export default function Overview() {
 
   return (
     <>
-      <TopBar title="Visão Geral" subtitle="acme.com — Últimos 30 dias" />
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-auto">
+      <TopBar title="Visão Geral" subtitle="Resumo de performance do seu projeto" />
+      <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-auto">
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpiList.map((kpi) => (
@@ -28,7 +28,7 @@ export default function Overview() {
         {/* Trend Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Tendência de Cliques & Sessões</CardTitle>
+            <CardTitle className="text-sm font-semibold tracking-tight">Tendência de Cliques & Sessões</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -56,8 +56,8 @@ export default function Overview() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Top Pages */}
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Top Páginas</CardTitle>
+          <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold tracking-tight">Top Páginas</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -85,7 +85,7 @@ export default function Overview() {
 
           {/* Recent Insights */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">Insights Recentes</h3>
+            <h3 className="text-sm font-semibold text-foreground tracking-tight">Insights Recentes</h3>
             {mockInsights.map((insight) => (
               <InsightCard key={insight.id} {...insight} />
             ))}

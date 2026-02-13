@@ -23,7 +23,7 @@ const heatmapData = generateHeatmapData();
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Tracking" subtitle="Eventos Comportamentais" />
+      <TopBar title="Tracking" subtitle="Eventos comportamentais em tempo real e mapa de calor" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Live events indicator */}
         <Card className="p-4 flex items-center gap-3">

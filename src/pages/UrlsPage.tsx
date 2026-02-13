@@ -82,7 +82,7 @@ export default function UrlsPage() {
 
   return (
     <>
-      <TopBar title="URLs" subtitle="Sitemap & Inventário" />
+      <TopBar title="URLs" subtitle="Inventário completo de páginas, status e prioridades de otimização" />
       <div className="p-4 sm:p-6 space-y-4">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">

@@ -11,7 +11,7 @@ import { Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy } f
 export default function ProjectSettingsPage() {
   return (
     <>
-      <TopBar title="Configurações do Projeto" subtitle="Domínio, integrações e preferências" />
+      <TopBar title="Configurações" subtitle="Gerencie domínio, integrações e preferências do projeto" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="general">
           <TabsList className="flex flex-wrap h-auto gap-1">

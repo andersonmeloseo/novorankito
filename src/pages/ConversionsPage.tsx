@@ -15,7 +15,7 @@ const FUNNEL_STEPS = [
 export default function ConversionsPage() {
   return (
     <>
-      <TopBar title="Conversões" subtitle="Metas & Funis" />
+      <TopBar title="Conversões" subtitle="Acompanhe suas metas, funis e taxas de conversão" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label="Total de Conversões" value={842} change={22.3} />

@@ -37,7 +37,7 @@ const INVOICES = [
 export default function BillingPage() {
   return (
     <>
-      <TopBar title="Billing & Planos" subtitle="Assinatura e faturas" />
+      <TopBar title="Billing & Planos" subtitle="Gerencie sua assinatura, faturas e uso de recursos" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Plans */}
         <div>
