@@ -47,7 +47,7 @@ export default function SeoPage() {
 
         {/* Trend Chart */}
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Performance Trend</h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={mockTrendData}>
@@ -77,33 +77,33 @@ export default function SeoPage() {
         {/* Data Tables */}
         <Tabs defaultValue="pages">
           <TabsList>
-            <TabsTrigger value="pages" className="text-xs">Pages</TabsTrigger>
-            <TabsTrigger value="queries" className="text-xs">Queries</TabsTrigger>
-            <TabsTrigger value="countries" className="text-xs">Countries</TabsTrigger>
-            <TabsTrigger value="devices" className="text-xs">Devices</TabsTrigger>
+            <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
+            <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
+            <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
+            <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pages" className="mt-4">
             <DataTable
-              columns={["URL", "Clicks", "Impressions", "CTR", "Position"]}
+              columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]}
               rows={mockTopPages.map((p) => [p.url, p.clicks.toLocaleString(), p.impressions.toLocaleString(), p.ctr + "%", p.position.toFixed(1)])}
             />
           </TabsContent>
           <TabsContent value="queries" className="mt-4">
             <DataTable
-              columns={["Query", "Clicks", "Impressions", "CTR", "Position"]}
+              columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]}
               rows={QUERY_DATA.map((q) => [q.query, q.clicks.toLocaleString(), q.impressions.toLocaleString(), q.ctr + "%", q.position.toFixed(1)])}
             />
           </TabsContent>
           <TabsContent value="countries" className="mt-4">
             <DataTable
-              columns={["Country", "Clicks", "Impressions", "CTR", "Position"]}
+              columns={["País", "Cliques", "Impressões", "CTR", "Posição"]}
               rows={COUNTRY_DATA.map((c) => [c.country, c.clicks.toLocaleString(), c.impressions.toLocaleString(), c.ctr + "%", c.position.toFixed(1)])}
             />
           </TabsContent>
           <TabsContent value="devices" className="mt-4">
             <DataTable
-              columns={["Device", "Clicks", "Impressions", "CTR", "Position"]}
+              columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]}
               rows={DEVICE_DATA.map((d) => [d.device, d.clicks.toLocaleString(), d.impressions.toLocaleString(), d.ctr + "%", d.position.toFixed(1)])}
             />
           </TabsContent>
@@ -113,7 +113,7 @@ export default function SeoPage() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb className="h-4 w-4 text-warning" />
-            <h3 className="text-sm font-medium text-foreground">Auto-detected Insights</h3>
+            <h3 className="text-sm font-medium text-foreground">Insights Automáticos</h3>
           </div>
           <div className="space-y-3">
             {mockInsights.map((insight) => (

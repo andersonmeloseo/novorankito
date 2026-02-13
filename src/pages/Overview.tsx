@@ -16,7 +16,7 @@ export default function Overview() {
 
   return (
     <>
-      <TopBar title="Overview" subtitle="acme.com — Last 30 days" />
+      <TopBar title="Visão Geral" subtitle="acme.com — Últimos 30 dias" />
       <div className="p-6 space-y-6 overflow-auto">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -28,7 +28,7 @@ export default function Overview() {
         {/* Trend Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Clicks & Sessions Trend</CardTitle>
+            <CardTitle className="text-sm font-medium">Tendência de Cliques & Sessões</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -57,16 +57,16 @@ export default function Overview() {
           {/* Top Pages */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Top Pages</CardTitle>
+              <CardTitle className="text-sm font-medium">Top Páginas</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">URL</TableHead>
-                    <TableHead className="text-xs text-right">Clicks</TableHead>
-                    <TableHead className="text-xs text-right">CTR</TableHead>
-                    <TableHead className="text-xs text-right">Position</TableHead>
+                     <TableHead className="text-xs">URL</TableHead>
+                     <TableHead className="text-xs text-right">Cliques</TableHead>
+                     <TableHead className="text-xs text-right">CTR</TableHead>
+                     <TableHead className="text-xs text-right">Posição</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -85,7 +85,7 @@ export default function Overview() {
 
           {/* Recent Insights */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">Recent Insights</h3>
+            <h3 className="text-sm font-medium text-foreground">Insights Recentes</h3>
             {mockInsights.map((insight) => (
               <InsightCard key={insight.id} {...insight} />
             ))}

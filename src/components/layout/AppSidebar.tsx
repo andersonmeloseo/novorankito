@@ -14,23 +14,23 @@ import { mockProjects } from "@/lib/mock-data";
 import { ThemeToggle } from "./ThemeToggle";
 
 const projectNav = [
-  { title: "Overview", url: "/overview", icon: LayoutDashboard },
+  { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
   { title: "SEO", url: "/seo", icon: Search },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Indexing", url: "/indexing", icon: Database },
-  { title: "AI Agent", url: "/ai-agent", icon: Bot },
+  { title: "Indexação", url: "/indexing", icon: Database },
+  { title: "Agente IA", url: "/ai-agent", icon: Bot },
   { title: "Tracking", url: "/tracking", icon: MousePointerClick },
-  { title: "Conversions", url: "/conversions", icon: Target },
+  { title: "Conversões", url: "/conversions", icon: Target },
   { title: "Ads", url: "/ads", icon: Megaphone },
-  { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Settings", url: "/project-settings", icon: Settings },
+  { title: "Relatórios", url: "/reports", icon: FileText },
+  { title: "Configurações", url: "/project-settings", icon: Settings },
 ];
 
 const accountNav = [
-  { title: "Projects", url: "/projects", icon: FolderOpen },
-  { title: "Users & Permissions", url: "/account/users", icon: Users },
-  { title: "Billing & Plans", url: "/account/billing", icon: CreditCard },
+  { title: "Projetos", url: "/projects", icon: FolderOpen },
+  { title: "Usuários & Permissões", url: "/account/users", icon: Users },
+  { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
   { title: "Admin", url: "/admin", icon: Shield },
 ];
 
@@ -58,7 +58,7 @@ export function AppSidebar() {
       <SidebarContent className="scrollbar-thin">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
-            Project
+            Projeto
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -83,7 +83,7 @@ export function AppSidebar() {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
-            Account
+            Conta
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

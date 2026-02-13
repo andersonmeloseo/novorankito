@@ -7,14 +7,14 @@ export const mockProjects = [
 ];
 
 export const mockKpis = {
-  clicks: { value: 24_832, change: 12.4, label: "Clicks" },
-  impressions: { value: 1_284_920, change: 8.1, label: "Impressions" },
+  clicks: { value: 24_832, change: 12.4, label: "Cliques" },
+  impressions: { value: 1_284_920, change: 8.1, label: "Impressões" },
   ctr: { value: 1.93, change: 3.8, label: "CTR", suffix: "%" },
-  position: { value: 14.2, change: -2.1, label: "Avg. Position" },
-  users: { value: 18_420, change: 15.2, label: "Users" },
-  sessions: { value: 32_100, change: 9.7, label: "Sessions" },
-  conversions: { value: 842, change: 22.3, label: "Conversions" },
-  revenue: { value: 48_290, change: 18.6, label: "Revenue", prefix: "$" },
+  position: { value: 14.2, change: -2.1, label: "Posição Média" },
+  users: { value: 18_420, change: 15.2, label: "Usuários" },
+  sessions: { value: 32_100, change: 9.7, label: "Sessões" },
+  conversions: { value: 842, change: 22.3, label: "Conversões" },
+  revenue: { value: 48_290, change: 18.6, label: "Receita", prefix: "$" },
 };
 
 export const mockTrendData = Array.from({ length: 30 }, (_, i) => {

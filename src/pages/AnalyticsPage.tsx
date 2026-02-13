@@ -54,7 +54,7 @@ export default function AnalyticsPage() {
 
         {/* Sessions Chart */}
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Sessions Trend</h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Sessões</h3>
           <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={mockTrendData}>
@@ -77,26 +77,26 @@ export default function AnalyticsPage() {
         {/* Tabs */}
         <Tabs defaultValue="channels">
           <TabsList>
-            <TabsTrigger value="channels" className="text-xs">Channels</TabsTrigger>
-            <TabsTrigger value="sources" className="text-xs">Source / Medium</TabsTrigger>
-            <TabsTrigger value="pages" className="text-xs">Landing Pages</TabsTrigger>
+            <TabsTrigger value="channels" className="text-xs">Canais</TabsTrigger>
+            <TabsTrigger value="sources" className="text-xs">Origem / Mídia</TabsTrigger>
+            <TabsTrigger value="pages" className="text-xs">Páginas de Entrada</TabsTrigger>
           </TabsList>
 
           <TabsContent value="channels" className="mt-4">
             <SimpleTable
-              columns={["Channel", "Users", "Sessions", "Engagement", "Conversions"]}
+              columns={["Canal", "Usuários", "Sessões", "Engajamento", "Conversões"]}
               rows={CHANNEL_DATA.map((c) => [c.channel, c.users.toLocaleString(), c.sessions.toLocaleString(), c.engagement, c.conversions.toLocaleString()])}
             />
           </TabsContent>
           <TabsContent value="sources" className="mt-4">
             <SimpleTable
-              columns={["Source / Medium", "Users", "Sessions", "Conversions"]}
+              columns={["Origem / Mídia", "Usuários", "Sessões", "Conversões"]}
               rows={SOURCE_DATA.map((s) => [s.source, s.users.toLocaleString(), s.sessions.toLocaleString(), s.conversions.toLocaleString()])}
             />
           </TabsContent>
           <TabsContent value="pages" className="mt-4">
             <SimpleTable
-              columns={["Page", "Users", "Sessions", "Bounce Rate", "Conversions"]}
+              columns={["Página", "Usuários", "Sessões", "Taxa de Rejeição", "Conversões"]}
               rows={LANDING_DATA.map((p) => [p.page, p.users.toLocaleString(), p.sessions.toLocaleString(), p.bounce, p.conversions.toLocaleString()])}
             />
           </TabsContent>
