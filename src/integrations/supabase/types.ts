@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_sessions: {
+        Row: {
+          bounce_rate: number | null
+          channel: string | null
+          conversions_count: number
+          country: string | null
+          created_at: string
+          device: string | null
+          engagement_rate: number | null
+          id: string
+          landing_page: string | null
+          medium: string | null
+          owner_id: string
+          project_id: string
+          revenue: number | null
+          session_date: string
+          sessions_count: number
+          source: string | null
+          users_count: number
+        }
+        Insert: {
+          bounce_rate?: number | null
+          channel?: string | null
+          conversions_count?: number
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          engagement_rate?: number | null
+          id?: string
+          landing_page?: string | null
+          medium?: string | null
+          owner_id: string
+          project_id: string
+          revenue?: number | null
+          session_date?: string
+          sessions_count?: number
+          source?: string | null
+          users_count?: number
+        }
+        Update: {
+          bounce_rate?: number | null
+          channel?: string | null
+          conversions_count?: number
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          engagement_rate?: number | null
+          id?: string
+          landing_page?: string | null
+          medium?: string | null
+          owner_id?: string
+          project_id?: string
+          revenue?: number | null
+          session_date?: string
+          sessions_count?: number
+          source?: string | null
+          users_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -94,6 +162,71 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      conversions: {
+        Row: {
+          campaign: string | null
+          converted_at: string
+          created_at: string
+          device: string | null
+          event_type: string
+          id: string
+          lead_email: string | null
+          lead_name: string | null
+          lead_phone: string | null
+          location: string | null
+          medium: string | null
+          owner_id: string
+          page: string | null
+          project_id: string
+          source: string | null
+          value: number | null
+        }
+        Insert: {
+          campaign?: string | null
+          converted_at?: string
+          created_at?: string
+          device?: string | null
+          event_type?: string
+          id?: string
+          lead_email?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
+          location?: string | null
+          medium?: string | null
+          owner_id: string
+          page?: string | null
+          project_id: string
+          source?: string | null
+          value?: number | null
+        }
+        Update: {
+          campaign?: string | null
+          converted_at?: string
+          created_at?: string
+          device?: string | null
+          event_type?: string
+          id?: string
+          lead_email?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
+          location?: string | null
+          medium?: string | null
+          owner_id?: string
+          page?: string | null
+          project_id?: string
+          source?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -436,6 +569,118 @@ export type Database = {
           },
           {
             foreignKeyName: "rr_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_metrics: {
+        Row: {
+          clicks: number
+          country: string | null
+          created_at: string
+          ctr: number
+          device: string | null
+          id: string
+          impressions: number
+          metric_date: string
+          owner_id: string
+          position: number
+          project_id: string
+          query: string | null
+          url: string | null
+        }
+        Insert: {
+          clicks?: number
+          country?: string | null
+          created_at?: string
+          ctr?: number
+          device?: string | null
+          id?: string
+          impressions?: number
+          metric_date?: string
+          owner_id: string
+          position?: number
+          project_id: string
+          query?: string | null
+          url?: string | null
+        }
+        Update: {
+          clicks?: number
+          country?: string | null
+          created_at?: string
+          ctr?: number
+          device?: string | null
+          id?: string
+          impressions?: number
+          metric_date?: string
+          owner_id?: string
+          position?: number
+          project_id?: string
+          query?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_urls: {
+        Row: {
+          created_at: string
+          discovered_at: string
+          id: string
+          last_crawl: string | null
+          owner_id: string
+          priority: string
+          project_id: string
+          status: string
+          tags: string[] | null
+          updated_at: string
+          url: string
+          url_group: string | null
+          url_type: string
+        }
+        Insert: {
+          created_at?: string
+          discovered_at?: string
+          id?: string
+          last_crawl?: string | null
+          owner_id: string
+          priority?: string
+          project_id: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          url: string
+          url_group?: string | null
+          url_type?: string
+        }
+        Update: {
+          created_at?: string
+          discovered_at?: string
+          id?: string
+          last_crawl?: string | null
+          owner_id?: string
+          priority?: string
+          project_id?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          url?: string
+          url_group?: string | null
+          url_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_urls_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
