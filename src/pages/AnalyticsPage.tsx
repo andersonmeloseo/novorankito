@@ -10,11 +10,11 @@ import {
 import { Users, Activity, Target, DollarSign } from "lucide-react";
 
 const CHANNEL_DATA = [
-  { channel: "Organic Search", users: 9200, sessions: 14800, engagement: "62%", conversions: 420 },
-  { channel: "Direct", users: 4100, sessions: 6200, engagement: "58%", conversions: 180 },
-  { channel: "Paid Search", users: 2800, sessions: 5400, engagement: "45%", conversions: 142 },
+  { channel: "Busca Orgânica", users: 9200, sessions: 14800, engagement: "62%", conversions: 420 },
+  { channel: "Direto", users: 4100, sessions: 6200, engagement: "58%", conversions: 180 },
+  { channel: "Busca Paga", users: 2800, sessions: 5400, engagement: "45%", conversions: 142 },
   { channel: "Social", users: 1400, sessions: 3200, engagement: "52%", conversions: 64 },
-  { channel: "Referral", users: 920, sessions: 2500, engagement: "68%", conversions: 36 },
+  { channel: "Referência", users: 920, sessions: 2500, engagement: "68%", conversions: 36 },
 ];
 
 const SOURCE_DATA = [
@@ -34,7 +34,7 @@ const LANDING_DATA = [
 ];
 
 const DEVICE_BREAKDOWN = [
-  { device: "Mobile", pct: 58 },
+  { device: "Celular", pct: 58 },
   { device: "Desktop", pct: 36 },
   { device: "Tablet", pct: 6 },
 ];
@@ -46,10 +46,10 @@ export default function AnalyticsPage() {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label="Users" value={mockKpis.users.value} change={mockKpis.users.change} />
-          <KpiCard label="Sessions" value={mockKpis.sessions.value} change={mockKpis.sessions.change} />
-          <KpiCard label="Conversions" value={mockKpis.conversions.value} change={mockKpis.conversions.change} />
-          <KpiCard label="Revenue" value={mockKpis.revenue.value} change={mockKpis.revenue.change} prefix="$" />
+          <KpiCard label="Usuários" value={mockKpis.users.value} change={mockKpis.users.change} />
+          <KpiCard label="Sessões" value={mockKpis.sessions.value} change={mockKpis.sessions.change} />
+          <KpiCard label="Conversões" value={mockKpis.conversions.value} change={mockKpis.conversions.change} />
+          <KpiCard label="Receita" value={mockKpis.revenue.value} change={mockKpis.revenue.change} prefix="R$" />
         </div>
 
         {/* Sessions Chart */}

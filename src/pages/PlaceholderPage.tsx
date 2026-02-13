@@ -16,7 +16,7 @@ export default function PlaceholderPage({ title, subtitle }: PlaceholderPageProp
           <Construction className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-foreground mb-1">{title}</h2>
           <p className="text-sm text-muted-foreground">
-            This module is part of the Rankito prototype. Full mock data and interactions coming soon.
+            Este módulo faz parte do protótipo Rankito. Dados e interações completas em breve.
           </p>
         </Card>
       </div>

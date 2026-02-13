@@ -20,7 +20,7 @@ export const mockKpis = {
 export const mockTrendData = Array.from({ length: 30 }, (_, i) => {
   const date = new Date(2026, 0, i + 15);
   return {
-    date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    date: date.toLocaleDateString("pt-BR", { month: "short", day: "numeric" }),
     clicks: Math.floor(600 + Math.random() * 400 + i * 10),
     impressions: Math.floor(30000 + Math.random() * 15000 + i * 500),
     sessions: Math.floor(800 + Math.random() * 300 + i * 8),
