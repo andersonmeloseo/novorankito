@@ -32,6 +32,7 @@ import RRPagesPage from "@/pages/rank-rent/RRPagesPage";
 import RRFinancialPage from "@/pages/rank-rent/RRFinancialPage";
 import RRAvailabilityPage from "@/pages/rank-rent/RRAvailabilityPage";
 import RRPerformancePage from "@/pages/rank-rent/RRPerformancePage";
+import RRProjectMonetizationPage from "@/pages/rank-rent/RRProjectMonetizationPage";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/rank-rent/financial" element={<RRFinancialPage />} />
               <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
               <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
+              <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
