@@ -1,126 +1,182 @@
 import { useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSeoMetrics } from "@/hooks/use-data-modules";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { InsightCard } from "@/components/dashboard/InsightCard";
-import { mockKpis, mockTopPages, mockTrendData, mockInsights } from "@/lib/mock-data";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { MousePointerClick, Eye, TrendingUp, ArrowUpDown, Lightbulb } from "lucide-react";
-
-const QUERY_DATA = [
-  { query: "wireless headphones", clicks: 1842, impressions: 42300, ctr: 4.35, position: 3.2 },
-  { query: "best noise cancelling", clicks: 1210, impressions: 68400, ctr: 1.77, position: 6.8 },
-  { query: "bluetooth headphones review", clicks: 980, impressions: 31200, ctr: 3.14, position: 4.1 },
-  { query: "headphones under $100", clicks: 760, impressions: 52100, ctr: 1.46, position: 8.3 },
-  { query: "smart speaker comparison", clicks: 540, impressions: 28900, ctr: 1.87, position: 7.2 },
-];
-
-const COUNTRY_DATA = [
-  { country: "Brazil", clicks: 12400, impressions: 580000, ctr: 2.14, position: 12.1 },
-  { country: "United States", clicks: 6200, impressions: 320000, ctr: 1.94, position: 15.8 },
-  { country: "Portugal", clicks: 3100, impressions: 180000, ctr: 1.72, position: 14.2 },
-  { country: "Spain", clicks: 1800, impressions: 120000, ctr: 1.50, position: 16.5 },
-];
-
-const DEVICE_DATA = [
-  { device: "Mobile", clicks: 15200, impressions: 820000, ctr: 1.85, position: 14.8 },
-  { device: "Desktop", clicks: 8400, impressions: 380000, ctr: 2.21, position: 12.6 },
-  { device: "Tablet", clicks: 1232, impressions: 84920, ctr: 1.45, position: 16.1 },
-];
+import { Lightbulb } from "lucide-react";
 
 export default function SeoPage() {
+  const { user } = useAuth();
+  const { data: projects = [] } = useQuery({
+    queryKey: ["my-projects"],
+    queryFn: async () => {
+      const { data } = await supabase.from("projects").select("id").limit(1);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+  const projectId = projects[0]?.id;
+  const { data: metrics = [], isLoading } = useSeoMetrics(projectId);
+
+  // Aggregate KPIs
+  const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
+  const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
+  const avgCtr = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / metrics.length : 0;
+  const avgPosition = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / metrics.length : 0;
+
+  // Group by URL
+  const byUrl = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+  metrics.forEach((m: any) => {
+    if (!m.url) return;
+    const existing = byUrl.get(m.url) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+    existing.clicks += m.clicks || 0;
+    existing.impressions += m.impressions || 0;
+    existing.ctr += Number(m.ctr || 0);
+    existing.position += Number(m.position || 0);
+    existing.count++;
+    byUrl.set(m.url, existing);
+  });
+  const urlRows = Array.from(byUrl.entries()).map(([url, d]) => [
+    url, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
+    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
+  ]).slice(0, 20);
+
+  // Group by query
+  const byQuery = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+  metrics.forEach((m: any) => {
+    if (!m.query) return;
+    const existing = byQuery.get(m.query) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+    existing.clicks += m.clicks || 0;
+    existing.impressions += m.impressions || 0;
+    existing.ctr += Number(m.ctr || 0);
+    existing.position += Number(m.position || 0);
+    existing.count++;
+    byQuery.set(m.query, existing);
+  });
+  const queryRows = Array.from(byQuery.entries()).map(([q, d]) => [
+    q, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
+    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
+  ]).slice(0, 20);
+
+  // Group by country
+  const byCountry = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+  metrics.forEach((m: any) => {
+    if (!m.country) return;
+    const existing = byCountry.get(m.country) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+    existing.clicks += m.clicks || 0;
+    existing.impressions += m.impressions || 0;
+    existing.ctr += Number(m.ctr || 0);
+    existing.position += Number(m.position || 0);
+    existing.count++;
+    byCountry.set(m.country, existing);
+  });
+  const countryRows = Array.from(byCountry.entries()).map(([c, d]) => [
+    c, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
+    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
+  ]);
+
+  // Group by device
+  const byDevice = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+  metrics.forEach((m: any) => {
+    if (!m.device) return;
+    const existing = byDevice.get(m.device) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+    existing.clicks += m.clicks || 0;
+    existing.impressions += m.impressions || 0;
+    existing.ctr += Number(m.ctr || 0);
+    existing.position += Number(m.position || 0);
+    existing.count++;
+    byDevice.set(m.device, existing);
+  });
+  const deviceRows = Array.from(byDevice.entries()).map(([d, data]) => [
+    d, data.clicks.toLocaleString(), data.impressions.toLocaleString(),
+    (data.ctr / data.count).toFixed(2) + "%", (data.position / data.count).toFixed(1),
+  ]);
+
+  // Trend data by date
+  const byDate = new Map<string, { clicks: number; impressions: number }>();
+  metrics.forEach((m: any) => {
+    const d = m.metric_date;
+    const existing = byDate.get(d) || { clicks: 0, impressions: 0 };
+    existing.clicks += m.clicks || 0;
+    existing.impressions += m.impressions || 0;
+    byDate.set(d, existing);
+  });
+  const trendData = Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, d]) => ({ date, clicks: d.clicks, impressions: d.impressions }));
+
+  const hasData = metrics.length > 0;
+
   return (
     <>
       <TopBar title="SEO" subtitle="Monitore cliques, impressões e posições via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label="Cliques" value={mockKpis.clicks.value} change={mockKpis.clicks.change} />
-          <KpiCard label="Impressões" value={mockKpis.impressions.value} change={mockKpis.impressions.change} />
-          <KpiCard label="CTR" value={mockKpis.ctr.value} change={mockKpis.ctr.change} suffix="%" />
-          <KpiCard label="Posição Média" value={mockKpis.position.value} change={mockKpis.position.change} />
+          <KpiCard label="Cliques" value={totalClicks} change={0} />
+          <KpiCard label="Impressões" value={totalImpressions} change={0} />
+          <KpiCard label="CTR" value={Number(avgCtr.toFixed(2))} change={0} suffix="%" />
+          <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={0} />
         </div>
 
-        {/* Trend Chart */}
-        <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockTrendData}>
-                <defs>
-                  <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                  }}
-                />
-                <Area type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" fill="url(#clicksGrad)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+        {hasData && trendData.length > 1 && (
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
+                  <Area type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" fill="url(#clicksGrad)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
 
-        {/* Data Tables */}
-        <Tabs defaultValue="pages">
-          <TabsList>
-            <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
-            <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
-            <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
-            <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
-          </TabsList>
+        {!hasData && !isLoading && (
+          <Card className="p-8 text-center">
+            <p className="text-sm text-muted-foreground">Nenhuma métrica SEO registrada. Conecte o Google Search Console ou adicione dados manualmente.</p>
+          </Card>
+        )}
 
-          <TabsContent value="pages" className="mt-4">
-            <DataTable
-              columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]}
-              rows={mockTopPages.map((p) => [p.url, p.clicks.toLocaleString(), p.impressions.toLocaleString(), p.ctr + "%", p.position.toFixed(1)])}
-            />
-          </TabsContent>
-          <TabsContent value="queries" className="mt-4">
-            <DataTable
-              columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]}
-              rows={QUERY_DATA.map((q) => [q.query, q.clicks.toLocaleString(), q.impressions.toLocaleString(), q.ctr + "%", q.position.toFixed(1)])}
-            />
-          </TabsContent>
-          <TabsContent value="countries" className="mt-4">
-            <DataTable
-              columns={["País", "Cliques", "Impressões", "CTR", "Posição"]}
-              rows={COUNTRY_DATA.map((c) => [c.country, c.clicks.toLocaleString(), c.impressions.toLocaleString(), c.ctr + "%", c.position.toFixed(1)])}
-            />
-          </TabsContent>
-          <TabsContent value="devices" className="mt-4">
-            <DataTable
-              columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]}
-              rows={DEVICE_DATA.map((d) => [d.device, d.clicks.toLocaleString(), d.impressions.toLocaleString(), d.ctr + "%", d.position.toFixed(1)])}
-            />
-          </TabsContent>
-        </Tabs>
-
-        {/* Insights */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="h-4 w-4 text-warning" />
-            <h3 className="text-sm font-medium text-foreground">Insights Automáticos</h3>
-          </div>
-          <div className="space-y-3">
-            {mockInsights.map((insight) => (
-              <InsightCard key={insight.id} {...insight} />
-            ))}
-          </div>
-        </div>
+        {hasData && (
+          <Tabs defaultValue="pages">
+            <TabsList>
+              <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
+              <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
+              <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
+              <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pages" className="mt-4">
+              <DataTable columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]} rows={urlRows} />
+            </TabsContent>
+            <TabsContent value="queries" className="mt-4">
+              <DataTable columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]} rows={queryRows} />
+            </TabsContent>
+            <TabsContent value="countries" className="mt-4">
+              <DataTable columns={["País", "Cliques", "Impressões", "CTR", "Posição"]} rows={countryRows} />
+            </TabsContent>
+            <TabsContent value="devices" className="mt-4">
+              <DataTable columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]} rows={deviceRows} />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </>
   );
@@ -139,15 +195,17 @@ function DataTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                {row.map((cell, j) => (
-                  <td key={j} className={`px-4 py-3 text-xs ${j === 0 ? "font-mono text-foreground" : "text-muted-foreground"}`}>
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {rows.length === 0 ? (
+              <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
+            ) : (
+              rows.map((row, i) => (
+                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                  {row.map((cell, j) => (
+                    <td key={j} className={`px-4 py-3 text-xs ${j === 0 ? "font-mono text-foreground" : "text-muted-foreground"}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
