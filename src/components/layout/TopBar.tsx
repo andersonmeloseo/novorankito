@@ -35,17 +35,17 @@ export function TopBar({ title, subtitle }: TopBarProps) {
 
         <div className="hidden lg:flex items-center relative">
           <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search…" className="h-8 w-48 pl-8 text-xs bg-muted/50 border-none" />
+          <Input placeholder="Buscar…" className="h-8 w-48 pl-8 text-xs bg-muted/50 border-none" />
         </div>
 
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 hidden sm:flex">
           <Calendar className="h-3.5 w-3.5" />
-          Last 30 days
+          Últimos 30 dias
         </Button>
 
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
           <Download className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Export</span>
+          <span className="hidden sm:inline">Exportar</span>
         </Button>
       </div>
     </header>

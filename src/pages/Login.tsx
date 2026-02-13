@@ -23,33 +23,33 @@ export default function Login() {
 
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-base">{isSignup ? "Create account" : "Welcome back"}</CardTitle>
+            <CardTitle className="text-base">{isSignup ? "Criar conta" : "Bem-vindo de volta"}</CardTitle>
             <CardDescription className="text-xs">
-              {isSignup ? "Start analyzing your sites" : "Sign in to your account"}
+              {isSignup ? "Comece a analisar seus sites" : "Entre na sua conta"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isSignup && (
               <div className="space-y-1.5">
-                <Label className="text-xs">Name</Label>
-                <Input placeholder="Your name" className="h-9 text-sm" />
+                <Label className="text-xs">Nome</Label>
+                <Input placeholder="Seu nome" className="h-9 text-sm" />
               </div>
             )}
             <div className="space-y-1.5">
               <Label className="text-xs">Email</Label>
-              <Input type="email" placeholder="you@company.com" className="h-9 text-sm" />
+              <Input type="email" placeholder="voce@empresa.com" className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Password</Label>
+              <Label className="text-xs">Senha</Label>
               <Input type="password" placeholder="••••••••" className="h-9 text-sm" />
             </div>
             <Button className="w-full h-9 text-sm" onClick={() => navigate("/overview")}>
-              {isSignup ? "Create account" : "Sign in"}
+              {isSignup ? "Criar conta" : "Entrar"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+              {isSignup ? "Já tem uma conta?" : "Não tem conta?"}{" "}
               <button className="text-primary font-medium hover:underline" onClick={() => setIsSignup(!isSignup)}>
-                {isSignup ? "Sign in" : "Sign up"}
+                {isSignup ? "Entrar" : "Criar conta"}
               </button>
             </p>
           </CardContent>

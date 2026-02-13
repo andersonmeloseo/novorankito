@@ -7,7 +7,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Login from "@/pages/Login";
 import Overview from "@/pages/Overview";
 import ProjectsList from "@/pages/ProjectsList";
-import PlaceholderPage from "@/pages/PlaceholderPage";
 import Onboarding from "@/pages/Onboarding";
 import UrlsPage from "@/pages/UrlsPage";
 import SeoPage from "@/pages/SeoPage";
@@ -18,6 +17,10 @@ import TrackingPage from "@/pages/TrackingPage";
 import ConversionsPage from "@/pages/ConversionsPage";
 import AdsPage from "@/pages/AdsPage";
 import ReportsPage from "@/pages/ReportsPage";
+import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
+import UsersPage from "@/pages/UsersPage";
+import BillingPage from "@/pages/BillingPage";
+import AdminPage from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,10 +46,10 @@ const App = () => (
             <Route path="/conversions" element={<ConversionsPage />} />
             <Route path="/ads" element={<AdsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/project-settings" element={<PlaceholderPage title="Project Settings" />} />
-            <Route path="/account/users" element={<PlaceholderPage title="Users & Permissions" />} />
-            <Route path="/account/billing" element={<PlaceholderPage title="Billing & Plans" />} />
-            <Route path="/admin" element={<PlaceholderPage title="Admin Backoffice" subtitle="System Administration" />} />
+            <Route path="/project-settings" element={<ProjectSettingsPage />} />
+            <Route path="/account/users" element={<UsersPage />} />
+            <Route path="/account/billing" element={<BillingPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/onboarding" element={<Onboarding />} />
           </Route>
           <Route path="*" element={<NotFound />} />
