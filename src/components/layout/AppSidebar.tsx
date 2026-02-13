@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
-  Shield, ChevronDown, Zap, LogOut, Coins, Building2, FileSignature,
+  Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -56,24 +56,24 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+            <span className="text-sm font-bold text-primary-foreground font-display tracking-tight">R</span>
           </div>
-          <span className="font-bold text-sm text-foreground tracking-tight">Rankito</span>
+          <span className="font-bold text-base text-sidebar-primary-foreground font-display tracking-tight">Rankito</span>
         </div>
-        <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors">
+        <button className="flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-xs font-medium bg-sidebar-muted text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-2 w-2 rounded-full bg-success shrink-0" />
+            <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_6px_hsl(155_70%_42%/0.5)]" />
             <span className="truncate">{mockProjects[0].name}</span>
           </div>
-          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-3 w-3 text-sidebar-foreground/50 shrink-0 group-hover:text-sidebar-accent-foreground transition-colors" />
         </button>
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-4">
             Projeto
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -84,8 +84,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[inset_2px_0_0_hsl(var(--sidebar-primary))]"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span>{item.title}</span>
@@ -98,7 +98,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-4">
             💰 Rank & Rent
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -109,8 +109,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/rank-rent"}
-                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[inset_2px_0_0_hsl(var(--sidebar-primary))]"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span>{item.title}</span>
@@ -123,7 +123,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-4">
             Conta
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -133,8 +133,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[inset_2px_0_0_hsl(var(--sidebar-primary))]"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span>{item.title}</span>
@@ -149,18 +149,18 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0 shadow-glow">
               {displayName[0]?.toUpperCase()}
             </div>
             <div className="text-xs min-w-0">
-              <div className="font-medium text-foreground truncate">{displayName}</div>
-              <div className="text-muted-foreground truncate">{user?.email}</div>
+              <div className="font-semibold text-sidebar-primary-foreground truncate">{displayName}</div>
+              <div className="text-sidebar-foreground/50 truncate text-[11px]">{user?.email}</div>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={signOut} title="Sair">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent" onClick={signOut} title="Sair">
               <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>

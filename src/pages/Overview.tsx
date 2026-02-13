@@ -12,7 +12,7 @@ import { useSeoMetrics, useAnalyticsSessions, useConversions } from "@/hooks/use
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, TrendingUp, Sparkles } from "lucide-react";
 
 export default function Overview() {
   const { user } = useAuth();
@@ -32,7 +32,6 @@ export default function Overview() {
 
   const isLoading = seoLoading || sessionsLoading || conversionsLoading;
 
-  // Compute KPIs from real data, fallback to mock
   const totalClicks = seoMetrics.reduce((s, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = seoMetrics.reduce((s, m: any) => s + (m.impressions || 0), 0);
   const totalSessions = sessions.reduce((s, a: any) => s + (a.sessions_count || 0), 0);
@@ -54,7 +53,6 @@ export default function Overview() {
         { value: 842, change: 22.3, label: "Conversões" },
       ];
 
-  // Top pages from SEO metrics
   const byUrl = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   seoMetrics.forEach((m: any) => {
     if (!m.url) return;
@@ -88,6 +86,24 @@ export default function Overview() {
     <>
       <TopBar title="Visão Geral" subtitle="Resumo de performance do seu projeto" />
       <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-auto">
+        {/* Welcome banner */}
+        <AnimatedContainer>
+          <div className="gradient-primary rounded-xl p-5 sm:p-6 text-primary-foreground relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.12),transparent_60%)]" />
+            <div className="relative flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider opacity-80">Dashboard</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-bold font-display tracking-tight">Bem-vindo ao Rankito</h2>
+                <p className="text-sm opacity-80 mt-1">Acompanhe a performance do seu projeto em tempo real.</p>
+              </div>
+              <TrendingUp className="h-12 w-12 opacity-20 hidden sm:block" />
+            </div>
+          </div>
+        </AnimatedContainer>
+
         {/* KPIs */}
         {isLoading ? (
           <KpiSkeleton />
@@ -104,27 +120,29 @@ export default function Overview() {
           <ChartSkeleton />
         ) : (
           <AnimatedContainer delay={0.15}>
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold tracking-tight">Tendência de Cliques & Sessões</CardTitle>
+                <CardTitle className="text-sm font-bold tracking-tight font-display">Tendência de Cliques & Sessões</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={mockTrendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
+                          borderRadius: "10px",
                           fontSize: "12px",
+                          fontFamily: "Inter",
+                          boxShadow: "0 8px 24px -8px rgba(0,0,0,0.15)",
                         }}
                       />
-                      <Line type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="sessions" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} />
+                      <Line type="monotone" dataKey="sessions" stroke="hsl(var(--success))" strokeWidth={2.5} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -141,25 +159,25 @@ export default function Overview() {
             <EmptyState icon={BarChart3} title="Sem dados de páginas" description="Conecte o Google Search Console para ver suas páginas de melhor performance." />
           ) : (
             <AnimatedContainer delay={0.2}>
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold tracking-tight">Top Páginas</CardTitle>
+                  <CardTitle className="text-sm font-bold tracking-tight font-display">Top Páginas</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">URL</TableHead>
-                        <TableHead className="text-xs text-right">Cliques</TableHead>
-                        <TableHead className="text-xs text-right">CTR</TableHead>
-                        <TableHead className="text-xs text-right">Posição</TableHead>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="text-[11px] uppercase tracking-wider font-semibold">URL</TableHead>
+                        <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Cliques</TableHead>
+                        <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">CTR</TableHead>
+                        <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Posição</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {topPages.map((page) => (
-                        <TableRow key={page.url} className="cursor-pointer">
+                        <TableRow key={page.url} className="cursor-pointer hover:bg-accent/50 transition-colors">
                           <TableCell className="text-xs font-medium text-primary truncate max-w-[200px]">{page.url}</TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{page.clicks.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs text-right tabular-nums font-semibold">{page.clicks.toLocaleString()}</TableCell>
                           <TableCell className="text-xs text-right tabular-nums">{page.ctr}%</TableCell>
                           <TableCell className="text-xs text-right tabular-nums">{page.position}</TableCell>
                         </TableRow>
@@ -174,7 +192,7 @@ export default function Overview() {
           {/* Recent Insights */}
           <AnimatedContainer delay={0.25}>
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground tracking-tight">Insights Recentes</h3>
+              <h3 className="text-sm font-bold text-foreground tracking-tight font-display">Insights Recentes</h3>
               {mockInsights.map((insight) => (
                 <InsightCard key={insight.id} {...insight} />
               ))}
