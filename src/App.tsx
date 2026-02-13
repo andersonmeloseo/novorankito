@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import Overview from "@/pages/Overview";
 import ProjectsList from "@/pages/ProjectsList";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import Onboarding from "@/pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,7 @@ const App = () => (
             <Route path="/account/users" element={<PlaceholderPage title="Users & Permissions" />} />
             <Route path="/account/billing" element={<PlaceholderPage title="Billing & Plans" />} />
             <Route path="/admin" element={<PlaceholderPage title="Admin Backoffice" subtitle="System Administration" />} />
-            <Route path="/onboarding" element={<PlaceholderPage title="Onboarding" subtitle="Project Setup Wizard" />} />
+            <Route path="/onboarding" element={<Onboarding />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
