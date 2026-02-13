@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
-  Shield, ChevronDown, Zap, LogOut
+  Shield, ChevronDown, Zap, LogOut, Coins, Building2, FileSignature,
+  Layers, DollarSign, Store, TrendingUp
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -27,6 +28,16 @@ const projectNav = [
   { title: "Ads", url: "/ads", icon: Megaphone },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const rankRentNav = [
+  { title: "Visão Geral", url: "/rank-rent", icon: Coins },
+  { title: "Clientes", url: "/rank-rent/clients", icon: Building2 },
+  { title: "Contratos", url: "/rank-rent/contracts", icon: FileSignature },
+  { title: "Páginas", url: "/rank-rent/pages", icon: Layers },
+  { title: "Financeiro", url: "/rank-rent/financial", icon: DollarSign },
+  { title: "Performance", url: "/rank-rent/performance", icon: TrendingUp },
+  { title: "Disponibilidade", url: "/rank-rent/availability", icon: Store },
 ];
 
 const accountNav = [
@@ -73,6 +84,31 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4">
+            💰 Rank & Rent
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {rankRentNav.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/rank-rent"}
                       className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
