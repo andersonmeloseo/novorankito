@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import { Badge } from "@/components/ui/badge";
+import { WorldMap } from "./WorldMap";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
@@ -16,6 +17,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
   const byPage = data?.byPage || [];
   const bySource = data?.bySource || [];
   const byCountry = data?.byCountry || [];
+  const byCity = data?.byCity || [];
   const byDevice = data?.byDevice || [];
 
   if (isLoading) return <Card className="p-10 text-center text-sm text-muted-foreground">Carregando dados em tempo real...</Card>;
@@ -32,6 +34,11 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
   const countryChart = byCountry.slice(0, 5).map((c: any) => ({
     name: c.country || "—",
+    value: c.activeUsers || 0,
+  }));
+
+  const mapData = byCountry.map((c: any) => ({
+    name: c.country || "",
     value: c.activeUsers || 0,
   }));
 
@@ -58,67 +65,102 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
         )}
       </Card>
 
-      {/* Charts row */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        {deviceChart.length > 0 && (
-          <Card className="p-4">
-            <h3 className="text-xs font-medium text-foreground mb-1">Dispositivos</h3>
-            <p className="text-[10px] text-muted-foreground mb-2">Ativos por tipo de dispositivo</p>
-            <div className="h-[170px]">
+      {/* 4 charts in 1 row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Dispositivos */}
+        <Card className="p-4">
+          <h3 className="text-xs font-medium text-foreground mb-1">Dispositivos</h3>
+          <p className="text-[10px] text-muted-foreground mb-2">Ativos por tipo</p>
+          {deviceChart.length > 0 ? (
+            <div className="h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={30} outerRadius={52} paddingAngle={3} label={false}>
+                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={25} outerRadius={44} paddingAngle={3} label={false}>
                     {deviceChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={7} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+                  <Legend iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 2 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </Card>
-        )}
-        {sourceChart.length > 0 && (
-          <Card className="p-4">
-            <h3 className="text-xs font-medium text-foreground mb-1">Plataformas</h3>
-            <p className="text-[10px] text-muted-foreground mb-2">Web, iOS, Android</p>
-            <div className="h-[170px]">
+          ) : <div className="h-[150px] flex items-center justify-center text-xs text-muted-foreground">Sem dados</div>}
+        </Card>
+
+        {/* Plataformas */}
+        <Card className="p-4">
+          <h3 className="text-xs font-medium text-foreground mb-1">Plataformas</h3>
+          <p className="text-[10px] text-muted-foreground mb-2">Web, iOS, Android</p>
+          {sourceChart.length > 0 ? (
+            <div className="h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sourceChart} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={60} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={55} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                   <Bar dataKey="users" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </Card>
-        )}
-        {countryChart.length > 0 && (
-          <Card className="p-4">
-            <h3 className="text-xs font-medium text-foreground mb-1">Países</h3>
-            <p className="text-[10px] text-muted-foreground mb-2">Top países com ativos agora</p>
-            <div className="h-[170px]">
+          ) : <div className="h-[150px] flex items-center justify-center text-xs text-muted-foreground">Sem dados</div>}
+        </Card>
+
+        {/* Países */}
+        <Card className="p-4">
+          <h3 className="text-xs font-medium text-foreground mb-1">Países</h3>
+          <p className="text-[10px] text-muted-foreground mb-2">Top países ativos</p>
+          {countryChart.length > 0 ? (
+            <div className="h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={countryChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={30} outerRadius={52} paddingAngle={3} label={false}>
+                  <Pie data={countryChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={25} outerRadius={44} paddingAngle={3} label={false}>
                     {countryChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={7} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+                  <Legend iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 2 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </Card>
-        )}
+          ) : <div className="h-[150px] flex items-center justify-center text-xs text-muted-foreground">Sem dados</div>}
+        </Card>
+
+        {/* Cidades */}
+        <Card className="p-4">
+          <h3 className="text-xs font-medium text-foreground mb-1">Cidades</h3>
+          <p className="text-[10px] text-muted-foreground mb-2">Top cidades ativas</p>
+          {byCity.length > 0 ? (
+            <div className="h-[150px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byCity.slice(0, 6).map((c: any) => ({ name: (c.city || "—").substring(0, 12), users: c.activeUsers || 0 }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={65} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Bar dataKey="users" fill="hsl(var(--chart-4))" radius={[0, 4, 4, 0]} barSize={14} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <div className="h-[150px] flex items-center justify-center text-xs text-muted-foreground">Sem dados</div>}
+        </Card>
       </div>
 
-      {/* Tables */}
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* World Map */}
+      {mapData.length > 0 && (
+        <Card className="p-4">
+          <h3 className="text-xs font-medium text-foreground mb-1">Mapa de Usuários Ativos</h3>
+          <p className="text-[10px] text-muted-foreground mb-3">Distribuição geográfica em tempo real</p>
+          <div className="h-[260px]">
+            <WorldMap countryData={mapData} />
+          </div>
+        </Card>
+      )}
+
+      {/* Tables in same row: Pages | Platforms + Countries + Cities */}
+      <div className="grid lg:grid-cols-3 gap-4">
         <div>
           <h3 className="text-xs font-medium text-foreground mb-2">Páginas ativas</h3>
           <AnalyticsDataTable
-            columns={["Página", "Usuários Ativos", "Views"]}
+            columns={["Página", "Usuários", "Views"]}
             rows={byPage.map((p: any) => [
               p.unifiedScreenName || "—",
               (p.activeUsers || 0).toLocaleString(),
@@ -126,21 +168,22 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
             ])}
           />
         </div>
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-xs font-medium text-foreground mb-2">Plataformas</h3>
-            <AnalyticsDataTable
-              columns={["Plataforma", "Usuários Ativos"]}
-              rows={bySource.map((s: any) => [s.platform || "—", (s.activeUsers || 0).toLocaleString()])}
-            />
-          </div>
-          <div>
-            <h3 className="text-xs font-medium text-foreground mb-2">Países</h3>
-            <AnalyticsDataTable
-              columns={["País", "Usuários Ativos"]}
-              rows={byCountry.map((c: any) => [c.country || "—", (c.activeUsers || 0).toLocaleString()])}
-            />
-          </div>
+        <div>
+          <h3 className="text-xs font-medium text-foreground mb-2">Plataformas</h3>
+          <AnalyticsDataTable
+            columns={["Plataforma", "Usuários Ativos"]}
+            rows={bySource.map((s: any) => [s.platform || "—", (s.activeUsers || 0).toLocaleString()])}
+          />
+        </div>
+        <div>
+          <h3 className="text-xs font-medium text-foreground mb-2">Países & Cidades</h3>
+          <AnalyticsDataTable
+            columns={["País / Cidade", "Usuários Ativos"]}
+            rows={[
+              ...byCountry.map((c: any) => [`🌍 ${c.country || "—"}`, (c.activeUsers || 0).toLocaleString()]),
+              ...byCity.map((c: any) => [`  📍 ${c.city || "—"}`, (c.activeUsers || 0).toLocaleString()]),
+            ]}
+          />
         </div>
       </div>
     </div>

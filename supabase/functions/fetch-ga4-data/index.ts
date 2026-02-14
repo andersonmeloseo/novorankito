@@ -326,11 +326,12 @@ serve(async (req) => {
       }
 
       case "realtime": {
-        const [activeUsers, byPage, byPlatform, byCountry, byDevice] = await Promise.all([
+        const [activeUsers, byPage, byPlatform, byCountry, byCity, byDevice] = await Promise.all([
           runRealtimeReport(accessToken, propId, [], [{ name: "activeUsers" }]),
           runRealtimeReport(accessToken, propId, [{ name: "unifiedScreenName" }], [{ name: "activeUsers" }, { name: "screenPageViews" }]),
           runRealtimeReport(accessToken, propId, [{ name: "platform" }], [{ name: "activeUsers" }]),
           runRealtimeReport(accessToken, propId, [{ name: "country" }], [{ name: "activeUsers" }]),
+          runRealtimeReport(accessToken, propId, [{ name: "city" }], [{ name: "activeUsers" }]),
           runRealtimeReport(accessToken, propId, [{ name: "deviceCategory" }], [{ name: "activeUsers" }]),
         ]);
         result = {
@@ -338,6 +339,7 @@ serve(async (req) => {
           byPage: parseRows(byPage),
           bySource: parseRows(byPlatform),
           byCountry: parseRows(byCountry),
+          byCity: parseRows(byCity),
           byDevice: parseRows(byDevice),
         };
         break;
