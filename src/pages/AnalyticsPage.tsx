@@ -453,10 +453,10 @@ export default function AnalyticsPage() {
                             <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                         <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
-                        <RechartsTooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" }} />
+                        <RechartsTooltip contentStyle={{ background: "hsl(var(--card) / 0.85)", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", boxShadow: "0 8px 32px -8px rgba(0,0,0,0.18)", padding: "8px 12px" }} />
                         <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
                         <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
                         <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />

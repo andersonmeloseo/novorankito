@@ -1,10 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-
-const COLORS = ["hsl(var(--chart-6))", "hsl(var(--chart-8))", "hsl(var(--chart-10))", "hsl(var(--chart-1))", "hsl(var(--chart-9))", "hsl(var(--chart-12))", "hsl(var(--chart-3))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Label } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE, ChartHeader, DonutCenterLabel } from "./ChartPrimitives";
 
 interface DemographicsTabProps {
   data: any;
@@ -22,26 +20,30 @@ export function DemographicsTab({ data }: DemographicsTabProps) {
     value: g.totalUsers || 0,
   }));
 
+  const totalGenderUsers = genderChart.reduce((s: number, g: any) => s + g.value, 0);
+
   const ageChart = ageGroups.map((a: any) => ({
     name: a.userAgeBracket || "—",
     users: a.totalUsers || 0,
   }));
+
+  const GENDER_COLORS = ["hsl(var(--chart-6))", "hsl(var(--chart-8))", "hsl(var(--chart-5))"];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {genderChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Gênero</h3>
-            <p className="text-[10px] text-muted-foreground mb-3">Distribuição de usuários por gênero</p>
-            <div className="h-[190px]">
+            <ChartHeader title="Gênero" subtitle="Distribuição de usuários por gênero" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={genderChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={35} outerRadius={60} paddingAngle={3} label={false}>
-                    {genderChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={genderChart} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} strokeWidth={0} animationDuration={900}>
+                    {genderChart.map((_: any, i: number) => <Cell key={i} fill={GENDER_COLORS[i % GENDER_COLORS.length]} />)}
+                    <Label content={<DonutCenterLabel value={totalGenderUsers.toLocaleString("pt-BR")} label="usuários" />} />
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 6 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -49,16 +51,21 @@ export function DemographicsTab({ data }: DemographicsTabProps) {
         )}
         {ageChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Faixa Etária</h3>
-            <p className="text-[10px] text-muted-foreground mb-3">Distribuição por idade dos usuários</p>
-            <div className="h-[190px]">
+            <ChartHeader title="Faixa Etária" subtitle="Distribuição por idade dos usuários" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={ageChart} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={40} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-10))" radius={[4, 4, 0, 0]} barSize={24} />
+                  <defs>
+                    <linearGradient id="ageGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--chart-9))" stopOpacity={1} />
+                      <stop offset="100%" stopColor="hsl(var(--chart-9))" stopOpacity={0.5} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} vertical={false} />
+                  <XAxis dataKey="name" {...AXIS_STYLE} />
+                  <YAxis {...AXIS_STYLE} width={40} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
+                  <Bar dataKey="users" fill="url(#ageGrad)" radius={[6, 6, 0, 0]} barSize={28} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

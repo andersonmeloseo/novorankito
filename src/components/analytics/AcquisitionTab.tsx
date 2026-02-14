@@ -1,10 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
-
-const COLORS = ["hsl(var(--chart-6))", "hsl(var(--chart-7))", "hsl(var(--chart-1))", "hsl(var(--chart-9))", "hsl(var(--chart-5))", "hsl(var(--chart-3))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Label } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE, ChartHeader, BarGradient, DonutCenterLabel } from "./ChartPrimitives";
 
 interface AcquisitionTabProps {
   data: any;
@@ -21,36 +19,46 @@ export function AcquisitionTab({ data }: AcquisitionTabProps) {
     sessions: c.sessions || 0,
   }));
 
+  const totalSessions = channelChart.reduce((s: number, c: any) => s + c.sessions, 0);
+
   return (
     <div className="space-y-4">
       {channelChart.length > 0 && (
         <div className="grid md:grid-cols-2 gap-4">
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Sessões por Canal</h3>
-            <p className="text-[10px] text-muted-foreground mb-4">Distribuição de tráfego por canal de aquisição</p>
-            <div className="h-[240px]">
+            <ChartHeader title="Sessões por Canal" subtitle="Distribuição de tráfego por canal de aquisição" />
+            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={channelChart} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={100} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="sessions" fill="hsl(var(--chart-6))" radius={[0, 6, 6, 0]} barSize={18} />
+                  <defs>
+                    {channelChart.map((_: any, i: number) => (
+                      <BarGradient key={i} id={`acqBar${i}`} color={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} horizontal={false} />
+                  <XAxis type="number" {...AXIS_STYLE} />
+                  <YAxis dataKey="name" type="category" {...AXIS_STYLE} width={100} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
+                  <Bar dataKey="sessions" radius={[0, 8, 8, 0]} barSize={20} animationDuration={800}>
+                    {channelChart.map((_: any, i: number) => (
+                      <Cell key={i} fill={`url(#acqBar${i})`} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Distribuição de Canais</h3>
-            <p className="text-[10px] text-muted-foreground mb-4">Proporção de sessões por canal</p>
-            <div className="h-[240px]">
+            <ChartHeader title="Distribuição de Canais" subtitle="Proporção de sessões por canal" />
+            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={channelChart} dataKey="sessions" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} paddingAngle={2} label={false}>
-                    {channelChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={channelChart} dataKey="sessions" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} strokeWidth={0} animationDuration={900}>
+                    {channelChart.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    <Label content={<DonutCenterLabel value={totalSessions.toLocaleString("pt-BR")} label="total" />} />
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

@@ -8,7 +8,7 @@ import {
 import { Bot, TrendingUp, Sparkles, Users } from "lucide-react";
 import { useMemo } from "react";
 
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+const TOOLTIP_STYLE = { background: "hsl(var(--card) / 0.85)", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", boxShadow: "0 8px 32px -8px rgba(0,0,0,0.18)", padding: "8px 12px" };
 
 // Known AI/LLM referral sources mapped to friendly labels + brand colors
 const AI_SOURCES: Record<string, { label: string; color: string }> = {

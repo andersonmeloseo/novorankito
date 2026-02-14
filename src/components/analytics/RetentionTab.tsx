@@ -1,20 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-
-const COLORS = ["hsl(var(--chart-9))", "hsl(var(--chart-7))", "hsl(var(--chart-6))", "hsl(var(--chart-12))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend, Label } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE, ChartHeader, ChartGradient, DonutCenterLabel, formatDuration } from "./ChartPrimitives";
 
 interface RetentionTabProps {
   data: any;
 }
 
-function formatDuration(seconds: number): string {
-  if (!seconds) return "0s";
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
+const RET_COLORS = ["hsl(var(--chart-9))", "hsl(var(--chart-7))"];
 
 export function RetentionTab({ data }: RetentionTabProps) {
   const newVsReturning = data?.newVsReturning || [];
@@ -24,6 +17,8 @@ export function RetentionTab({ data }: RetentionTabProps) {
     name: r.newVsReturning === "new" ? "Novos" : "Recorrentes",
     value: r.totalUsers || 0,
   }));
+
+  const totalRetUsers = pieData.reduce((s: number, p: any) => s + p.value, 0);
 
   const trendMap = new Map<string, { date: string; new: number; returning: number }>();
   cohortTrend.forEach((r: any) => {
@@ -43,16 +38,16 @@ export function RetentionTab({ data }: RetentionTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {pieData.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Novos vs Recorrentes</h3>
-            <p className="text-[10px] text-muted-foreground mb-3">Proporção de novos visitantes vs retornos</p>
-            <div className="h-[190px]">
+            <ChartHeader title="Novos vs Recorrentes" subtitle="Proporção de novos visitantes vs retornos" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={35} outerRadius={60} paddingAngle={3} label={false}>
-                    {pieData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} strokeWidth={0} animationDuration={900}>
+                    {pieData.map((_: any, i: number) => <Cell key={i} fill={RET_COLORS[i % RET_COLORS.length]} />)}
+                    <Label content={<DonutCenterLabel value={totalRetUsers.toLocaleString("pt-BR")} label="total" />} />
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 6 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -75,28 +70,21 @@ export function RetentionTab({ data }: RetentionTabProps) {
 
       {trendData.length > 1 && (
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-1">Tendência: Novos vs Recorrentes</h3>
-          <p className="text-[10px] text-muted-foreground mb-3">Evolução diária de novos e recorrentes</p>
-          <div className="h-[220px]">
+          <ChartHeader title="Tendência: Novos vs Recorrentes" subtitle="Evolução diária de novos e recorrentes" />
+          <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="newGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-9))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-9))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="retGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-7))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-7))" stopOpacity={0} />
-                  </linearGradient>
+                  <ChartGradient id="retNewGrad" color="hsl(var(--chart-9))" opacity={0.2} />
+                  <ChartGradient id="retRetGrad" color="hsl(var(--chart-7))" opacity={0.15} />
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={40} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                <Area type="monotone" dataKey="new" name="Novos" stroke="hsl(var(--chart-9))" fill="url(#newGrad)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="returning" name="Recorrentes" stroke="hsl(var(--chart-7))" fill="url(#retGrad)" strokeWidth={2} dot={false} />
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="date" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} width={40} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Area type="monotone" dataKey="new" name="Novos" stroke="hsl(var(--chart-9))" fill="url(#retNewGrad)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="returning" name="Recorrentes" stroke="hsl(var(--chart-7))" fill="url(#retRetGrad)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
