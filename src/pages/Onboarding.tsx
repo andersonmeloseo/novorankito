@@ -394,7 +394,7 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
     if (!result || !projectId || !user) return;
     setSavingUrls(true);
     try {
-      const batch = result.urls.slice(0, 500).map((u) => ({
+      const batch = result.urls.map((u) => ({
         project_id: projectId,
         owner_id: user.id,
         url: u.loc,
@@ -408,7 +408,7 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
         if (error) throw error;
       }
       setSaved(true);
-      toast({ title: "URLs importadas!", description: `${batch.length} URLs salvas no inventário.` });
+      toast({ title: "URLs importadas!", description: `${batch.length.toLocaleString("pt-BR")} URLs salvas no inventário.` });
     } catch (err: any) {
       toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     } finally {
@@ -448,18 +448,24 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
         {result && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">{result.total} URLs encontradas</span>
-              <div className="flex gap-1.5">
-                {result.sitemaps_processed.map((s, i) => (
-                  <Badge key={i} variant="secondary" className="text-[9px] max-w-[120px] truncate">
-                    {s.split("/").pop()}
-                  </Badge>
-                ))}
-              </div>
+              <span className="text-xs font-medium text-foreground">{result.total.toLocaleString("pt-BR")} URLs encontradas</span>
+              <Badge variant="secondary" className="text-[9px]">{result.sitemaps_processed.length} sitemaps</Badge>
             </div>
+
+            {/* Sitemaps grid - 4 columns */}
             {result.sitemaps_processed.length > 1 && (
-              <p className="text-[10px] text-muted-foreground">{result.sitemaps_processed.length} sitemaps processados recursivamente</p>
+              <Card className="p-3">
+                <p className="text-[10px] text-muted-foreground mb-2">{result.sitemaps_processed.length} sitemaps processados recursivamente:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 max-h-32 overflow-y-auto scrollbar-thin">
+                  {result.sitemaps_processed.map((s, i) => (
+                    <Badge key={i} variant="outline" className="text-[9px] truncate justify-start font-mono">
+                      {s.split("/").pop()}
+                    </Badge>
+                  ))}
+                </div>
+              </Card>
             )}
+
             <Card className="overflow-hidden">
               <div className="divide-y divide-border max-h-48 overflow-y-auto scrollbar-thin">
                 {result.urls.slice(0, 50).map((u, i) => (
@@ -473,7 +479,7 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
                 ))}
                 {result.urls.length > 50 && (
                   <div className="px-3 py-2 text-[10px] text-muted-foreground text-center">
-                    ... e mais {result.urls.length - 50} URLs
+                    ... e mais {(result.urls.length - 50).toLocaleString("pt-BR")} URLs
                   </div>
                 )}
               </div>
@@ -482,7 +488,7 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
             {!saved ? (
               <Button onClick={saveUrlsToDb} disabled={savingUrls} className="w-full gap-1.5 text-xs" size="sm">
                 {savingUrls ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                {savingUrls ? "Salvando..." : `Importar ${Math.min(result.urls.length, 500)} URLs`}
+                {savingUrls ? "Salvando..." : `Importar todas as ${result.urls.length.toLocaleString("pt-BR")} URLs`}
               </Button>
             ) : (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
