@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,7 +24,8 @@ import {
   Send, CheckCircle2, Clock, AlertTriangle, RotateCcw, Zap, Globe, Link2,
   ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
   ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, ChevronDown, Layers, History, Package, ScanSearch,
-  AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock
+  AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock, Wifi, WifiOff, Upload,
+  Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -191,6 +194,31 @@ export default function IndexingPage() {
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
   };
 
+  // ─── GSC Connections ───
+  const { data: gscConnections = [], isLoading: gscLoading } = useQuery({
+    queryKey: ["gsc-connections", projectId],
+    queryFn: async () => {
+      const { data } = await supabase.from("gsc_connections").select("*").eq("project_id", projectId!).order("created_at", { ascending: true });
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
+
+  // ─── Schedule History ───
+  const { data: allSchedules = [], isLoading: schedulesLoading } = useQuery({
+    queryKey: ["indexing-schedules-all", projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("indexing_schedules")
+        .select("*")
+        .eq("project_id", projectId!)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
+
   // ─── Filtered & Sorted Inventory ───
   const filteredInventory = useMemo(() => {
     let items = inventory.filter(u => {
@@ -291,7 +319,7 @@ export default function IndexingPage() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <TabsList>
+            <TabsList className="flex flex-wrap h-auto gap-0.5">
               <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
                 <LayoutDashboard className="h-3 w-3" /> Dashboard
               </TabsTrigger>
@@ -304,11 +332,19 @@ export default function IndexingPage() {
               <TabsTrigger value="history" className="gap-1.5 text-xs">
                 <History className="h-3 w-3" /> Histórico
               </TabsTrigger>
+              <TabsTrigger value="schedule" className="gap-1.5 text-xs">
+                <CalendarClock className="h-3 w-3" /> Agendar
+                {cronConfig.enabled && <Badge variant="secondary" className="text-[8px] ml-1 bg-success/10 text-success px-1">ON</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="accounts" className="gap-1.5 text-xs">
+                <Wifi className="h-3 w-3" /> Contas
+                <Badge variant="secondary" className="text-[8px] ml-1 px-1">{gscConnections.length}</Badge>
+              </TabsTrigger>
             </TabsList>
 
-            {/* Filters & Schedule */}
+            {/* Filters */}
             <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-              {activeTab !== "dashboard" && (
+              {(activeTab === "inventory" || activeTab === "history" || activeTab === "sitemap") && (
                 <div className="relative flex-1 max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
@@ -341,15 +377,6 @@ export default function IndexingPage() {
                   </SelectContent>
                 </Select>
               )}
-              <ScheduleDialog
-                projectId={projectId}
-                totalUrls={stats.totalUrls}
-                unknownUrls={stats.unknown}
-                onScheduleManual={handleScheduleManual}
-                onToggleAutoCron={handleToggleAutoCron}
-                cronEnabled={cronConfig.enabled}
-                cronConfig={cronConfig}
-              />
             </div>
           </div>
 
@@ -890,6 +917,31 @@ export default function IndexingPage() {
               </Card>
             )}
           </TabsContent>
+
+          {/* ─── SCHEDULE TAB ─── */}
+          <TabsContent value="schedule" className="mt-4 space-y-4">
+            <ScheduleTabContent
+              projectId={projectId}
+              user={user}
+              cronConfig={cronConfig}
+              scheduleData={scheduleData}
+              allSchedules={allSchedules}
+              schedulesLoading={schedulesLoading}
+              stats={stats}
+              onToggleAutoCron={handleToggleAutoCron}
+              onScheduleManual={handleScheduleManual}
+            />
+          </TabsContent>
+
+          {/* ─── ACCOUNTS TAB ─── */}
+          <TabsContent value="accounts" className="mt-4 space-y-4">
+            <AccountsTabContent
+              projectId={projectId}
+              user={user}
+              connections={gscConnections}
+              isLoading={gscLoading}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* ─── URL Detail Dialog ─── */}
@@ -988,5 +1040,475 @@ export default function IndexingPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SCHEDULE TAB CONTENT
+   ═══════════════════════════════════════════ */
+const WEEKDAYS = [
+  { key: "mon", label: "Seg" },
+  { key: "tue", label: "Ter" },
+  { key: "wed", label: "Qua" },
+  { key: "thu", label: "Qui" },
+  { key: "fri", label: "Sex" },
+  { key: "sat", label: "Sáb" },
+  { key: "sun", label: "Dom" },
+];
+
+function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSchedules, schedulesLoading, stats, onToggleAutoCron, onScheduleManual }: {
+  projectId: string | undefined; user: any; cronConfig: CronConfig; scheduleData: any;
+  allSchedules: any[]; schedulesLoading: boolean; stats: any;
+  onToggleAutoCron: (enabled: boolean, config: CronConfig) => void;
+  onScheduleManual: (config: ManualSchedule) => void;
+}) {
+  const [autoEnabled, setAutoEnabled] = useState(cronConfig.enabled);
+  const [autoTime, setAutoTime] = useState(cronConfig.time || "03:00");
+  const [autoIndexing, setAutoIndexing] = useState(cronConfig.actions.includes("indexing"));
+  const [autoInspection, setAutoInspection] = useState(cronConfig.actions.includes("inspection"));
+  const [autoMaxUrls, setAutoMaxUrls] = useState(cronConfig.maxUrls || 200);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set(WEEKDAYS.map(d => d.key)));
+
+  // Manual schedule
+  const [manualType, setManualType] = useState<"indexing" | "inspection">("indexing");
+  const [manualDate, setManualDate] = useState("");
+  const [manualTime, setManualTime] = useState("08:00");
+  const [manualCount, setManualCount] = useState(50);
+
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
+  };
+
+  const handleSaveAuto = () => {
+    const actions: ("indexing" | "inspection")[] = [];
+    if (autoIndexing) actions.push("indexing");
+    if (autoInspection) actions.push("inspection");
+    if (actions.length === 0 && autoEnabled) { toast.warning("Selecione pelo menos uma ação"); return; }
+    if (selectedDays.size === 0 && autoEnabled) { toast.warning("Selecione pelo menos um dia"); return; }
+    onToggleAutoCron(autoEnabled, { enabled: autoEnabled, time: autoTime, actions, maxUrls: autoMaxUrls, days: Array.from(selectedDays) });
+    toast.success(autoEnabled ? "Agendamento automático salvo!" : "Agendamento desativado");
+  };
+
+  const handleScheduleManual = () => {
+    if (!manualDate) { toast.warning("Selecione uma data"); return; }
+    onScheduleManual({ type: manualType, scheduledAt: `${manualDate}T${manualTime}:00`, urlCount: manualCount });
+    toast.success(`Agendamento criado para ${manualDate} às ${manualTime}`);
+    setManualDate("");
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* ── Auto Cron Config ── */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Agendamento Automático</h3>
+          </div>
+          <Switch checked={autoEnabled} onCheckedChange={setAutoEnabled} />
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          O sistema executa automaticamente as ações selecionadas nos dias e horários definidos.
+        </p>
+
+        {autoEnabled && (
+          <div className="space-y-4">
+            {/* Days */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Dias da semana</Label>
+              <div className="flex gap-1.5">
+                {WEEKDAYS.map(day => (
+                  <button
+                    key={day.key}
+                    onClick={() => toggleDay(day.key)}
+                    className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all border ${
+                      selectedDays.has(day.key)
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted/30 text-muted-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Horário</Label>
+              <Input type="time" value={autoTime} onChange={e => setAutoTime(e.target.value)} className="w-32 h-8 text-xs" />
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <Label className="text-xs">Ações</Label>
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                <Switch checked={autoIndexing} onCheckedChange={setAutoIndexing} id="auto-idx" />
+                <Label htmlFor="auto-idx" className="text-xs flex items-center gap-1.5 cursor-pointer">
+                  <Send className="h-3 w-3 text-primary" /> Enviar para Indexação
+                </Label>
+              </div>
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                <Switch checked={autoInspection} onCheckedChange={setAutoInspection} id="auto-insp" />
+                <Label htmlFor="auto-insp" className="text-xs flex items-center gap-1.5 cursor-pointer">
+                  <ScanSearch className="h-3 w-3 text-primary" /> Inspecionar URLs sem status
+                </Label>
+              </div>
+            </div>
+
+            {/* Max URLs */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Máx. URLs por execução</Label>
+              <Input type="number" min={10} max={500} value={autoMaxUrls} onChange={e => setAutoMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
+            </div>
+          </div>
+        )}
+
+        <Button size="sm" className="w-full text-xs gap-1.5" onClick={handleSaveAuto}>
+          <CheckCircle2 className="h-3 w-3" /> Salvar Configuração
+        </Button>
+      </Card>
+
+      {/* ── Manual Schedule ── */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Agendar Manualmente</h3>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Crie um agendamento pontual para uma data e horário específicos.
+        </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Ação</Label>
+            <Select value={manualType} onValueChange={(v: any) => setManualType(v)}>
+              <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="indexing">Enviar para Indexação</SelectItem>
+                <SelectItem value="inspection">Inspecionar URLs</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data</Label>
+              <Input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Horário</Label>
+              <Input type="time" value={manualTime} onChange={e => setManualTime(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Quantidade de URLs</Label>
+            <Input type="number" min={1} max={500} value={manualCount} onChange={e => setManualCount(Number(e.target.value))} className="w-32 h-8 text-xs" />
+          </div>
+          <Button size="sm" className="w-full text-xs gap-1.5" onClick={handleScheduleManual} disabled={!manualDate}>
+            <CalendarClock className="h-3 w-3" /> Agendar
+          </Button>
+        </div>
+      </Card>
+
+      {/* ── Schedule History ── */}
+      <Card className="p-5 lg:col-span-2">
+        <div className="flex items-center gap-2 mb-3">
+          <History className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Histórico de Agendamentos</h3>
+          <Badge variant="secondary" className="text-[10px]">{allSchedules.length}</Badge>
+        </div>
+        {schedulesLoading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : allSchedules.length === 0 ? (
+          <EmptyState icon={CalendarClock} title="Nenhum agendamento" description="Configure o agendamento automático ou crie um manualmente." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Tipo</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Ações</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Máx URLs</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Horário</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Última Execução</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Criado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allSchedules.map((s: any) => (
+                  <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-3 py-2.5">
+                      <Badge variant="secondary" className="text-[10px]">{s.schedule_type === "cron" ? "Automático" : "Manual"}</Badge>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex gap-1">
+                        {(s.actions || []).map((a: string) => (
+                          <Badge key={a} variant="outline" className="text-[9px]">
+                            {a === "indexing" ? "Indexação" : "Inspeção"}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground">{s.max_urls}</td>
+                    <td className="px-3 py-2.5">
+                      <Badge variant={s.enabled ? "secondary" : "outline"} className={`text-[10px] ${s.enabled ? "bg-success/10 text-success border-success/20" : ""}`}>
+                        {s.status === "completed" ? "Concluído" : s.enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {s.schedule_type === "cron" ? (s.cron_time || "—") : (s.scheduled_at ? format(new Date(s.scheduled_at), "dd/MM/yyyy HH:mm") : "—")}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {s.last_run_at ? formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR }) : "Nunca"}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {format(new Date(s.created_at), "dd/MM/yyyy HH:mm")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ACCOUNTS TAB CONTENT
+   ═══════════════════════════════════════════ */
+function AccountsTabContent({ projectId, user, connections, isLoading }: {
+  projectId: string | undefined; user: any; connections: any[]; isLoading: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [connectionName, setConnectionName] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [sites, setSites] = useState<{ siteUrl: string; permissionLevel: string }[]>([]);
+  const [selectedSite, setSelectedSite] = useState("");
+  const [step, setStep] = useState<"form" | "validating" | "select">("form");
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setAdding(false); setStep("form"); setJsonInput(""); setConnectionName(""); setJsonError(""); setSites([]); setSelectedSite("");
+  };
+
+  const handleTest = async (conn: any) => {
+    setTestingId(conn.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-gsc", {
+        body: { credentials: { client_email: conn.client_email, private_key: conn.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      toast.success(`Conexão OK! ${data.sites?.length || 0} propriedade(s)`);
+    } catch (e: any) { toast.error("Falha: " + e.message); }
+    finally { setTestingId(null); }
+  };
+
+  const handleSync = async (conn: any) => {
+    setSyncingId(conn.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-gsc-data", {
+        body: { project_id: projectId, connection_id: conn.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
+      toast.success(`${data?.inserted?.toLocaleString() || 0} métricas importadas`);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSyncingId(null); }
+  };
+
+  const handleDelete = async (connId: string) => {
+    setDeletingId(connId);
+    try {
+      await supabase.from("gsc_connections").delete().eq("id", connId);
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
+      toast.success("Conexão removida");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleValidate = async () => {
+    if (!connectionName.trim()) { setJsonError("Informe um nome."); return; }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonInput.trim());
+      if (!parsed.client_email || !parsed.private_key) { setJsonError("JSON inválido: client_email e private_key são obrigatórios."); return; }
+    } catch { setJsonError("JSON inválido."); return; }
+    setStep("validating"); setJsonError("");
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-gsc", {
+        body: { credentials: { client_email: parsed.client_email, private_key: parsed.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      if ((data.sites || []).length === 0) { setJsonError("Nenhuma propriedade encontrada."); setStep("form"); return; }
+      setSites(data.sites); setSelectedSite(data.sites[0]?.siteUrl || ""); setStep("select");
+    } catch (e: any) { setJsonError(e.message); setStep("form"); }
+  };
+
+  const handleSave = async () => {
+    if (!user || !selectedSite) return;
+    let parsed: any;
+    try { parsed = JSON.parse(jsonInput.trim()); } catch { return; }
+    try {
+      await supabase.from("gsc_connections").insert({
+        project_id: projectId, owner_id: user.id, connection_name: connectionName,
+        client_email: parsed.client_email, private_key: parsed.private_key, site_url: selectedSite,
+      });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
+      resetForm();
+      toast.success("Conta GSC adicionada!");
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  if (isLoading) return <Card className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></Card>;
+
+  return (
+    <div className="space-y-4">
+      {/* Info */}
+      <Card className="p-4 bg-primary/5 border-primary/10">
+        <div className="flex items-start gap-3">
+          <Settings2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <h4 className="text-xs font-semibold text-foreground mb-1">Múltiplas Contas de API</h4>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Adicione várias Service Accounts do Google Search Console para <strong className="text-foreground">multiplicar sua quota de API</strong>.
+              Cada conta possui ~200 notificações/dia e ~2.000 inspeções/dia independentes.
+              O processo é o mesmo do onboarding: crie uma Service Account no Google Cloud, baixe o JSON e adicione aqui.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Connections list */}
+      {connections.length > 0 && (
+        <Card className="p-4 space-y-2">
+          <h3 className="text-xs font-semibold text-foreground mb-2">
+            Contas Conectadas
+            <Badge variant="secondary" className="text-[10px] ml-2">{connections.length}</Badge>
+          </h3>
+          {connections.map((conn: any) => (
+            <div key={conn.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{conn.connection_name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{conn.site_url}</p>
+                  <p className="text-[9px] text-muted-foreground">{conn.client_email}</p>
+                  {conn.last_sync_at && (
+                    <p className="text-[9px] text-muted-foreground">Último sync: {format(new Date(conn.last_sync_at), "dd/MM/yyyy HH:mm")}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleTest(conn)} disabled={testingId === conn.id}>
+                    {testingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+                  </Button>
+                </TooltipTrigger><TooltipContent>Testar conexão</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleSync(conn)} disabled={syncingId === conn.id}>
+                    {syncingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  </Button>
+                </TooltipTrigger><TooltipContent>Sincronizar dados</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(conn.id)} disabled={deletingId === conn.id}>
+                    {deletingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  </Button>
+                </TooltipTrigger><TooltipContent>Remover</TooltipContent></Tooltip>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {/* Add new connection */}
+      {adding ? (
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-foreground">Nova Conta GSC</h3>
+            <Button variant="ghost" size="sm" className="text-xs h-6" onClick={resetForm}>Cancelar</Button>
+          </div>
+
+          {step === "form" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome da conexão</Label>
+                <Input placeholder="Ex: GSC Conta 2" value={connectionName} onChange={e => { setConnectionName(e.target.value); setJsonError(""); }} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">JSON da Service Account</Label>
+                <label className="cursor-pointer">
+                  <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => { setJsonInput(evt.target?.result as string); setJsonError(""); };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2 text-xs text-muted-foreground">
+                    <Upload className="h-3.5 w-3.5" /> Upload arquivo .json
+                  </div>
+                </label>
+                <textarea
+                  className="w-full min-h-[100px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  placeholder='{"type": "service_account", ...}'
+                  value={jsonInput}
+                  onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
+                />
+              </div>
+              {jsonError && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-destructive text-xs">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {jsonError}
+                </div>
+              )}
+              <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleValidate} disabled={!jsonInput.trim() || !connectionName.trim()}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
+              </Button>
+            </div>
+          )}
+
+          {step === "validating" && (
+            <div className="flex items-center justify-center gap-2 py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">Verificando credenciais...</span>
+            </div>
+          )}
+
+          {step === "select" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 text-success text-xs">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Verificada! Selecione a propriedade.
+              </div>
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {sites.map(s => <SelectItem key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleSave} disabled={!selectedSite}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> Salvar conexão
+              </Button>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
+          <Plus className="h-3 w-3" /> Adicionar Conta GSC
+        </Button>
+      )}
+    </div>
   );
 }
