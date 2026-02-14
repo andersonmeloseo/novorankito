@@ -143,6 +143,38 @@ export function AllEventsTab() {
         <SparkKpi label="Plataformas" value={platformDistribution.length} change={0} sparkData={generateSparkline(12, 3, 1)} color="hsl(var(--primary))" icon={Layers} />
       </StaggeredGrid>
 
+      {/* Heatmap Day × Hour — Featured */}
+      <AnimatedContainer delay={0.03}>
+        <Card className="p-5">
+          <ChartHeader title="🔥 Mapa de Calor de Eventos (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[600px]">
+              <div className="flex gap-0.5 mb-1 ml-10">
+                {Array.from({ length: 8 }, (_, i) => i * 3).map((h) => (
+                  <span key={h} className="text-[9px] text-muted-foreground" style={{ width: `${100 / 8}%` }}>{h}h</span>
+                ))}
+              </div>
+              {heatmapData.map((row) => (
+                <div key={row.day} className="flex items-center gap-0.5 mb-0.5">
+                  <span className="text-[10px] text-muted-foreground w-10 text-right pr-2">{row.day}</span>
+                  {row.hours.map((cell) => {
+                    const intensity = Math.max(0.05, cell.value / 40);
+                    return (
+                      <div key={cell.hour} className="flex-1 h-7 rounded-md flex items-center justify-center transition-transform hover:scale-[1.08] cursor-default"
+                        style={{ background: `hsl(var(--info) / ${intensity})`, border: `1px solid hsl(var(--info) / ${intensity * 0.4})` }}
+                        title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
+                      >
+                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>{cell.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
       {/* Volume over time */}
       <AnimatedContainer>
         <Card className="p-5">
@@ -289,38 +321,6 @@ export function AllEventsTab() {
             ])}
             pageSize={15}
           />
-        </Card>
-      </AnimatedContainer>
-
-      {/* Heatmap Day × Hour */}
-      <AnimatedContainer delay={0.45}>
-        <Card className="p-5">
-          <ChartHeader title="Mapa de Calor de Eventos (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
-          <div className="overflow-x-auto">
-            <div className="min-w-[600px]">
-              <div className="flex gap-0.5 mb-1 ml-10">
-                {Array.from({ length: 8 }, (_, i) => i * 3).map((h) => (
-                  <span key={h} className="text-[9px] text-muted-foreground" style={{ width: `${100 / 8}%` }}>{h}h</span>
-                ))}
-              </div>
-              {heatmapData.map((row) => (
-                <div key={row.day} className="flex items-center gap-0.5 mb-0.5">
-                  <span className="text-[10px] text-muted-foreground w-10 text-right pr-2">{row.day}</span>
-                  {row.hours.map((cell) => {
-                    const intensity = Math.max(0.05, cell.value / 40);
-                    return (
-                      <div key={cell.hour} className="flex-1 h-7 rounded-md flex items-center justify-center transition-transform hover:scale-[1.08] cursor-default"
-                        style={{ background: `hsl(var(--info) / ${intensity})`, border: `1px solid hsl(var(--info) / ${intensity * 0.4})` }}
-                        title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
-                      >
-                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>{cell.value}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
         </Card>
       </AnimatedContainer>
     </div>
