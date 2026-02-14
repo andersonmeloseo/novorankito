@@ -31,6 +31,7 @@ export default function ProjectsList() {
       const { data, error } = await supabase
         .from("projects")
         .select("id, name, domain, status, site_type, country, created_at")
+        .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
