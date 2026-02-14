@@ -46,7 +46,7 @@ function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon
           </span>
         </div>
         <div className="flex items-end justify-between gap-2">
-          <span className="text-xl font-bold text-foreground font-display tracking-tight">{prefix}{value}{suffix}</span>
+          <span className="text-base font-bold text-foreground font-display tracking-tight">{prefix}{value}{suffix}</span>
           <Sparkline data={sparkData} color={color} />
         </div>
       </div>
@@ -87,13 +87,12 @@ export function EcommerceTrackingTab() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* KPIs */}
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <SparkKpi label="Visualizações" value={totalViews} change={12.4} sparkData={generateSparkline(12, 40, 15)} color="hsl(var(--info))" icon={Package} />
         <SparkKpi label="Add Carrinho" value={totalAddToCart} change={8.1} sparkData={generateSparkline(12, 25, 10)} color="hsl(var(--primary))" icon={ShoppingCart} />
         <SparkKpi label="Checkouts" value={totalCheckout} change={5.8} sparkData={generateSparkline(12, 15, 6)} color="hsl(var(--warning))" icon={CreditCard} />
         <SparkKpi label="Compras" value={totalPurchases} change={18.3} sparkData={generateSparkline(12, 10, 5)} color="hsl(var(--success))" icon={TrendingUp} />
         <SparkKpi label="Receita" value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`} change={22.1} sparkData={generateSparkline(12, 500, 200)} color="hsl(var(--success))" icon={DollarSign} />
-        <SparkKpi label="Buscas" value={totalSearches} change={6.2} sparkData={generateSparkline(12, 20, 8)} color="hsl(var(--chart-9))" icon={Search} />
         <SparkKpi label="Cart→Checkout" value={cartToCheckout} suffix="%" change={3.5} sparkData={generateSparkline(12, 60, 12)} color="hsl(var(--primary))" />
         <SparkKpi label="Checkout→Compra" value={checkoutToPurchase} suffix="%" change={7.9} sparkData={generateSparkline(12, 45, 10)} color="hsl(var(--success))" />
       </StaggeredGrid>
