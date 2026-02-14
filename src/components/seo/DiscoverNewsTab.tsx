@@ -198,10 +198,10 @@ export function DiscoverNewsTab({ projectId }: Props) {
             <AnimatedContainer delay={0.15}>
               <Card className="overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                  <span className="text-xs text-muted-foreground">{pageRows.length} resultados</span>
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => exportCSV(pageRows, `${activeSource}-pages`)}>
-                    <Download className="h-3.5 w-3.5 mr-1" /> CSV
-                  </Button>
+                   <span className="text-xs text-muted-foreground">{pageRows.length} resultados</span>
+                   <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => exportCSV(pageRows, `${activeSource}-pages`)}>
+                     <Download className="h-3.5 w-3.5 mr-1" /> CSV
+                   </Button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

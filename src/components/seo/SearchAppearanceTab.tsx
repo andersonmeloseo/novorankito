@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Sparkles, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Sparkles, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV, exportXML } from "@/lib/export-utils";
 
 interface Props {
   projectId: string | undefined;
@@ -53,16 +55,8 @@ export function SearchAppearanceTab({ projectId }: Props) {
     return sortData(items, sort.key, sort.dir);
   }, [data, searchTerm, sort]);
 
-  const exportCSV = () => {
-    if (rows.length === 0) return;
-    const headers = ["type", "clicks", "impressions", "ctr", "position"];
-    const csv = [headers.join(","), ...rows.map((r: any) => headers.map(h => `"${r[h === "type" ? "name" : h]}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "search-appearance.csv"; a.click();
-    URL.revokeObjectURL(url);
-  };
+  const doExportCSV = () => exportCSV(rows, "aparencia-busca");
+  const doExportXML = () => exportXML(rows, "aparencia-busca", "searchAppearance", "type");
 
   const columns = [
     { key: "name", label: "Tipo de Resultado" },
@@ -99,10 +93,8 @@ export function SearchAppearanceTab({ projectId }: Props) {
       <AnimatedContainer delay={0.05}>
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-            <span className="text-xs text-muted-foreground">{rows.length} resultados</span>
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={exportCSV}>
-              <Download className="h-3.5 w-3.5 mr-1" /> CSV
-            </Button>
+             <span className="text-xs text-muted-foreground">{rows.length} resultados</span>
+             <ExportMenu onExportCSV={doExportCSV} onExportXML={doExportXML} />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
