@@ -281,6 +281,54 @@ export type Database = {
           },
         ]
       }
+      api_configurations: {
+        Row: {
+          base_url: string | null
+          category: string
+          configured_by: string | null
+          created_at: string
+          description: string | null
+          docs_url: string | null
+          id: string
+          is_configured: boolean
+          name: string
+          secret_key_name: string
+          service_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string | null
+          category?: string
+          configured_by?: string | null
+          created_at?: string
+          description?: string | null
+          docs_url?: string | null
+          id?: string
+          is_configured?: boolean
+          name: string
+          secret_key_name: string
+          service_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string | null
+          category?: string
+          configured_by?: string | null
+          created_at?: string
+          description?: string | null
+          docs_url?: string | null
+          id?: string
+          is_configured?: boolean
+          name?: string
+          secret_key_name?: string
+          service_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

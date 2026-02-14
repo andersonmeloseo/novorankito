@@ -38,6 +38,7 @@ import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 import AdminNotificationsPage from "@/pages/admin/AdminNotificationsPage";
 import AdminFlagsPage from "@/pages/admin/AdminFlagsPage";
 import AdminAnnouncementsPage from "@/pages/admin/AdminAnnouncementsPage";
+import AdminApisPage from "@/pages/admin/AdminApisPage";
 import NotFound from "./pages/NotFound";
 // Rank & Rent
 import RROverviewPage from "@/pages/rank-rent/RROverviewPage";
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/admin/projects" element={<AdminProjectsPageAdmin />} />
               <Route path="/admin/usage" element={<AdminUsagePage />} />
               <Route path="/admin/integrations" element={<AdminIntegrationsPage />} />
+              <Route path="/admin/apis" element={<AdminApisPage />} />
               <Route path="/admin/security" element={<AdminSecurityPageAdmin />} />
               <Route path="/admin/logs" element={<AdminLogsPageAdmin />} />
               <Route path="/admin/health" element={<AdminHealthPage />} />
