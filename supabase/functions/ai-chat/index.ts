@@ -18,6 +18,8 @@ serve(async (req) => {
 
     const { messages, agent_instructions, agent_name, project_id } = await req.json();
 
+    console.log("ai-chat called:", { agent_name, project_id: project_id || "NONE", msgCount: messages?.length, hasInstructions: !!agent_instructions });
+
     // Fetch project context from DB
     let projectContext = "";
     if (project_id) {
@@ -109,6 +111,16 @@ ${indexing?.length ? indexing.map(r => `• ${r.url}: ${r.status} (${r.request_t
 === CONVERSÕES (recentes) ===
 ${conversions?.length ? conversions.map(c => `• ${c.event_type}: ${c.page} | fonte: ${c.source} | valor: R$${c.value || 0} | ${c.converted_at}`).join('\n') : 'Sem conversões registradas'}
 `;
+      console.log("Project context loaded:", {
+        project: project?.name,
+        seoMetrics: seoMetrics?.length || 0,
+        siteUrls: siteUrls?.length || 0,
+        sessions: sessions?.length || 0,
+        gsc: gscConn?.[0]?.site_url || "none",
+        ga4: ga4Conn?.[0]?.property_name || "none",
+      });
+    } else {
+      console.log("No project_id provided — skipping data fetch");
     }
 
     const systemPrompt = `Você é ${agent_name || "o Rankito"}, um assistente ultra-inteligente de SEO, Growth e Marketing Digital.
