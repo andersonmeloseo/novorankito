@@ -62,10 +62,10 @@ export function useDeleteSiteUrl() {
 }
 
 // ─── SEO Metrics ───
-export function useSeoMetrics(projectId?: string) {
+export function useSeoMetrics(projectId?: string, dimensionType?: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["seo-metrics", projectId],
+    queryKey: ["seo-metrics", projectId, dimensionType],
     queryFn: async () => {
       const allData: any[] = [];
       let from = 0;
@@ -73,6 +73,7 @@ export function useSeoMetrics(projectId?: string) {
       while (true) {
         let q = supabase.from("seo_metrics").select("*").order("metric_date", { ascending: false }).range(from, from + pageSize - 1);
         if (projectId) q = q.eq("project_id", projectId);
+        if (dimensionType) q = q.eq("dimension_type", dimensionType);
         const { data, error } = await q;
         if (error) throw error;
         if (!data || data.length === 0) break;

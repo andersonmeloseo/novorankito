@@ -102,9 +102,21 @@ export default function SeoPage() {
   const [queriesSort, setQueriesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
   const [countriesSort, setCountriesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
 
-  const { data: allMetrics = [], isLoading } = useSeoMetrics(projectId);
+  // Separate queries per dimension type for accuracy
+  const { data: dateMetrics = [], isLoading: loadingDate } = useSeoMetrics(projectId, "date");
+  const { data: queryMetrics = [], isLoading: loadingQuery } = useSeoMetrics(projectId, "query");
+  const { data: pageMetrics = [], isLoading: loadingPage } = useSeoMetrics(projectId, "page");
+  const { data: countryMetrics = [], isLoading: loadingCountry } = useSeoMetrics(projectId, "country");
+  const { data: deviceMetrics = [], isLoading: loadingDevice } = useSeoMetrics(projectId, "device");
+  
+  // Fallback: also load combined (legacy data before migration)
+  const { data: combinedMetrics = [], isLoading: loadingCombined } = useSeoMetrics(projectId, "combined");
+  
+  // Use date metrics for KPIs/trend if available, otherwise fall back to combined
+  const allMetrics = dateMetrics.length > 0 ? dateMetrics : combinedMetrics;
+  const isLoading = loadingDate || loadingCombined;
 
-  // Date filtering
+  // Date filtering for KPIs and trend chart (uses "date" dimension data)
   const { filteredMetrics, prevMetrics } = useMemo(() => {
     const now = new Date();
     let from: Date, to: Date;
@@ -135,22 +147,11 @@ export default function SeoPage() {
     return { filteredMetrics: filtered, prevMetrics: prev };
   }, [allMetrics, dateRange, customFrom, customTo]);
 
-  // Apply device & country filters
-  const metrics = useMemo(() => {
-    let m = filteredMetrics;
-    if (deviceFilter !== "all") m = m.filter((x: any) => x.device === deviceFilter);
-    if (countryFilter !== "all") m = m.filter((x: any) => x.country === countryFilter);
-    return m;
-  }, [filteredMetrics, deviceFilter, countryFilter]);
+  // For date dimension, no device/country filters apply (data is aggregated by date only)
+  const metrics = filteredMetrics;
+  const prevFiltered = prevMetrics;
 
-  const prevFiltered = useMemo(() => {
-    let m = prevMetrics;
-    if (deviceFilter !== "all") m = m.filter((x: any) => x.device === deviceFilter);
-    if (countryFilter !== "all") m = m.filter((x: any) => x.country === countryFilter);
-    return m;
-  }, [prevMetrics, deviceFilter, countryFilter]);
-
-  // KPIs with period comparison
+  // KPIs - simple sums since each row is already a daily total
   const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
@@ -165,81 +166,57 @@ export default function SeoPage() {
 
   const pctChange = (curr: number, prev: number) => prev === 0 ? 0 : parseFloat((((curr - prev) / prev) * 100).toFixed(1));
 
-  // Unique values for filters
-  const uniqueDevices = useMemo(() => [...new Set(allMetrics.map((m: any) => m.device).filter(Boolean))], [allMetrics]);
-  const uniqueCountries = useMemo(() => [...new Set(allMetrics.map((m: any) => m.country).filter(Boolean))], [allMetrics]);
+  // Unique values for filters (from dedicated dimension data)
+  const uniqueDevices = useMemo(() => deviceMetrics.map((m: any) => m.device).filter(Boolean), [deviceMetrics]);
+  const uniqueCountries = useMemo(() => countryMetrics.map((m: any) => m.country).filter(Boolean), [countryMetrics]);
 
-  // Aggregate by dimension
-  function aggregateBy(key: string) {
-    const map = new Map<string, { clicks: number; impressions: number; positionWeighted: number }>();
-    metrics.forEach((m: any) => {
-      const val = m[key];
-      if (!val) return;
-      if (searchTerm && !val.toLowerCase().includes(searchTerm.toLowerCase())) return;
-      const existing = map.get(val) || { clicks: 0, impressions: 0, positionWeighted: 0 };
-      existing.clicks += m.clicks || 0;
-      existing.impressions += m.impressions || 0;
-      existing.positionWeighted += Number(m.position || 0) * (m.impressions || 0);
-      map.set(val, existing);
-    });
-    return Array.from(map.entries()).map(([name, d]) => ({
-      name,
-      clicks: d.clicks,
-      impressions: d.impressions,
-      ctr: d.impressions > 0 ? parseFloat(((d.clicks / d.impressions) * 100).toFixed(2)) : 0,
-      position: d.impressions > 0 ? parseFloat((d.positionWeighted / d.impressions).toFixed(1)) : 0,
+  // Tables use their dedicated dimension data (already aggregated by GSC)
+  function filterAndSort(data: any[], nameKey: string, sort: { key: string; dir: SortDir }) {
+    let filtered = data.map((m: any) => ({
+      name: m[nameKey] || "—",
+      clicks: m.clicks || 0,
+      impressions: m.impressions || 0,
+      ctr: m.ctr || 0,
+      position: m.position || 0,
     }));
+    if (searchTerm) {
+      filtered = filtered.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return sortData(filtered, sort.key, sort.dir);
   }
 
-  const pageRows = useMemo(() => {
-    const data = aggregateBy("url");
-    return sortData(data, pagesSort.key, pagesSort.dir);
-  }, [metrics, searchTerm, pagesSort]);
+  const pageRows = useMemo(() => filterAndSort(pageMetrics.length > 0 ? pageMetrics : combinedMetrics, "url", pagesSort), [pageMetrics, combinedMetrics, searchTerm, pagesSort]);
+  const queryRows = useMemo(() => filterAndSort(queryMetrics.length > 0 ? queryMetrics : combinedMetrics, "query", queriesSort), [queryMetrics, combinedMetrics, searchTerm, queriesSort]);
+  const countryRows = useMemo(() => filterAndSort(countryMetrics.length > 0 ? countryMetrics : combinedMetrics, "country", countriesSort), [countryMetrics, combinedMetrics, searchTerm, countriesSort]);
+  const deviceRows = useMemo(() => {
+    const src = deviceMetrics.length > 0 ? deviceMetrics : combinedMetrics;
+    return src.filter((m: any) => m.device).map((m: any) => ({
+      name: m.device,
+      clicks: m.clicks || 0,
+      impressions: m.impressions || 0,
+      ctr: m.ctr || 0,
+      position: m.position || 0,
+    }));
+  }, [deviceMetrics, combinedMetrics]);
 
-  const queryRows = useMemo(() => {
-    const data = aggregateBy("query");
-    return sortData(data, queriesSort.key, queriesSort.dir);
-  }, [metrics, searchTerm, queriesSort]);
-
-  const countryRows = useMemo(() => {
-    const data = aggregateBy("country");
-    return sortData(data, countriesSort.key, countriesSort.dir);
-  }, [metrics, searchTerm, countriesSort]);
-
-  const deviceRows = useMemo(() => aggregateBy("device"), [metrics, searchTerm]);
-
-  // Trend data by date
+  // Trend data - each row from "date" dimension is already one day
   const trendData = useMemo(() => {
-    const byDate = new Map<string, { clicks: number; impressions: number; positionWeighted: number }>();
-    metrics.forEach((m: any) => {
-      const d = m.metric_date;
-      const existing = byDate.get(d) || { clicks: 0, impressions: 0, positionWeighted: 0 };
-      existing.clicks += m.clicks || 0;
-      existing.impressions += m.impressions || 0;
-      existing.positionWeighted += Number(m.position || 0) * (m.impressions || 0);
-      byDate.set(d, existing);
-    });
-    return Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, d]) => ({
-        date: format(parseISO(date), "dd MMM", { locale: ptBR }),
-        rawDate: date,
-        clicks: d.clicks,
-        impressions: d.impressions,
-        ctr: d.impressions > 0 ? parseFloat(((d.clicks / d.impressions) * 100).toFixed(2)) : 0,
-        position: d.impressions > 0 ? parseFloat((d.positionWeighted / d.impressions).toFixed(1)) : 0,
+    return [...metrics]
+      .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""))
+      .map((m: any) => ({
+        date: format(parseISO(m.metric_date), "dd MMM", { locale: ptBR }),
+        rawDate: m.metric_date,
+        clicks: m.clicks || 0,
+        impressions: m.impressions || 0,
+        ctr: (m.impressions || 0) > 0 ? parseFloat((((m.clicks || 0) / (m.impressions || 0)) * 100).toFixed(2)) : 0,
+        position: m.position || 0,
       }));
   }, [metrics]);
 
-  // Device distribution for pie chart
+  // Device distribution for pie chart (from dedicated device data)
   const deviceDistribution = useMemo(() => {
-    const map = new Map<string, number>();
-    metrics.forEach((m: any) => {
-      if (!m.device) return;
-      map.set(m.device, (map.get(m.device) || 0) + (m.clicks || 0));
-    });
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [metrics]);
+    return deviceRows.map((d: any) => ({ name: d.name, value: d.clicks }));
+  }, [deviceRows]);
 
   const hasData = metrics.length > 0;
 
