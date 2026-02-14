@@ -11,6 +11,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 
+export function MarkdownContent({ content, className }: { content: string; className?: string }) {
+  return (
+    <div className={cn(
+      "prose prose-sm dark:prose-invert max-w-none",
+      "[&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0.5",
+      "[&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-3 [&_h1]:mb-1.5",
+      "[&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1",
+      "[&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1",
+      "[&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:font-mono",
+      "[&_pre]:bg-background/80 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto",
+      "[&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground",
+      "[&_table]:w-full [&_table]:my-2 [&_table]:text-xs [&_table]:border-collapse",
+      "[&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:border [&_table]:border-border",
+      "[&_thead]:bg-muted/60",
+      "[&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:border-b [&_th]:border-border",
+      "[&_td]:px-3 [&_td]:py-1.5 [&_td]:border-b [&_td]:border-border/50 [&_td]:text-muted-foreground",
+      "[&_tr:last-child_td]:border-b-0",
+      "[&_tr:hover_td]:bg-muted/30",
+      "[&_strong]:text-foreground [&_strong]:font-semibold",
+      "[&_hr]:border-border/50 [&_hr]:my-3",
+      className
+    )}>
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  );
+}
+
 interface AgentChatTabProps {
   agentName?: string;
   agentInstructions?: string;
@@ -240,9 +267,7 @@ export function AgentChatTab({ agentName, agentInstructions, projectId }: AgentC
                 : "bg-primary text-primary-foreground"
             )}>
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_table]:text-xs [&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1 [&_code]:rounded">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
+                <MarkdownContent content={msg.content} />
               ) : (
                 <p className="whitespace-pre-line">{msg.content}</p>
               )}

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { streamChatToCompletion } from "@/lib/stream-chat";
 import { supabase } from "@/integrations/supabase/client";
+import { MarkdownContent } from "@/components/ai-agent/AgentChatTab";
 
 interface WorkflowStep {
   agent: string;
@@ -347,7 +348,9 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                     {/* Live streaming text */}
                     {isCurrent && stepStreaming && (
                       <div className="mt-3 p-3 rounded-lg bg-card border border-border max-h-[250px] overflow-y-auto scrollbar-thin">
-                        <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{stepStreaming}</p>
+                        <div className="text-xs">
+                          <MarkdownContent content={stepStreaming} className="[&_table]:text-[10px] [&_th]:px-2 [&_td]:px-2" />
+                        </div>
                       </div>
                     )}
 
@@ -363,7 +366,9 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                     {/* Completed result */}
                     {isDone && stepResults[i] && (
                       <div className="mt-3 p-3 rounded-lg bg-card border border-border max-h-[250px] overflow-y-auto scrollbar-thin">
-                        <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{stepResults[i]}</p>
+                        <div className="text-xs">
+                          <MarkdownContent content={stepResults[i]} className="[&_table]:text-[10px] [&_th]:px-2 [&_td]:px-2" />
+                        </div>
                       </div>
                     )}
                   </div>
