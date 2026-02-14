@@ -89,13 +89,10 @@ export function AllEventsTab() {
   }, [eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter, referrerFilter]);
 
   const totalEvents = pluginEvents.length;
-  const trackingEvents = pluginEvents.filter(e => EVENT_CATEGORIES.tracking.includes(e.event_type)).length;
-  const conversionEvents = pluginEvents.filter(e => EVENT_CATEGORIES.conversions.includes(e.event_type)).length;
-  const ecommerceEvents = pluginEvents.filter(e => EVENT_CATEGORIES.ecommerce.includes(e.event_type)).length;
   const uniquePages = new Set(pluginEvents.map(e => e.page_url)).size;
+  const uniqueVisitors = new Set(pluginEvents.map(e => e.session_id)).size;
   const mobileEvents = pluginEvents.filter(e => e.device === "mobile").length;
   const mobilePct = totalEvents > 0 ? ((mobileEvents / totalEvents) * 100).toFixed(1) : "0";
-  const avgTimeOnPage = Math.round(pluginEvents.filter(e => e.event_type === "page_exit").reduce((s, e) => s + e.time_on_page_sec, 0) / Math.max(pluginEvents.filter(e => e.event_type === "page_exit").length, 1));
 
   // All event types for funnel
   const allEventFunnel = eventTypeTotals
@@ -137,15 +134,11 @@ export function AllEventsTab() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* KPIs */}
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SparkKpi label="Total Eventos" value={totalEvents} change={15.8} sparkData={generateSparkline(12, 100, 30)} color="hsl(var(--primary))" icon={Activity} />
-        <SparkKpi label="Tracking" value={trackingEvents} change={8.4} sparkData={generateSparkline(12, 50, 15)} color="hsl(var(--info))" icon={Eye} />
-        <SparkKpi label="Conversões" value={conversionEvents} change={22.3} sparkData={generateSparkline(12, 30, 10)} color="hsl(var(--success))" icon={Zap} />
-        <SparkKpi label="E-commerce" value={ecommerceEvents} change={12.1} sparkData={generateSparkline(12, 40, 15)} color="hsl(var(--warning))" />
-        <SparkKpi label="Páginas Ativas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
+        <SparkKpi label="Visitantes Únicos" value={uniqueVisitors} change={9.2} sparkData={generateSparkline(12, 40, 12)} color="hsl(var(--info))" icon={Eye} />
+        <SparkKpi label="Páginas Únicas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
         <SparkKpi label="Mobile" value={mobilePct} suffix="%" change={4.1} sparkData={generateSparkline(12, 60, 10)} color="hsl(var(--success))" icon={Smartphone} />
-        <SparkKpi label="Tempo Médio" value={`${avgTimeOnPage}s`} change={5.7} sparkData={generateSparkline(12, 45, 15)} color="hsl(var(--info))" icon={Clock} />
-        <SparkKpi label="Plataformas" value={platformDistribution.length} change={0} sparkData={generateSparkline(12, 3, 1)} color="hsl(var(--primary))" icon={Layers} />
       </StaggeredGrid>
 
       {/* Heatmap Day × Hour — Featured */}
