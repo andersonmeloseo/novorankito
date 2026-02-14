@@ -97,7 +97,8 @@ serve(async (req) => {
         try {
           const cleanPhone = phone.replace(/\D/g, "");
           // Evolution API v2 format: /message/sendText/{instanceName}
-          const res = await fetch(`${WHATSAPP_API_URL}/message/sendText/rankito`, {
+          const baseUrl = WHATSAPP_API_URL.replace(/\/+$/, "");
+          const res = await fetch(`${baseUrl}/message/sendText/rankito`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
