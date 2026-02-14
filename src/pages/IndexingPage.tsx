@@ -417,10 +417,10 @@ export default function IndexingPage() {
                             <StatusBadge status={item.verdict} map={VERDICT_MAP} />
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="text-xs tabular-nums text-muted-foreground">{item.clicks_28d.toLocaleString("pt-BR")}</span>
+                            <span className="text-xs tabular-nums text-muted-foreground">{(item.clicks_28d || 0).toLocaleString("pt-BR")}</span>
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="text-xs tabular-nums text-muted-foreground">{item.impressions_28d.toLocaleString("pt-BR")}</span>
+                            <span className="text-xs tabular-nums text-muted-foreground">{(item.impressions_28d || 0).toLocaleString("pt-BR")}</span>
                           </td>
                           <td className="px-3 py-2.5">
                             <span className="text-[10px] text-muted-foreground">{item.coverage_state || "—"}</span>
