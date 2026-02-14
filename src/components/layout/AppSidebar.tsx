@@ -24,7 +24,7 @@ const projectNav = [
   { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Agente IA", url: "/ai-agent", icon: Bot },
-  { title: "Eventos e Sessões", url: "/analitica", icon: MousePointerClick },
+  { title: "Analítica Rankito", url: "/analitica-rankito", icon: MousePointerClick },
   { title: "Conversões", url: "/conversions", icon: Target },
   { title: "Ads", url: "/ads", icon: Megaphone },
   { title: "Relatórios", url: "/reports", icon: FileText },

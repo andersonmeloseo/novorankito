@@ -54,7 +54,7 @@ const App = () => (
               <Route path="/ga4" element={<GA4Page />} />
               <Route path="/indexing" element={<IndexingPage />} />
               <Route path="/ai-agent" element={<AiAgentPage />} />
-              <Route path="/analitica" element={<TrackingPage />} />
+              <Route path="/analitica-rankito" element={<TrackingPage />} />
               <Route path="/conversions" element={<ConversionsPage />} />
               <Route path="/ads" element={<AdsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
