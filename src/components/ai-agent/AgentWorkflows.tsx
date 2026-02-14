@@ -145,10 +145,19 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
         : step.prompt;
 
       try {
+        console.log(`[Workflow] Step ${i + 1}/${workflow.steps.length}: ${step.agent}, projectId: ${projectId}`);
         const result = await streamChatToCompletion({
           prompt: fullPrompt,
           agentName: step.agent,
-          agentInstructions: `Você é o ${step.agent}. Execute EXATAMENTE o que é pedido usando dados REAIS do projeto. Seja específico, acionável e detalhado. Cite dados concretos.`,
+          agentInstructions: `Você é o ${step.agent}, parte de um workflow automatizado chamado "${workflow.name}".
+
+REGRA FUNDAMENTAL: Você TEM acesso aos dados REAIS do projeto via contexto do sistema. USE-OS.
+- NÃO diga "não tenho acesso aos dados" — os dados estão no contexto do sistema
+- NÃO invente dados fictícios — use APENAS os dados reais fornecidos
+- Cite URLs, keywords, métricas e números EXATOS do projeto
+- Se um dado específico não estiver disponível, diga claramente qual dado falta
+
+Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
           projectId,
           onDelta: (text) => setStepStreaming(text),
         });
