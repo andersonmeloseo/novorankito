@@ -148,9 +148,12 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
       {mapData.length > 0 && (
         <Card className="p-4">
           <h3 className="text-xs font-medium text-foreground mb-1">Mapa de Usuários Ativos</h3>
-          <p className="text-[10px] text-muted-foreground mb-3">Distribuição geográfica em tempo real</p>
-          <div className="h-[260px]">
-            <WorldMap countryData={mapData} />
+          <p className="text-[10px] text-muted-foreground mb-3">Distribuição geográfica em tempo real — zoom e arraste para navegar, cidades visíveis com zoom</p>
+          <div className="h-[340px]">
+            <WorldMap
+              countryData={mapData}
+              cityData={byCity.map((c: any) => ({ name: c.city || "", value: c.activeUsers || 0 }))}
+            />
           </div>
         </Card>
       )}
