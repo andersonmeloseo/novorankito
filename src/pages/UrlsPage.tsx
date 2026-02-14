@@ -23,7 +23,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   Search, Download, Tag, ExternalLink, Plus, Trash2, Filter,
-  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X,
+  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, Eye, Loader2,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -60,6 +60,7 @@ export default function UrlsPage() {
   const [newType, setNewType] = useState("page");
   const [newGroup, setNewGroup] = useState("");
   const [drawerUrl, setDrawerUrl] = useState<any>(null);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
@@ -174,6 +175,31 @@ export default function UrlsPage() {
     a.click();
   };
 
+  const handleFetchMeta = async () => {
+    if (selectedUrls.length === 0) return;
+    setFetchingMeta(true);
+    try {
+      const urlsToFetch = selectedUrls.map((id) => {
+        const u = urls.find((u: any) => u.id === id) as any;
+        return { id, url: u?.url };
+      }).filter((u) => u.url);
+
+      const { data, error } = await supabase.functions.invoke("fetch-meta-tags", {
+        body: { urls: urlsToFetch },
+      });
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["site-urls"] });
+      toast({ title: `Meta tags atualizadas para ${data?.updated || 0} URLs` });
+      setSelectedUrls([]);
+    } catch (e: any) {
+      toast({ title: "Erro ao buscar meta tags", description: e.message, variant: "destructive" });
+    } finally {
+      setFetchingMeta(false);
+    }
+  };
+
   const activeFilters = [statusFilter !== "all", typeFilter !== "all", groupFilter !== "all", priorityFilter !== "all"].filter(Boolean).length;
 
   return (
@@ -251,6 +277,10 @@ export default function UrlsPage() {
         {selectedUrls.length > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
             <span className="font-medium text-foreground">{selectedUrls.length} selecionada(s)</span>
+            <Button variant="default" size="sm" className="h-7 text-xs gap-1" onClick={handleFetchMeta} disabled={fetchingMeta}>
+              {fetchingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+              {fetchingMeta ? "Buscando..." : "Revelar Meta Tags"}
+            </Button>
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setTagDialog(true)}>
               <Tag className="h-3 w-3" /> Aplicar Tag
             </Button>
@@ -310,8 +340,8 @@ export default function UrlsPage() {
                       <td className="px-3 py-2.5 max-w-[250px]">
                         <div className="font-mono text-xs text-foreground truncate">{item.url}</div>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate">{item.meta_title || "—"}</td>
-                      <td className="px-3 py-2.5 text-[11px] text-muted-foreground max-w-[220px] truncate">{item.meta_description || "—"}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate">{item.meta_title || <span className="text-muted-foreground/50 italic">N/A</span>}</td>
+                      <td className="px-3 py-2.5 text-[11px] text-muted-foreground max-w-[220px] truncate">{item.meta_description || <span className="text-muted-foreground/50 italic">N/A</span>}</td>
                       <td className="px-3 py-2.5"><Badge variant="secondary" className="text-[10px] font-normal">{item.url_type}</Badge></td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{item.url_group || "—"}</td>
                       <td className="px-3 py-2.5">
