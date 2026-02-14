@@ -7,19 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSeoMetrics } from "@/hooks/use-data-modules";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "@/hooks/use-toast";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
 } from "recharts";
 import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
-  Calendar, Filter, TrendingUp, Globe, Monitor, FileText,
+  Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2,
 } from "lucide-react";
 import { format, subDays, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -45,6 +46,37 @@ export default function SeoPage() {
     enabled: !!user,
   });
   const projectId = projects[0]?.id;
+  const queryClient = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+
+  // Check GSC connection
+  const { data: gscConnection } = useQuery({
+    queryKey: ["gsc-connection", projectId],
+    queryFn: async () => {
+      const { data } = await supabase.from("gsc_connections").select("id, connection_name, site_url, last_sync_at").eq("project_id", projectId!).maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  const syncGscData = async () => {
+    if (!projectId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-gsc-data", {
+        body: { project_id: projectId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
+      toast({ title: `Sincronização concluída!`, description: `${data?.inserted?.toLocaleString() || 0} métricas importadas do GSC.` });
+    } catch (e: any) {
+      toast({ title: "Erro ao sincronizar GSC", description: e.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Date range state
   const [dateRange, setDateRange] = useState<DateRange>("28");
@@ -235,6 +267,27 @@ export default function SeoPage() {
     <>
       <TopBar title="SEO" subtitle="Performance completa via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Sync bar */}
+        {gscConnection && (
+          <AnimatedContainer>
+            <Card className="p-3 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                <span className="text-muted-foreground">GSC conectado:</span>
+                <span className="font-medium text-foreground">{gscConnection.site_url}</span>
+                {gscConnection.last_sync_at && (
+                  <span className="text-muted-foreground">
+                    · Último sync: {format(parseISO(gscConnection.last_sync_at), "dd/MM HH:mm")}
+                  </span>
+                )}
+              </div>
+              <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={syncGscData} disabled={syncing}>
+                {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                {syncing ? "Sincronizando..." : "Sincronizar dados"}
+              </Button>
+            </Card>
+          </AnimatedContainer>
+        )}
         {/* Filters bar */}
         <AnimatedContainer>
           <Card className="p-4">

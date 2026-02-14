@@ -228,6 +228,53 @@ export type Database = {
           },
         ]
       }
+      gsc_connections: {
+        Row: {
+          client_email: string
+          connection_name: string
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          owner_id: string
+          private_key: string
+          project_id: string
+          site_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_email: string
+          connection_name: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_id: string
+          private_key: string
+          project_id: string
+          site_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string
+          connection_name?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_id?: string
+          private_key?: string
+          project_id?: string
+          site_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gsc_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
