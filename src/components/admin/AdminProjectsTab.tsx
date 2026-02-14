@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { format } from "date-fns";
 import { exportCSV } from "@/lib/export-utils";
 import { toast } from "@/hooks/use-toast";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 
 interface AdminProjectsTabProps {
   projects: any[];
@@ -78,7 +79,7 @@ export function AdminProjectsTab({ projects, profiles, isLoading }: AdminProject
                   <td className="px-4 py-3 text-xs font-medium text-foreground">{p.name}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{p.domain}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{getOwnerName(p.owner_id)}</td>
-                  <td className="px-4 py-3"><Badge variant={p.status === "active" ? "default" : "secondary"} className="text-[10px]">{p.status}</Badge></td>
+                  <td className="px-4 py-3"><Badge variant={getStatusVariant(p.status)} className="text-[10px]">{translateStatus(p.status)}</Badge></td>
                   <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{p.monetization_status}</Badge></td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd/MM/yyyy")}</td>
                   <td className="px-4 py-3">
@@ -101,7 +102,7 @@ export function AdminProjectsTab({ projects, profiles, isLoading }: AdminProject
               {[
                 { label: "Nome", value: detailProject.name },
                 { label: "Domínio", value: detailProject.domain },
-                { label: "Status", value: detailProject.status },
+                { label: "Status", value: translateStatus(detailProject.status) },
                 { label: "Monetização", value: detailProject.monetization_status },
                 { label: "Proprietário", value: getOwnerName(detailProject.owner_id) },
                 { label: "Tipo", value: detailProject.site_type || "—" },

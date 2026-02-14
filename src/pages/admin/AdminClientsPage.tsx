@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Users, CreditCard, Eye, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 
 export default function AdminClientsPage() {
   // Placeholder — will be connected to real multi-tenant data
@@ -48,8 +49,8 @@ export default function AdminClientsPage() {
                   <td className="p-3">{client.projects}</td>
                   <td className="p-3">R$ {client.mrr}</td>
                   <td className="p-3">
-                    <Badge variant={client.status === "active" ? "default" : client.status === "trial" ? "secondary" : "destructive"}>
-                      {client.status}
+                    <Badge variant={getStatusVariant(client.status)}>
+                      {translateStatus(client.status)}
                     </Badge>
                   </td>
                   <td className="p-3">

@@ -16,6 +16,7 @@ import {
 } from "@/components/analytics/ChartPrimitives";
 import { useMemo } from "react";
 import { format, subDays, parseISO } from "date-fns";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 
 interface AdminDashboardTabProps {
   stats: any;
@@ -147,8 +148,8 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
                     <span className="text-xs text-foreground truncate">{log.action}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={log.status === "success" ? "default" : "destructive"} className="text-[9px]">
-                      {log.status}
+                    <Badge variant={getStatusVariant(log.status)} className="text-[9px]">
+                      {translateStatus(log.status)}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">
                       {format(new Date(log.created_at), "dd/MM HH:mm")}

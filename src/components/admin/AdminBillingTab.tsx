@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import { Download, CreditCard, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -104,7 +105,7 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
                   <td className="px-4 py-3 text-xs font-medium text-foreground">R$ {Number(b.mrr).toLocaleString("pt-BR")}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{b.events_used.toLocaleString()}/{b.events_limit.toLocaleString()}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{b.projects_limit}</td>
-                  <td className="px-4 py-3"><Badge variant={b.status === "active" ? "default" : "destructive"} className="text-[10px]">{b.status}</Badge></td>
+                  <td className="px-4 py-3"><Badge variant={getStatusVariant(b.status)} className="text-[10px]">{translateStatus(b.status)}</Badge></td>
                 </tr>
               ))}
             </tbody>
