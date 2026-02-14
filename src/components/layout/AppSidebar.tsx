@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
-  ChevronDown, LogOut, Coins, Building2, FileSignature,
+  Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/hooks/use-admin";
 
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
@@ -50,6 +51,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { data: isAdmin } = useIsAdmin();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["sidebar-projects"],
@@ -201,8 +203,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <button
+                      onClick={() => navigate("/admin")}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-destructive hover:bg-destructive/10 transition-all duration-200"
+                    >
+                      <Shield className="h-4 w-4 shrink-0" />
+                      <span>Super Admin</span>
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
-
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
