@@ -12,15 +12,20 @@ import {
   type MockTrackingEvent,
 } from "@/lib/mock-data";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  Treemap,
+  Treemap, ScatterChart, Scatter, ZAxis, CartesianGrid,
 } from "recharts";
 import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Activity, Zap, Globe, Smartphone, Monitor, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
+  ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
+  FunnelStep, TreemapContent, PipelineVisual, CohortHeatmap, DonutCenterLabel,
+} from "@/components/analytics/ChartPrimitives";
 
 const PERIOD_OPTIONS = [
   { value: "1", label: "Hoje" },
@@ -73,16 +78,7 @@ const STATE_OPTIONS = [
   ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.location_state))).sort().map((s) => ({ value: s, label: s })),
 ];
 
-// Vibrant color palette — no red, no gray
-const VIVID_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--success))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--chart-5))",
-  "hsl(250 85% 72%)",
-  "hsl(180 60% 50%)",
-];
+const VIVID_COLORS = CHART_COLORS;
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
   whatsapp_click: "hsl(var(--success))",
@@ -104,7 +100,6 @@ const EVENT_TYPE_BG: Record<string, string> = {
 
 const heatmapData = generateConversionsHeatmap();
 
-// ── Sparkline generator ──
 function generateSparkline(length = 12, base = 50, variance = 20): number[] {
   return Array.from({ length }, () => Math.max(0, base + Math.floor((Math.random() - 0.3) * variance)));
 }
@@ -130,7 +125,6 @@ const eventsByDay = (() => {
   }));
 })();
 
-// Events by device for radar
 const eventsByDeviceRadar = (() => {
   const map = new Map<string, { total: number; interactions: number; avgValue: number }>();
   mockTrackingEventsDetailed.forEach((e) => {
@@ -148,14 +142,12 @@ const eventsByDeviceRadar = (() => {
   }));
 })();
 
-// Events by browser
 const eventsByBrowser = (() => {
   const map = new Map<string, number>();
   mockTrackingEventsDetailed.forEach((e) => map.set(e.browser, (map.get(e.browser) || 0) + 1));
   return Array.from(map.entries()).map(([browser, count]) => ({ browser, count }));
 })();
 
-// Top pages as treemap data
 const topPagesTreemap = (() => {
   const map = new Map<string, number>();
   mockTrackingEventsDetailed.forEach((e) => map.set(e.page_url, (map.get(e.page_url) || 0) + 1));
@@ -165,14 +157,12 @@ const topPagesTreemap = (() => {
     .slice(0, 8);
 })();
 
-// Distribution by event type
 const pieData = (() => {
   const map = new Map<string, number>();
   mockTrackingEventsDetailed.forEach((e) => map.set(e.event_type, (map.get(e.event_type) || 0) + 1));
   return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
 })();
 
-// City proximity chart
 const eventsByCity = (() => {
   const map = new Map<string, number>();
   mockTrackingEventsDetailed.forEach((e) => map.set(e.location_city, (map.get(e.location_city) || 0) + 1));
@@ -180,6 +170,47 @@ const eventsByCity = (() => {
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
+})();
+
+// Scatter data: events value vs count per page
+const scatterByPage = (() => {
+  const map = new Map<string, { count: number; totalValue: number }>();
+  mockTrackingEventsDetailed.forEach((e) => {
+    const entry = map.get(e.page_url) || { count: 0, totalValue: 0 };
+    entry.count++;
+    entry.totalValue += e.value;
+    map.set(e.page_url, entry);
+  });
+  return Array.from(map.entries()).map(([page, v]) => ({
+    page: page.replace(/^\//, ""),
+    count: v.count,
+    avgValue: Number((v.totalValue / v.count).toFixed(2)),
+    totalValue: Number(v.totalValue.toFixed(2)),
+  }));
+})();
+
+// Funnel: event pipeline
+const eventFunnel = (() => {
+  const types = ["page_view", "scroll_depth", "cta_click", "whatsapp_click", "form_submit", "phone_call"];
+  const labels: Record<string, string> = {
+    page_view: "Visualizações", scroll_depth: "Scroll Profundo", cta_click: "Cliques CTA",
+    whatsapp_click: "WhatsApp", form_submit: "Formulários", phone_call: "Ligações",
+  };
+  return types.map((t) => ({
+    label: labels[t] || t,
+    value: mockTrackingEventsDetailed.filter((e) => e.event_type === t).length,
+    color: EVENT_TYPE_COLORS[t] || VIVID_COLORS[0],
+  }));
+})();
+
+// Cohort heatmap: event type × device
+const cohortData = (() => {
+  const types = ["page_view", "cta_click", "whatsapp_click", "form_submit", "phone_call"];
+  const devices = ["mobile", "desktop", "tablet"];
+  const data = types.map((t) => devices.map((d) =>
+    mockTrackingEventsDetailed.filter((e) => e.event_type === t && e.device === d).length
+  ));
+  return { data, xLabels: devices.map(d => d.charAt(0).toUpperCase() + d.slice(1)), yLabels: types.map(t => t.replace("_", " ")) };
 })();
 
 const PAGE_SIZE = 20;
@@ -197,9 +228,6 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "location_city", label: "Cidade" },
 ];
 
-const tooltipStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 };
-
-// ── Sparkline mini component ──
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data, 1);
   const w = 80;
@@ -212,7 +240,6 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-// ── KPI with Sparkline ──
 function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon: Icon }: {
   label: string; value: string | number; change: number; suffix?: string; prefix?: string;
   sparkData: number[]; color: string; icon?: React.ElementType;
@@ -300,8 +327,6 @@ export function EventsTab() {
   const avgEventsPerPage = uniquePages > 0 ? Math.round(totalEvents / uniquePages) : 0;
   const mobileEvents = filtered.filter((e) => e.device === "mobile").length;
   const mobilePercent = totalEvents > 0 ? Number(((mobileEvents / totalEvents) * 100).toFixed(1)) : 0;
-  const uniqueCities = new Set(filtered.map((e) => e.location_city)).size;
-  const uniqueBrowsers = new Set(filtered.map((e) => e.browser)).size;
   const whatsappEvents = filtered.filter((e) => e.event_type === "whatsapp_click").length;
   const formEvents = filtered.filter((e) => e.event_type === "form_submit").length;
 
@@ -320,9 +345,11 @@ export function EventsTab() {
     }
   }, [sorted]);
 
+  const totalPieEvents = pieData.reduce((s, d) => s + d.value, 0);
+
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Period selector + comparison */}
+      {/* Period selector */}
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Select value={period} onValueChange={setPeriod}>
@@ -349,74 +376,85 @@ export function EventsTab() {
         <SparkKpi label="Formulários" value={formEvents} change={6.7} sparkData={generateSparkline(12, 15, 6)} color="hsl(var(--primary))" />
       </StaggeredGrid>
 
-      {/* Trend: Events + Interactions over time */}
+      {/* ═══ Line Chart com gradiente e glow — Volume de Eventos ═══ */}
       <AnimatedContainer>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Volume de Eventos ao Longo do Tempo</h3>
+          <ChartHeader title="Volume de Eventos ao Longo do Tempo" subtitle="Linha com gradiente glow + taxa de interação" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={eventsByDay}>
                 <defs>
-                  <linearGradient id="evTotalGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="evInterGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                  </linearGradient>
+                  <LineGlowGradient id="evTotalGlow" color="hsl(var(--primary))" />
+                  <LineGlowGradient id="evInterGlow" color="hsl(var(--success))" />
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#evTotalGrad)" strokeWidth={2} name="Total" />
-                <Area type="monotone" dataKey="interactions" stroke="hsl(var(--success))" fill="url(#evInterGrad)" strokeWidth={2} name="Interações" />
-                <Line type="monotone" dataKey="interactionRate" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Taxa Interação %" />
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="date" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#evTotalGlow)" strokeWidth={2.5} name="Total" dot={false} activeDot={{ r: 5, strokeWidth: 2, fill: "hsl(var(--primary))" }} />
+                <Area type="monotone" dataKey="interactions" stroke="hsl(var(--success))" fill="url(#evInterGlow)" strokeWidth={2.5} name="Interações" dot={false} activeDot={{ r: 5, strokeWidth: 2, fill: "hsl(var(--success))" }} />
+                <Line type="monotone" dataKey="interactionRate" stroke="hsl(var(--warning))" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Taxa Interação %" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Events by type line chart */}
+      {/* ═══ Stacked Area — Eventos por Tipo ═══ */}
       <AnimatedContainer delay={0.05}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Eventos por Tipo ao Longo do Tempo</h3>
+          <ChartHeader title="Composição de Eventos por Tipo" subtitle="Stacked Area com transparência" />
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockConversionsByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="whatsapp_click" stroke={EVENT_TYPE_COLORS.whatsapp_click} strokeWidth={2} dot={false} name="WhatsApp" />
-                <Line type="monotone" dataKey="form_submit" stroke={EVENT_TYPE_COLORS.form_submit} strokeWidth={2} dot={false} name="Formulário" />
-                <Line type="monotone" dataKey="phone_call" stroke={EVENT_TYPE_COLORS.phone_call} strokeWidth={2} dot={false} name="Ligação" />
-                <Line type="monotone" dataKey="cta_click" stroke={EVENT_TYPE_COLORS.cta_click} strokeWidth={2} dot={false} name="CTA Click" />
-              </LineChart>
+              <AreaChart data={mockConversionsByDay} stackOffset="expand">
+                <defs>
+                  {Object.entries(EVENT_TYPE_COLORS).map(([key, color]) => (
+                    <ChartGradient key={key} id={`stack-${key}`} color={color} opacity={0.4} />
+                  ))}
+                </defs>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="date" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Area type="monotone" dataKey="whatsapp_click" stackId="1" stroke={EVENT_TYPE_COLORS.whatsapp_click} fill={`url(#stack-whatsapp_click)`} strokeWidth={1.5} name="WhatsApp" />
+                <Area type="monotone" dataKey="form_submit" stackId="1" stroke={EVENT_TYPE_COLORS.form_submit} fill={`url(#stack-form_submit)`} strokeWidth={1.5} name="Formulário" />
+                <Area type="monotone" dataKey="phone_call" stackId="1" stroke={EVENT_TYPE_COLORS.phone_call} fill={`url(#stack-phone_call)`} strokeWidth={1.5} name="Ligação" />
+                <Area type="monotone" dataKey="cta_click" stackId="1" stroke={EVENT_TYPE_COLORS.cta_click} fill={`url(#stack-cta_click)`} strokeWidth={1.5} name="CTA Click" />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Row: Radar Device + Distribution Pie */}
+      {/* ═══ Step Funnel — Pipeline de Conversão ═══ */}
+      <AnimatedContainer delay={0.08}>
+        <Card className="p-5">
+          <ChartHeader title="Funil de Eventos" subtitle="Step funnel — queda entre etapas do pipeline" />
+          <div className="space-y-2">
+            {eventFunnel.map((step, i) => (
+              <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={eventFunnel[0].value} color={step.color} index={i} />
+            ))}
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Row: Radar Device + Donut Distribution ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Engajamento por Dispositivo</h3>
+            <ChartHeader title="Engajamento por Dispositivo" subtitle="Radar chart multi-dimensional" />
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={eventsByDeviceRadar}>
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="device" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <PolarAngleAxis dataKey="device" {...AXIS_STYLE} />
                   <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                  <Radar name="Total" dataKey="total" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.25} strokeWidth={2} />
-                  <Radar name="Interações" dataKey="interactions" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.2} strokeWidth={2} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Radar name="Total" dataKey="total" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                  <Radar name="Interações" dataKey="interactions" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.15} strokeWidth={2} />
+                  <Legend {...LEGEND_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -425,7 +463,7 @@ export function EventsTab() {
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo</h3>
+            <ChartHeader title="Distribuição por Tipo" subtitle="Donut chart com label central" />
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -433,9 +471,10 @@ export function EventsTab() {
                     {pieData.map((entry, i) => (
                       <Cell key={i} fill={EVENT_TYPE_COLORS[entry.name] || VIVID_COLORS[i % VIVID_COLORS.length]} />
                     ))}
+                    <DonutCenterLabel viewBox={{ cx: "50%", cy: "50%" }} value={totalPieEvents} label="Total" />
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -443,42 +482,74 @@ export function EventsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Row: Top Pages Bar + City Proximity */}
+      {/* ═══ Scatter/Bubble — Valor × Volume por Página ═══ */}
+      <AnimatedContainer delay={0.18}>
+        <Card className="p-5">
+          <ChartHeader title="Valor × Volume por Página" subtitle="Scatter/Bubble — tamanho = valor total" />
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ left: 10, bottom: 10 }}>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="count" name="Eventos" {...AXIS_STYLE} label={{ value: "Eventos", position: "insideBottom", offset: -5, style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
+                <YAxis dataKey="avgValue" name="Valor Médio" {...AXIS_STYLE} label={{ value: "Valor Médio (R$)", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
+                <ZAxis dataKey="totalValue" range={[40, 400]} name="Valor Total" />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(value: any, name: string) => [typeof value === 'number' ? value.toLocaleString("pt-BR") : value, name]} />
+                <Scatter data={scatterByPage} fill="hsl(var(--primary))" fillOpacity={0.6} stroke="hsl(var(--primary))" strokeWidth={1}>
+                  {scatterByPage.map((_, i) => (
+                    <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} fillOpacity={0.65} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Treemap — Top Páginas ═══ */}
+      <AnimatedContainer delay={0.2}>
+        <Card className="p-5">
+          <ChartHeader title="Treemap de Páginas" subtitle="Área proporcional ao volume de eventos" />
+          <div className="h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={topPagesTreemap}
+                dataKey="size"
+                nameKey="name"
+                stroke="hsl(var(--background))"
+                content={<TreemapContent />}
+              />
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Row: Pipeline Visual + City Bar ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AnimatedContainer delay={0.2}>
+        <AnimatedContainer delay={0.22}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas por Volume</h3>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topPagesTreemap} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="size" radius={[0, 6, 6, 0]} name="Eventos">
-                    {topPagesTreemap.map((entry, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartHeader title="Pipeline Visual" subtitle="Barras verticais proporcionais por etapa" />
+            <PipelineVisual steps={eventFunnel} />
           </Card>
         </AnimatedContainer>
 
         <AnimatedContainer delay={0.25}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Proximidade por Cidade</h3>
-            <div className="h-[280px]">
+            <ChartHeader title="Proximidade por Cidade" subtitle="Barras com gradiente horizontal" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={eventsByCity}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="city" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} angle={-25} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Eventos">
+                <BarChart data={eventsByCity} layout="vertical" margin={{ left: 5 }}>
+                  <defs>
                     {eventsByCity.map((_, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                      <BarGradient key={i} id={`cityBar-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis type="number" {...AXIS_STYLE} />
+                  <YAxis dataKey="city" type="category" width={90} {...AXIS_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]} name="Eventos">
+                    {eventsByCity.map((_, i) => (
+                      <Cell key={i} fill={`url(#cityBar-${i})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -488,18 +559,37 @@ export function EventsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Browser bar chart */}
+      {/* ═══ Cohort Heatmap — Tipo × Dispositivo ═══ */}
+      <AnimatedContainer delay={0.28}>
+        <Card className="p-5">
+          <ChartHeader title="Heatmap: Tipo de Evento × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
+          <CohortHeatmap
+            data={cohortData.data}
+            xLabels={cohortData.xLabels}
+            yLabels={cohortData.yLabels}
+            maxValue={Math.max(...cohortData.data.flat())}
+            hue={210}
+          />
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Browser bar with gradient ═══ */}
       <AnimatedContainer delay={0.3}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Eventos por Browser</h3>
+          <ChartHeader title="Eventos por Browser" subtitle="Barras verticais com gradiente" />
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={eventsByBrowser}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="browser" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Eventos">
+                <defs>
+                  {eventsByBrowser.map((_, i) => (
+                    <ChartGradient key={i} id={`browserGrad-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} opacity={0.9} />
+                  ))}
+                </defs>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="browser" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} name="Eventos">
                   {eventsByBrowser.map((_, i) => (
                     <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
                   ))}
@@ -510,12 +600,10 @@ export function EventsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Heatmap */}
+      {/* ═══ Heatmap Dia × Hora ═══ */}
       <AnimatedContainer delay={0.35}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-            <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Eventos (Dia × Hora)
-          </h3>
+          <ChartHeader title="Mapa de Calor de Eventos (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <div className="flex gap-0.5 mb-1 ml-10">
@@ -526,18 +614,24 @@ export function EventsTab() {
               {heatmapData.map((row) => (
                 <div key={row.day} className="flex items-center gap-0.5 mb-0.5">
                   <span className="text-[10px] text-muted-foreground w-10 text-right pr-2">{row.day}</span>
-                  {row.hours.map((cell) => (
-                    <div
-                      key={cell.hour}
-                      className="flex-1 h-7 rounded-sm flex items-center justify-center"
-                      style={{ backgroundColor: `hsl(var(--info) / ${Math.max(0.05, cell.value / 40)})` }}
-                      title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
-                    >
-                      <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-info-foreground" : "text-muted-foreground"}`}>
-                        {cell.value}
-                      </span>
-                    </div>
-                  ))}
+                  {row.hours.map((cell) => {
+                    const intensity = Math.max(0.05, cell.value / 40);
+                    return (
+                      <div
+                        key={cell.hour}
+                        className="flex-1 h-7 rounded-md flex items-center justify-center transition-transform hover:scale-[1.08] cursor-default"
+                        style={{
+                          background: `hsl(var(--info) / ${intensity})`,
+                          border: `1px solid hsl(var(--info) / ${intensity * 0.4})`,
+                        }}
+                        title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
+                      >
+                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>
+                          {cell.value}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -545,7 +639,7 @@ export function EventsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Detailed Table with filters inside */}
+      {/* Detailed Table */}
       <AnimatedContainer delay={0.4}>
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
@@ -573,7 +667,6 @@ export function EventsTab() {
                 </DropdownMenu>
               </div>
             </div>
-            {/* Filters inside table card */}
             <div className="flex flex-wrap gap-2">
               <Select value={eventType} onValueChange={(v) => { setEventType(v); setPage(1); }}>
                 <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
