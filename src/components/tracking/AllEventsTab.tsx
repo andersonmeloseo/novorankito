@@ -230,54 +230,37 @@ export function AllEventsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Treemap */}
-      <AnimatedContainer delay={0.25}>
-        <Card className="p-5">
-          <ChartHeader title="Treemap de Páginas" subtitle="Área proporcional ao volume de eventos" />
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap data={topPagesTreemap} dataKey="size" nameKey="name" stroke="hsl(var(--background))" content={<TreemapContent />} />
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      {/* Treemap + Cohort Heatmap side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AnimatedContainer delay={0.25}>
+          <Card className="p-5 h-full">
+            <ChartHeader title="Treemap de Páginas" subtitle="Área proporcional ao volume de eventos" />
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <Treemap data={topPagesTreemap} dataKey="size" nameKey="name" stroke="hsl(var(--background))">
+                  {topPagesTreemap.map((entry, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: any, name: any) => [v, "Eventos"]} />
+                </Treemap>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
 
-      {/* Page Exit Analysis */}
-      <AnimatedContainer delay={0.3}>
-        <Card className="p-5">
-          <ChartHeader title="Page Exit — Tempo Gasto por Página" subtitle="navigator.sendBeacon — captura automática de tempo na página" />
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pageExitAnalysis} layout="vertical" margin={{ left: 10 }}>
-                <defs>
-                  {pageExitAnalysis.map((_, i) => <BarGradient key={i} id={`exitGrad-${i}`} color={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </defs>
-                <CartesianGrid {...GRID_STYLE} />
-                <XAxis type="number" {...AXIS_STYLE} unit="s" />
-                <YAxis dataKey="page" type="category" width={140} {...AXIS_STYLE} />
-                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: any) => [`${v}s`, "Tempo Médio"]} />
-                <Bar dataKey="avgTime" radius={[0, 8, 8, 0]} name="Tempo Médio (s)">
-                  {pageExitAnalysis.map((_, i) => <Cell key={i} fill={`url(#exitGrad-${i})`} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </AnimatedContainer>
-
-      {/* Cohort Heatmap */}
-      <AnimatedContainer delay={0.35}>
-        <Card className="p-5">
-          <ChartHeader title="Heatmap: Tipo de Evento × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
-          <CohortHeatmap
-            data={cohortData.data}
-            xLabels={cohortData.xLabels}
-            yLabels={cohortData.yLabels}
-            maxValue={Math.max(...cohortData.data.flat())}
-            hue={210}
-          />
-        </Card>
-      </AnimatedContainer>
+        <AnimatedContainer delay={0.3}>
+          <Card className="p-5 h-full">
+            <ChartHeader title="Heatmap: Tipo de Evento × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
+            <CohortHeatmap
+              data={cohortData.data}
+              xLabels={cohortData.xLabels}
+              yLabels={cohortData.yLabels}
+              maxValue={Math.max(...cohortData.data.flat())}
+              hue={210}
+            />
+          </Card>
+        </AnimatedContainer>
+      </div>
 
       {/* Detailed Events Table */}
       <AnimatedContainer delay={0.4}>
