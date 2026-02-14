@@ -151,7 +151,7 @@ export function AllEventsTab() {
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Eventos" value={totalEvents} change={15.8} sparkData={generateSparkline(12, 100, 30)} color="hsl(var(--primary))" icon={Activity} />
         <SparkKpi label="Visitantes Únicos" value={uniqueVisitors} change={9.2} sparkData={generateSparkline(12, 40, 12)} color="hsl(var(--info))" icon={Eye} />
-        <SparkKpi label="Páginas Únicas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
+        <SparkKpi label="CTA/Elemento" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Layers} />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count} eventos)`} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Flame} hideSparkline hideBadge smallValue />
         <SparkKpi label="Último Evento" value={lastEventLabel} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Zap} hideSparkline hideBadge smallValue />
         <SparkKpi label="Última Localização" value={lastLocation} change={0} sparkData={[]} color="hsl(var(--chart-8))" icon={MapPin} hideSparkline hideBadge smallValue />
