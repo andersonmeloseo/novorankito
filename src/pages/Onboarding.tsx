@@ -144,7 +144,7 @@ export default function Onboarding() {
       if (projectId) {
         supabase.from("projects").update({ onboarding_completed: true, onboarding_step: STEPS.length }).eq("id", projectId);
       }
-      navigate("/overview");
+      navigate("/projects");
     }
   };
 

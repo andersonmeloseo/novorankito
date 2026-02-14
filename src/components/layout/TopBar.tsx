@@ -3,6 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function getUserDisplayName(user: any): string {
+  if (!user) return "";
+  const meta = user.user_metadata;
+  if (meta?.display_name) return meta.display_name;
+  if (meta?.full_name) return meta.full_name;
+  if (meta?.name) return meta.name;
+  if (user.email) return user.email.split("@")[0];
+  return "";
+}
 
 interface TopBarProps {
   title: string;
@@ -10,6 +28,10 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, subtitle }: TopBarProps) {
+  const { user } = useAuth();
+  const displayName = getUserDisplayName(user);
+  const greeting = getGreeting();
+
   return (
     <header className="border-b border-border bg-background/70 backdrop-blur-xl sticky top-0 z-20 px-4 sm:px-6">
       <div className="flex items-center justify-between h-16 gap-4">
@@ -22,6 +44,12 @@ export function TopBar({ title, subtitle }: TopBarProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {displayName && (
+            <span className="hidden lg:block text-xs text-muted-foreground">
+              {greeting}, <span className="font-medium text-foreground">{displayName}</span> 👋
+            </span>
+          )}
+
           <div className="hidden md:flex items-center gap-1.5">
             <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 bg-success/5 border-success/20 text-success">
               <Wifi className="h-3 w-3" /> GSC
@@ -53,3 +81,5 @@ export function TopBar({ title, subtitle }: TopBarProps) {
     </header>
   );
 }
+
+export { getGreeting, getUserDisplayName };
