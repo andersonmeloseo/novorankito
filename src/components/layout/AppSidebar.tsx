@@ -21,7 +21,7 @@ const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
   { title: "SEO", url: "/seo", icon: Search },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Agente IA", url: "/ai-agent", icon: Bot },
   { title: "Eventos e Sessões", url: "/analitica", icon: MousePointerClick },
