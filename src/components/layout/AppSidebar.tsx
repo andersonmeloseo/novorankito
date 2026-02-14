@@ -23,7 +23,7 @@ const projectNav = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Agente IA", url: "/ai-agent", icon: Bot },
-  { title: "Tracking", url: "/tracking", icon: MousePointerClick },
+  { title: "Analítica", url: "/analitica", icon: MousePointerClick },
   { title: "Conversões", url: "/conversions", icon: Target },
   { title: "Ads", url: "/ads", icon: Megaphone },
   { title: "Relatórios", url: "/reports", icon: FileText },
