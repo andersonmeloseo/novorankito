@@ -742,11 +742,11 @@ export default function SeoPage() {
                 )}
                 <Tabs defaultValue="queries">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                    <TabsList>
-                      <TabsTrigger value="queries" className="text-xs" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}>Consultas</TabsTrigger>
-                      <TabsTrigger value="pages" className="text-xs" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}>Páginas</TabsTrigger>
-                      <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
-                      <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
+                     <TabsList>
+                      <TabsTrigger value="queries" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><Search className="h-3 w-3" />Consultas</TabsTrigger>
+                      <TabsTrigger value="pages" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><FileText className="h-3 w-3" />Páginas</TabsTrigger>
+                      <TabsTrigger value="countries" className="text-xs gap-1"><Globe className="h-3 w-3" />Países</TabsTrigger>
+                      <TabsTrigger value="devices" className="text-xs gap-1"><Monitor className="h-3 w-3" />Dispositivos</TabsTrigger>
                       <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
                       <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
                       <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
