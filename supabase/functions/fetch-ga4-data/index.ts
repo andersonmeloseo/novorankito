@@ -328,7 +328,7 @@ serve(async (req) => {
       case "realtime": {
         const [activeUsers, byPage, bySource, byCountry, byDevice] = await Promise.all([
           runRealtimeReport(accessToken, propId, [], [{ name: "activeUsers" }]),
-          runRealtimeReport(accessToken, propId, [{ name: "unifiedPagePathScreen" }], [{ name: "activeUsers" }, { name: "screenPageViews" }]),
+          runRealtimeReport(accessToken, propId, [{ name: "unifiedScreenName" }], [{ name: "activeUsers" }, { name: "screenPageViews" }]),
           runRealtimeReport(accessToken, propId, [{ name: "source" }], [{ name: "activeUsers" }]),
           runRealtimeReport(accessToken, propId, [{ name: "country" }], [{ name: "activeUsers" }]),
           runRealtimeReport(accessToken, propId, [{ name: "deviceCategory" }], [{ name: "activeUsers" }]),

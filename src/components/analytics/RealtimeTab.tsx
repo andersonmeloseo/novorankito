@@ -111,7 +111,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
           <AnalyticsDataTable
             columns={["Página", "Usuários Ativos", "Views"]}
             rows={byPage.map((p: any) => [
-              p.unifiedPagePathScreen || "—",
+              p.unifiedScreenName || "—",
               (p.activeUsers || 0).toLocaleString(),
               (p.screenPageViews || 0).toLocaleString(),
             ])}
