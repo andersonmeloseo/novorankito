@@ -24,7 +24,7 @@ export function InsightCard({ severity, title, description, impact, action }: In
   const Icon = config.icon;
 
   return (
-    <Card className={cn("p-4 border hover:shadow-md transition-all duration-200", config.border)}>
+    <Card className={cn("p-4 border card-hover", config.border)}>
       <div className="flex items-start gap-3">
         <div className={cn("p-2 rounded-lg shrink-0", config.iconBg)}>
           <Icon className="h-4 w-4" />

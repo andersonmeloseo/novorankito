@@ -19,7 +19,7 @@ export function KpiCard({ label, value, change, prefix, suffix }: KpiCardProps) 
       : value.toString();
 
   return (
-    <Card className="p-4 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group relative overflow-hidden">
+    <Card className="p-4 card-hover group relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative">
         <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">{label}</p>
