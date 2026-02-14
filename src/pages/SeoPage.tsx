@@ -495,82 +495,83 @@ export default function SeoPage() {
                   </Card>
                 </AnimatedContainer>
 
-                {/* Device distribution pie - below trend chart */}
-                <AnimatedContainer delay={0.15}>
-                  <Card className="p-5">
-                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
-                      <Monitor className="h-4 w-4 text-primary" />
-                      Cliques por Dispositivo
-                    </h3>
-                    <div className="h-[260px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={deviceDistribution}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={55}
-                            outerRadius={90}
-                            paddingAngle={3}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
-                          >
-                            {deviceDistribution.map((_, i) => (
-                              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                              fontSize: 12,
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-                </AnimatedContainer>
-              </>
-            )}
+                {/* Device distribution + Top queries side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AnimatedContainer delay={0.15}>
+                    <Card className="p-5 h-full">
+                      <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
+                        <Monitor className="h-4 w-4 text-primary" />
+                        Cliques por Dispositivo
+                      </h3>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={deviceDistribution}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={90}
+                              paddingAngle={3}
+                              dataKey="value"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              labelLine={false}
+                            >
+                              {deviceDistribution.map((_, i) => (
+                                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                background: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "8px",
+                                fontSize: 12,
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Card>
+                  </AnimatedContainer>
 
-            {/* Top queries bar chart */}
-            {hasData && queryRows.length > 0 && (
-              <AnimatedContainer delay={0.2}>
-                <Card className="p-5">
-                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Top 10 Consultas por Cliques
-                  </h3>
-                  <div className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={queryRows.slice(0, 10)} layout="vertical" margin={{ left: 120 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          tick={{ fontSize: 10 }}
-                          stroke="hsl(var(--muted-foreground))"
-                          width={110}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            fontSize: 12,
-                          }}
-                        />
-                        <Bar dataKey="clicks" name="Cliques" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
-                        <Bar dataKey="impressions" name="Impressões" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-              </AnimatedContainer>
+                  {queryRows.length > 0 && (
+                    <AnimatedContainer delay={0.2}>
+                      <Card className="p-5 h-full">
+                        <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
+                          <FileText className="h-4 w-4 text-primary" />
+                          Top 10 Consultas por Cliques
+                        </h3>
+                        <div className="h-[300px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={queryRows.slice(0, 10)} layout="vertical" margin={{ left: 10, right: 20 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                              <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                              <YAxis
+                                type="category"
+                                dataKey="name"
+                                tick={{ fontSize: 9 }}
+                                stroke="hsl(var(--muted-foreground))"
+                                width={140}
+                                tickFormatter={(v: string) => v.length > 22 ? v.slice(0, 20) + "…" : v}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  background: "hsl(var(--card))",
+                                  border: "1px solid hsl(var(--border))",
+                                  borderRadius: "8px",
+                                  fontSize: 12,
+                                }}
+                              />
+                              <Bar dataKey="clicks" name="Cliques" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </Card>
+                    </AnimatedContainer>
+                  )}
+                </div>
+              </>
             )}
 
             {!hasData && (
