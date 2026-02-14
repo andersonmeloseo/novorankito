@@ -12,7 +12,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid,
   Treemap,
 } from "recharts";
-import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin } from "lucide-react";
+import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame } from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
@@ -94,8 +94,16 @@ export function AllEventsTab() {
   const totalEvents = pluginEvents.length;
   const uniquePages = new Set(pluginEvents.map(e => e.page_url)).size;
   const uniqueVisitors = new Set(pluginEvents.map(e => e.session_id)).size;
-  const mobileEvents = pluginEvents.filter(e => e.device === "mobile").length;
-  const mobilePct = totalEvents > 0 ? ((mobileEvents / totalEvents) * 100).toFixed(1) : "0";
+  // Peak activity from heatmap
+  const peakInfo = (() => {
+    let maxVal = 0, peakDay = "", peakHour = 0;
+    heatmapData.forEach(row => {
+      row.hours.forEach(cell => {
+        if (cell.value > maxVal) { maxVal = cell.value; peakDay = row.day; peakHour = cell.hour; }
+      });
+    });
+    return { label: `${peakDay} ${peakHour}h`, count: maxVal };
+  })();
   const lastEvent = pluginEvents.length > 0 ? pluginEvents.reduce((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b) : null;
   const lastEventLabel = lastEvent ? (EVENT_LABELS[lastEvent.event_type] || lastEvent.event_type) : "—";
   const lastLocation = lastEvent ? `${lastEvent.city}, ${lastEvent.state}` : "—";
@@ -144,7 +152,7 @@ export function AllEventsTab() {
         <SparkKpi label="Total Eventos" value={totalEvents} change={15.8} sparkData={generateSparkline(12, 100, 30)} color="hsl(var(--primary))" icon={Activity} />
         <SparkKpi label="Visitantes Únicos" value={uniqueVisitors} change={9.2} sparkData={generateSparkline(12, 40, 12)} color="hsl(var(--info))" icon={Eye} />
         <SparkKpi label="Páginas Únicas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
-        <SparkKpi label="Mobile" value={mobilePct} suffix="%" change={4.1} sparkData={generateSparkline(12, 60, 10)} color="hsl(var(--success))" icon={Smartphone} />
+        <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count} eventos)`} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Flame} hideSparkline hideBadge smallValue />
         <SparkKpi label="Último Evento" value={lastEventLabel} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Zap} hideSparkline hideBadge smallValue />
         <SparkKpi label="Última Localização" value={lastLocation} change={0} sparkData={[]} color="hsl(var(--chart-8))" icon={MapPin} hideSparkline hideBadge smallValue />
       </StaggeredGrid>
