@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, CreditCard, FolderOpen,
   Plug, ShieldCheck, ScrollText, Settings, Bell, Flag,
   ArrowLeft, Search, ChevronDown, Plus, Activity,
-  Megaphone, FlaskConical, BarChart3
+  Megaphone, FlaskConical, BarChart3, Key
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ const adminSections = [
   {
     label: "Sistema",
     items: [
+      { title: "APIs & Chaves", url: "/admin/apis", icon: Key },
       { title: "Integrações", url: "/admin/integrations", icon: Plug },
       { title: "Segurança", url: "/admin/security", icon: ShieldCheck },
       { title: "Logs & Monitoramento", url: "/admin/logs", icon: ScrollText },
