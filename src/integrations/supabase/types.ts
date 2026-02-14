@@ -1203,6 +1203,143 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_deliveries: {
+        Row: {
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          full_report: string | null
+          id: string
+          pdf_url: string | null
+          project_id: string
+          recipient: string
+          report_summary: string | null
+          schedule_id: string
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          full_report?: string | null
+          id?: string
+          pdf_url?: string | null
+          project_id: string
+          recipient: string
+          report_summary?: string | null
+          schedule_id: string
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          full_report?: string | null
+          id?: string
+          pdf_url?: string | null
+          project_id?: string
+          recipient?: string
+          report_summary?: string | null
+          schedule_id?: string
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_deliveries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_deliveries_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_schedules: {
+        Row: {
+          created_at: string
+          email_recipients: string[]
+          enabled: boolean
+          id: string
+          last_run_at: string | null
+          last_run_status: string | null
+          next_run_at: string | null
+          notify_email: boolean
+          notify_whatsapp: boolean
+          owner_id: string
+          project_id: string
+          schedule_days: number[]
+          schedule_time: string
+          send_pdf: boolean
+          send_summary: boolean
+          timezone: string
+          updated_at: string
+          whatsapp_recipients: string[]
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_recipients?: string[]
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          notify_email?: boolean
+          notify_whatsapp?: boolean
+          owner_id: string
+          project_id: string
+          schedule_days?: number[]
+          schedule_time?: string
+          send_pdf?: boolean
+          send_summary?: boolean
+          timezone?: string
+          updated_at?: string
+          whatsapp_recipients?: string[]
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          email_recipients?: string[]
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          notify_email?: boolean
+          notify_whatsapp?: boolean
+          owner_id?: string
+          project_id?: string
+          schedule_days?: number[]
+          schedule_time?: string
+          send_pdf?: boolean
+          send_summary?: boolean
+          timezone?: string
+          updated_at?: string
+          whatsapp_recipients?: string[]
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
