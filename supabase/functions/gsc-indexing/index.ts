@@ -54,27 +54,32 @@ serve(async (req) => {
 
     // ─── Action: "inventory" — site_urls + index_coverage + last indexing request ───
     if (action === "inventory") {
-      // Get all site_urls
-      const { data: siteUrls, error: urlErr } = await supabase
-        .from("site_urls")
-        .select("id, url, meta_title, status, url_type, url_group, priority, discovered_at, last_crawl")
-        .eq("project_id", project_id)
-        .order("url", { ascending: true })
-        .limit(1000);
-      if (urlErr) throw urlErr;
+      // Recursive fetch helper to bypass 1000-row limit
+      async function fetchAll(table: string, select: string, filters: Record<string, string>, orderCol = "url") {
+        const PAGE = 1000;
+        let allData: any[] = [];
+        let from = 0;
+        while (true) {
+          let q = supabase.from(table).select(select).order(orderCol, { ascending: true }).range(from, from + PAGE - 1);
+          for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+          const { data, error } = await q;
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          allData = allData.concat(data);
+          if (data.length < PAGE) break;
+          from += PAGE;
+        }
+        return allData;
+      }
 
-      // Get index_coverage for this project
-      const { data: coverage } = await supabase
-        .from("index_coverage")
-        .select("url, verdict, coverage_state, indexing_state, last_crawl_time, crawled_as, page_fetch_state, robotstxt_state, inspected_at")
-        .eq("project_id", project_id);
+      // Get all site_urls (recursive)
+      const siteUrls = await fetchAll("site_urls", "id, url, meta_title, status, url_type, url_group, priority, discovered_at, last_crawl", { project_id });
 
-      // Get latest indexing request per URL
-      const { data: indexingReqs } = await supabase
-        .from("indexing_requests")
-        .select("url, status, submitted_at, request_type")
-        .eq("project_id", project_id)
-        .order("submitted_at", { ascending: false });
+      // Get index_coverage for this project (recursive)
+      const coverage = await fetchAll("index_coverage", "url, verdict, coverage_state, indexing_state, last_crawl_time, crawled_as, page_fetch_state, robotstxt_state, inspected_at", { project_id });
+
+      // Get latest indexing request per URL (recursive)
+      const indexingReqs = await fetchAll("indexing_requests", "url, status, submitted_at, request_type", { project_id }, "submitted_at");
 
       // Build maps
       const coverageMap = new Map((coverage || []).map((c: any) => [c.url, c]));
