@@ -95,7 +95,6 @@ export default function IndexingPage() {
 
   // ─── Filtered Inventory ───
   const filteredInventory = useMemo(() => {
-    setInvPage(0);
     return inventory.filter(u => {
       if (searchFilter && !u.url.toLowerCase().includes(searchFilter.toLowerCase()) && !(u.meta_title || "").toLowerCase().includes(searchFilter.toLowerCase())) return false;
       if (verdictFilter === "indexed" && u.verdict !== "PASS") return false;
@@ -112,7 +111,6 @@ export default function IndexingPage() {
 
   // ─── Filtered History ───
   const filteredHistory = useMemo(() => {
-    setHistPage(0);
     if (!requests) return [];
     return requests.filter(r => {
       if (historyStatusFilter !== "all" && r.status !== historyStatusFilter) return false;
@@ -222,10 +220,10 @@ export default function IndexingPage() {
             <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
               <div className="relative flex-1 max-w-xs">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className="pl-8 h-9 text-xs" />
+                <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
               </div>
               {activeTab === "inventory" && (
-                <Select value={verdictFilter} onValueChange={setVerdictFilter}>
+                <Select value={verdictFilter} onValueChange={v => { setVerdictFilter(v); setInvPage(0); }}>
                   <SelectTrigger className="w-[150px] h-9 text-xs">
                     <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
                   </SelectTrigger>
@@ -239,7 +237,7 @@ export default function IndexingPage() {
                 </Select>
               )}
               {activeTab === "history" && (
-                <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                <Select value={historyStatusFilter} onValueChange={v => { setHistoryStatusFilter(v); setHistPage(0); }}>
                   <SelectTrigger className="w-[130px] h-9 text-xs">
                     <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
                   </SelectTrigger>
