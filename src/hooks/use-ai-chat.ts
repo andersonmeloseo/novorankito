@@ -13,7 +13,7 @@ export function useAiChat() {
 
   const sendMessage = useCallback(async (
     input: string,
-    opts?: { agentName?: string; agentInstructions?: string; projectContext?: string }
+    opts?: { agentName?: string; agentInstructions?: string; projectId?: string }
   ) => {
     const userMsg: ChatMessage = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
@@ -33,7 +33,7 @@ export function useAiChat() {
           messages: allMessages,
           agent_name: opts?.agentName,
           agent_instructions: opts?.agentInstructions,
-          project_context: opts?.projectContext,
+          project_id: opts?.projectId,
         }),
       });
 

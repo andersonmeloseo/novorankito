@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_action_history: {
+        Row: {
+          action_detail: string | null
+          action_type: string
+          agent_id: string
+          created_at: string
+          id: string
+          project_id: string
+          result: Json | null
+        }
+        Insert: {
+          action_detail?: string | null
+          action_type: string
+          agent_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          result?: Json | null
+        }
+        Update: {
+          action_detail?: string | null
+          action_type?: string
+          agent_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          result?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_action_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          is_preset: boolean
+          name: string
+          owner_id: string
+          project_id: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          is_preset?: boolean
+          name: string
+          owner_id: string
+          project_id: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          is_preset?: boolean
+          name?: string
+          owner_id?: string
+          project_id?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workflows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agents: {
         Row: {
           avatar_url: string | null
