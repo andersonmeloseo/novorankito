@@ -1,4 +1,4 @@
-import { TopBar } from "@/components/layout/TopBar";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LayoutDashboard, Users, FolderOpen, CreditCard, Activity,
@@ -31,8 +31,8 @@ export default function AdminPage() {
 
   return (
     <>
-      <TopBar title="Super Admin" subtitle="Gestão completa do SaaS — usuários, projetos, billing, sistema e configurações" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeader title="Super Admin" description="Gestão completa do SaaS — usuários, projetos, billing, sistema e configurações" />
         <Tabs defaultValue="dashboard">
           <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="dashboard" className="text-xs gap-1.5"><LayoutDashboard className="h-3 w-3" /> Dashboard</TabsTrigger>
