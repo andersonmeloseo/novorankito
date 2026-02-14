@@ -535,28 +535,58 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
 
 /* ─── Step 3: GSC ─── */
 function StepGSC() {
-  const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected">("credentials");
+  const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected" | "error">("credentials");
   const [connectionName, setConnectionName] = useState("");
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [sites, setSites] = useState<{ siteUrl: string; permissionLevel: string }[]>([]);
+  const [selectedSite, setSelectedSite] = useState("");
+  const [validationError, setValidationError] = useState("");
 
-  const validateJson = () => {
+  const validateAndConnect = async () => {
     if (!connectionName.trim()) {
       setJsonError("Informe um nome para a conexão.");
       return;
     }
     setJsonError("");
+    let parsed: any;
     try {
-      const parsed = JSON.parse(jsonInput.trim());
+      parsed = JSON.parse(jsonInput.trim());
       if (!parsed.client_email || !parsed.private_key || !parsed.project_id) {
         setJsonError("JSON inválido: campos obrigatórios não encontrados (client_email, private_key, project_id).");
         return;
       }
-      setGscStep("validating");
-      setTimeout(() => setGscStep("connected"), 1500);
     } catch {
       setJsonError("JSON inválido. Verifique se copiou o conteúdo correto do arquivo de credenciais.");
+      return;
+    }
+
+    setGscStep("validating");
+    setValidationError("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-gsc", {
+        body: { credentials: { client_email: parsed.client_email, private_key: parsed.private_key } },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || "Falha na verificação");
+
+      const fetchedSites = data.sites || [];
+      if (fetchedSites.length === 0) {
+        setValidationError("Nenhuma propriedade encontrada. Verifique se a Service Account foi adicionada como usuária no Search Console.");
+        setGscStep("error");
+        return;
+      }
+
+      setSites(fetchedSites);
+      setSelectedSite(fetchedSites[0]?.siteUrl || "");
+      setGscStep("connected");
+    } catch (err: any) {
+      console.error("GSC verification failed:", err);
+      setValidationError(err.message || "Erro ao verificar credenciais. Tente novamente.");
+      setGscStep("error");
     }
   };
 
@@ -632,8 +662,8 @@ function StepGSC() {
             </div>
           )}
 
-          <Button onClick={validateJson} disabled={!jsonInput.trim() || !connectionName.trim()} className="w-full gap-2 text-sm">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Validar credenciais
+          <Button onClick={validateAndConnect} disabled={!jsonInput.trim() || !connectionName.trim()} className="w-full gap-2 text-sm">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
           </Button>
 
           <div className="relative">
@@ -650,9 +680,21 @@ function StepGSC() {
         <Card className="p-5">
           <div className="flex flex-col items-center gap-3 py-6">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            <span className="text-sm font-medium text-foreground">Validando credenciais...</span>
-            <p className="text-xs text-muted-foreground">Verificando acesso ao Google Search Console</p>
+            <span className="text-sm font-medium text-foreground">Verificando conexão com o Search Console...</span>
+            <p className="text-xs text-muted-foreground">Autenticando e buscando propriedades disponíveis</p>
           </div>
+        </Card>
+      )}
+
+      {gscStep === "error" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+            <span className="text-xs text-destructive">{validationError}</span>
+          </div>
+          <Button variant="outline" onClick={() => setGscStep("credentials")} className="w-full gap-2 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" /> Voltar e tentar novamente
+          </Button>
         </Card>
       )}
 
@@ -661,24 +703,27 @@ function StepGSC() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
               <CheckCircle2 className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium text-success">Credenciais validadas e conectado com sucesso!</span>
+              <span className="text-sm font-medium text-success">Conexão verificada com sucesso!</span>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Propriedade selecionada</Label>
-              <Select defaultValue="sc-domain:acme.com">
+              <Label className="text-xs font-medium">Propriedade ({sites.length} encontrada{sites.length !== 1 ? "s" : ""})</Label>
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sc-domain:acme.com">sc-domain:acme.com</SelectItem>
-                  <SelectItem value="https://acme.com">https://acme.com/</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.siteUrl} value={s.siteUrl}>
+                      {s.siteUrl}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Status", value: "Verificado" },
-                { label: "Dados disponíveis", value: "16 meses" },
-                { label: "Permissão", value: "Leitura" },
-                { label: "Última sincronização", value: "Agora" },
+                { label: "Conexão", value: connectionName },
+                { label: "Permissão", value: sites.find(s => s.siteUrl === selectedSite)?.permissionLevel || "—" },
+                { label: "Propriedades", value: `${sites.length}` },
+                { label: "Status", value: "Conectado" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
                   <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
