@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import {
   generateConversionsHeatmap,
@@ -15,13 +14,12 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
-import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Users, Clock, Layers, Globe, Smartphone, Monitor } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// ── Filter options ──
 const PERIOD_OPTIONS = [
   { value: "1", label: "Hoje" },
   { value: "7", label: "7 dias" },
@@ -65,9 +63,7 @@ const STATUS_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "bounce", label: "Bounce" },
   { value: "engaged", label: "Engajada" },
-  { value: "converted", label: "Conversão" },
 ];
-
 const LANDING_PAGE_OPTIONS = [
   { value: "all", label: "Todas" },
   ...Array.from(new Set(mockSessionsDetailed.map((s) => s.landing_page))).sort().map((p) => ({ value: p, label: p })),
@@ -81,37 +77,89 @@ const CITY_OPTIONS = [
   ...Array.from(new Set(mockSessionsDetailed.map((s) => s.city))).sort().map((c) => ({ value: c, label: c })),
 ];
 
-// ── Color maps ──
+const VIVID_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--success))",
+  "hsl(var(--info))",
+  "hsl(var(--warning))",
+  "hsl(var(--chart-5))",
+  "hsl(250 85% 72%)",
+  "hsl(180 60% 50%)",
+];
+
 const SOURCE_COLORS: Record<string, string> = {
   google: "hsl(var(--primary))",
   direct: "hsl(var(--success))",
   facebook: "hsl(var(--info))",
   instagram: "hsl(var(--warning))",
   bing: "hsl(var(--chart-5))",
-  referral: "hsl(var(--destructive))",
-  twitter: "hsl(var(--muted-foreground))",
+  referral: "hsl(250 85% 72%)",
+  twitter: "hsl(180 60% 50%)",
 };
-const PIE_COLORS = Object.values(SOURCE_COLORS);
 
 const STATUS_BADGE: Record<string, string> = {
-  bounce: "bg-destructive/15 text-destructive border-destructive/30",
-  engaged: "bg-primary/15 text-primary border-primary/30",
-  converted: "bg-success/15 text-success border-success/30",
+  bounce: "bg-warning/15 text-warning border-warning/30",
+  engaged: "bg-success/15 text-success border-success/30",
 };
 
 const heatmapData = generateConversionsHeatmap();
 
-// ── Derived chart data ──
+// ── Sparkline ──
+function generateSparkline(length = 12, base = 50, variance = 20): number[] {
+  return Array.from({ length }, () => Math.max(0, base + Math.floor((Math.random() - 0.3) * variance)));
+}
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(...data, 1);
+  const w = 80;
+  const h = 24;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(" ");
+  return (
+    <svg width={w} height={h} className="ml-auto">
+      <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon: Icon }: {
+  label: string; value: string | number; change: number; suffix?: string; prefix?: string;
+  sparkData: number[]; color: string; icon?: React.ElementType;
+}) {
+  const isPositive = change >= 0;
+  return (
+    <Card className="p-3.5 card-hover group relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+          </div>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
+            {isPositive ? "+" : ""}{change}%
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-2">
+          <span className="text-xl font-bold text-foreground font-display tracking-tight">
+            {prefix}{value}{suffix}
+          </span>
+          <Sparkline data={sparkData} color={color} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Derived data ──
 const sessionsByDay = (() => {
-  const map = new Map<string, { sessions: number; bounces: number; conversions: number; engaged: number; totalDuration: number }>();
+  const map = new Map<string, { sessions: number; bounces: number; engaged: number; totalDuration: number }>();
   mockSessionsDetailed.forEach((s) => {
     const day = format(new Date(s.started_at), "dd/MMM");
-    const entry = map.get(day) || { sessions: 0, bounces: 0, conversions: 0, engaged: 0, totalDuration: 0 };
+    const entry = map.get(day) || { sessions: 0, bounces: 0, engaged: 0, totalDuration: 0 };
     entry.sessions++;
     entry.totalDuration += s.duration_sec;
     if (s.is_bounce) entry.bounces++;
     else entry.engaged++;
-    if (s.converted) entry.conversions++;
     map.set(day, entry);
   });
   return Array.from(map.entries()).map(([date, v]) => ({
@@ -123,7 +171,6 @@ const sessionsByDay = (() => {
   }));
 })();
 
-// Duration distribution buckets
 const durationDistribution = (() => {
   const buckets = [
     { label: "0-10s", min: 0, max: 10, count: 0 },
@@ -141,7 +188,6 @@ const durationDistribution = (() => {
   return buckets.map(({ label, count }) => ({ label, count }));
 })();
 
-// Quality by device
 const qualityByDevice = (() => {
   const map = new Map<string, { total: number; bounces: number; totalDuration: number; totalPages: number }>();
   mockSessionsDetailed.forEach((s) => {
@@ -155,19 +201,19 @@ const qualityByDevice = (() => {
   return Array.from(map.entries()).map(([device, v]) => ({
     device: device.charAt(0).toUpperCase() + device.slice(1),
     bounceRate: Math.round((v.bounces / v.total) * 100),
+    engagementRate: Math.round(((v.total - v.bounces) / v.total) * 100),
     avgDuration: Math.round(v.totalDuration / v.total),
     pagesPerSession: Number((v.totalPages / v.total).toFixed(1)),
+    total: v.total,
   }));
 })();
 
-// Quality by source (engagement rate + avg duration)
 const qualityBySource = (() => {
-  const map = new Map<string, { total: number; engaged: number; totalDuration: number; converted: number }>();
+  const map = new Map<string, { total: number; engaged: number; totalDuration: number }>();
   mockSessionsDetailed.forEach((s) => {
-    const entry = map.get(s.source) || { total: 0, engaged: 0, totalDuration: 0, converted: 0 };
+    const entry = map.get(s.source) || { total: 0, engaged: 0, totalDuration: 0 };
     entry.total++;
     if (!s.is_bounce) entry.engaged++;
-    if (s.converted) entry.converted++;
     entry.totalDuration += s.duration_sec;
     map.set(s.source, entry);
   });
@@ -175,8 +221,8 @@ const qualityBySource = (() => {
     .map(([source, v]) => ({
       source: source.charAt(0).toUpperCase() + source.slice(1),
       engagementRate: Math.round((v.engaged / v.total) * 100),
-      conversionRate: Math.round((v.converted / v.total) * 100),
       avgDuration: Math.round(v.totalDuration / v.total),
+      total: v.total,
     }))
     .sort((a, b) => b.engagementRate - a.engagementRate);
 })();
@@ -202,7 +248,12 @@ const sourcePieData = (() => {
   return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
 })();
 
-// ── Table config ──
+const sessionsByCity = (() => {
+  const map = new Map<string, number>();
+  mockSessionsDetailed.forEach((s) => map.set(s.city, (map.get(s.city) || 0) + 1));
+  return Array.from(map.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 8);
+})();
+
 const PAGE_SIZE = 20;
 type SortKey = keyof MockSession;
 type SortDir = "asc" | "desc";
@@ -228,7 +279,6 @@ function formatDuration(sec: number) {
 
 function getSessionStatus(s: MockSession): string {
   if (s.is_bounce) return "bounce";
-  if (s.converted) return "converted";
   return "engaged";
 }
 
@@ -267,18 +317,10 @@ export function SessionsTab() {
     if (landingPageFilter !== "all") data = data.filter((s) => s.landing_page === landingPageFilter);
     if (exitPageFilter !== "all") data = data.filter((s) => s.exit_page === exitPageFilter);
     if (cityFilter !== "all") data = data.filter((s) => s.city === cityFilter);
-    if (statusFilter !== "all") {
-      data = data.filter((s) => getSessionStatus(s) === statusFilter);
-    }
+    if (statusFilter !== "all") data = data.filter((s) => getSessionStatus(s) === statusFilter);
     if (search) {
       const q = search.toLowerCase();
-      data = data.filter((s) =>
-        s.landing_page.toLowerCase().includes(q) ||
-        s.exit_page.toLowerCase().includes(q) ||
-        s.city.toLowerCase().includes(q) ||
-        s.source.toLowerCase().includes(q) ||
-        s.session_id.toLowerCase().includes(q)
-      );
+      data = data.filter((s) => s.landing_page.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) || s.source.toLowerCase().includes(q));
     }
     return data;
   }, [deviceFilter, sourceFilter, mediumFilter, browserFilter, landingPageFilter, exitPageFilter, cityFilter, statusFilter, search]);
@@ -303,7 +345,7 @@ export function SessionsTab() {
     setPage(1);
   }, [sortKey]);
 
-  // ── Quality-focused KPIs with period comparison ──
+  // KPIs
   const totalSessions = filtered.length;
   const avgDuration = totalSessions > 0 ? Math.round(filtered.reduce((s, r) => s + r.duration_sec, 0) / totalSessions) : 0;
   const bounceCount = filtered.filter((s) => s.is_bounce).length;
@@ -311,11 +353,9 @@ export function SessionsTab() {
   const engagedCount = filtered.filter((s) => !s.is_bounce).length;
   const engagementRate = totalSessions > 0 ? Number(((engagedCount / totalSessions) * 100).toFixed(1)) : 0;
   const avgPages = totalSessions > 0 ? Number((filtered.reduce((s, r) => s + r.pages_viewed, 0) / totalSessions).toFixed(1)) : 0;
-  const conversionRate = totalSessions > 0 ? Number(((filtered.filter((s) => s.converted).length / totalSessions) * 100).toFixed(1)) : 0;
-  const newUsersPercent = 62.4; // Simulated
+  const newUsersPercent = 62.4;
   const uniqueCities = new Set(filtered.map((s) => s.city)).size;
 
-  // Export helpers
   const exportData = useCallback((fmt: "csv" | "json" | "xlsx") => {
     const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status"];
     const rows = sorted.map((s) => [
@@ -324,99 +364,45 @@ export function SessionsTab() {
       s.source, s.medium, s.device, s.browser, s.city, getSessionStatus(s),
     ]);
     if (fmt === "json") {
-      const blob = new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" });
-      downloadBlob(blob, "sessoes.json");
+      downloadBlob(new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" }), "sessoes.json");
     } else {
       const csvContent = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      downloadBlob(blob, "sessoes.csv");
+      downloadBlob(new Blob([csvContent], { type: "text/csv;charset=utf-8;" }), "sessoes.csv");
     }
   }, [sorted]);
 
-  const statusLabel: Record<string, string> = { bounce: "Bounce", engaged: "Engajada", converted: "Conversão" };
+  const statusLabel: Record<string, string> = { bounce: "Bounce", engaged: "Engajada" };
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Filter Bar */}
+      {/* Period selector */}
       <Card className="p-3 sm:p-4">
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {PERIOD_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
-            <SelectContent>
-              {SOURCE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={mediumFilter} onValueChange={(v) => { setMediumFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Medium" /></SelectTrigger>
-            <SelectContent>
-              {MEDIUM_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={deviceFilter} onValueChange={(v) => { setDeviceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
-            <SelectContent>
-              {DEVICE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={browserFilter} onValueChange={(v) => { setBrowserFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Browser" /></SelectTrigger>
-            <SelectContent>
-              {BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={landingPageFilter} onValueChange={(v) => { setLandingPageFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Landing Page" /></SelectTrigger>
-            <SelectContent>
-              {LANDING_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={exitPageFilter} onValueChange={(v) => { setExitPageFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Página Saída" /></SelectTrigger>
-            <SelectContent>
-              {EXIT_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Cidade" /></SelectTrigger>
-            <SelectContent>
-              {CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <TrendingUp className="h-3 w-3 text-success" /> vs período anterior ({period}d)
+          </Badge>
         </div>
       </Card>
 
-      {/* Period comparison badge */}
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-[10px] gap-1">
-          <TrendingUp className="h-3 w-3 text-success" /> Comparando com período anterior ({period}d)
-        </Badge>
-      </div>
-
-      {/* Quality-focused KPIs */}
+      {/* KPIs with Sparklines */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KpiCard label="Total Sessões" value={totalSessions} change={9.7} />
-        <KpiCard label="Taxa Engajamento" value={engagementRate} change={4.2} suffix="%" />
-        <KpiCard label="Duração Média" value={avgDuration} change={5.3} suffix="s" />
-        <KpiCard label="Páginas/Sessão" value={avgPages} change={3.8} />
-        <KpiCard label="Taxa Rejeição" value={bounceRate} change={-2.1} suffix="%" />
-        <KpiCard label="Taxa Conversão" value={conversionRate} change={8.4} suffix="%" />
-        <KpiCard label="Novos Usuários" value={newUsersPercent} change={-1.3} suffix="%" />
-        <KpiCard label="Cidades" value={uniqueCities} change={11.2} />
+        <SparkKpi label="Total Sessões" value={totalSessions} change={9.7} sparkData={generateSparkline(12, 80, 20)} color="hsl(var(--primary))" icon={Users} />
+        <SparkKpi label="Taxa Engajamento" value={engagementRate} change={4.2} suffix="%" sparkData={generateSparkline(12, 70, 10)} color="hsl(var(--success))" />
+        <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} change={5.3} sparkData={generateSparkline(12, 120, 40)} color="hsl(var(--info))" icon={Clock} />
+        <SparkKpi label="Páginas/Sessão" value={avgPages} change={3.8} sparkData={generateSparkline(12, 4, 2)} color="hsl(var(--warning))" icon={Layers} />
+        <SparkKpi label="Taxa Rejeição" value={bounceRate} change={-2.1} suffix="%" sparkData={generateSparkline(12, 30, 8)} color="hsl(var(--warning))" />
+        <SparkKpi label="Novos Usuários" value={newUsersPercent} change={-1.3} suffix="%" sparkData={generateSparkline(12, 62, 8)} color="hsl(var(--chart-5))" />
+        <SparkKpi label="Cidades" value={uniqueCities} change={11.2} sparkData={generateSparkline(12, 6, 3)} color="hsl(var(--info))" icon={Globe} />
+        <SparkKpi label="Mobile" value={totalSessions > 0 ? Math.round((filtered.filter((s) => s.device === "mobile").length / totalSessions) * 100) : 0} change={3.5} suffix="%" sparkData={generateSparkline(12, 55, 10)} color="hsl(var(--success))" icon={Smartphone} />
       </StaggeredGrid>
 
-      {/* Quality Trend Chart - Engagement & Bounce over time */}
+      {/* Engagement trend */}
       <AnimatedContainer>
         <Card className="p-5">
           <h3 className="text-sm font-medium text-foreground mb-4">Qualidade do Acesso ao Longo do Tempo</h3>
@@ -424,13 +410,13 @@ export function SessionsTab() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sessionsByDay}>
                 <defs>
-                  <linearGradient id="engGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="engGrad2" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="bounceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                  <linearGradient id="bounceGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--warning))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--warning))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -438,18 +424,18 @@ export function SessionsTab() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} unit="%" />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="engagementRate" stroke="hsl(var(--success))" fill="url(#engGrad)" strokeWidth={2} name="Engajamento %" />
-                <Area type="monotone" dataKey="bounceRate" stroke="hsl(var(--destructive))" fill="url(#bounceGrad)" strokeWidth={2} name="Rejeição %" />
+                <Area type="monotone" dataKey="engagementRate" stroke="hsl(var(--success))" fill="url(#engGrad2)" strokeWidth={2} name="Engajamento %" />
+                <Area type="monotone" dataKey="bounceRate" stroke="hsl(var(--warning))" fill="url(#bounceGrad2)" strokeWidth={2} name="Rejeição %" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Sessions + Conversions Line */}
+      {/* Sessions line */}
       <AnimatedContainer delay={0.05}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Sessões, Bounces e Conversões</h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Sessões e Engajamento</h3>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sessionsByDay}>
@@ -459,15 +445,15 @@ export function SessionsTab() {
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="sessions" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Sessões" />
-                <Line type="monotone" dataKey="bounces" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} name="Bounces" />
-                <Line type="monotone" dataKey="conversions" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Conversões" />
+                <Line type="monotone" dataKey="engaged" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Engajadas" />
+                <Line type="monotone" dataKey="bounces" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Bounces" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Row: Duration Distribution + Quality by Device */}
+      {/* Duration distribution + Radar device */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
@@ -479,7 +465,11 @@ export function SessionsTab() {
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Sessões" />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Sessões">
+                    {durationDistribution.map((_, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -488,25 +478,25 @@ export function SessionsTab() {
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Dispositivo</h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Engajamento por Dispositivo</h3>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={qualityByDevice}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="device" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={qualityByDevice}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="device" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <Radar name="Engajamento %" dataKey="engagementRate" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.25} strokeWidth={2} />
+                  <Radar name="Págs/Sessão" dataKey="pagesPerSession" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.15} strokeWidth={2} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="bounceRate" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name="Rejeição %" />
-                  <Bar dataKey="pagesPerSession" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} name="Págs/Sessão" />
-                </BarChart>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </RadarChart>
               </ResponsiveContainer>
             </div>
           </Card>
         </AnimatedContainer>
       </div>
 
-      {/* Row: Quality by Source + Source Pie */}
+      {/* Source quality + Source pie */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.2}>
           <Card className="p-5">
@@ -519,8 +509,11 @@ export function SessionsTab() {
                   <YAxis dataKey="source" type="category" width={80} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="engagementRate" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} name="Engajamento %" />
-                  <Bar dataKey="conversionRate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Conversão %" />
+                  <Bar dataKey="engagementRate" radius={[0, 6, 6, 0]} name="Engajamento %">
+                    {qualityBySource.map((_, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -534,10 +527,9 @@ export function SessionsTab() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={sourcePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} strokeWidth={2} stroke="hsl(var(--card))">
-                    {sourcePieData.map((entry, i) => {
-                      const color = SOURCE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length];
-                      return <Cell key={i} fill={color} />;
-                    })}
+                    {sourcePieData.map((entry, i) => (
+                      <Cell key={i} fill={SOURCE_COLORS[entry.name] || VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -548,28 +540,53 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Top Landing Pages with quality metrics */}
-      <AnimatedContainer delay={0.3}>
-        <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Top Landing Pages (Sessões × Bounce Rate)</h3>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topLandingPages} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis dataKey="url" type="category" width={180} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Sessões" />
-                <Bar dataKey="bounceRate" fill="hsl(var(--destructive) / 0.7)" radius={[0, 4, 4, 0]} name="Bounce %" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      {/* Top Landing Pages + City proximity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AnimatedContainer delay={0.3}>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Top Landing Pages</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topLandingPages} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis dataKey="url" type="category" width={160} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} name="Sessões">
+                    {topLandingPages.map((_, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={0.35}>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Proximidade por Cidade</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sessionsByCity}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="city" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} angle={-25} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Sessões">
+                    {sessionsByCity.map((_, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
+      </div>
 
       {/* Heatmap */}
-      <AnimatedContainer delay={0.35}>
+      <AnimatedContainer delay={0.4}>
         <Card className="p-5">
           <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
             <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Sessões (Dia × Hora)
@@ -603,44 +620,68 @@ export function SessionsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Detailed Sessions Table */}
-      <AnimatedContainer delay={0.4}>
+      {/* Detailed Table with filters inside */}
+      <AnimatedContainer delay={0.45}>
         <Card className="overflow-hidden">
-          <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-medium text-foreground">Sessões Detalhadas</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} sessões
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar página, cidade, source..."
-                  className="pl-8 h-8 text-xs w-[220px]"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
+          <div className="px-4 py-3 border-b border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Sessões Detalhadas</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length}
+                </p>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                    <Download className="h-3.5 w-3.5" /> Exportar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => exportData("csv")} className="text-xs gap-2">
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportData("json")} className="text-xs gap-2">
-                    <FileJson className="h-3.5 w-3.5" /> JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportData("xlsx")} className="text-xs gap-2">
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> Excel (CSV)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Buscar..." className="pl-8 h-8 text-xs w-[180px]" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"><Download className="h-3.5 w-3.5" /> Exportar</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportData("csv")} className="text-xs gap-2"><FileSpreadsheet className="h-3.5 w-3.5" /> CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData("json")} className="text-xs gap-2"><FileJson className="h-3.5 w-3.5" /> JSON</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData("xlsx")} className="text-xs gap-2"><FileSpreadsheet className="h-3.5 w-3.5" /> Excel</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            {/* Filters inside table card */}
+            <div className="flex flex-wrap gap-2">
+              <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Source" /></SelectTrigger>
+                <SelectContent>{SOURCE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={mediumFilter} onValueChange={(v) => { setMediumFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Medium" /></SelectTrigger>
+                <SelectContent>{MEDIUM_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={deviceFilter} onValueChange={(v) => { setDeviceFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Device" /></SelectTrigger>
+                <SelectContent>{DEVICE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={browserFilter} onValueChange={(v) => { setBrowserFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
+                <SelectContent>{BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>{STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={landingPageFilter} onValueChange={(v) => { setLandingPageFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Landing" /></SelectTrigger>
+                <SelectContent>{LANDING_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={exitPageFilter} onValueChange={(v) => { setExitPageFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Saída" /></SelectTrigger>
+                <SelectContent>{EXIT_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+                <SelectContent>{CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -648,14 +689,10 @@ export function SessionsTab() {
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   {SORTABLE_COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap"
-                      onClick={() => handleSort(col.key)}
-                    >
+                    <th key={col.key} className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap" onClick={() => handleSort(col.key)}>
                       <span className="inline-flex items-center gap-1">
                         {col.label}
-                        <ArrowUpDown className={`h-3 w-3 ${sortKey === col.key ? "opacity-100" : "opacity-30"}`} />
+                        <ArrowUpDown className={`h-3 w-3 ${sortKey === col.key ? "text-primary" : "text-muted-foreground/40"}`} />
                       </span>
                     </th>
                   ))}
@@ -667,9 +704,7 @@ export function SessionsTab() {
                   const status = getSessionStatus(s);
                   return (
                     <tr key={s.session_id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
-                        {format(new Date(s.started_at), "dd/MM HH:mm")}
-                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(s.started_at), "dd/MM HH:mm")}</td>
                       <td className="px-3 py-2 text-[11px] font-medium text-foreground">{formatDuration(s.duration_sec)}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground text-center">{s.pages_viewed}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate">{s.landing_page}</td>
@@ -691,26 +726,17 @@ export function SessionsTab() {
               </tbody>
             </table>
           </div>
-          {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <span className="text-[11px] text-muted-foreground">{sorted.length} sessões</span>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const start = Math.max(1, Math.min(page - 2, totalPages - 4));
                 const p = start + i;
                 if (p > totalPages) return null;
-                return (
-                  <Button key={p} variant={p === page ? "default" : "ghost"} size="icon" className="h-7 w-7 text-[11px]" onClick={() => setPage(p)}>
-                    {p}
-                  </Button>
-                );
+                return <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-7 w-7 p-0 text-[11px]" onClick={() => setPage(p)}>{p}</Button>;
               })}
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
             </div>
           </div>
         </Card>

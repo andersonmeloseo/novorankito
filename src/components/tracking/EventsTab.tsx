@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import {
   mockTrackingEventsDetailed,
@@ -14,9 +13,10 @@ import {
 } from "@/lib/mock-data";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
+  BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  Treemap,
 } from "recharts";
-import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp } from "lucide-react";
+import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Activity, Zap, Globe, Smartphone, Monitor, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -48,12 +48,6 @@ const DEVICE_OPTIONS = [
   { value: "tablet", label: "Tablet" },
 ];
 
-const CONVERSION_OPTIONS = [
-  { value: "all", label: "Todos" },
-  { value: "conversion", label: "Conversões" },
-  { value: "micro_conversion", label: "Micro conversões" },
-];
-
 const BROWSER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "Chrome", label: "Chrome" },
@@ -65,10 +59,6 @@ const BROWSER_OPTIONS = [
 const PAGE_OPTIONS = [
   { value: "all", label: "Todas" },
   ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.page_url))).sort().map((p) => ({ value: p, label: p })),
-];
-const GOAL_OPTIONS = [
-  { value: "all", label: "Todas" },
-  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.goal))).sort().map((g) => ({ value: g, label: g })),
 ];
 const CTA_OPTIONS = [
   { value: "all", label: "Todos" },
@@ -83,130 +73,181 @@ const STATE_OPTIONS = [
   ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.location_state))).sort().map((s) => ({ value: s, label: s })),
 ];
 
+// Vibrant color palette — no red, no gray
+const VIVID_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--success))",
+  "hsl(var(--info))",
+  "hsl(var(--warning))",
+  "hsl(var(--chart-5))",
+  "hsl(250 85% 72%)",
+  "hsl(180 60% 50%)",
+];
+
 const EVENT_TYPE_COLORS: Record<string, string> = {
   whatsapp_click: "hsl(var(--success))",
   form_submit: "hsl(var(--primary))",
   phone_call: "hsl(var(--warning))",
-  page_view: "hsl(var(--destructive))",
-  cta_click: "hsl(var(--info))",
-  scroll_depth: "hsl(var(--chart-5))",
+  page_view: "hsl(var(--info))",
+  cta_click: "hsl(var(--chart-5))",
+  scroll_depth: "hsl(180 60% 50%)",
 };
 
 const EVENT_TYPE_BG: Record<string, string> = {
   whatsapp_click: "bg-success/15 text-success border-success/30",
   form_submit: "bg-primary/15 text-primary border-primary/30",
   phone_call: "bg-warning/15 text-warning border-warning/30",
-  page_view: "bg-destructive/15 text-destructive border-destructive/30",
-  cta_click: "bg-info/15 text-info border-info/30",
-  scroll_depth: "bg-chart-5/15 text-chart-5 border-chart-5/30",
+  page_view: "bg-info/15 text-info border-info/30",
+  cta_click: "bg-accent text-accent-foreground border-accent-foreground/20",
+  scroll_depth: "bg-primary/10 text-primary border-primary/20",
 };
-
-const PIE_COLORS = Object.values(EVENT_TYPE_COLORS);
 
 const heatmapData = generateConversionsHeatmap();
 
-// ── Derived quality-focused chart data ──
-const eventQualityByDay = (() => {
-  const map = new Map<string, { total: number; conversions: number; microConversions: number; totalValue: number }>();
+// ── Sparkline generator ──
+function generateSparkline(length = 12, base = 50, variance = 20): number[] {
+  return Array.from({ length }, () => Math.max(0, base + Math.floor((Math.random() - 0.3) * variance)));
+}
+
+// ── Derived chart data ──
+const eventsByDay = (() => {
+  const map = new Map<string, { total: number; interactions: number; passive: number }>();
   mockTrackingEventsDetailed.forEach((e) => {
     const day = format(new Date(e.timestamp), "dd/MMM");
-    const entry = map.get(day) || { total: 0, conversions: 0, microConversions: 0, totalValue: 0 };
+    const entry = map.get(day) || { total: 0, interactions: 0, passive: 0 };
     entry.total++;
-    if (e.conversion_type === "conversion") entry.conversions++;
-    else entry.microConversions++;
-    entry.totalValue += e.value;
+    if (["whatsapp_click", "form_submit", "phone_call", "cta_click"].includes(e.event_type)) {
+      entry.interactions++;
+    } else {
+      entry.passive++;
+    }
     map.set(day, entry);
   });
   return Array.from(map.entries()).map(([date, v]) => ({
     date,
     ...v,
-    conversionRate: v.total > 0 ? Math.round((v.conversions / v.total) * 100) : 0,
-    avgValue: v.conversions > 0 ? Number((v.totalValue / v.conversions).toFixed(2)) : 0,
+    interactionRate: v.total > 0 ? Math.round((v.interactions / v.total) * 100) : 0,
   }));
 })();
 
-// Quality by device
-const eventQualityByDevice = (() => {
-  const map = new Map<string, { total: number; conversions: number; totalValue: number }>();
+// Events by device for radar
+const eventsByDeviceRadar = (() => {
+  const map = new Map<string, { total: number; interactions: number; avgValue: number }>();
   mockTrackingEventsDetailed.forEach((e) => {
-    const entry = map.get(e.device) || { total: 0, conversions: 0, totalValue: 0 };
+    const entry = map.get(e.device) || { total: 0, interactions: 0, avgValue: 0 };
     entry.total++;
-    if (e.conversion_type === "conversion") entry.conversions++;
-    entry.totalValue += e.value;
+    if (["whatsapp_click", "form_submit", "phone_call", "cta_click"].includes(e.event_type)) entry.interactions++;
+    entry.avgValue += e.value;
     map.set(e.device, entry);
   });
   return Array.from(map.entries()).map(([device, v]) => ({
     device: device.charAt(0).toUpperCase() + device.slice(1),
-    conversionRate: Math.round((v.conversions / v.total) * 100),
-    avgValue: v.conversions > 0 ? Number((v.totalValue / v.conversions).toFixed(2)) : 0,
     total: v.total,
+    interactions: v.interactions,
+    interactionRate: Math.round((v.interactions / v.total) * 100),
   }));
 })();
 
-// Goal completion funnel
-const goalCompletion = (() => {
-  const map = new Map<string, { total: number; conversions: number }>();
-  mockTrackingEventsDetailed.forEach((e) => {
-    const entry = map.get(e.goal) || { total: 0, conversions: 0 };
-    entry.total++;
-    if (e.conversion_type === "conversion") entry.conversions++;
-    map.set(e.goal, entry);
-  });
-  return Array.from(map.entries())
-    .map(([goal, v]) => ({
-      goal,
-      total: v.total,
-      conversions: v.conversions,
-      completionRate: Math.round((v.conversions / v.total) * 100),
-    }))
-    .sort((a, b) => b.total - a.total);
-})();
-
-// Events by browser quality
+// Events by browser
 const eventsByBrowser = (() => {
-  const map = new Map<string, { total: number; conversions: number; totalValue: number }>();
-  mockTrackingEventsDetailed.forEach((e) => {
-    const entry = map.get(e.browser) || { total: 0, conversions: 0, totalValue: 0 };
-    entry.total++;
-    if (e.conversion_type === "conversion") entry.conversions++;
-    entry.totalValue += e.value;
-    map.set(e.browser, entry);
-  });
-  return Array.from(map.entries()).map(([browser, v]) => ({
-    browser,
-    total: v.total,
-    conversionRate: Math.round((v.conversions / v.total) * 100),
-  }));
+  const map = new Map<string, number>();
+  mockTrackingEventsDetailed.forEach((e) => map.set(e.browser, (map.get(e.browser) || 0) + 1));
+  return Array.from(map.entries()).map(([browser, count]) => ({ browser, count }));
+})();
+
+// Top pages as treemap data
+const topPagesTreemap = (() => {
+  const map = new Map<string, number>();
+  mockTrackingEventsDetailed.forEach((e) => map.set(e.page_url, (map.get(e.page_url) || 0) + 1));
+  return Array.from(map.entries())
+    .map(([name, size], i) => ({ name: name.replace(/^\//, ""), size, fill: VIVID_COLORS[i % VIVID_COLORS.length] }))
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 8);
+})();
+
+// Distribution by event type
+const pieData = (() => {
+  const map = new Map<string, number>();
+  mockTrackingEventsDetailed.forEach((e) => map.set(e.event_type, (map.get(e.event_type) || 0) + 1));
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+})();
+
+// City proximity chart
+const eventsByCity = (() => {
+  const map = new Map<string, number>();
+  mockTrackingEventsDetailed.forEach((e) => map.set(e.location_city, (map.get(e.location_city) || 0) + 1));
+  return Array.from(map.entries())
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
 })();
 
 const PAGE_SIZE = 20;
-
 type SortKey = keyof MockTrackingEvent;
 type SortDir = "asc" | "desc";
 
 const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "timestamp", label: "Hora" },
   { key: "event_type", label: "Tipo" },
-  { key: "conversion_type", label: "Categoria" },
   { key: "page_url", label: "Página" },
   { key: "cta_text", label: "CTA" },
-  { key: "goal", label: "Meta" },
   { key: "value", label: "Valor" },
   { key: "device", label: "Dispositivo" },
   { key: "browser", label: "Browser" },
-  { key: "location_city", label: "Cidade/Estado" },
+  { key: "location_city", label: "Cidade" },
 ];
 
 const tooltipStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 };
+
+// ── Sparkline mini component ──
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(...data, 1);
+  const w = 80;
+  const h = 24;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(" ");
+  return (
+    <svg width={w} height={h} className="ml-auto">
+      <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── KPI with Sparkline ──
+function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon: Icon }: {
+  label: string; value: string | number; change: number; suffix?: string; prefix?: string;
+  sparkData: number[]; color: string; icon?: React.ElementType;
+}) {
+  const isPositive = change >= 0;
+  return (
+    <Card className="p-3.5 card-hover group relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+          </div>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
+            {isPositive ? "+" : ""}{change}%
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-2">
+          <span className="text-xl font-bold text-foreground font-display tracking-tight">
+            {prefix}{value}{suffix}
+          </span>
+          <Sparkline data={sparkData} color={color} />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function EventsTab() {
   const [period, setPeriod] = useState("30");
   const [eventType, setEventType] = useState("all");
   const [device, setDevice] = useState("all");
-  const [conversionType, setConversionType] = useState("all");
   const [browser, setBrowser] = useState("all");
   const [pageFilter, setPageFilter] = useState("all");
-  const [goalFilter, setGoalFilter] = useState("all");
   const [ctaFilter, setCtaFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
@@ -219,28 +260,24 @@ export function EventsTab() {
     let data = mockTrackingEventsDetailed;
     if (eventType !== "all") data = data.filter((e) => e.event_type === eventType);
     if (device !== "all") data = data.filter((e) => e.device === device);
-    if (conversionType !== "all") data = data.filter((e) => e.conversion_type === conversionType);
     if (browser !== "all") data = data.filter((e) => e.browser === browser);
     if (pageFilter !== "all") data = data.filter((e) => e.page_url === pageFilter);
-    if (goalFilter !== "all") data = data.filter((e) => e.goal === goalFilter);
     if (ctaFilter !== "all") data = data.filter((e) => e.cta_text === ctaFilter);
     if (cityFilter !== "all") data = data.filter((e) => e.location_city === cityFilter);
     if (stateFilter !== "all") data = data.filter((e) => e.location_state === stateFilter);
     if (search) {
       const q = search.toLowerCase();
-      data = data.filter((e) => e.page_url.includes(q) || e.location_city.toLowerCase().includes(q) || e.cta_text.toLowerCase().includes(q) || e.goal.toLowerCase().includes(q));
+      data = data.filter((e) => e.page_url.includes(q) || e.location_city.toLowerCase().includes(q) || e.cta_text.toLowerCase().includes(q));
     }
     return data;
-  }, [eventType, device, conversionType, browser, pageFilter, goalFilter, ctaFilter, cityFilter, stateFilter, search]);
+  }, [eventType, device, browser, pageFilter, ctaFilter, cityFilter, stateFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
       const aVal = a[sortKey];
       const bVal = b[sortKey];
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return sortDir === "asc" ? aVal - bVal : bVal - aVal;
-      }
+      if (typeof aVal === "number" && typeof bVal === "number") return sortDir === "asc" ? aVal - bVal : bVal - aVal;
       return sortDir === "asc" ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
     });
     return arr;
@@ -250,168 +287,83 @@ export function EventsTab() {
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSort = useCallback((key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("desc"); }
     setPage(1);
   }, [sortKey]);
 
-  // ── Quality-focused KPIs ──
+  // KPIs
   const totalEvents = filtered.length;
-  const conversions = filtered.filter((e) => e.conversion_type === "conversion").length;
-  const conversionRate = totalEvents > 0 ? Number(((conversions / totalEvents) * 100).toFixed(1)) : 0;
-  const totalValue = filtered.reduce((s, e) => s + e.value, 0);
-  const avgValue = conversions > 0 ? Number((totalValue / conversions).toFixed(2)) : 0;
+  const interactions = filtered.filter((e) => ["whatsapp_click", "form_submit", "phone_call", "cta_click"].includes(e.event_type)).length;
+  const interactionRate = totalEvents > 0 ? Number(((interactions / totalEvents) * 100).toFixed(1)) : 0;
   const uniquePages = new Set(filtered.map((e) => e.page_url)).size;
   const avgEventsPerPage = uniquePages > 0 ? Math.round(totalEvents / uniquePages) : 0;
   const mobileEvents = filtered.filter((e) => e.device === "mobile").length;
   const mobilePercent = totalEvents > 0 ? Number(((mobileEvents / totalEvents) * 100).toFixed(1)) : 0;
-  const uniqueGoals = new Set(filtered.map((e) => e.goal)).size;
-  const goalCompletionRate = totalEvents > 0 ? Number(((conversions / totalEvents) * 100).toFixed(1)) : 0;
   const uniqueCities = new Set(filtered.map((e) => e.location_city)).size;
+  const uniqueBrowsers = new Set(filtered.map((e) => e.browser)).size;
+  const whatsappEvents = filtered.filter((e) => e.event_type === "whatsapp_click").length;
+  const formEvents = filtered.filter((e) => e.event_type === "form_submit").length;
 
-  // Top pages
-  const pageMap = new Map<string, { count: number; conversions: number }>();
-  filtered.forEach((e) => {
-    const entry = pageMap.get(e.page_url) || { count: 0, conversions: 0 };
-    entry.count++;
-    if (e.conversion_type === "conversion") entry.conversions++;
-    pageMap.set(e.page_url, entry);
-  });
-  const topPages = Array.from(pageMap.entries())
-    .map(([url, v]) => ({ url, count: v.count, conversions: v.conversions, conversionRate: Math.round((v.conversions / v.count) * 100) }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6);
-
-  // Distribution by event type
-  const typeMap = new Map<string, number>();
-  filtered.forEach((e) => { typeMap.set(e.event_type, (typeMap.get(e.event_type) || 0) + 1); });
-  const pieData = Array.from(typeMap.entries()).map(([name, value]) => ({ name, value }));
-
-  // Export helpers
   const exportData = useCallback((fmt: "csv" | "json" | "xlsx") => {
-    const headers = ["Hora", "Tipo", "Categoria", "Página", "CTA", "Meta", "Valor", "Dispositivo", "Browser", "Cidade", "Estado"];
+    const headers = ["Hora", "Tipo", "Página", "CTA", "Valor", "Dispositivo", "Browser", "Cidade", "Estado"];
     const rows = sorted.map((ev) => [
       format(new Date(ev.timestamp), "dd/MM/yyyy HH:mm"),
-      ev.event_type, ev.conversion_type, ev.page_url, ev.cta_text, ev.goal,
-      ev.value.toFixed(2), ev.device, ev.browser, ev.location_city, ev.location_state,
+      ev.event_type, ev.page_url, ev.cta_text, ev.value.toFixed(2), ev.device, ev.browser, ev.location_city, ev.location_state,
     ]);
-
     if (fmt === "json") {
       const blob = new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" });
       downloadBlob(blob, "eventos.json");
     } else {
       const csvContent = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      downloadBlob(blob, fmt === "xlsx" ? "eventos.csv" : "eventos.csv");
+      downloadBlob(new Blob([csvContent], { type: "text/csv;charset=utf-8;" }), "eventos.csv");
     }
   }, [sorted]);
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Filter Bar */}
+      {/* Period selector + comparison */}
       <Card className="p-3 sm:p-4">
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {PERIOD_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={eventType} onValueChange={(v) => { setEventType(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue placeholder="Tipo de Evento" /></SelectTrigger>
-            <SelectContent>
-              {EVENT_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={device} onValueChange={(v) => { setDevice(v); setPage(1); }}>
-            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
-            <SelectContent>
-              {DEVICE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={conversionType} onValueChange={(v) => { setConversionType(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue placeholder="Tipo Conversão" /></SelectTrigger>
-            <SelectContent>
-              {CONVERSION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={browser} onValueChange={(v) => { setBrowser(v); setPage(1); }}>
-            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Browser" /></SelectTrigger>
-            <SelectContent>
-              {BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={pageFilter} onValueChange={(v) => { setPageFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Página" /></SelectTrigger>
-            <SelectContent>
-              {PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={goalFilter} onValueChange={(v) => { setGoalFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue placeholder="Meta" /></SelectTrigger>
-            <SelectContent>
-              {GOAL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={ctaFilter} onValueChange={(v) => { setCtaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="CTA" /></SelectTrigger>
-            <SelectContent>
-              {CTA_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Cidade" /></SelectTrigger>
-            <SelectContent>
-              {CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[100px] h-9 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
-            <SelectContent>
-              {STATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <TrendingUp className="h-3 w-3 text-success" /> vs período anterior ({period}d)
+          </Badge>
         </div>
       </Card>
 
-      {/* Period comparison badge */}
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-[10px] gap-1">
-          <TrendingUp className="h-3 w-3 text-success" /> Comparando com período anterior ({period}d)
-        </Badge>
-      </div>
-
-      {/* Quality-focused KPIs */}
+      {/* KPIs with Sparklines */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KpiCard label="Total Eventos" value={totalEvents} change={15.8} />
-        <KpiCard label="Taxa Conversão" value={conversionRate} change={8.4} suffix="%" />
-        <KpiCard label="Valor Médio" value={avgValue} change={12.1} prefix="R$" />
-        <KpiCard label="Eventos/Página" value={avgEventsPerPage} change={7.4} />
-        <KpiCard label="Páginas Ativas" value={uniquePages} change={3.2} />
-        <KpiCard label="Conclusão Metas" value={goalCompletionRate} change={5.6} suffix="%" />
-        <KpiCard label="Mobile" value={mobilePercent} change={4.1} suffix="%" />
-        <KpiCard label="Cidades" value={uniqueCities} change={11.2} />
+        <SparkKpi label="Total Eventos" value={totalEvents} change={15.8} sparkData={generateSparkline(12, 100, 30)} color="hsl(var(--primary))" icon={Activity} />
+        <SparkKpi label="Interações" value={interactions} change={8.4} sparkData={generateSparkline(12, 40, 15)} color="hsl(var(--success))" icon={Zap} />
+        <SparkKpi label="Taxa Interação" value={interactionRate} change={5.2} suffix="%" sparkData={generateSparkline(12, 55, 12)} color="hsl(var(--info))" />
+        <SparkKpi label="Eventos/Página" value={avgEventsPerPage} change={7.4} sparkData={generateSparkline(12, 12, 5)} color="hsl(var(--warning))" />
+        <SparkKpi label="Páginas Ativas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
+        <SparkKpi label="Mobile" value={mobilePercent} change={4.1} suffix="%" sparkData={generateSparkline(12, 60, 10)} color="hsl(var(--success))" icon={Smartphone} />
+        <SparkKpi label="WhatsApp" value={whatsappEvents} change={12.3} sparkData={generateSparkline(12, 20, 8)} color="hsl(var(--success))" />
+        <SparkKpi label="Formulários" value={formEvents} change={6.7} sparkData={generateSparkline(12, 15, 6)} color="hsl(var(--primary))" />
       </StaggeredGrid>
 
-      {/* Quality Trend - Conversion Rate + Avg Value over time */}
+      {/* Trend: Events + Interactions over time */}
       <AnimatedContainer>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Qualidade dos Eventos ao Longo do Tempo</h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Volume de Eventos ao Longo do Tempo</h3>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={eventQualityByDay}>
+              <AreaChart data={eventsByDay}>
                 <defs>
-                  <linearGradient id="convGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="evTotalGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="evInterGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="microGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--info))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--info))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -419,9 +371,9 @@ export function EventsTab() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="conversions" stroke="hsl(var(--success))" fill="url(#convGrad)" strokeWidth={2} name="Conversões" />
-                <Area type="monotone" dataKey="microConversions" stroke="hsl(var(--info))" fill="url(#microGrad)" strokeWidth={2} name="Micro Conversões" />
-                <Line type="monotone" dataKey="conversionRate" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Taxa Conversão %" />
+                <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#evTotalGrad)" strokeWidth={2} name="Total" />
+                <Area type="monotone" dataKey="interactions" stroke="hsl(var(--success))" fill="url(#evInterGrad)" strokeWidth={2} name="Interações" />
+                <Line type="monotone" dataKey="interactionRate" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Taxa Interação %" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -450,22 +402,22 @@ export function EventsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Row: Quality by Device + Goal Completion */}
+      {/* Row: Radar Device + Distribution Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Dispositivo</h3>
-            <div className="h-[260px]">
+            <h3 className="text-sm font-medium text-foreground mb-4">Engajamento por Dispositivo</h3>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={eventQualityByDevice}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="device" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={eventsByDeviceRadar}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="device" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <Radar name="Total" dataKey="total" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.25} strokeWidth={2} />
+                  <Radar name="Interações" dataKey="interactions" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.2} strokeWidth={2} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Total Eventos" />
-                  <Bar dataKey="conversionRate" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Conversão %" />
-                </BarChart>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </RadarChart>
               </ResponsiveContainer>
             </div>
           </Card>
@@ -473,37 +425,14 @@ export function EventsTab() {
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Conclusão de Metas</h3>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={goalCompletion} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="goal" type="category" width={120} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="total" fill="hsl(var(--muted-foreground) / 0.3)" radius={[0, 4, 4, 0]} name="Total" />
-                  <Bar dataKey="conversions" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} name="Concluídas" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </AnimatedContainer>
-      </div>
-
-      {/* Row: Event Type Pie + Top Pages with conversion quality */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AnimatedContainer delay={0.2}>
-          <Card className="p-5">
             <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo</h3>
-            <div className="h-[260px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} strokeWidth={2} stroke="hsl(var(--card))">
-                    {pieData.map((entry, i) => {
-                      const color = EVENT_TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length];
-                      return <Cell key={i} fill={color} />;
-                    })}
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={95} innerRadius={55} strokeWidth={2} stroke="hsl(var(--card))">
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={EVENT_TYPE_COLORS[entry.name] || VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -512,20 +441,46 @@ export function EventsTab() {
             </div>
           </Card>
         </AnimatedContainer>
+      </div>
+
+      {/* Row: Top Pages Bar + City Proximity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AnimatedContainer delay={0.2}>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas por Volume</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topPagesTreemap} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="size" radius={[0, 6, 6, 0]} name="Eventos">
+                    {topPagesTreemap.map((entry, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
 
         <AnimatedContainer delay={0.25}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas (Eventos × Conversão %)</h3>
-            <div className="h-[260px]">
+            <h3 className="text-sm font-medium text-foreground mb-4">Proximidade por Cidade</h3>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topPages} layout="vertical" margin={{ left: 10 }}>
+                <BarChart data={eventsByCity}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="url" type="category" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <XAxis dataKey="city" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} angle={-25} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Eventos" />
-                  <Bar dataKey="conversionRate" fill="hsl(var(--success) / 0.7)" radius={[0, 4, 4, 0]} name="Conversão %" />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Eventos">
+                    {eventsByCity.map((_, i) => (
+                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -533,20 +488,22 @@ export function EventsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Quality by Browser */}
+      {/* Browser bar chart */}
       <AnimatedContainer delay={0.3}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Browser</h3>
-          <div className="h-[220px]">
+          <h3 className="text-sm font-medium text-foreground mb-4">Eventos por Browser</h3>
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={eventsByBrowser}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="browser" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="total" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} name="Eventos" />
-                <Bar dataKey="conversionRate" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} name="Conversão %" />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Eventos">
+                  {eventsByBrowser.map((_, i) => (
+                    <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -573,10 +530,10 @@ export function EventsTab() {
                     <div
                       key={cell.hour}
                       className="flex-1 h-7 rounded-sm flex items-center justify-center"
-                      style={{ backgroundColor: `hsl(var(--primary) / ${Math.max(0.05, cell.value / 40)})` }}
+                      style={{ backgroundColor: `hsl(var(--info) / ${Math.max(0.05, cell.value / 40)})` }}
                       title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
                     >
-                      <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                      <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-info-foreground" : "text-muted-foreground"}`}>
                         {cell.value}
                       </span>
                     </div>
@@ -588,44 +545,64 @@ export function EventsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Detailed Table */}
+      {/* Detailed Table with filters inside */}
       <AnimatedContainer delay={0.4}>
         <Card className="overflow-hidden">
-          <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-medium text-foreground">Eventos Detalhados</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} eventos
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar página, cidade, CTA..."
-                  className="pl-8 h-8 text-xs w-[220px]"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
+          <div className="px-4 py-3 border-b border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Eventos Detalhados</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length}
+                </p>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                    <Download className="h-3.5 w-3.5" /> Exportar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => exportData("csv")} className="text-xs gap-2">
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportData("json")} className="text-xs gap-2">
-                    <FileJson className="h-3.5 w-3.5" /> JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportData("xlsx")} className="text-xs gap-2">
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> Excel (CSV)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Buscar..." className="pl-8 h-8 text-xs w-[180px]" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"><Download className="h-3.5 w-3.5" /> Exportar</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportData("csv")} className="text-xs gap-2"><FileSpreadsheet className="h-3.5 w-3.5" /> CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData("json")} className="text-xs gap-2"><FileJson className="h-3.5 w-3.5" /> JSON</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData("xlsx")} className="text-xs gap-2"><FileSpreadsheet className="h-3.5 w-3.5" /> Excel</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            {/* Filters inside table card */}
+            <div className="flex flex-wrap gap-2">
+              <Select value={eventType} onValueChange={(v) => { setEventType(v); setPage(1); }}>
+                <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>{EVENT_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={device} onValueChange={(v) => { setDevice(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Device" /></SelectTrigger>
+                <SelectContent>{DEVICE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={browser} onValueChange={(v) => { setBrowser(v); setPage(1); }}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
+                <SelectContent>{BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={pageFilter} onValueChange={(v) => { setPageFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[150px] h-8 text-[11px]"><SelectValue placeholder="Página" /></SelectTrigger>
+                <SelectContent>{PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={ctaFilter} onValueChange={(v) => { setCtaFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="CTA" /></SelectTrigger>
+                <SelectContent>{CTA_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+                <SelectContent>{CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[90px] h-8 text-[11px]"><SelectValue placeholder="UF" /></SelectTrigger>
+                <SelectContent>{STATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -633,11 +610,7 @@ export function EventsTab() {
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   {SORTABLE_COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className="px-3 py-2.5 text-left text-[11px] font-medium text-muted-foreground whitespace-nowrap cursor-pointer select-none hover:text-foreground transition-colors"
-                      onClick={() => handleSort(col.key)}
-                    >
+                    <th key={col.key} className="px-3 py-2.5 text-left text-[11px] font-medium text-muted-foreground whitespace-nowrap cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort(col.key)}>
                       <span className="inline-flex items-center gap-1">
                         {col.label}
                         <ArrowUpDown className={`h-3 w-3 ${sortKey === col.key ? "text-primary" : "text-muted-foreground/40"}`} />
@@ -651,20 +624,12 @@ export function EventsTab() {
                   <tr key={ev.event_id} className="border-b border-border last:border-0 table-row-hover">
                     <td className="px-3 py-2.5 text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(ev.timestamp), "dd/MM HH:mm")}</td>
                     <td className="px-3 py-2.5">
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${EVENT_TYPE_BG[ev.event_type] || "bg-secondary text-secondary-foreground border-border"}`}
-                      >
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${EVENT_TYPE_BG[ev.event_type] || "bg-secondary text-secondary-foreground border-border"}`}>
                         {ev.event_type}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <Badge variant={ev.conversion_type === "conversion" ? "default" : "outline"} className="text-[10px]">
-                        {ev.conversion_type === "conversion" ? "Conversão" : "Micro"}
-                      </Badge>
-                    </td>
                     <td className="px-3 py-2.5 font-mono text-[11px] text-foreground max-w-[180px] truncate">{ev.page_url}</td>
                     <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{ev.cta_text}</td>
-                    <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{ev.goal}</td>
                     <td className="px-3 py-2.5 text-[11px] font-medium text-foreground">{ev.value > 0 ? `R$ ${ev.value.toFixed(2).replace(".", ",")}` : "—"}</td>
                     <td className="px-3 py-2.5 text-[11px] text-muted-foreground capitalize">{ev.device}</td>
                     <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{ev.browser}</td>
@@ -674,30 +639,18 @@ export function EventsTab() {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground">
-                Página {page} de {totalPages}
-              </p>
+              <p className="text-[11px] text-muted-foreground">Página {page} de {totalPages}</p>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}><ChevronLeft className="h-3.5 w-3.5" /></Button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const start = Math.max(1, Math.min(page - 2, totalPages - 4));
                   const p = start + i;
                   if (p > totalPages) return null;
-                  return (
-                    <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-7 w-7 p-0 text-[11px]" onClick={() => setPage(p)}>
-                      {p}
-                    </Button>
-                  );
+                  return <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-7 w-7 p-0 text-[11px]" onClick={() => setPage(p)}>{p}</Button>;
                 })}
-                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}><ChevronRight className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           )}
