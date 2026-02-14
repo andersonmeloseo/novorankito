@@ -135,7 +135,9 @@ export default function SeoPage() {
   const isLoading = loadingDate || loadingCombined;
 
   // Date filtering for KPIs and trend chart
-  const { filteredMetrics, prevMetrics } = useMemo(() => {
+  const fmtDateStr = (d: Date) => d.toISOString().split("T")[0];
+
+  const { filteredMetrics, prevMetrics, currentDateRange, prevDateRange } = useMemo(() => {
     let from: Date, to: Date;
 
     if (dateRange === "custom" && customFrom && customTo) {
@@ -161,7 +163,6 @@ export default function SeoPage() {
       prevTo = subDays(from, 1);
       prevFrom = subDays(prevTo, periodLength - 1);
     } else {
-      // "none" or "custom" without impl — no comparison
       prevFrom = new Date(0);
       prevTo = new Date(0);
     }
@@ -176,7 +177,12 @@ export default function SeoPage() {
       return isWithinInterval(d, { start: prevFrom, end: prevTo });
     }) : [];
 
-    return { filteredMetrics: filtered, prevMetrics: prev };
+    return {
+      filteredMetrics: filtered,
+      prevMetrics: prev,
+      currentDateRange: { start: fmtDateStr(from), end: fmtDateStr(to) },
+      prevDateRange: compareMode !== "none" ? { start: fmtDateStr(prevFrom), end: fmtDateStr(prevTo) } : null,
+    };
   }, [baseMetrics, dateRange, customFrom, customTo, compareMode]);
 
   const metrics = filteredMetrics;
@@ -231,7 +237,110 @@ export default function SeoPage() {
     }));
   }, [deviceMetrics, combinedMetrics]);
 
-  // Drill-down: pages for a selected query
+
+  // Live comparison data from GSC API
+  const isComparing = compareMode !== "none" && !!prevDateRange && !!gscConnection;
+  const { data: comparisonData, isLoading: loadingComparison } = useQuery({
+    queryKey: ["gsc-comparison", projectId, currentDateRange?.start, currentDateRange?.end, prevDateRange?.start, prevDateRange?.end],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("query-gsc-live", {
+        body: {
+          project_id: projectId,
+          current_start: currentDateRange.start,
+          current_end: currentDateRange.end,
+          previous_start: prevDateRange!.start,
+          previous_end: prevDateRange!.end,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: isComparing && !!projectId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Merge comparison data into rows
+  function mergeWithComparison(currentRows: any[], previousRows: any[]): any[] {
+    const prevMap = new Map(previousRows.map((r: any) => [r.name, r]));
+    return currentRows.map((row: any) => {
+      const prev = prevMap.get(row.name);
+      return {
+        ...row,
+        prevClicks: prev?.clicks ?? 0,
+        prevImpressions: prev?.impressions ?? 0,
+        prevCtr: prev?.ctr ?? 0,
+        prevPosition: prev?.position ?? 0,
+        diffClicks: row.clicks - (prev?.clicks ?? 0),
+        diffImpressions: row.impressions - (prev?.impressions ?? 0),
+        diffCtr: parseFloat((row.ctr - (prev?.ctr ?? 0)).toFixed(2)),
+        diffPosition: parseFloat((row.position - (prev?.position ?? 0)).toFixed(1)),
+      };
+    });
+  }
+
+  // Build comparison-aware rows when data is available
+  const compQueryRows = useMemo(() => {
+    if (!comparisonData?.query) return null;
+    const current = comparisonData.query.current || [];
+    const previous = comparisonData.query.previous || [];
+    let rows = mergeWithComparison(current, previous);
+    if (searchTerm) rows = rows.filter((r: any) => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return sortData(rows, queriesSort.key, queriesSort.dir);
+  }, [comparisonData, searchTerm, queriesSort]);
+
+  const compPageRows = useMemo(() => {
+    if (!comparisonData?.page) return null;
+    const current = comparisonData.page.current || [];
+    const previous = comparisonData.page.previous || [];
+    let rows = mergeWithComparison(current, previous);
+    if (searchTerm) rows = rows.filter((r: any) => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return sortData(rows, pagesSort.key, pagesSort.dir);
+  }, [comparisonData, searchTerm, pagesSort]);
+
+  const compCountryRows = useMemo(() => {
+    if (!comparisonData?.country) return null;
+    const current = comparisonData.country.current || [];
+    const previous = comparisonData.country.previous || [];
+    let rows = mergeWithComparison(current, previous);
+    if (searchTerm) rows = rows.filter((r: any) => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return sortData(rows, countriesSort.key, countriesSort.dir);
+  }, [comparisonData, searchTerm, countriesSort]);
+
+  const compDeviceRows = useMemo(() => {
+    if (!comparisonData?.device) return null;
+    const current = comparisonData.device.current || [];
+    const previous = comparisonData.device.previous || [];
+    let rows = mergeWithComparison(current, previous);
+    return rows;
+  }, [comparisonData]);
+
+  // Column definitions for comparison mode
+  const baseColumns = (nameLabel: string) => [
+    { key: "name", label: nameLabel },
+    { key: "clicks", label: "Cliques" },
+    { key: "impressions", label: "Impressões" },
+    { key: "ctr", label: "CTR" },
+    { key: "position", label: "Posição" },
+  ];
+
+  const comparisonColumns = (nameLabel: string) => [
+    { key: "name", label: nameLabel },
+    { key: "clicks", label: "Cliques" },
+    { key: "prevClicks", label: "Ant." },
+    { key: "diffClicks", label: "Dif." },
+    { key: "impressions", label: "Impressões" },
+    { key: "prevImpressions", label: "Ant." },
+    { key: "diffImpressions", label: "Dif." },
+    { key: "ctr", label: "CTR" },
+    { key: "prevCtr", label: "Ant." },
+    { key: "diffCtr", label: "Dif." },
+    { key: "position", label: "Posição" },
+    { key: "prevPosition", label: "Ant." },
+    { key: "diffPosition", label: "Dif." },
+  ];
+
+  const getColumns = (nameLabel: string) => isComparing && comparisonData ? comparisonColumns(nameLabel) : baseColumns(nameLabel);
+
   const drillPagesForQuery = useMemo(() => {
     if (!selectedQuery) return [];
     return queryPageMetrics
@@ -620,6 +729,12 @@ export default function SeoPage() {
             {/* Data tables with tabs */}
             {hasData && (
               <AnimatedContainer delay={0.25}>
+                {isComparing && loadingComparison && (
+                  <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Carregando dados de comparação do GSC...
+                  </div>
+                )}
                 <Tabs defaultValue="queries">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
                     <TabsList>
@@ -658,19 +773,13 @@ export default function SeoPage() {
                       </div>
                     ) : (
                       <SortableTable
-                        columns={[
-                          { key: "name", label: "Consulta" },
-                          { key: "clicks", label: "Cliques" },
-                          { key: "impressions", label: "Impressões" },
-                          { key: "ctr", label: "CTR" },
-                          { key: "position", label: "Posição" },
-                        ]}
-                        rows={queryRows}
+                        columns={getColumns("Consulta")}
+                        rows={compQueryRows || queryRows}
                         sort={queriesSort}
                         onSort={(key) => { setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setQueriesPage(1); }}
                         page={queriesPage}
                         onPageChange={setQueriesPage}
-                        onExport={() => exportCSV(queryRows, "seo-consultas")}
+                        onExport={() => exportCSV(compQueryRows || queryRows, "seo-consultas")}
                         onRowClick={(row) => { setSelectedQuery(row.name); setPagesPage(1); }}
                       />
                     )}
@@ -704,19 +813,13 @@ export default function SeoPage() {
                       </div>
                     ) : (
                       <SortableTable
-                        columns={[
-                          { key: "name", label: "Página" },
-                          { key: "clicks", label: "Cliques" },
-                          { key: "impressions", label: "Impressões" },
-                          { key: "ctr", label: "CTR" },
-                          { key: "position", label: "Posição" },
-                        ]}
-                        rows={pageRows}
+                        columns={getColumns("Página")}
+                        rows={compPageRows || pageRows}
                         sort={pagesSort}
                         onSort={(key) => { setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setPagesPage(1); }}
                         page={pagesPage}
                         onPageChange={setPagesPage}
-                        onExport={() => exportCSV(pageRows, "seo-paginas")}
+                        onExport={() => exportCSV(compPageRows || pageRows, "seo-paginas")}
                         onRowClick={(row) => { setSelectedPage(row.name); setQueriesPage(1); }}
                       />
                     )}
@@ -724,37 +827,25 @@ export default function SeoPage() {
 
                   <TabsContent value="countries" className="mt-0">
                     <SortableTable
-                      columns={[
-                        { key: "name", label: "País" },
-                        { key: "clicks", label: "Cliques" },
-                        { key: "impressions", label: "Impressões" },
-                        { key: "ctr", label: "CTR" },
-                        { key: "position", label: "Posição" },
-                      ]}
-                      rows={countryRows}
+                      columns={getColumns("País")}
+                      rows={compCountryRows || countryRows}
                       sort={countriesSort}
                       onSort={(key) => { setCountriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setCountriesPage(1); }}
                       page={countriesPage}
                       onPageChange={setCountriesPage}
-                      onExport={() => exportCSV(countryRows, "seo-paises")}
+                      onExport={() => exportCSV(compCountryRows || countryRows, "seo-paises")}
                     />
                   </TabsContent>
 
                   <TabsContent value="devices" className="mt-0">
                     <SortableTable
-                      columns={[
-                        { key: "name", label: "Dispositivo" },
-                        { key: "clicks", label: "Cliques" },
-                        { key: "impressions", label: "Impressões" },
-                        { key: "ctr", label: "CTR" },
-                        { key: "position", label: "Posição" },
-                      ]}
-                      rows={deviceRows}
+                      columns={getColumns("Dispositivo")}
+                      rows={compDeviceRows || deviceRows}
                       sort={{ key: "clicks", dir: "desc" }}
                       onSort={() => {}}
                       page={devicesPage}
                       onPageChange={setDevicesPage}
-                      onExport={() => exportCSV(deviceRows, "seo-dispositivos")}
+                      onExport={() => exportCSV(compDeviceRows || deviceRows, "seo-dispositivos")}
                     />
                   </TabsContent>
                 </Tabs>
@@ -795,6 +886,22 @@ function SortableTable({
 
   const formatCell = (row: any, key: string) => {
     const v = row[key];
+    // Diff columns with color
+    if (key.startsWith("diff")) {
+      const isPosition = key === "diffPosition";
+      const isGood = isPosition ? v < 0 : v > 0; // Lower position = better
+      const isBad = isPosition ? v > 0 : v < 0;
+      const colorClass = v === 0 ? "text-muted-foreground" : isGood ? "text-success" : isBad ? "text-destructive" : "";
+      if (key === "diffCtr") return <span className={colorClass}>{v > 0 ? "+" : ""}{Number(v).toFixed(2)}%</span>;
+      if (key === "diffPosition") return <span className={colorClass}>{v > 0 ? "+" : ""}{Number(v).toFixed(1)}</span>;
+      return <span className={colorClass}>{v > 0 ? "+" : ""}{Number(v).toLocaleString()}</span>;
+    }
+    // Previous period columns (muted)
+    if (key.startsWith("prev")) {
+      if (key === "prevCtr") return <span className="text-muted-foreground/60">{Number(v).toFixed(2)}%</span>;
+      if (key === "prevPosition") return <span className="text-muted-foreground/60">{Number(v).toFixed(1)}</span>;
+      return <span className="text-muted-foreground/60">{Number(v).toLocaleString()}</span>;
+    }
     if (key === "ctr") return `${Number(v).toFixed(2)}%`;
     if (key === "position") return Number(v).toFixed(1);
     if (key === "clicks" || key === "impressions") return Number(v).toLocaleString();
