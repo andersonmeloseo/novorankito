@@ -59,6 +59,7 @@ export function AppSidebar() {
       const { data } = await supabase
         .from("projects")
         .select("id, name, domain, status")
+        .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
       return data || [];
     },
