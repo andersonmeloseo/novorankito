@@ -118,16 +118,20 @@ export default function SeoPage() {
 
   // Date filtering for KPIs and trend chart (uses "date" dimension data)
   const { filteredMetrics, prevMetrics } = useMemo(() => {
-    const now = new Date();
     let from: Date, to: Date;
 
     if (dateRange === "custom" && customFrom && customTo) {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
+      // Use the most recent date in the data as reference (GSC has ~3 day delay)
+      const latestDate = allMetrics.length > 0
+        ? allMetrics.reduce((max: string, m: any) => m.metric_date > max ? m.metric_date : max, allMetrics[0].metric_date)
+        : null;
+      const refDate = latestDate ? parseISO(latestDate) : new Date();
       const days = parseInt(dateRange);
-      to = now;
-      from = subDays(now, days);
+      to = refDate;
+      from = subDays(refDate, days - 1);
     }
 
     const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
