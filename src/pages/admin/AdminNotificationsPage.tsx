@@ -12,9 +12,9 @@ export default function AdminNotificationsPage() {
       <PageHeader title="Notificações" description="Envio global, broadcast para clientes e alertas internos" />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> Emails Enviados (30d)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">2,847</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> E-mails Enviados (30d)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">2.847</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><MessageSquare className="h-3 w-3" /> WhatsApp (30d)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">412</div></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><Bell className="h-3 w-3" /> Push (30d)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">1,203</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><Bell className="h-3 w-3" /> Push (30d)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">1.203</div></CardContent></Card>
       </div>
 
       <Card>

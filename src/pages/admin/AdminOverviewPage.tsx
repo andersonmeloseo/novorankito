@@ -12,7 +12,7 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader title="Overview" description="Visão geral da plataforma — KPIs, crescimento e alertas" />
+      <PageHeader title="Visão Geral" description="Visão geral da plataforma — KPIs, crescimento e alertas" />
       <AdminDashboardTab stats={stats} profiles={profiles} projects={projects} billing={billing} logs={logs} />
     </div>
   );

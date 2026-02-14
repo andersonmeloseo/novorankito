@@ -22,7 +22,7 @@ export default function AdminClientsPage() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Total Clientes</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{mockClients.length}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Ativos</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-success">{mockClients.filter(c => c.status === "active").length}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Em Trial</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-warning">{mockClients.filter(c => c.status === "trial").length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">MRR Total</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">R$ {mockClients.reduce((s, c) => s + c.mrr, 0)}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">MRR Total</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">R$ {mockClients.reduce((s, c) => s + c.mrr, 0).toLocaleString("pt-BR")}</div></CardContent></Card>
       </div>
 
       <Card>
