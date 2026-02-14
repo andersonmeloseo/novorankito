@@ -376,7 +376,7 @@ export function IndexingDashboard({ stats, inventory, requests, sitemaps }: Prop
         </Card>
       </div>
 
-      {/* ─── Row 3: Sitemap Bar Chart ─── */}
+      {/* ─── Row 3: Sitemap Coverage ─── */}
       {sitemapBarData.length > 0 && (
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-1">
@@ -384,22 +384,54 @@ export function IndexingDashboard({ stats, inventory, requests, sitemaps }: Prop
             <h3 className="text-xs font-semibold text-foreground">Cobertura por Sitemap</h3>
           </div>
           <p className="text-[10px] text-muted-foreground mb-4">
-            Compara URLs declaradas no sitemap (<strong style={{ color: CHART_COLORS.declared }}>ciano</strong>) vs URLs confirmadas como indexadas (<strong style={{ color: CHART_COLORS.indexed }}>verde</strong>). A diferença indica URLs que precisam de atenção.
+            Visualize a taxa de indexação de cada sitemap. Quanto mais preenchida a barra, melhor a cobertura.
           </p>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sitemapBarData} layout="vertical" margin={{ left: 10 }}>
-                <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={120} />
-                <RechartsTooltip content={<BarTooltip />} />
-                <Bar dataKey="declaradas" name="Declaradas no Sitemap" fill={CHART_COLORS.declared} radius={[0, 4, 4, 0]} barSize={12} opacity={0.6} />
-                <Bar dataKey="indexadas" name="Indexadas pelo Google" fill={CHART_COLORS.indexed} radius={[0, 4, 4, 0]} barSize={12} />
-                <Legend
-                  verticalAlign="bottom" height={32}
-                  formatter={(value: string) => <span className="text-[10px] text-muted-foreground">{value}</span>}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="space-y-3">
+            {sitemapBarData.map((sm, i) => {
+              const pct = sm.percent;
+              const barColor = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-destructive";
+              const textColor = pct >= 80 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive";
+              return (
+                <div key={i}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs font-medium text-foreground truncate max-w-[250px] cursor-default">{sm.name}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>{sm.fullName}</TooltipContent>
+                    </Tooltip>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {sm.indexadas.toLocaleString("pt-BR")} / {sm.declaradas.toLocaleString("pt-BR")}
+                      </span>
+                      <span className={`text-xs font-bold tabular-nums ${textColor}`}>
+                        {pct}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative h-3 rounded-full bg-muted/40 overflow-hidden">
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-full ${barColor} transition-all duration-700 ease-out`}
+                      style={{ width: `${Math.max(pct, 1)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-success" />
+              <span className="text-[10px] text-muted-foreground">≥ 80%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-warning" />
+              <span className="text-[10px] text-muted-foreground">50–79%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-destructive" />
+              <span className="text-[10px] text-muted-foreground">{"<"} 50%</span>
+            </div>
           </div>
         </Card>
       )}
