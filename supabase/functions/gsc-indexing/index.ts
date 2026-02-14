@@ -81,6 +81,38 @@ serve(async (req) => {
       // Get latest indexing request per URL (recursive)
       const indexingReqs = await fetchAll("indexing_requests", "url, status, submitted_at, request_type", { project_id }, "submitted_at");
 
+      // Get last 28 days of SEO metrics per URL (clicks + impressions)
+      const date28dAgo = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
+      let seoMetrics: any[] = [];
+      {
+        const PAGE = 1000;
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from("seo_metrics")
+            .select("url, clicks, impressions")
+            .eq("project_id", project_id)
+            .eq("dimension_type", "page")
+            .gte("metric_date", date28dAgo)
+            .order("url", { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) break;
+          if (!data || data.length === 0) break;
+          seoMetrics = seoMetrics.concat(data);
+          if (data.length < PAGE) break;
+          from += PAGE;
+        }
+      }
+      // Aggregate clicks + impressions per URL
+      const metricsMap = new Map<string, { clicks: number; impressions: number }>();
+      for (const m of seoMetrics) {
+        if (!m.url) continue;
+        const existing = metricsMap.get(m.url) || { clicks: 0, impressions: 0 };
+        existing.clicks += m.clicks || 0;
+        existing.impressions += m.impressions || 0;
+        metricsMap.set(m.url, existing);
+      }
+
       // Build maps
       const coverageMap = new Map((coverage || []).map((c: any) => [c.url, c]));
       // Keep only latest request per URL
@@ -92,6 +124,7 @@ serve(async (req) => {
       const inventory = (siteUrls || []).map((u: any) => {
         const cov = coverageMap.get(u.url);
         const lastReq = reqMap.get(u.url);
+        const metrics = metricsMap.get(u.url);
         return {
           ...u,
           // Coverage data
@@ -107,6 +140,9 @@ serve(async (req) => {
           last_request_status: lastReq?.status || null,
           last_request_at: lastReq?.submitted_at || null,
           last_request_type: lastReq?.request_type || null,
+          // GSC metrics (28d)
+          clicks_28d: metrics?.clicks || 0,
+          impressions_28d: metrics?.impressions || 0,
         };
       });
 
