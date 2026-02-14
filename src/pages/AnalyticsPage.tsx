@@ -409,7 +409,7 @@ export default function AnalyticsPage() {
             {/* ═══ TRÁFEGO DE IA ═══ */}
             <DashboardSection title="Tráfego de IA — LLMs & Assistentes" icon={Bot}>
               {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : (
-                <AiTrafficTab sources={acquisitionData?.sources || []} pages={engagementData?.pages || []} />
+                <AiTrafficTab sources={acquisitionData?.sources || []} pages={engagementData?.pages || []} firstUserChannels={acquisitionData?.firstUserChannels || []} />
               )}
             </DashboardSection>
 

@@ -4,7 +4,7 @@ import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { StaggeredGrid } from "@/components/ui/animated-container";
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+const COLORS = ["hsl(var(--chart-11))", "hsl(var(--chart-7))", "hsl(var(--chart-9))", "hsl(var(--chart-5))", "hsl(var(--chart-3))"];
 const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 interface TechnologyTabProps {
