@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import Login from "@/pages/Login";
 import Overview from "@/pages/Overview";
 import ProjectsList from "@/pages/ProjectsList";
@@ -61,6 +62,9 @@ const App = () => (
               <Route path="/project-settings" element={<ProjectSettingsPage />} />
               <Route path="/account/users" element={<UsersPage />} />
               <Route path="/account/billing" element={<BillingPage />} />
+            </Route>
+            {/* Admin separado — sem sidebar */}
+            <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/onboarding" element={<Onboarding />} />
               {/* Rank & Rent */}
