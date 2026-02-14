@@ -536,11 +536,16 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
 /* ─── Step 3: GSC ─── */
 function StepGSC() {
   const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected">("credentials");
+  const [connectionName, setConnectionName] = useState("");
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   const validateJson = () => {
+    if (!connectionName.trim()) {
+      setJsonError("Informe um nome para a conexão.");
+      return;
+    }
     setJsonError("");
     try {
       const parsed = JSON.parse(jsonInput.trim());
@@ -573,6 +578,16 @@ function StepGSC() {
           </div>
 
           <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Nome da conexão</Label>
+            <Input
+              placeholder="Ex: GSC - Meu Site Principal"
+              value={connectionName}
+              onChange={(e) => { setConnectionName(e.target.value); setJsonError(""); }}
+            />
+            <p className="text-[10px] text-muted-foreground">Um nome para identificar essa conexão no painel.</p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label className="text-xs font-medium">Credenciais JSON</Label>
             <textarea
               className="w-full min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
@@ -592,7 +607,7 @@ function StepGSC() {
             </div>
           )}
 
-          <Button onClick={validateJson} disabled={!jsonInput.trim()} className="w-full gap-2 text-sm">
+          <Button onClick={validateJson} disabled={!jsonInput.trim() || !connectionName.trim()} className="w-full gap-2 text-sm">
             <CheckCircle2 className="h-3.5 w-3.5" /> Validar credenciais
           </Button>
 
