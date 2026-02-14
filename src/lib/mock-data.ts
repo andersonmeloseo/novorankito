@@ -172,6 +172,15 @@ export const mockConversionsByDay = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
+export const mockPageViewsByDay = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(2026, 0, 15 + i);
+  return {
+    date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+    page_views: Math.floor(Math.random() * 300 + 100 + i * 8),
+    unique_views: Math.floor(Math.random() * 200 + 60 + i * 5),
+  };
+});
+
 export const mockAdsCampaigns = [
   { name: "Brand - Search", platform: "Google Ads", cost: 2840, clicks: 4200, conversions: 182, cpa: 15.60, roas: 4.2 },
   { name: "Products - Shopping", platform: "Google Ads", cost: 5420, clicks: 8900, conversions: 310, cpa: 17.48, roas: 3.8 },
