@@ -98,21 +98,25 @@ serve(async (req) => {
           const cleanPhone = phone.replace(/\D/g, "");
           // Evolution API v2 format: /message/sendText/{instanceName}
           const baseUrl = WHATSAPP_API_URL.replace(/\/+$/, "");
+          const body = {
+            number: cleanPhone,
+            text: whatsappMessage,
+          };
+          console.log(`[WhatsApp] Sending to ${cleanPhone} via ${baseUrl}/message/sendText/rankito`);
           const res = await fetch(`${baseUrl}/message/sendText/rankito`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               apikey: WHATSAPP_API_KEY,
             },
-            body: JSON.stringify({
-              number: cleanPhone,
-              text: whatsappMessage,
-            }),
+            body: JSON.stringify(body),
           });
 
+          const resText = await res.text();
+          console.log(`[WhatsApp] Response ${res.status}: ${resText}`);
+
           if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`WhatsApp API error ${res.status}: ${errText}`);
+            throw new Error(`WhatsApp API error ${res.status}: ${resText}`);
           }
 
           results.push({ channel: "whatsapp", recipient: phone, status: "sent" });
