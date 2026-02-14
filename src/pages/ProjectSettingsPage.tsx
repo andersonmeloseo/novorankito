@@ -6,12 +6,108 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy } from "lucide-react";
+import { Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function ProjectSettingsPage() {
+  const { user } = useAuth();
+
+  const { data: project, isLoading } = useQuery({
+    queryKey: ["active-project-settings"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: siteUrls = [] } = useQuery({
+    queryKey: ["project-urls", project?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("site_urls")
+        .select("url, url_group, tags, status")
+        .eq("project_id", project!.id)
+        .limit(50);
+      return data || [];
+    },
+    enabled: !!project?.id,
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["project-members", project?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("project_members")
+        .select("id, role, user_id, created_at")
+        .eq("project_id", project!.id);
+      return data || [];
+    },
+    enabled: !!project?.id,
+  });
+
+  const [projectName, setProjectName] = useState("");
+  const [domain, setDomain] = useState("");
+
+  // Sync state when project loads
+  const displayName = projectName || project?.name || "";
+  const displayDomain = domain || project?.domain || "";
+
+  // Extract unique tags from site_urls
+  const allTags = Array.from(new Set(siteUrls.flatMap((u: any) => u.tags || [])));
+  const urlGroups = Array.from(new Set(siteUrls.map((u: any) => u.url_group).filter(Boolean)));
+
+  const handleSave = async () => {
+    if (!project?.id) return;
+    const updates: any = {};
+    if (projectName) updates.name = projectName;
+    if (domain) updates.domain = domain;
+    if (Object.keys(updates).length === 0) {
+      toast.info("Nenhuma alteração para salvar.");
+      return;
+    }
+    const { error } = await supabase.from("projects").update(updates).eq("id", project.id);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+    } else {
+      toast.success("Projeto atualizado com sucesso!");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <TopBar title="Configurações" subtitle="Carregando..." />
+        <div className="p-6 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </>
+    );
+  }
+
+  if (!project) {
+    return (
+      <>
+        <TopBar title="Configurações" subtitle="Nenhum projeto encontrado" />
+        <div className="p-6 text-center text-muted-foreground text-sm">
+          Crie um projeto primeiro para acessar as configurações.
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <TopBar title="Configurações" subtitle="Gerencie domínio, integrações e preferências do projeto" />
+      <TopBar title="Configurações" subtitle={`Gerencie o projeto ${project.name}`} />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="general">
           <TabsList className="flex flex-wrap h-auto gap-1">
@@ -28,37 +124,70 @@ export default function ProjectSettingsPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome do projeto</Label>
-                  <Input defaultValue="acme.com" className="h-9 text-sm" />
+                  <Input
+                    value={projectName || project.name}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    className="h-9 text-sm"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Domínio principal</Label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input defaultValue="acme.com" className="h-9 text-sm pl-9" />
+                    <Input
+                      value={domain || project.domain}
+                      onChange={(e) => setDomain(e.target.value)}
+                      className="h-9 text-sm pl-9"
+                    />
                   </div>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Sitemaps</Label>
-                <div className="space-y-2">
-                  {["https://acme.com/sitemap.xml", "https://acme.com/sitemap-posts.xml"].map((url) => (
-                    <div key={url} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-xs">
-                      <Link2 className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-foreground flex-1">{url}</span>
-                      <Badge variant="secondary" className="text-[9px]">ativo</Badge>
+              {project.country && (
+                <div className="grid sm:grid-cols-3 gap-4">
+                  {project.country && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">País</Label>
+                      <Input value={project.country} className="h-9 text-sm" readOnly />
                     </div>
-                  ))}
+                  )}
+                  {project.city && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Cidade</Label>
+                      <Input value={project.city} className="h-9 text-sm" readOnly />
+                    </div>
+                  )}
+                  {project.timezone && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fuso horário</Label>
+                      <Input value={project.timezone} className="h-9 text-sm" readOnly />
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Status</Label>
+                  <Badge variant="secondary" className="text-[10px]">{project.status}</Badge>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tipo do site</Label>
+                  <Badge variant="secondary" className="text-[10px]">{project.site_type || "Não definido"}</Badge>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Grupos de URL / Tags</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {["Core", "Products", "Blog", "Legacy"].map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-[10px]"><Tag className="h-2.5 w-2.5 mr-1" />{tag}</Badge>
-                  ))}
+              {urlGroups.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Grupos de URL / Tags</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {urlGroups.map((tag: string) => (
+                      <Badge key={tag} variant="secondary" className="text-[10px]"><Tag className="h-2.5 w-2.5 mr-1" />{tag}</Badge>
+                    ))}
+                    {allTags.map((tag: string) => (
+                      <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <Button size="sm" className="text-xs">Salvar Alterações</Button>
+              )}
+              <Button size="sm" className="text-xs" onClick={handleSave}>Salvar Alterações</Button>
             </Card>
           </TabsContent>
 
@@ -90,24 +219,18 @@ export default function ProjectSettingsPage() {
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">Script de Tracking</h3>
               <div className="space-y-1.5">
-                <Label className="text-xs">Chave do Projeto</Label>
+                <Label className="text-xs">ID do Projeto</Label>
                 <div className="flex items-center gap-2">
-                  <Input defaultValue="rk_live_a1b2c3d4e5f6" className="h-9 text-sm font-mono" readOnly />
-                  <Button variant="outline" size="sm" className="h-9"><Copy className="h-3.5 w-3.5" /></Button>
+                  <Input value={project.id} className="h-9 text-sm font-mono" readOnly />
+                  <Button variant="outline" size="sm" className="h-9" onClick={() => { navigator.clipboard.writeText(project.id); toast.success("Copiado!"); }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Snippet para instalação</Label>
                 <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground">
-                  {`<script src="https://cdn.rankito.io/track.js" data-key="rk_live_a1b2c3d4e5f6"></script>`}
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Eventos customizados</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {["click", "scroll", "form_submit", "page_view", "cta_click"].map((ev) => (
-                    <Badge key={ev} variant="secondary" className="text-[10px]">{ev}</Badge>
-                  ))}
+                  {`<script src="https://cdn.rankito.io/track.js" data-key="${project.id}"></script>`}
                 </div>
               </div>
             </Card>
@@ -158,24 +281,24 @@ export default function ProjectSettingsPage() {
                 <h3 className="text-sm font-medium text-foreground">Membros do Projeto</h3>
                 <Button size="sm" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Convidar</Button>
               </div>
-              {[
-                { name: "Rafael", email: "rafael@acme.com", role: "Owner" },
-                { name: "Maria", email: "maria@acme.com", role: "Admin" },
-                { name: "João", email: "joao@acme.com", role: "Analyst" },
-              ].map((member) => (
-                <div key={member.email} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                      {member.name[0]}
+              {members.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum membro adicional encontrado.</p>
+              ) : (
+                members.map((member: any) => (
+                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                        {member.role[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{member.user_id.slice(0, 8)}...</span>
+                        <p className="text-[10px] text-muted-foreground">Role: {member.role}</p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-sm font-medium text-foreground">{member.name}</span>
-                      <p className="text-[10px] text-muted-foreground">{member.email}</p>
-                    </div>
+                    <Badge variant="secondary" className="text-[10px]">{member.role}</Badge>
                   </div>
-                  <Badge variant="secondary" className="text-[10px]">{member.role}</Badge>
-                </div>
-              ))}
+                ))
+              )}
             </Card>
           </TabsContent>
         </Tabs>
