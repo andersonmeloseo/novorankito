@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,23 +23,93 @@ import { RealtimeTab } from "@/components/analytics/RealtimeTab";
 import { RetentionTab } from "@/components/analytics/RetentionTab";
 import { EcommerceTab } from "@/components/analytics/EcommerceTab";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import {
   Activity, Calendar, RefreshCw, Loader2, TrendingUp, Users, MousePointerClick,
-  Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck,
+  Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck, ArrowLeftRight,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type DateRange = "7" | "28" | "90" | "180" | "365" | "custom";
+type DatePreset =
+  | "today" | "yesterday" | "last7" | "lastWeek" | "last14"
+  | "last28" | "last30" | "thisMonth" | "lastMonth"
+  | "last90" | "thisQuarter" | "thisYear" | "lastYear" | "custom";
 
-const DATE_MAP: Record<string, string> = {
-  "7": "7daysAgo",
-  "28": "28daysAgo",
-  "90": "90daysAgo",
-  "180": "180daysAgo",
-  "365": "365daysAgo",
+const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  today: "Hoje",
+  yesterday: "Ontem",
+  last7: "Últimos 7 dias",
+  lastWeek: "Semana passada",
+  last14: "Últimas 2 semanas",
+  last28: "Últimos 28 dias",
+  last30: "Últimos 30 dias",
+  thisMonth: "Este mês",
+  lastMonth: "Mês passado",
+  last90: "Últimos 90 dias",
+  thisQuarter: "Acumulado no trimestre",
+  thisYear: "Este ano",
+  lastYear: "Ano passado",
+  custom: "Personalizado",
+};
+
+function getDateRange(preset: DatePreset): { start: string; end: string } {
+  const today = new Date();
+  const yesterday = subDays(today, 1);
+  const fmt = (d: Date) => format(d, "yyyy-MM-dd");
+
+  switch (preset) {
+    case "today": return { start: fmt(today), end: fmt(today) };
+    case "yesterday": return { start: fmt(yesterday), end: fmt(yesterday) };
+    case "last7": return { start: "7daysAgo", end: "yesterday" };
+    case "lastWeek": {
+      const s = startOfWeek(subWeeks(today, 1), { weekStartsOn: 0 });
+      const e = endOfWeek(subWeeks(today, 1), { weekStartsOn: 0 });
+      return { start: fmt(s), end: fmt(e) };
+    }
+    case "last14": return { start: "14daysAgo", end: "yesterday" };
+    case "last28": return { start: "28daysAgo", end: "yesterday" };
+    case "last30": return { start: "30daysAgo", end: "yesterday" };
+    case "thisMonth": return { start: fmt(startOfMonth(today)), end: fmt(today) };
+    case "lastMonth": {
+      const lm = subMonths(today, 1);
+      return { start: fmt(startOfMonth(lm)), end: fmt(endOfMonth(lm)) };
+    }
+    case "last90": return { start: "90daysAgo", end: "yesterday" };
+    case "thisQuarter": return { start: fmt(startOfQuarter(today)), end: fmt(today) };
+    case "thisYear": return { start: fmt(startOfYear(today)), end: fmt(today) };
+    case "lastYear": {
+      const ly = subYears(today, 1);
+      return { start: fmt(startOfYear(ly)), end: fmt(endOfYear(ly)) };
+    }
+    default: return { start: "28daysAgo", end: "yesterday" };
+  }
+}
+
+function getComparisonRange(start: string, end: string): { start: string; end: string } {
+  // Parse GA4 relative dates
+  const parseGA4Date = (d: string): Date => {
+    if (d === "yesterday") return subDays(new Date(), 1);
+    if (d === "today") return new Date();
+    const match = d.match(/^(\d+)daysAgo$/);
+    if (match) return subDays(new Date(), parseInt(match[1]));
+    return parseISO(d);
+  };
+
+  const startDate = parseGA4Date(start);
+  const endDate = parseGA4Date(end);
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  const prevEnd = subDays(startDate, 1);
+  const prevStart = subDays(prevEnd, diffDays);
+
+  return { start: format(prevStart, "yyyy-MM-dd"), end: format(prevEnd, "yyyy-MM-dd") };
+}
+
+const COMPARISON_LABELS: Record<string, string> = {
+  previous: "Período anterior",
 };
 
 export default function AnalyticsPage() {
@@ -61,18 +133,33 @@ export default function AnalyticsPage() {
     enabled: !!projectId,
   });
 
-  const [dateRange, setDateRange] = useState<DateRange>("28");
+  const [datePreset, setDatePreset] = useState<DatePreset>("last28");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [compareEnabled, setCompareEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const startDate = dateRange === "custom" && customFrom ? customFrom : (DATE_MAP[dateRange] || "28daysAgo");
-  const endDate = dateRange === "custom" && customTo ? customTo : "yesterday";
+  const { start: startDate, end: endDate } = useMemo(() => {
+    if (datePreset === "custom" && customFrom && customTo) {
+      return { start: customFrom, end: customTo };
+    }
+    return getDateRange(datePreset);
+  }, [datePreset, customFrom, customTo]);
 
-  // Fetch data based on active tab
+  const { start: compStart, end: compEnd } = useMemo(
+    () => getComparisonRange(startDate, endDate),
+    [startDate, endDate]
+  );
+
+  // Current period
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useGA4Report(
     projectId, "overview", startDate, endDate
   );
+  // Comparison period
+  const { data: compOverviewData } = useGA4Report(
+    compareEnabled ? projectId : undefined, "overview", compStart, compEnd
+  );
+
   const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(
     activeTab === "acquisition" ? projectId : undefined, "acquisition", startDate, endDate
   );
@@ -104,6 +191,38 @@ export default function AnalyticsPage() {
 
   const totals = overviewData?.totals || {};
   const trend = overviewData?.trend || [];
+  const compTotals = compOverviewData?.totals || {};
+  const compTrend = compOverviewData?.trend || [];
+
+  // Build sparkline arrays from trend data
+  const buildSparkline = (trendArr: any[], key: string) =>
+    trendArr.map((t: any) => t[key] || 0);
+
+  const sparkUsers = buildSparkline(trend, "totalUsers");
+  const sparkSessions = buildSparkline(trend, "sessions");
+  const sparkPageViews = buildSparkline(trend, "screenPageViews");
+  const sparkEngagement = buildSparkline(trend, "engagementRate").map((v: number) => v * 100);
+  const sparkBounce = buildSparkline(trend, "bounceRate").map((v: number) => v * 100);
+  const sparkEvents = buildSparkline(trend, "eventCount");
+  const sparkConversions = buildSparkline(trend, "conversions");
+  const sparkRevenue = buildSparkline(trend, "totalRevenue");
+  const sparkDuration = buildSparkline(trend, "averageSessionDuration");
+  const sparkNewUsers = buildSparkline(trend, "totalUsers"); // approximate
+
+  const compSparkUsers = buildSparkline(compTrend, "totalUsers");
+  const compSparkSessions = buildSparkline(compTrend, "sessions");
+  const compSparkPageViews = buildSparkline(compTrend, "screenPageViews");
+  const compSparkEngagement = buildSparkline(compTrend, "engagementRate").map((v: number) => v * 100);
+  const compSparkBounce = buildSparkline(compTrend, "bounceRate").map((v: number) => v * 100);
+  const compSparkEvents = buildSparkline(compTrend, "eventCount");
+  const compSparkConversions = buildSparkline(compTrend, "conversions");
+  const compSparkRevenue = buildSparkline(compTrend, "totalRevenue");
+  const compSparkDuration = buildSparkline(compTrend, "averageSessionDuration");
+
+  const calcChange = (curr: number, prev: number) => {
+    if (!compareEnabled || !prev) return 0;
+    return parseFloat(((curr - prev) / prev * 100).toFixed(1));
+  };
 
   const totalUsers = totals.totalUsers || 0;
   const newUsers = totals.newUsers || 0;
@@ -123,15 +242,94 @@ export default function AnalyticsPage() {
     return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
   };
 
-  const trendData = trend.map((t: any) => ({
+  const trendData = trend.map((t: any, i: number) => ({
     date: (t.date || "").substring(4, 6) + "/" + (t.date || "").substring(6, 8),
     users: t.totalUsers || 0,
     sessions: t.sessions || 0,
     pageViews: t.screenPageViews || 0,
     events: t.eventCount || 0,
+    revenue: t.totalRevenue || 0,
+    ...(compareEnabled && compTrend[i] ? {
+      prevUsers: compTrend[i].totalUsers || 0,
+      prevSessions: compTrend[i].sessions || 0,
+      prevPageViews: compTrend[i].screenPageViews || 0,
+    } : {}),
   }));
 
   const hasConnection = !!ga4Connection?.property_id;
+
+  const kpis = [
+    {
+      label: "Usuários", value: totalUsers,
+      change: calcChange(totalUsers, compTotals.totalUsers || 0),
+      prevValue: compTotals.totalUsers || 0,
+      sparklineData: sparkUsers, sparklinePrevData: compSparkUsers,
+      sparklineColor: "hsl(var(--chart-1))",
+    },
+    {
+      label: "Novos Usuários", value: newUsers,
+      change: calcChange(newUsers, compTotals.newUsers || 0),
+      prevValue: compTotals.newUsers || 0,
+      sparklineData: sparkNewUsers, sparklinePrevData: compSparkUsers,
+      sparklineColor: "hsl(var(--chart-2))",
+    },
+    {
+      label: "Sessões", value: sessions,
+      change: calcChange(sessions, compTotals.sessions || 0),
+      prevValue: compTotals.sessions || 0,
+      sparklineData: sparkSessions, sparklinePrevData: compSparkSessions,
+      sparklineColor: "hsl(var(--chart-3))",
+    },
+    {
+      label: "Pageviews", value: pageViews,
+      change: calcChange(pageViews, compTotals.screenPageViews || 0),
+      prevValue: compTotals.screenPageViews || 0,
+      sparklineData: sparkPageViews, sparklinePrevData: compSparkPageViews,
+      sparklineColor: "hsl(var(--chart-4))",
+    },
+    {
+      label: "Tx. Engajamento", value: engagementRate, suffix: "%",
+      change: calcChange(engagementRate, (compTotals.engagementRate || 0) * 100),
+      prevValue: (compTotals.engagementRate || 0) * 100,
+      sparklineData: sparkEngagement, sparklinePrevData: compSparkEngagement,
+      sparklineColor: "hsl(var(--chart-5))",
+    },
+    {
+      label: "Duração Média", value: Math.round(avgDuration), suffix: "s",
+      change: calcChange(avgDuration, compTotals.averageSessionDuration || 0),
+      prevValue: Math.round(compTotals.averageSessionDuration || 0),
+      sparklineData: sparkDuration, sparklinePrevData: compSparkDuration,
+      sparklineColor: "hsl(var(--chart-1))",
+    },
+    {
+      label: "Tx. Rejeição", value: bounceRate, suffix: "%",
+      change: calcChange(bounceRate, (compTotals.bounceRate || 0) * 100),
+      prevValue: (compTotals.bounceRate || 0) * 100,
+      sparklineData: sparkBounce, sparklinePrevData: compSparkBounce,
+      sparklineColor: "hsl(var(--chart-2))",
+    },
+    {
+      label: "Eventos", value: events,
+      change: calcChange(events, compTotals.eventCount || 0),
+      prevValue: compTotals.eventCount || 0,
+      sparklineData: sparkEvents, sparklinePrevData: compSparkEvents,
+      sparklineColor: "hsl(var(--chart-3))",
+    },
+    {
+      label: "Conversões", value: conversions,
+      change: calcChange(conversions, compTotals.conversions || 0),
+      prevValue: compTotals.conversions || 0,
+      sparklineData: sparkConversions, sparklinePrevData: compSparkConversions,
+      sparklineColor: "hsl(var(--chart-4))",
+    },
+    {
+      label: "Receita", value: revenue, prefix: "R$",
+      change: calcChange(revenue, compTotals.totalRevenue || 0),
+      prevValue: compTotals.totalRevenue || 0,
+      sparklineData: sparkRevenue, sparklinePrevData: compSparkRevenue,
+      sparklineColor: "hsl(var(--chart-5))",
+    },
+  ];
 
   return (
     <>
@@ -159,31 +357,57 @@ export default function AnalyticsPage() {
           </AnimatedContainer>
         )}
 
-        {/* Date filter */}
+        {/* Date filter + comparison */}
         <AnimatedContainer>
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-                <SelectTrigger className="w-[160px] h-9 text-xs">
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Select value={datePreset} onValueChange={(v) => setDatePreset(v as DatePreset)}>
+                <SelectTrigger className="w-[200px] h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="7">Últimos 7 dias</SelectItem>
-                  <SelectItem value="28">Últimos 28 dias</SelectItem>
-                  <SelectItem value="90">Últimos 3 meses</SelectItem>
-                  <SelectItem value="180">Últimos 6 meses</SelectItem>
-                  <SelectItem value="365">Último ano</SelectItem>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="yesterday">Ontem</SelectItem>
+                  <SelectItem value="last7">Últimos 7 dias</SelectItem>
+                  <SelectItem value="lastWeek">Semana passada (Dom - Sáb)</SelectItem>
+                  <SelectItem value="last14">Últimas 2 semanas</SelectItem>
+                  <SelectItem value="last28">Últimos 28 dias</SelectItem>
+                  <SelectItem value="last30">Últimos 30 dias</SelectItem>
+                  <SelectItem value="thisMonth">Este mês</SelectItem>
+                  <SelectItem value="lastMonth">Mês passado</SelectItem>
+                  <SelectItem value="last90">Últimos 90 dias</SelectItem>
+                  <SelectItem value="thisQuarter">Acumulado no trimestre</SelectItem>
+                  <SelectItem value="thisYear">Este ano (janeiro – hoje)</SelectItem>
+                  <SelectItem value="lastYear">Ano passado</SelectItem>
                   <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
-              {dateRange === "custom" && (
+              {datePreset === "custom" && (
                 <div className="flex items-center gap-2">
                   <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-9 text-xs w-[140px]" />
                   <span className="text-xs text-muted-foreground">até</span>
                   <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-9 text-xs w-[140px]" />
                 </div>
               )}
+
+              <div className="flex items-center gap-2 ml-auto">
+                <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label htmlFor="compare-toggle" className="text-xs text-muted-foreground cursor-pointer">
+                  Comparar
+                </Label>
+                <Switch
+                  id="compare-toggle"
+                  checked={compareEnabled}
+                  onCheckedChange={setCompareEnabled}
+                  className="scale-75"
+                />
+                {compareEnabled && (
+                  <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    vs período anterior
+                  </span>
+                )}
+              </div>
             </div>
           </Card>
         </AnimatedContainer>
@@ -198,24 +422,44 @@ export default function AnalyticsPage() {
 
         {hasConnection && (
           <>
-            {/* KPIs */}
+            {/* KPIs - 2 rows of 5 */}
             {loadingOverview ? <KpiSkeleton count={5} /> : (
               <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <KpiCard label="Usuários" value={totalUsers} change={0} />
-                <KpiCard label="Novos Usuários" value={newUsers} change={0} />
-                <KpiCard label="Sessões" value={sessions} change={0} />
-                <KpiCard label="Pageviews" value={pageViews} change={0} />
-                <KpiCard label="Tx. Engajamento" value={engagementRate} change={0} suffix="%" />
+                {kpis.slice(0, 5).map(kpi => (
+                  <KpiCard
+                    key={kpi.label}
+                    label={kpi.label}
+                    value={kpi.value}
+                    change={kpi.change}
+                    prefix={kpi.prefix}
+                    suffix={kpi.suffix}
+                    prevValue={kpi.prevValue}
+                    showComparison={compareEnabled}
+                    sparklineData={kpi.sparklineData}
+                    sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined}
+                    sparklineColor={kpi.sparklineColor}
+                  />
+                ))}
               </StaggeredGrid>
             )}
 
             {loadingOverview ? <KpiSkeleton count={5} /> : (
               <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <KpiCard label="Duração Média" value={Math.round(avgDuration)} change={0} suffix="s" />
-                <KpiCard label="Tx. Rejeição" value={bounceRate} change={0} suffix="%" />
-                <KpiCard label="Eventos" value={events} change={0} />
-                <KpiCard label="Conversões" value={conversions} change={0} />
-                <KpiCard label="Receita" value={revenue} change={0} prefix="R$" />
+                {kpis.slice(5).map(kpi => (
+                  <KpiCard
+                    key={kpi.label}
+                    label={kpi.label}
+                    value={kpi.value}
+                    change={kpi.change}
+                    prefix={kpi.prefix}
+                    suffix={kpi.suffix}
+                    prevValue={kpi.prevValue}
+                    showComparison={compareEnabled}
+                    sparklineData={kpi.sparklineData}
+                    sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined}
+                    sparklineColor={kpi.sparklineColor}
+                  />
+                ))}
               </StaggeredGrid>
             )}
 
@@ -224,25 +468,45 @@ export default function AnalyticsPage() {
               <AnimatedContainer delay={0.15}>
                 <Card className="p-5">
                   <h3 className="text-sm font-medium text-foreground mb-4">Tendência Diária</h3>
-                  <div className="h-[280px]">
+                  <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trendData}>
                         <defs>
                           <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.15} />
+                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
                             <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="sessionsGradA" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
+                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
                             <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="pvGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} />
-                        <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: 10,
+                            fontSize: 12,
+                            boxShadow: "0 8px 24px -8px rgba(0,0,0,0.15)",
+                          }}
+                        />
+                        <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                        <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
+                        <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
+                        <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
+                        {compareEnabled && (
+                          <>
+                            <Area type="monotone" dataKey="prevUsers" name="Usuários (anterior)" stroke="hsl(var(--chart-1))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                            <Area type="monotone" dataKey="prevSessions" name="Sessões (anterior)" stroke="hsl(var(--chart-2))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                          </>
+                        )}
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -283,7 +547,7 @@ export default function AnalyticsPage() {
                 </TabsContent>
 
                 <TabsContent value="engagement" className="mt-4">
-                  {loadingEngagement ? <TableSkeleton /> : <EngagementTab data={engagementData} />}
+                  {loadingEngagement ? <><ChartSkeleton /><TableSkeleton /></> : <EngagementTab data={engagementData} />}
                 </TabsContent>
 
                 <TabsContent value="demographics" className="mt-4">
