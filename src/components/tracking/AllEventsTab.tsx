@@ -136,21 +136,6 @@ export function AllEventsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Plugin info banner */}
-      <Card className="p-4 border-primary/20 bg-primary/5">
-        <div className="flex items-start gap-3">
-          <Activity className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">Plugin Rankito v3.1.0 — Tracking Universal</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Captura automática de <strong>13 tipos de eventos</strong>: page_view, page_exit, whatsapp_click, phone_click, 
-              email_click, button_click, form_submit, product_view, add_to_cart, remove_from_cart, begin_checkout, purchase, search. 
-              Session tracking com sequence_number e detecção automática de plataforma.
-            </p>
-          </div>
-        </div>
-      </Card>
-
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <SparkKpi label="Total Eventos" value={totalEvents} change={15.8} sparkData={generateSparkline(12, 100, 30)} color="hsl(var(--primary))" icon={Activity} />
