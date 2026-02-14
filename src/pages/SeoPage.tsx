@@ -753,7 +753,7 @@ export default function SeoPage() {
                       <TabsTrigger value="devices" className="text-xs gap-1"><Monitor className="h-3 w-3" />Dispositivos</TabsTrigger>
                       <TabsTrigger value="appearance" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Aparência</TabsTrigger>
                       <TabsTrigger value="opportunities" className="text-xs gap-1"><Target className="h-3 w-3" />Oportunidades</TabsTrigger>
-                      <TabsTrigger value="decay" className="text-xs gap-1"><TrendingDown className="h-3 w-3" />Content Decay</TabsTrigger>
+                      <TabsTrigger value="decay" className="text-xs gap-1"><TrendingDown className="h-3 w-3" />Declínio de Conteúdo</TabsTrigger>
                       <TabsTrigger value="cannibalization" className="text-xs gap-1"><Copy className="h-3 w-3" />Canibalização</TabsTrigger>
                       <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
                       <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
