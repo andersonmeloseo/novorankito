@@ -647,6 +647,8 @@ export type Database = {
           discovered_at: string
           id: string
           last_crawl: string | null
+          meta_description: string | null
+          meta_title: string | null
           owner_id: string
           priority: string
           project_id: string
@@ -662,6 +664,8 @@ export type Database = {
           discovered_at?: string
           id?: string
           last_crawl?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
           owner_id: string
           priority?: string
           project_id: string
@@ -677,6 +681,8 @@ export type Database = {
           discovered_at?: string
           id?: string
           last_crawl?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
           owner_id?: string
           priority?: string
           project_id?: string
