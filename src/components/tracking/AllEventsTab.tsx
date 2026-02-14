@@ -146,7 +146,7 @@ export function AllEventsTab() {
       {/* Heatmap Day × Hour — Featured */}
       <AnimatedContainer delay={0.03}>
         <Card className="p-5">
-          <ChartHeader title="🔥 Mapa de Calor de Eventos (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
+          <ChartHeader title="🔥 Mapa de Calor de Eventos (Dia × Hora)" subtitle="Identifique os horários de pico de atividade dos visitantes para otimizar campanhas e publicações" />
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <div className="flex gap-0.5 mb-1 ml-10">
@@ -178,7 +178,7 @@ export function AllEventsTab() {
       {/* Volume over time */}
       <AnimatedContainer>
         <Card className="p-5">
-          <ChartHeader title="Volume de Eventos ao Longo do Tempo" subtitle="Tracking, Conversões e E-commerce — Stacked Area" />
+          <ChartHeader title="Volume de Eventos ao Longo do Tempo" subtitle="Acompanhe a evolução diária de tracking, conversões e e-commerce para detectar tendências e anomalias" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={allEventsByDay}>
@@ -204,7 +204,7 @@ export function AllEventsTab() {
       {/* Event type ranking */}
       <AnimatedContainer delay={0.05}>
         <Card className="p-5">
-          <ChartHeader title="Ranking de Eventos por Tipo" subtitle="Todos os 13 tipos de eventos do plugin v3.1.0" />
+          <ChartHeader title="Ranking de Eventos por Tipo" subtitle="Descubra quais ações dos usuários são mais frequentes e priorize otimizações" />
           <div className="space-y-2">
             {allEventFunnel.map((step, i) => (
               <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={allEventFunnel[0].value} color={step.color} index={i} />
@@ -217,7 +217,7 @@ export function AllEventsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
-            <ChartHeader title="Detecção de Plataforma" subtitle="WooCommerce, GTM ou Genérico" />
+            <ChartHeader title="Detecção de Plataforma" subtitle="Veja qual tecnologia (WooCommerce, GTM, etc.) gera mais eventos no seu site" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -235,7 +235,7 @@ export function AllEventsTab() {
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <ChartHeader title="Eventos por Dispositivo" subtitle="Mobile, Desktop, Tablet" />
+            <ChartHeader title="Eventos por Dispositivo" subtitle="Entenda de onde vem seu tráfego para otimizar a experiência mobile e desktop" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -252,7 +252,7 @@ export function AllEventsTab() {
 
         <AnimatedContainer delay={0.2}>
           <Card className="p-5">
-            <ChartHeader title="Eventos por Browser" subtitle="Barras verticais com gradiente" />
+            <ChartHeader title="Eventos por Browser" subtitle="Identifique possíveis problemas de compatibilidade entre navegadores" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={eventsByBrowser}>
@@ -274,7 +274,7 @@ export function AllEventsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <AnimatedContainer delay={0.25} className="lg:col-span-3">
           <Card className="p-5 h-full">
-            <ChartHeader title="Treemap de Páginas" subtitle="Área proporcional ao volume de eventos" />
+            <ChartHeader title="Treemap de Páginas" subtitle="Visualize quais páginas concentram mais atividade para priorizar melhorias" />
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <Treemap data={topPagesTreemap} dataKey="size" nameKey="name" stroke="hsl(var(--background))">
@@ -290,7 +290,7 @@ export function AllEventsTab() {
 
         <AnimatedContainer delay={0.3} className="lg:col-span-2">
           <Card className="p-4 h-full flex flex-col">
-            <ChartHeader title="Evento × Dispositivo" subtitle="Heatmap de intensidade" />
+            <ChartHeader title="Evento × Dispositivo" subtitle="Cruze tipos de evento com dispositivos para entender comportamentos específicos de cada plataforma" />
             <div className="flex-1 flex items-center">
               <CohortHeatmap
                 data={cohortData.data}
