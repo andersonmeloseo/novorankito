@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
-  Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2,
+  Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
 } from "lucide-react";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -112,9 +112,14 @@ export default function SeoPage() {
   const { data: deviceMetrics = [], isLoading: loadingDevice } = useSeoMetrics(projectId, "device");
   const { data: dateDeviceMetrics = [] } = useSeoMetrics(projectId, "date_device");
   const { data: dateCountryMetrics = [] } = useSeoMetrics(projectId, "date_country");
+  const { data: queryPageMetrics = [] } = useSeoMetrics(projectId, "query_page");
   
   // Fallback: also load combined (legacy data before migration)
   const { data: combinedMetrics = [], isLoading: loadingCombined } = useSeoMetrics(projectId, "combined");
+
+  // Drill-down state
+  const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
+  const [selectedPage, setSelectedPage] = useState<string | null>(null);
   
   // Choose the right data source based on active filters
   const baseMetrics = useMemo(() => {
@@ -225,6 +230,36 @@ export default function SeoPage() {
       position: m.position || 0,
     }));
   }, [deviceMetrics, combinedMetrics]);
+
+  // Drill-down: pages for a selected query
+  const drillPagesForQuery = useMemo(() => {
+    if (!selectedQuery) return [];
+    return queryPageMetrics
+      .filter((m: any) => m.query === selectedQuery)
+      .map((m: any) => ({
+        name: m.url || "—",
+        clicks: m.clicks || 0,
+        impressions: m.impressions || 0,
+        ctr: m.ctr || 0,
+        position: m.position || 0,
+      }))
+      .sort((a: any, b: any) => b.clicks - a.clicks);
+  }, [selectedQuery, queryPageMetrics]);
+
+  // Drill-down: queries for a selected page
+  const drillQueriesForPage = useMemo(() => {
+    if (!selectedPage) return [];
+    return queryPageMetrics
+      .filter((m: any) => m.url === selectedPage)
+      .map((m: any) => ({
+        name: m.query || "—",
+        clicks: m.clicks || 0,
+        impressions: m.impressions || 0,
+        ctr: m.ctr || 0,
+        position: m.position || 0,
+      }))
+      .sort((a: any, b: any) => b.clicks - a.clicks);
+  }, [selectedPage, queryPageMetrics]);
 
   // Trend data - each row from "date" dimension is already one day
   const trendData = useMemo(() => {
@@ -585,50 +620,106 @@ export default function SeoPage() {
             {/* Data tables with tabs */}
             {hasData && (
               <AnimatedContainer delay={0.25}>
-                <Tabs defaultValue="pages">
+                <Tabs defaultValue="queries">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
                     <TabsList>
-                      <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
-                      <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
+                      <TabsTrigger value="queries" className="text-xs" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}>Consultas</TabsTrigger>
+                      <TabsTrigger value="pages" className="text-xs" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}>Páginas</TabsTrigger>
                       <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
                       <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
                     </TabsList>
                   </div>
 
-                  <TabsContent value="pages" className="mt-0">
-                    <SortableTable
-                      columns={[
-                        { key: "name", label: "Página" },
-                        { key: "clicks", label: "Cliques" },
-                        { key: "impressions", label: "Impressões" },
-                        { key: "ctr", label: "CTR" },
-                        { key: "position", label: "Posição" },
-                      ]}
-                      rows={pageRows}
-                      sort={pagesSort}
-                      onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
-                      page={pagesPage}
-                      onPageChange={setPagesPage}
-                      onExport={() => exportCSV(pageRows, "seo-paginas")}
-                    />
+                  <TabsContent value="queries" className="mt-0">
+                    {selectedQuery ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3 px-1">
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setSelectedQuery(null)}>
+                            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+                          </Button>
+                          <span className="text-xs text-muted-foreground">Páginas para:</span>
+                          <span className="text-xs font-medium font-mono text-foreground">{selectedQuery}</span>
+                        </div>
+                        <SortableTable
+                          columns={[
+                            { key: "name", label: "Página" },
+                            { key: "clicks", label: "Cliques" },
+                            { key: "impressions", label: "Impressões" },
+                            { key: "ctr", label: "CTR" },
+                            { key: "position", label: "Posição" },
+                          ]}
+                          rows={drillPagesForQuery}
+                          sort={pagesSort}
+                          onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                          page={pagesPage}
+                          onPageChange={setPagesPage}
+                          onExport={() => exportCSV(drillPagesForQuery, `seo-paginas-${selectedQuery}`)}
+                        />
+                      </div>
+                    ) : (
+                      <SortableTable
+                        columns={[
+                          { key: "name", label: "Consulta" },
+                          { key: "clicks", label: "Cliques" },
+                          { key: "impressions", label: "Impressões" },
+                          { key: "ctr", label: "CTR" },
+                          { key: "position", label: "Posição" },
+                        ]}
+                        rows={queryRows}
+                        sort={queriesSort}
+                        onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                        page={queriesPage}
+                        onPageChange={setQueriesPage}
+                        onExport={() => exportCSV(queryRows, "seo-consultas")}
+                        onRowClick={(row) => { setSelectedQuery(row.name); setPagesPage(1); }}
+                      />
+                    )}
                   </TabsContent>
 
-                  <TabsContent value="queries" className="mt-0">
-                    <SortableTable
-                      columns={[
-                        { key: "name", label: "Consulta" },
-                        { key: "clicks", label: "Cliques" },
-                        { key: "impressions", label: "Impressões" },
-                        { key: "ctr", label: "CTR" },
-                        { key: "position", label: "Posição" },
-                      ]}
-                      rows={queryRows}
-                      sort={queriesSort}
-                      onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
-                      page={queriesPage}
-                      onPageChange={setQueriesPage}
-                      onExport={() => exportCSV(queryRows, "seo-consultas")}
-                    />
+                  <TabsContent value="pages" className="mt-0">
+                    {selectedPage ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3 px-1">
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setSelectedPage(null)}>
+                            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+                          </Button>
+                          <span className="text-xs text-muted-foreground">Consultas para:</span>
+                          <span className="text-xs font-medium font-mono text-foreground truncate max-w-[400px]">{selectedPage}</span>
+                        </div>
+                        <SortableTable
+                          columns={[
+                            { key: "name", label: "Consulta" },
+                            { key: "clicks", label: "Cliques" },
+                            { key: "impressions", label: "Impressões" },
+                            { key: "ctr", label: "CTR" },
+                            { key: "position", label: "Posição" },
+                          ]}
+                          rows={drillQueriesForPage}
+                          sort={queriesSort}
+                          onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                          page={queriesPage}
+                          onPageChange={setQueriesPage}
+                          onExport={() => exportCSV(drillQueriesForPage, `seo-consultas-${selectedPage}`)}
+                        />
+                      </div>
+                    ) : (
+                      <SortableTable
+                        columns={[
+                          { key: "name", label: "Página" },
+                          { key: "clicks", label: "Cliques" },
+                          { key: "impressions", label: "Impressões" },
+                          { key: "ctr", label: "CTR" },
+                          { key: "position", label: "Posição" },
+                        ]}
+                        rows={pageRows}
+                        sort={pagesSort}
+                        onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                        page={pagesPage}
+                        onPageChange={setPagesPage}
+                        onExport={() => exportCSV(pageRows, "seo-paginas")}
+                        onRowClick={(row) => { setSelectedPage(row.name); setQueriesPage(1); }}
+                      />
+                    )}
                   </TabsContent>
 
                   <TabsContent value="countries" className="mt-0">
@@ -688,7 +779,7 @@ function sortData(data: any[], key: string, dir: SortDir) {
 interface Column { key: string; label: string }
 
 function SortableTable({
-  columns, rows, sort, onSort, page, onPageChange, onExport,
+  columns, rows, sort, onSort, page, onPageChange, onExport, onRowClick,
 }: {
   columns: Column[];
   rows: any[];
@@ -697,6 +788,7 @@ function SortableTable({
   page: number;
   onPageChange: (p: number) => void;
   onExport: () => void;
+  onRowClick?: (row: any) => void;
 }) {
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
   const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -740,7 +832,11 @@ function SortableTable({
               <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
             ) : (
               paginated.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0 table-row-hover">
+                <tr
+                  key={i}
+                  className={`border-b border-border last:border-0 table-row-hover ${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}`}
+                  onClick={() => onRowClick?.(row)}
+                >
                   {columns.map(col => (
                     <td key={col.key} className={`px-4 py-3 text-xs ${col.key === "name" ? "font-mono text-foreground max-w-[300px] truncate" : "text-muted-foreground"}`}>
                       {formatCell(row, col.key)}
