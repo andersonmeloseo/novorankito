@@ -296,6 +296,8 @@ export type Database = {
           id: string
           monetization_status: string
           name: string
+          onboarding_completed: boolean
+          onboarding_step: number
           owner_id: string
           site_type: string | null
           status: string
@@ -310,6 +312,8 @@ export type Database = {
           id?: string
           monetization_status?: string
           name: string
+          onboarding_completed?: boolean
+          onboarding_step?: number
           owner_id: string
           site_type?: string | null
           status?: string
@@ -324,6 +328,8 @@ export type Database = {
           id?: string
           monetization_status?: string
           name?: string
+          onboarding_completed?: boolean
+          onboarding_step?: number
           owner_id?: string
           site_type?: string | null
           status?: string
