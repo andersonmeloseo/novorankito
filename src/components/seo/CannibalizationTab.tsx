@@ -150,7 +150,7 @@ export function CannibalizationTab({ projectId }: Props) {
                     {expandedQuery === row.query && row.pages.map((p: any, j: number) => (
                       <tr key={`sub-${i}-${j}`} className="bg-muted/20 border-b border-border">
                         <td className="px-4 py-2"></td>
-                        <td colSpan={2} className="px-4 py-2 text-xs font-mono text-muted-foreground max-w-[400px] truncate pl-8" title={p.page}>{p.page}</td>
+                        <td colSpan={2} className="px-4 py-2 text-xs font-mono text-muted-foreground max-w-[400px] truncate pl-8" title={p.page}><a href={p.page} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{p.page}</a></td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">{p.clicks} cliques · {p.ctr}% CTR</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">Pos. {p.position}</td>
                       </tr>

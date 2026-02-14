@@ -139,7 +139,7 @@ export function ContentDecayTab({ projectId }: Props) {
                   <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
                 ) : paginated.map((row: any, i: number) => (
                   <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                     <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.page}>{row.page}</td>
+                     <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.page}><a href={row.page} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{row.page}</a></td>
                      <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.currentClicks).toLocaleString()}</td>
                      <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.previousClicks).toLocaleString()}</td>
                      <td className="px-4 py-3 text-xs text-destructive font-semibold">{row.diffClicks}</td>
