@@ -6,12 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2,
+  RefreshCw, Trash2, Pencil, CheckCircle2, AlertCircle, Upload, Search, BookOpen,
+  ExternalLink, TestTube,
+} from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { toast as shadToast } from "@/hooks/use-toast";
+import { format, parseISO } from "date-fns";
 
 export default function ProjectSettingsPage() {
   const { user } = useAuth();
@@ -192,27 +199,10 @@ export default function ProjectSettingsPage() {
           </TabsContent>
 
           <TabsContent value="integrations" className="mt-4 space-y-4">
-            {[
-              { name: "Google Search Console", status: "connected", icon: Wifi, color: "text-success" },
-              { name: "Google Analytics 4", status: "connected", icon: Wifi, color: "text-success" },
-              { name: "Google Ads", status: "disconnected", icon: WifiOff, color: "text-muted-foreground" },
-              { name: "Meta Ads", status: "disconnected", icon: WifiOff, color: "text-muted-foreground" },
-            ].map((integration) => (
-              <Card key={integration.name} className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <integration.icon className={`h-4 w-4 ${integration.color}`} />
-                  <div>
-                    <span className="text-sm font-medium text-foreground">{integration.name}</span>
-                    <p className="text-[10px] text-muted-foreground">
-                      {integration.status === "connected" ? "Conectado e sincronizando" : "Não conectado"}
-                    </p>
-                  </div>
-                </div>
-                <Button variant={integration.status === "connected" ? "outline" : "default"} size="sm" className="text-xs">
-                  {integration.status === "connected" ? "Desconectar" : "Conectar"}
-                </Button>
-              </Card>
-            ))}
+            <GscIntegrationCard projectId={project.id} />
+            <Ga4IntegrationCard />
+            <AdsIntegrationCard name="Google Ads" />
+            <AdsIntegrationCard name="Meta Ads" />
           </TabsContent>
 
           <TabsContent value="tracking" className="mt-4 space-y-4">
@@ -304,5 +294,314 @@ export default function ProjectSettingsPage() {
         </Tabs>
       </div>
     </>
+  );
+}
+
+/* ─── GSC Integration Card ─── */
+function GscIntegrationCard({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [connectionName, setConnectionName] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [sites, setSites] = useState<{ siteUrl: string; permissionLevel: string }[]>([]);
+  const [selectedSite, setSelectedSite] = useState("");
+  const [step, setStep] = useState<"form" | "validating" | "select">("form");
+
+  const { data: conn, isLoading } = useQuery({
+    queryKey: ["gsc-connection", projectId],
+    queryFn: async () => {
+      const { data } = await supabase.from("gsc_connections").select("*").eq("project_id", projectId).maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  const isConnected = !!conn;
+
+  const handleTest = async () => {
+    if (!conn) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-gsc", {
+        body: { credentials: { client_email: conn.client_email, private_key: conn.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      shadToast({ title: "Conexão OK!", description: `${data.sites?.length || 0} propriedade(s) encontrada(s).` });
+    } catch (e: any) {
+      shadToast({ title: "Falha na conexão", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-gsc-data", {
+        body: { project_id: projectId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
+      shadToast({ title: "Sincronização concluída!", description: `${data?.inserted?.toLocaleString() || 0} métricas importadas.` });
+    } catch (e: any) {
+      shadToast({ title: "Erro ao sincronizar", description: e.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!conn) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("gsc_connections").delete().eq("id", conn.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
+      shadToast({ title: "GSC desconectado." });
+    } catch (e: any) {
+      shadToast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    if (!connectionName.trim()) { setJsonError("Informe um nome."); return; }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonInput.trim());
+      if (!parsed.client_email || !parsed.private_key) {
+        setJsonError("JSON inválido: client_email e private_key são obrigatórios.");
+        return;
+      }
+    } catch { setJsonError("JSON inválido."); return; }
+
+    setStep("validating");
+    setJsonError("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-gsc", {
+        body: { credentials: { client_email: parsed.client_email, private_key: parsed.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      const fetchedSites = data.sites || [];
+      if (fetchedSites.length === 0) {
+        setJsonError("Nenhuma propriedade encontrada. Verifique se a Service Account tem acesso.");
+        setStep("form");
+        return;
+      }
+      setSites(fetchedSites);
+      setSelectedSite(fetchedSites[0]?.siteUrl || "");
+      setStep("select");
+    } catch (e: any) {
+      setJsonError(e.message);
+      setStep("form");
+    }
+  };
+
+  const handleSaveConnection = async () => {
+    if (!user || !selectedSite) return;
+    let parsed: any;
+    try { parsed = JSON.parse(jsonInput.trim()); } catch { return; }
+    try {
+      const { error } = await supabase.from("gsc_connections").upsert({
+        project_id: projectId,
+        owner_id: user.id,
+        connection_name: connectionName,
+        client_email: parsed.client_email,
+        private_key: parsed.private_key,
+        site_url: selectedSite,
+      }, { onConflict: "project_id" });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
+      setEditing(false);
+      setStep("form");
+      setJsonInput("");
+      shadToast({ title: "Conexão GSC salva!" });
+    } catch (e: any) {
+      shadToast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) return <Card className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></Card>;
+
+  // Show connected state
+  if (isConnected && !editing) {
+    return (
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <Wifi className="h-4 w-4 text-success" />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-foreground">Google Search Console</span>
+              <p className="text-[10px] text-muted-foreground">{conn.connection_name} · {conn.site_url}</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Conectado</Badge>
+        </div>
+        {conn.last_sync_at && (
+          <p className="text-[10px] text-muted-foreground">
+            Último sync: {format(parseISO(conn.last_sync_at), "dd/MM/yyyy HH:mm")}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+            Testar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Sincronizar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => { setEditing(true); setConnectionName(conn.connection_name); }}>
+            <Pencil className="h-3 w-3" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={deleting}>
+            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+            Desconectar
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  // Show connect/edit form
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+            {editing ? <Pencil className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+          </div>
+          <div>
+            <span className="text-sm font-medium text-foreground">Google Search Console</span>
+            <p className="text-[10px] text-muted-foreground">{editing ? "Editar conexão" : "Não conectado"}</p>
+          </div>
+        </div>
+        {editing && (
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setEditing(false); setStep("form"); setJsonError(""); }}>
+            Cancelar
+          </Button>
+        )}
+      </div>
+
+      {step === "form" && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Nome da conexão</Label>
+            <Input placeholder="Ex: GSC Principal" value={connectionName} onChange={e => { setConnectionName(e.target.value); setJsonError(""); }} className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Credenciais JSON (Service Account)</Label>
+            <label className="cursor-pointer">
+              <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => { setJsonInput(evt.target?.result as string); setJsonError(""); };
+                reader.readAsText(file);
+                e.target.value = "";
+              }} />
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2 text-xs text-muted-foreground">
+                <Upload className="h-3.5 w-3.5" />
+                <span>Upload arquivo .json</span>
+              </div>
+            </label>
+            <textarea
+              className="w-full min-h-[100px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              placeholder='{"type": "service_account", ...}'
+              value={jsonInput}
+              onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
+            />
+          </div>
+          {jsonError && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-destructive text-xs">
+              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {jsonError}
+            </div>
+          )}
+          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleConnect} disabled={!jsonInput.trim() || !connectionName.trim()}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
+          </Button>
+        </div>
+      )}
+
+      {step === "validating" && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-xs text-muted-foreground">Verificando credenciais...</span>
+        </div>
+      )}
+
+      {step === "select" && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 text-success text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Conexão verificada! Selecione a propriedade.
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Propriedade</Label>
+            <Select value={selectedSite} onValueChange={setSelectedSite}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sites.map(s => <SelectItem key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleSaveConnection} disabled={!selectedSite}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Salvar conexão
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ─── GA4 Integration Card (placeholder) ─── */
+function Ga4IntegrationCard() {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+            <WifiOff className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <span className="text-sm font-medium text-foreground">Google Analytics 4</span>
+            <p className="text-[10px] text-muted-foreground">Não conectado</p>
+          </div>
+        </div>
+        <Button size="sm" className="text-xs h-7">Conectar</Button>
+      </div>
+    </Card>
+  );
+}
+
+/* ─── Ads Integration Card (placeholder) ─── */
+function AdsIntegrationCard({ name }: { name: string }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+            <WifiOff className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <span className="text-sm font-medium text-foreground">{name}</span>
+            <p className="text-[10px] text-muted-foreground">Não conectado</p>
+          </div>
+        </div>
+        <Button size="sm" className="text-xs h-7">Conectar</Button>
+      </div>
+    </Card>
   );
 }
