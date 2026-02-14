@@ -334,6 +334,17 @@ export default function IndexingPage() {
                 </DialogContent>
               </Dialog>
 
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => {
+                const allUrls = filteredInventory.map(u => u.url);
+                if (allUrls.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
+                const batch = allUrls.slice(0, 50);
+                submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
+                if (allUrls.length > 50) toast.info(`Enviando as primeiras 50 de ${allUrls.length} URLs. Repita para enviar mais.`);
+              }} disabled={submitMutation.isPending}>
+                {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+                Enviar Sitemap ({Math.min(filteredInventory.length, 50)} URLs)
+              </Button>
+
               {selectedUrls.size > 0 && (
                 <>
                   <Button size="sm" variant="default" className="gap-1.5 text-xs" onClick={handleSubmitSelected} disabled={submitMutation.isPending}>
@@ -405,12 +416,19 @@ export default function IndexingPage() {
                           <td className="px-3 py-2.5 max-w-[350px]">
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-xs text-foreground truncate">{item.url}</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="font-mono text-xs text-foreground truncate cursor-default">{item.url}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-md">
+                                    <p className="font-mono text-xs break-all">{item.url}</p>
+                                  </TooltipContent>
+                                </Tooltip>
                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
                                   <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary transition-colors" />
                                 </a>
                               </div>
-                              {item.meta_title && <span className="text-[10px] text-muted-foreground truncate">{item.meta_title}</span>}
+                              {item.meta_title && <span className="text-[10px] text-muted-foreground truncate" title={item.meta_title}>{item.meta_title}</span>}
                             </div>
                           </td>
                           <td className="px-3 py-2.5">
