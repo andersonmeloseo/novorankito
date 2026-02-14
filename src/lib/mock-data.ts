@@ -181,6 +181,53 @@ export const mockPageViewsByDay = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
+export interface MockSession {
+  session_id: string;
+  started_at: string;
+  duration_sec: number;
+  pages_viewed: number;
+  landing_page: string;
+  exit_page: string;
+  source: string;
+  medium: string;
+  device: string;
+  browser: string;
+  country: string;
+  city: string;
+  is_bounce: boolean;
+  converted: boolean;
+  revenue: number;
+}
+
+const SOURCES = ["google", "direct", "facebook", "instagram", "bing", "referral", "twitter"];
+const MEDIUMS = ["organic", "cpc", "social", "referral", "(none)"];
+const LANDING_PAGES = ["/", "/products/wireless-headphones", "/blog/best-noise-cancelling-2026", "/pricing", "/landing/promo-verao", "/contact", "/products/smart-speaker"];
+const EXIT_PAGES = ["/checkout/success", "/contact", "/pricing", "/products/wireless-headphones", "/blog/home-audio-guide", "/", "/products/smart-speaker"];
+
+export const mockSessionsDetailed: MockSession[] = Array.from({ length: 80 }, (_, i) => {
+  const d = new Date(2026, 1, 14 - Math.floor(i / 6));
+  d.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), Math.floor(Math.random() * 60));
+  const isBounce = Math.random() < 0.3;
+  const converted = !isBounce && Math.random() < 0.2;
+  return {
+    session_id: `sess-${(1000 + i).toString(36)}`,
+    started_at: d.toISOString(),
+    duration_sec: isBounce ? Math.floor(Math.random() * 15 + 2) : Math.floor(Math.random() * 600 + 30),
+    pages_viewed: isBounce ? 1 : Math.floor(Math.random() * 8 + 2),
+    landing_page: randomFrom(LANDING_PAGES),
+    exit_page: isBounce ? randomFrom(LANDING_PAGES) : randomFrom(EXIT_PAGES),
+    source: randomFrom(SOURCES),
+    medium: randomFrom(MEDIUMS),
+    device: randomFrom(DEVICES),
+    browser: randomFrom(BROWSERS),
+    country: "BR",
+    city: randomFrom(CITIES),
+    is_bounce: isBounce,
+    converted,
+    revenue: converted ? parseFloat((Math.random() * 400 + 50).toFixed(2)) : 0,
+  };
+});
+
 export const mockAdsCampaigns = [
   { name: "Brand - Search", platform: "Google Ads", cost: 2840, clicks: 4200, conversions: 182, cpa: 15.60, roas: 4.2 },
   { name: "Products - Shopping", platform: "Google Ads", cost: 5420, clicks: 8900, conversions: 310, cpa: 17.48, roas: 3.8 },
