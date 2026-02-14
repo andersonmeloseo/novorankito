@@ -258,7 +258,15 @@ export default function AiAgentPage() {
           </TabsContent>
 
           <TabsContent value="workflows" className="mt-4">
-            <AgentWorkflows />
+            <AgentWorkflows onExecuteWorkflow={(name, steps) => {
+              // Switch to chat with workflow context
+              const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
+              setChatAgent({
+                name: `Workflow: ${name}`,
+                instructions: `Você está executando o workflow "${name}". Execute cada passo em sequência, usando os dados do projeto:\n\n${allPrompts}\n\nExecute TODOS os passos e apresente os resultados de forma estruturada.`,
+              });
+              setTab("chat");
+            }} />
           </TabsContent>
         </Tabs>
 
