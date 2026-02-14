@@ -6,13 +6,15 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   GitBranch, Play, ArrowRight, ArrowDown, Loader2, CheckCircle2,
-  Download, Copy,
+  Download, Copy, Bell, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { streamChatToCompletion } from "@/lib/stream-chat";
 import { supabase } from "@/integrations/supabase/client";
 import { MarkdownContent } from "@/components/ai-agent/AgentChatTab";
+import { WorkflowNotificationConfig } from "@/components/ai-agent/WorkflowNotificationConfig";
+import { useQuery } from "@tanstack/react-query";
 
 interface WorkflowStep {
   agent: string;
@@ -106,6 +108,21 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
   const [stepStreaming, setStepStreaming] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const abortRef = useRef(false);
+  const [notifyWorkflowId, setNotifyWorkflowId] = useState<string | null>(null);
+
+  // Fetch schedule configs to show indicators
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["workflow-schedules-list", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data } = await supabase
+        .from("workflow_schedules")
+        .select("workflow_id, enabled, notify_email, notify_whatsapp, schedule_time, schedule_days")
+        .eq("project_id", projectId);
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
 
   const toggleWorkflow = (id: string) => {
     setActiveWorkflows(prev => {
@@ -201,6 +218,39 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
           });
         }
       } catch { /* silent */ }
+
+      // Send notifications if configured
+      if (projectId) {
+        try {
+          const { data: sched } = await supabase
+            .from("workflow_schedules")
+            .select("id, notify_email, notify_whatsapp")
+            .eq("workflow_id", workflow.id)
+            .eq("project_id", projectId)
+            .maybeSingle();
+
+          if (sched && (sched.notify_email || sched.notify_whatsapp)) {
+            const notifResp = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-workflow-notification`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  schedule_id: sched.id,
+                  report: fullReport,
+                  workflow_name: workflow.name,
+                }),
+              }
+            );
+            if (notifResp.ok) {
+              toast.success("Notificações enviadas! 📩");
+            }
+          }
+        } catch { /* silent */ }
+      }
     }
   }, [isRunning, projectId]);
 
@@ -275,19 +325,48 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
               </div>
 
               {isActive && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="w-full text-xs gap-1.5"
-                  onClick={() => executeWorkflow(workflow)}
-                  disabled={isRunning}
-                >
-                  {isRunning && executingWorkflow?.id === workflow.id
-                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Executando...</>
-                    : <><Play className="h-3 w-3" /> Executar Agora</>
-                  }
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="flex-1 text-xs gap-1.5"
+                    onClick={() => executeWorkflow(workflow)}
+                    disabled={isRunning}
+                  >
+                    {isRunning && executingWorkflow?.id === workflow.id
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Executando...</>
+                      : <><Play className="h-3 w-3" /> Executar Agora</>
+                    }
+                  </Button>
+                  {projectId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1 px-2.5"
+                      onClick={() => setNotifyWorkflowId(workflow.id)}
+                    >
+                      <Bell className={cn(
+                        "h-3 w-3",
+                        schedules.find(s => s.workflow_id === workflow.id && s.enabled) && "text-primary"
+                      )} />
+                    </Button>
+                  )}
+                </div>
               )}
+              {/* Schedule indicator */}
+              {(() => {
+                const sched = schedules.find(s => s.workflow_id === workflow.id && s.enabled);
+                if (!sched) return null;
+                const dayLabels = (sched.schedule_days || []).map((d: number) => ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d]).join(", ");
+                return (
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <Bell className="h-3 w-3 text-primary" />
+                    <span>{dayLabels} às {(sched.schedule_time as string)?.substring(0, 5)}</span>
+                    {sched.notify_email && <span>📧</span>}
+                    {sched.notify_whatsapp && <span>💬</span>}
+                  </div>
+                );
+              })()}
             </Card>
           );
         })}
@@ -408,6 +487,17 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Notification Config Dialog */}
+      {notifyWorkflowId && projectId && (
+        <WorkflowNotificationConfig
+          open={!!notifyWorkflowId}
+          onOpenChange={(open) => !open && setNotifyWorkflowId(null)}
+          workflowId={notifyWorkflowId}
+          workflowName={PRESET_WORKFLOWS.find(w => w.id === notifyWorkflowId)?.name || "Workflow"}
+          projectId={projectId}
+        />
+      )}
     </div>
   );
 }
