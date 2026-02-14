@@ -444,15 +444,9 @@ export default function IndexingPage() {
                 </DialogContent>
               </Dialog>
 
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => {
-                const allUrls = filteredInventory.map(u => u.url);
-                if (allUrls.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
-                const batch = allUrls.slice(0, 50);
-                submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
-                if (allUrls.length > 50) toast.info(`Enviando as primeiras 50 de ${allUrls.length} URLs. Repita para enviar mais.`);
-              }} disabled={submitMutation.isPending}>
-                {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-                Enviar Sitemap ({Math.min(filteredInventory.length, 50)} URLs)
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleInspectAll} disabled={inspectMutation.isPending}>
+                {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                Varrer Status (até 20)
               </Button>
 
               {selectedUrls.size > 0 && (
@@ -465,11 +459,6 @@ export default function IndexingPage() {
                   </Button>
                 </>
               )}
-
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs ml-auto" onClick={handleInspectAll} disabled={inspectMutation.isPending}>
-                {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
-                Varrer Status (até 20)
-              </Button>
             </div>
 
             {/* Inventory Table */}
