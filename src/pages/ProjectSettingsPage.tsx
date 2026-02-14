@@ -22,6 +22,7 @@ import { format, parseISO } from "date-fns";
 
 export default function ProjectSettingsPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["active-project-settings"],
@@ -64,6 +65,8 @@ export default function ProjectSettingsPage() {
 
   const [projectName, setProjectName] = useState("");
   const [domain, setDomain] = useState("");
+  const [siteType, setSiteType] = useState("");
+  const [monetizationEnabled, setMonetizationEnabled] = useState<boolean | null>(null);
 
   // Sync state when project loads
   const displayName = projectName || project?.name || "";
@@ -78,6 +81,10 @@ export default function ProjectSettingsPage() {
     const updates: any = {};
     if (projectName) updates.name = projectName;
     if (domain) updates.domain = domain;
+    if (siteType) updates.site_type = siteType;
+    if (monetizationEnabled !== null) {
+      updates.monetization_status = monetizationEnabled ? "disponivel" : "desativado";
+    }
     if (Object.keys(updates).length === 0) {
       toast.info("Nenhuma alteração para salvar.");
       return;
@@ -87,6 +94,7 @@ export default function ProjectSettingsPage() {
       toast.error("Erro ao salvar: " + error.message);
     } else {
       toast.success("Projeto atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["active-project-settings"] });
     }
   };
 
@@ -178,8 +186,34 @@ export default function ProjectSettingsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Tipo do site</Label>
-                  <Badge variant="secondary" className="text-[10px]">{project.site_type || "Não definido"}</Badge>
+                  <Select value={siteType || project.site_type || ""} onValueChange={setSiteType}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Selecionar tipo…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="blog">Blog</SelectItem>
+                      <SelectItem value="ecommerce">E-commerce</SelectItem>
+                      <SelectItem value="saas">SaaS</SelectItem>
+                      <SelectItem value="lead_gen">Geração de Leads</SelectItem>
+                      <SelectItem value="local">Negócio Local</SelectItem>
+                      <SelectItem value="portfolio">Portfólio</SelectItem>
+                      <SelectItem value="rank_rent">Rank & Rent</SelectItem>
+                      <SelectItem value="institutional">Institucional</SelectItem>
+                      <SelectItem value="news">Notícias / Portal</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <span className="text-xs font-medium text-foreground">Ativar Rank & Rent</span>
+                  <p className="text-[10px] text-muted-foreground">Habilita o módulo de monetização por aluguel de páginas e projetos</p>
+                </div>
+                <Switch
+                  checked={monetizationEnabled !== null ? monetizationEnabled : (project.monetization_status !== "desativado")}
+                  onCheckedChange={setMonetizationEnabled}
+                />
               </div>
               {urlGroups.length > 0 && (
                 <div className="space-y-1.5">
