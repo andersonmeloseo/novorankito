@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -530,111 +530,207 @@ export default function IndexingPage() {
             {smLoading ? <TableSkeleton /> : !sitemaps || sitemaps.length === 0 ? (
               <EmptyState icon={Map} title="Nenhum sitemap encontrado" description="O Google Search Console não retornou sitemaps para esta propriedade." />
             ) : (
-              <div className="space-y-3">
-                {sitemaps.map((sm: any, idx: number) => {
-                  const isExpanded = expandedSitemap === sm.path;
-                  const lastSubmitted = sm.lastSubmitted ? format(new Date(sm.lastSubmitted), "dd/MM/yyyy HH:mm") : "—";
-                  const lastDownloaded = sm.lastDownloaded ? format(new Date(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—";
-                  const isPending = sm.isPending;
-                  const hasErrors = sm.errors > 0 || sm.warnings > 0;
+              <div className="space-y-4">
+                {/* Sitemap Actions Bar */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={selectedSmUrls.size === sitemaps.length ? "secondary" : "outline"}
+                    className="gap-1.5 text-xs"
+                    onClick={() => {
+                      if (selectedSmUrls.size === sitemaps.length) {
+                        setSelectedSmUrls(new Set());
+                      } else {
+                        setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
+                      }
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
+                      onCheckedChange={() => {
+                        if (selectedSmUrls.size === sitemaps.length) {
+                          setSelectedSmUrls(new Set());
+                        } else {
+                          setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
+                        }
+                      }}
+                      className="h-3.5 w-3.5"
+                    />
+                    {selectedSmUrls.size === sitemaps.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                  </Button>
 
-                  return (
-                    <Card key={sm.path || idx} className="overflow-hidden">
-                      {/* Sitemap Header */}
-                      <div
-                        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/20 transition-colors"
-                        onClick={() => setExpandedSitemap(isExpanded ? null : sm.path)}
+                  {selectedSmUrls.size > 0 && (
+                    <>
+                      <Button
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => {
+                          const batch = inventory.map(u => u.url).slice(0, 50);
+                          if (batch.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
+                          submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
+                          if (inventory.length > 50) toast.info(`Enviando as primeiras 50 de ${inventory.length} URLs.`);
+                        }}
+                        disabled={submitMutation.isPending}
                       >
-                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
-                        <FileText className="h-4 w-4 text-primary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-foreground truncate">{sm.path}</span>
-                            <a href={sm.path} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={e => e.stopPropagation()}>
-                              <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                            </a>
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-[10px] text-muted-foreground">
-                              {sm.urlCount} URLs enviadas • {sm.indexedCount} indexadas
-                            </span>
-                            {hasErrors && (
-                              <span className="text-[10px] text-destructive">
-                                {sm.errors > 0 && `${sm.errors} erro(s)`} {sm.warnings > 0 && `${sm.warnings} aviso(s)`}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 shrink-0">
-                          <div className="text-right">
-                            <div className="text-[10px] text-muted-foreground">Último Envio</div>
-                            <div className="text-xs text-foreground">{lastSubmitted}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[10px] text-muted-foreground">Último Crawl</div>
-                            <div className="text-xs text-foreground">{lastDownloaded}</div>
-                          </div>
-                          <Badge variant={isPending ? "outline" : "secondary"} className="text-[10px]">
-                            {isPending ? "Pendente" : sm.type === "sitemap" ? "Sitemap" : sm.type === "sitemapIndex" ? "Índice" : sm.type || "Sitemap"}
-                          </Badge>
-                        </div>
-                      </div>
+                        {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                        Enviar em Lote ({Math.min(inventory.length, 50)} URLs)
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs"
+                        onClick={() => {
+                          const unknowns = inventory.filter(u => !u.verdict).map(u => u.url).slice(0, 20);
+                          if (unknowns.length === 0) { toast.info("Todas já foram inspecionadas"); return; }
+                          inspectMutation.mutate(unknowns);
+                        }}
+                        disabled={inspectMutation.isPending}
+                      >
+                        {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                        Inspecionar Não Verificadas (até 20)
+                      </Button>
+                    </>
+                  )}
 
-                      {/* Expanded: Content types breakdown */}
-                      {isExpanded && (
-                        <div className="border-t border-border">
-                          {/* Content types */}
-                          {sm.contents && sm.contents.length > 0 && (
-                            <div className="px-4 py-3 bg-muted/10">
-                              <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tipos de Conteúdo</h4>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                {sm.contents.map((c: any, ci: number) => (
-                                  <div key={ci} className="p-2 rounded-lg bg-background border border-border">
-                                    <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
-                                    <div className="flex items-baseline gap-2 mt-0.5">
-                                      <span className="text-sm font-bold text-foreground">{(c.submitted || 0).toLocaleString()}</span>
-                                      <span className="text-[10px] text-success">{(c.indexed || 0).toLocaleString()} idx</span>
-                                    </div>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {selectedSmUrls.size > 0 ? `${selectedSmUrls.size} de ${sitemaps.length} selecionado(s)` : `${sitemaps.length} sitemap(s)`}
+                  </span>
+                </div>
+
+                {/* Sitemaps Table */}
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                          <th className="px-3 py-3 w-10">
+                            <Checkbox
+                              checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
+                              onCheckedChange={() => {
+                                if (selectedSmUrls.size === sitemaps.length) setSelectedSmUrls(new Set());
+                                else setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
+                              }}
+                            />
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">URL do Sitemap</th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Tipo</th>
+                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">URLs Enviadas</th>
+                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">URLs Indexadas</th>
+                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">% Indexada</th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Envio</th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Crawl</th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
+                          <th className="px-3 py-3 w-10" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sitemaps.map((sm: any, idx: number) => {
+                          const isExpanded = expandedSitemap === sm.path;
+                          const lastSubmitted = sm.lastSubmitted ? format(new Date(sm.lastSubmitted), "dd/MM/yyyy HH:mm") : "—";
+                          const lastDownloaded = sm.lastDownloaded ? format(new Date(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—";
+                          const isPending = sm.isPending;
+                          const hasErrors = (sm.errors || 0) > 0 || (sm.warnings || 0) > 0;
+                          const indexPercent = sm.urlCount > 0 ? Math.round((sm.indexedCount / sm.urlCount) * 100) : 0;
+
+                          return (
+                            <React.Fragment key={sm.path || idx}>
+                              <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                                <td className="px-3 py-2.5">
+                                  <Checkbox
+                                    checked={selectedSmUrls.has(sm.path)}
+                                    onCheckedChange={() => {
+                                      setSelectedSmUrls(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(sm.path)) next.delete(sm.path); else next.add(sm.path);
+                                        return next;
+                                      });
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-3 py-2.5 max-w-[300px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="font-mono text-xs text-foreground truncate cursor-default">{sm.path}</span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p className="font-mono text-xs break-all">{sm.path}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <a href={sm.path} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={e => e.stopPropagation()}>
+                                      <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </a>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="px-4 py-3 border-t border-border flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm" className="gap-1.5 text-xs"
-                              onClick={() => {
-                                // Send all inventory URLs for indexing (first 50)
-                                const batch = inventory.map(u => u.url).slice(0, 50);
-                                if (batch.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
-                                submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
-                                if (inventory.length > 50) toast.info(`Enviando as primeiras 50 de ${inventory.length} URLs.`);
-                              }}
-                              disabled={submitMutation.isPending}
-                            >
-                              {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                              Enviar em Lote (até 50)
-                            </Button>
-                            <Button
-                              size="sm" variant="outline" className="gap-1.5 text-xs"
-                              onClick={() => {
-                                const unknowns = inventory.filter(u => !u.verdict).map(u => u.url).slice(0, 20);
-                                if (unknowns.length === 0) { toast.info("Todas já foram inspecionadas"); return; }
-                                inspectMutation.mutate(unknowns);
-                              }}
-                              disabled={inspectMutation.isPending}
-                            >
-                              {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
-                              Inspecionar Não Verificadas (até 20)
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {sm.type === "sitemapIndex" ? "Índice" : sm.type || "Sitemap"}
+                                  </Badge>
+                                </td>
+                                <td className="px-3 py-2.5 text-right">
+                                  <span className="text-xs tabular-nums font-medium text-foreground">{(sm.urlCount || 0).toLocaleString("pt-BR")}</span>
+                                </td>
+                                <td className="px-3 py-2.5 text-right">
+                                  <span className="text-xs tabular-nums font-medium text-success">{(sm.indexedCount || 0).toLocaleString("pt-BR")}</span>
+                                </td>
+                                <td className="px-3 py-2.5 text-right">
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <Progress value={indexPercent} className="h-1.5 w-12" />
+                                    <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{indexPercent}%</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span className="text-xs text-muted-foreground">{lastSubmitted}</span>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span className="text-xs text-muted-foreground">{lastDownloaded}</span>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  {hasErrors ? (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      {sm.errors > 0 ? `${sm.errors} erro(s)` : `${sm.warnings} aviso(s)`}
+                                    </Badge>
+                                  ) : isPending ? (
+                                    <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">OK</Badge>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                    onClick={() => setExpandedSitemap(isExpanded ? null : sm.path)}
+                                  >
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                                  </Button>
+                                </td>
+                              </tr>
+                              {isExpanded && sm.contents && sm.contents.length > 0 && (
+                                <tr>
+                                  <td colSpan={10} className="bg-muted/10 px-6 py-3 border-b border-border">
+                                    <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tipos de Conteúdo</h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                      {sm.contents.map((c: any, ci: number) => (
+                                        <div key={ci} className="p-2 rounded-lg bg-background border border-border">
+                                          <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
+                                          <div className="flex items-baseline gap-2 mt-0.5">
+                                            <span className="text-sm font-bold text-foreground">{(c.submitted || 0).toLocaleString("pt-BR")}</span>
+                                            <span className="text-[10px] text-success">{(c.indexed || 0).toLocaleString("pt-BR")} idx</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               </div>
             )}
           </TabsContent>
