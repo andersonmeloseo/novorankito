@@ -5,13 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTrackingEvents } from "@/lib/mock-data";
 import { MonitorSmartphone } from "lucide-react";
 import { EventsTab } from "@/components/tracking/EventsTab";
+import { SessionsTab } from "@/components/tracking/SessionsTab";
 
 export default function TrackingPage() {
   return (
     <>
       <TopBar title="Tracking" subtitle="Eventos comportamentais em tempo real" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Live events indicator */}
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
@@ -32,10 +32,7 @@ export default function TrackingPage() {
           </TabsContent>
 
           <TabsContent value="sessions" className="mt-4">
-            <Card className="p-6 text-center">
-              <MonitorSmartphone className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">O replay de sessões estará disponível quando o script de tracking for instalado.</p>
-            </Card>
+            <SessionsTab />
           </TabsContent>
         </Tabs>
       </div>
