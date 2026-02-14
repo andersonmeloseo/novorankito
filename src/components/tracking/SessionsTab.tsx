@@ -51,11 +51,32 @@ const MEDIUM_OPTIONS = [
   { value: "referral", label: "Referral" },
   { value: "(none)", label: "(none)" },
 ];
+const BROWSER_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "Chrome", label: "Chrome" },
+  { value: "Safari", label: "Safari" },
+  { value: "Firefox", label: "Firefox" },
+  { value: "Edge", label: "Edge" },
+];
 const STATUS_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "bounce", label: "Bounce" },
   { value: "engaged", label: "Engajada" },
   { value: "converted", label: "Conversão" },
+];
+
+// ── Derive unique landing/exit pages and cities for filters ──
+const LANDING_PAGE_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockSessionsDetailed.map((s) => s.landing_page))).sort().map((p) => ({ value: p, label: p })),
+];
+const EXIT_PAGE_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockSessionsDetailed.map((s) => s.exit_page))).sort().map((p) => ({ value: p, label: p })),
+];
+const CITY_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockSessionsDetailed.map((s) => s.city))).sort().map((c) => ({ value: c, label: c })),
 ];
 
 // ── Color maps ──
@@ -78,16 +99,15 @@ const STATUS_BADGE: Record<string, string> = {
 
 const heatmapData = generateConversionsHeatmap();
 
-// ── Derived chart data ──
+// ── Derived chart data (no revenue) ──
 const sessionsByDay = (() => {
-  const map = new Map<string, { sessions: number; bounces: number; conversions: number; revenue: number }>();
+  const map = new Map<string, { sessions: number; bounces: number; conversions: number }>();
   mockSessionsDetailed.forEach((s) => {
     const day = format(new Date(s.started_at), "dd/MMM");
-    const entry = map.get(day) || { sessions: 0, bounces: 0, conversions: 0, revenue: 0 };
+    const entry = map.get(day) || { sessions: 0, bounces: 0, conversions: 0 };
     entry.sessions++;
     if (s.is_bounce) entry.bounces++;
     if (s.converted) entry.conversions++;
-    entry.revenue += s.revenue;
     map.set(day, entry);
   });
   return Array.from(map.entries()).map(([date, v]) => ({ date, ...v }));
@@ -123,7 +143,6 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "device", label: "Dispositivo" },
   { key: "browser", label: "Browser" },
   { key: "city", label: "Cidade" },
-  { key: "revenue", label: "Receita" },
 ];
 
 function formatDuration(sec: number) {
@@ -153,7 +172,11 @@ export function SessionsTab() {
   const [deviceFilter, setDeviceFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [mediumFilter, setMediumFilter] = useState("all");
+  const [browserFilter, setBrowserFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [landingPageFilter, setLandingPageFilter] = useState("all");
+  const [exitPageFilter, setExitPageFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("started_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -164,6 +187,10 @@ export function SessionsTab() {
     if (deviceFilter !== "all") data = data.filter((s) => s.device === deviceFilter);
     if (sourceFilter !== "all") data = data.filter((s) => s.source === sourceFilter);
     if (mediumFilter !== "all") data = data.filter((s) => s.medium === mediumFilter);
+    if (browserFilter !== "all") data = data.filter((s) => s.browser === browserFilter);
+    if (landingPageFilter !== "all") data = data.filter((s) => s.landing_page === landingPageFilter);
+    if (exitPageFilter !== "all") data = data.filter((s) => s.exit_page === exitPageFilter);
+    if (cityFilter !== "all") data = data.filter((s) => s.city === cityFilter);
     if (statusFilter !== "all") {
       data = data.filter((s) => getSessionStatus(s) === statusFilter);
     }
@@ -178,7 +205,7 @@ export function SessionsTab() {
       );
     }
     return data;
-  }, [deviceFilter, sourceFilter, mediumFilter, statusFilter, search]);
+  }, [deviceFilter, sourceFilter, mediumFilter, browserFilter, landingPageFilter, exitPageFilter, cityFilter, statusFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -200,22 +227,21 @@ export function SessionsTab() {
     setPage(1);
   }, [sortKey]);
 
-  // KPIs
+  // KPIs (no revenue)
   const totalSessions = filtered.length;
   const avgDuration = totalSessions > 0 ? Math.round(filtered.reduce((s, r) => s + r.duration_sec, 0) / totalSessions) : 0;
   const bounceCount = filtered.filter((s) => s.is_bounce).length;
   const bounceRate = totalSessions > 0 ? ((bounceCount / totalSessions) * 100).toFixed(1) : "0";
   const avgPages = totalSessions > 0 ? (filtered.reduce((s, r) => s + r.pages_viewed, 0) / totalSessions).toFixed(1) : "0";
-  const totalRevenue = filtered.reduce((s, r) => s + r.revenue, 0);
+  const uniqueCities = new Set(filtered.map((s) => s.city)).size;
 
-  // Export helpers
+  // Export helpers (no revenue)
   const exportData = useCallback((fmt: "csv" | "json" | "xlsx") => {
-    const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status", "Receita"];
+    const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status"];
     const rows = sorted.map((s) => [
       format(new Date(s.started_at), "dd/MM/yyyy HH:mm"),
       formatDuration(s.duration_sec), String(s.pages_viewed), s.landing_page, s.exit_page,
       s.source, s.medium, s.device, s.browser, s.city, getSessionStatus(s),
-      s.revenue.toFixed(2),
     ]);
     if (fmt === "json") {
       const blob = new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" });
@@ -258,22 +284,46 @@ export function SessionsTab() {
               {DEVICE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={browserFilter} onValueChange={(v) => { setBrowserFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Browser" /></SelectTrigger>
+            <SelectContent>
+              {BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
             <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={landingPageFilter} onValueChange={(v) => { setLandingPageFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Landing Page" /></SelectTrigger>
+            <SelectContent>
+              {LANDING_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={exitPageFilter} onValueChange={(v) => { setExitPageFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Página Saída" /></SelectTrigger>
+            <SelectContent>
+              {EXIT_PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Cidade" /></SelectTrigger>
+            <SelectContent>
+              {CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
-      {/* KPIs */}
+      {/* KPIs (no revenue) */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiCard label="Total Sessões" value={totalSessions} change={9.7} />
         <KpiCard label="Duração Média" value={avgDuration} change={5.3} suffix="s" />
         <KpiCard label="Taxa de Rejeição" value={Number(bounceRate)} change={-2.1} suffix="%" />
         <KpiCard label="Páginas/Sessão" value={Number(avgPages)} change={3.8} />
-        <KpiCard label="Receita Total" value={Math.round(totalRevenue)} change={18.6} prefix="R$" />
+        <KpiCard label="Cidades Alcançadas" value={uniqueCities} change={11.2} />
       </StaggeredGrid>
 
       {/* Charts */}
@@ -336,7 +386,7 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Heatmap - renamed and moved above the table */}
+      {/* Heatmap */}
       <AnimatedContainer delay={0.2}>
         <Card className="p-5">
           <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
@@ -378,7 +428,7 @@ export function SessionsTab() {
             <div>
               <h3 className="text-sm font-medium text-foreground">Sessões Detalhadas</h3>
               <p className="text-[11px] text-muted-foreground">
-                Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} sessões
+                Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} sessões
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -448,9 +498,6 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">{s.browser}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">{s.city}</td>
-                      <td className="px-3 py-2 text-[11px] font-medium text-foreground">
-                        {s.revenue > 0 ? `R$ ${s.revenue.toFixed(2)}` : "—"}
-                      </td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className={`text-[9px] ${STATUS_BADGE[status] || ""}`}>
                           {statusLabel[status]}
@@ -470,8 +517,9 @@ export function SessionsTab() {
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const p = page <= 3 ? i + 1 : page + i - 2;
-                if (p < 1 || p > totalPages) return null;
+                const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                const p = start + i;
+                if (p > totalPages) return null;
                 return (
                   <Button key={p} variant={p === page ? "default" : "ghost"} size="icon" className="h-7 w-7 text-[11px]" onClick={() => setPage(p)}>
                     {p}
