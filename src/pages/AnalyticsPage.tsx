@@ -162,22 +162,19 @@ export default function AnalyticsPage() {
     () => getComparisonRange(startDate, endDate), [startDate, endDate]
   );
 
-  // Load overview first, then stagger secondary reports to avoid GA4 429 quota errors
+  // Load realtime + overview first
+  const { data: realtimeData, isLoading: loadingRealtime } = useGA4Report(projectId, "realtime");
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useGA4Report(projectId, "overview", startDate, endDate);
   const overviewReady = !!overviewData && !loadingOverview;
   const { data: compOverviewData } = useGA4Report(compareEnabled ? projectId : undefined, "overview", compStart, compEnd);
-  // Secondary reports only fire once overview is done (max 2-3 concurrent)
+  // Secondary reports staggered to avoid GA4 429 quota errors
   const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(overviewReady ? projectId : undefined, "acquisition", startDate, endDate);
   const { data: engagementData, isLoading: loadingEngagement } = useGA4Report(overviewReady ? projectId : undefined, "engagement", startDate, endDate);
   const { data: demographicsData, isLoading: loadingDemographics } = useGA4Report(overviewReady ? projectId : undefined, "demographics", startDate, endDate);
-  // Third wave: after acquisition loads
   const acqReady = overviewReady && !!acquisitionData;
   const { data: technologyData, isLoading: loadingTechnology } = useGA4Report(acqReady ? projectId : undefined, "technology", startDate, endDate);
   const { data: retentionData, isLoading: loadingRetention } = useGA4Report(acqReady ? projectId : undefined, "retention", startDate, endDate);
   const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(acqReady ? projectId : undefined, "ecommerce", startDate, endDate);
-  // Realtime last
-  const techReady = acqReady && !!technologyData;
-  const { data: realtimeData, isLoading: loadingRealtime } = useGA4Report(techReady ? projectId : undefined, "realtime");
 
   const [syncing, setSyncing] = useState(false);
   const handleRefresh = async () => { setSyncing(true); await refetchOverview(); setSyncing(false); };
@@ -242,18 +239,18 @@ export default function AnalyticsPage() {
   const hasConnection = !!ga4Connection?.property_id;
 
   const kpis = [
-    { label: "Usuários", value: totalUsers, change: calcChange(totalUsers, compTotals.totalUsers || 0), prevValue: compTotals.totalUsers || 0, sparklineData: sparkUsers, sparklinePrevData: compSparkUsers, sparklineColor: "hsl(var(--chart-1))" },
-    { label: "Novos Usuários", value: newUsers, change: calcChange(newUsers, compTotals.newUsers || 0), prevValue: compTotals.newUsers || 0, sparklineData: sparkNewUsers, sparklinePrevData: compSparkUsers, sparklineColor: "hsl(var(--chart-2))" },
-    { label: "Sessões", value: sessions, change: calcChange(sessions, compTotals.sessions || 0), prevValue: compTotals.sessions || 0, sparklineData: sparkSessions, sparklinePrevData: compSparkSessions, sparklineColor: "hsl(var(--chart-3))" },
-    { label: "Sess. Engajadas", value: Math.round(sessions * (totals.engagementRate || 0)), change: 0, prevValue: 0, sparklineData: sparkEngagement, sparklinePrevData: compSparkEngagement, sparklineColor: "hsl(var(--chart-4))" },
-    { label: "Tx. Engajamento", value: engagementRate, suffix: "%", change: calcChange(engagementRate, (compTotals.engagementRate || 0) * 100), prevValue: (compTotals.engagementRate || 0) * 100, sparklineData: sparkEngagement, sparklinePrevData: compSparkEngagement, sparklineColor: "hsl(var(--chart-5))" },
-    { label: "Duração Média", value: Math.round(avgDuration), suffix: "s", change: calcChange(avgDuration, compTotals.averageSessionDuration || 0), prevValue: Math.round(compTotals.averageSessionDuration || 0), sparklineData: sparkDuration, sparklinePrevData: compSparkDuration, sparklineColor: "hsl(var(--chart-1))" },
-    { label: "Tx. Rejeição", value: bounceRate, suffix: "%", change: calcChange(bounceRate, (compTotals.bounceRate || 0) * 100), prevValue: (compTotals.bounceRate || 0) * 100, sparklineData: sparkBounce, sparklinePrevData: compSparkBounce, sparklineColor: "hsl(var(--chart-2))" },
-    { label: "Conversões", value: conversions, change: calcChange(conversions, compTotals.conversions || 0), prevValue: compTotals.conversions || 0, sparklineData: sparkConversions, sparklinePrevData: compSparkConversions, sparklineColor: "hsl(var(--chart-3))" },
-    { label: "Eventos", value: events, change: calcChange(events, compTotals.eventCount || 0), prevValue: compTotals.eventCount || 0, sparklineData: sparkEvents, sparklinePrevData: compSparkEvents, sparklineColor: "hsl(var(--chart-4))" },
-    { label: "Receita", value: revenue, prefix: "R$", change: calcChange(revenue, compTotals.totalRevenue || 0), prevValue: compTotals.totalRevenue || 0, sparklineData: sparkRevenue, sparklinePrevData: compSparkRevenue, sparklineColor: "hsl(var(--chart-5))" },
-    { label: "ARPU", value: totalUsers > 0 ? revenue / totalUsers : 0, prefix: "R$", change: 0, prevValue: 0, sparklineData: [], sparklinePrevData: [], sparklineColor: "hsl(var(--chart-1))" },
-    { label: "Pageviews", value: pageViews, change: calcChange(pageViews, compTotals.screenPageViews || 0), prevValue: compTotals.screenPageViews || 0, sparklineData: sparkPageViews, sparklinePrevData: compSparkPageViews, sparklineColor: "hsl(var(--chart-2))" },
+    { label: "Usuários", description: "Total de visitantes únicos no período selecionado", value: totalUsers, change: calcChange(totalUsers, compTotals.totalUsers || 0), prevValue: compTotals.totalUsers || 0, sparklineData: sparkUsers, sparklinePrevData: compSparkUsers, sparklineColor: "hsl(var(--chart-1))" },
+    { label: "Novos Usuários", description: "Visitantes que acessaram pela primeira vez", value: newUsers, change: calcChange(newUsers, compTotals.newUsers || 0), prevValue: compTotals.newUsers || 0, sparklineData: sparkNewUsers, sparklinePrevData: compSparkUsers, sparklineColor: "hsl(var(--chart-2))" },
+    { label: "Sessões", description: "Número total de visitas ao site", value: sessions, change: calcChange(sessions, compTotals.sessions || 0), prevValue: compTotals.sessions || 0, sparklineData: sparkSessions, sparklinePrevData: compSparkSessions, sparklineColor: "hsl(var(--chart-3))" },
+    { label: "Sess. Engajadas", description: "Sessões com interação significativa (>10s, >2 páginas ou conversão)", value: Math.round(sessions * (totals.engagementRate || 0)), change: 0, prevValue: 0, sparklineData: sparkEngagement, sparklinePrevData: compSparkEngagement, sparklineColor: "hsl(var(--chart-4))" },
+    { label: "Tx. Engajamento", description: "Porcentagem de sessões com engajamento ativo", value: engagementRate, suffix: "%", change: calcChange(engagementRate, (compTotals.engagementRate || 0) * 100), prevValue: (compTotals.engagementRate || 0) * 100, sparklineData: sparkEngagement, sparklinePrevData: compSparkEngagement, sparklineColor: "hsl(var(--chart-5))" },
+    { label: "Duração Média", description: "Tempo médio que cada sessão permanece ativa", value: Math.round(avgDuration), suffix: "s", change: calcChange(avgDuration, compTotals.averageSessionDuration || 0), prevValue: Math.round(compTotals.averageSessionDuration || 0), sparklineData: sparkDuration, sparklinePrevData: compSparkDuration, sparklineColor: "hsl(var(--chart-1))" },
+    { label: "Tx. Rejeição", description: "Sessões sem interação (saiu rapidamente)", value: bounceRate, suffix: "%", change: calcChange(bounceRate, (compTotals.bounceRate || 0) * 100), prevValue: (compTotals.bounceRate || 0) * 100, sparklineData: sparkBounce, sparklinePrevData: compSparkBounce, sparklineColor: "hsl(var(--chart-2))" },
+    { label: "Conversões", description: "Eventos de conversão (compra, lead, cadastro, etc.)", value: conversions, change: calcChange(conversions, compTotals.conversions || 0), prevValue: compTotals.conversions || 0, sparklineData: sparkConversions, sparklinePrevData: compSparkConversions, sparklineColor: "hsl(var(--chart-3))" },
+    { label: "Eventos", description: "Total de interações rastreadas (cliques, scrolls, etc.)", value: events, change: calcChange(events, compTotals.eventCount || 0), prevValue: compTotals.eventCount || 0, sparklineData: sparkEvents, sparklinePrevData: compSparkEvents, sparklineColor: "hsl(var(--chart-4))" },
+    { label: "Receita", description: "Receita total gerada por e-commerce ou eventos monetários", value: revenue, prefix: "R$", change: calcChange(revenue, compTotals.totalRevenue || 0), prevValue: compTotals.totalRevenue || 0, sparklineData: sparkRevenue, sparklinePrevData: compSparkRevenue, sparklineColor: "hsl(var(--chart-5))" },
+    { label: "ARPU", description: "Receita média por usuário (Revenue Per User)", value: totalUsers > 0 ? revenue / totalUsers : 0, prefix: "R$", change: 0, prevValue: 0, sparklineData: [], sparklinePrevData: [], sparklineColor: "hsl(var(--chart-1))" },
+    { label: "Pageviews", description: "Total de páginas visualizadas por todos os visitantes", value: pageViews, change: calcChange(pageViews, compTotals.screenPageViews || 0), prevValue: compTotals.screenPageViews || 0, sparklineData: sparkPageViews, sparklinePrevData: compSparkPageViews, sparklineColor: "hsl(var(--chart-2))" },
   ];
 
   return (
@@ -319,34 +316,40 @@ export default function AnalyticsPage() {
         {hasConnection && (
           <div className="space-y-8">
 
-            {/* ═══ LINHA 1 — KPIs Executivos + Score de Saúde ═══ */}
+            {/* ═══ TEMPO REAL (primeiro!) ═══ */}
+            <DashboardSection title="Tempo Real" icon={Zap}>
+              <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
+            </DashboardSection>
+
+            {/* ═══ LINHA 1 — KPIs Executivos ═══ */}
             <DashboardSection title="Visão Geral" icon={TrendingUp}>
               {loadingOverview ? <KpiSkeleton count={6} /> : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {kpis.slice(0, 6).map(kpi => (
-                    <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
+                    <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
                   ))}
                 </div>
               )}
               {loadingOverview ? <KpiSkeleton count={6} /> : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {kpis.slice(6).map(kpi => (
-                    <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
+                    <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
                   ))}
                 </div>
               )}
             </DashboardSection>
 
-            {/* ═══ LINHA 2 — Gráfico de Tendência Temporal + Score ═══ */}
+            {/* ═══ LINHA 2 — Tendência + Score ═══ */}
             <DashboardSection title="Tendência" icon={BarChart3}>
               <div className="grid lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-3">
                   {!loadingOverview && trendData.length > 1 ? (
                     <Card className="p-5">
-                      <h3 className="text-sm font-medium text-foreground mb-4">Tendência Diária</h3>
-                      <div className="h-[300px]">
+                      <h3 className="text-sm font-medium text-foreground mb-1">Tendência Diária</h3>
+                      <p className="text-[10px] text-muted-foreground mb-4">Evolução de usuários, sessões e pageviews ao longo do período</p>
+                      <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendData}>
+                          <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                             <defs>
                               <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
@@ -362,10 +365,10 @@ export default function AnalyticsPage() {
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12, boxShadow: "0 8px 24px -8px rgba(0,0,0,0.15)" }} />
-                            <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
+                            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" }} />
+                            <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
                             <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
                             <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
                             <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
@@ -397,17 +400,17 @@ export default function AnalyticsPage() {
               </div>
             </DashboardSection>
 
-            {/* ═══ LINHA 3 — Aquisição (Canais + Origem) ═══ */}
+            {/* ═══ LINHA 3 — Aquisição ═══ */}
             <DashboardSection title="Aquisição de Tráfego" icon={MousePointerClick}>
               {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : <AcquisitionTab data={acquisitionData} />}
             </DashboardSection>
 
-            {/* ═══ LINHA 4 — Performance (Páginas + Eventos) ═══ */}
+            {/* ═══ LINHA 4 — Performance ═══ */}
             <DashboardSection title="Performance — Páginas + Eventos" icon={Eye}>
               {loadingEngagement ? <><ChartSkeleton /><TableSkeleton /></> : <EngagementTab data={engagementData} />}
             </DashboardSection>
 
-            {/* ═══ LINHA 5 — Público (Demo + Geo + Tecnologia) ═══ */}
+            {/* ═══ LINHA 5 — Público ═══ */}
             <DashboardSection title="Público — Geo + Demografia + Dispositivos" icon={Globe}>
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -421,7 +424,7 @@ export default function AnalyticsPage() {
               </div>
             </DashboardSection>
 
-            {/* ═══ LINHA 6 — Engajamento de Sessão + Retenção + E-commerce ═══ */}
+            {/* ═══ LINHA 6 — Retenção + E-commerce ═══ */}
             <DashboardSection title="Engajamento + Retenção + E-commerce" icon={UserCheck}>
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -433,11 +436,6 @@ export default function AnalyticsPage() {
                   {loadingEcommerce ? <><ChartSkeleton /><TableSkeleton /></> : <EcommerceTab data={ecommerceData} />}
                 </div>
               </div>
-            </DashboardSection>
-
-            {/* ═══ TEMPO REAL ═══ */}
-            <DashboardSection title="Tempo Real" icon={Zap} defaultOpen={false}>
-              <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
             </DashboardSection>
 
           </div>
