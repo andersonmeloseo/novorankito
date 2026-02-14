@@ -2,19 +2,20 @@ import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
-  Layers, DollarSign, Store, TrendingUp
+  Layers, DollarSign, Store, TrendingUp, Plus
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { mockProjects } from "@/lib/mock-data";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
@@ -41,7 +42,6 @@ const rankRentNav = [
 ];
 
 const accountNav = [
-  { title: "Projetos", url: "/projects", icon: FolderOpen },
   { title: "Usuários & Permissões", url: "/account/users", icon: Users },
   { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
   { title: "Admin", url: "/admin", icon: Shield },
@@ -49,9 +49,23 @@ const accountNav = [
 
 export function AppSidebar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["sidebar-projects"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("id, name, domain, status")
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Usuário";
+  const activeProject = projects[0];
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
@@ -62,16 +76,59 @@ export function AppSidebar() {
           </div>
           <span className="font-bold text-base text-sidebar-primary-foreground font-display tracking-tight">Rankito</span>
         </div>
-        <button className="flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-xs font-medium bg-sidebar-muted text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_6px_hsl(155_70%_42%/0.5)]" />
-            <span className="truncate">{mockProjects[0].name}</span>
-          </div>
-          <ChevronDown className="h-3 w-3 text-sidebar-foreground/50 shrink-0 group-hover:text-sidebar-accent-foreground transition-colors" />
-        </button>
+
+        {/* Project selector */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold">
+            Escolha seu Projeto
+          </span>
+          {activeProject ? (
+            <button
+              onClick={() => navigate("/projects")}
+              className="flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-xs font-medium bg-sidebar-muted text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_6px_hsl(155_70%_42%/0.5)]" />
+                <span className="truncate">{activeProject.name}</span>
+              </div>
+              <ChevronDown className="h-3 w-3 text-sidebar-foreground/50 shrink-0 group-hover:text-sidebar-accent-foreground transition-colors" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/onboarding")}
+              className="flex items-center justify-center gap-1.5 w-full px-2.5 py-2 rounded-lg text-xs font-medium border border-dashed border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Criar Projeto</span>
+            </button>
+          )}
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
+        {/* Projects list */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-4">
+            Projetos
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/projects"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[inset_2px_0_0_hsl(var(--sidebar-primary))]"
+                  >
+                    <FolderOpen className="h-4 w-4 shrink-0" />
+                    <span>Todos os Projetos</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-4">
             Projeto
