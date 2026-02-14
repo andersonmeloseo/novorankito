@@ -418,6 +418,7 @@ export function SessionsTab() {
   const uniqueCities = new Set(filtered.map((s) => s.city)).size;
   const lastSession = filtered.length > 0 ? filtered.reduce((a, b) => new Date(a.started_at) > new Date(b.started_at) ? a : b) : null;
   const lastSourceMedium = lastSession ? `${lastSession.source} / ${lastSession.medium}` : "—";
+  const lastReferrer = lastSession ? lastSession.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || lastSession.referrer : "—";
 
   const exportData = useCallback((fmt: "csv" | "json" | "xlsx") => {
     const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status"];
@@ -457,7 +458,7 @@ export function SessionsTab() {
       {/* KPIs with Sparklines */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Sessões" value={totalSessions} change={9.7} sparkData={generateSparkline(12, 80, 20)} color="hsl(var(--primary))" icon={Users} />
-        <SparkKpi label="Taxa Engajamento" value={engagementRate} change={4.2} suffix="%" sparkData={generateSparkline(12, 70, 10)} color="hsl(var(--success))" />
+        <SparkKpi label="Referrer" value={lastReferrer} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
         <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} change={0} sparkData={[]} color="hsl(var(--info))" icon={Clock} hideSparkline hideBadge smallValue />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Flame} hideSparkline hideBadge smallValue />
         <SparkKpi label="Cidade" value={lastSession ? lastSession.city : "—"} change={0} sparkData={[]} color="hsl(var(--info))" icon={Globe} hideSparkline hideBadge smallValue />
