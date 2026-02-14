@@ -26,7 +26,7 @@ export default function TrackingPage() {
         <Tabs defaultValue="all-events">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="all-events" className="text-xs gap-1.5">
-              <Activity className="h-3.5 w-3.5" /> Todos os Eventos
+              <Activity className="h-3.5 w-3.5" /> Eventos
             </TabsTrigger>
             <TabsTrigger value="ecommerce" className="text-xs gap-1.5">
               <ShoppingCart className="h-3.5 w-3.5" /> E-commerce
