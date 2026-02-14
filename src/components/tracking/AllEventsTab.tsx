@@ -75,6 +75,7 @@ export function AllEventsTab() {
   const [browserFilter, setBrowserFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
+  const [referrerFilter, setReferrerFilter] = useState("all");
 
   const filteredEvents = useMemo(() => {
     let data = pluginEvents;
@@ -83,8 +84,9 @@ export function AllEventsTab() {
     if (browserFilter !== "all") data = data.filter(e => e.browser === browserFilter);
     if (cityFilter !== "all") data = data.filter(e => e.city === cityFilter);
     if (platformFilter !== "all") data = data.filter(e => e.platform === platformFilter);
+    if (referrerFilter !== "all") data = data.filter(e => e.referrer === referrerFilter);
     return data.slice(0, 200);
-  }, [eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter]);
+  }, [eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter, referrerFilter]);
 
   const totalEvents = pluginEvents.length;
   const trackingEvents = pluginEvents.filter(e => EVENT_CATEGORIES.tracking.includes(e.event_type)).length;
@@ -372,13 +374,23 @@ export function AllEventsTab() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={referrerFilter} onValueChange={setReferrerFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-[11px]"><SelectValue placeholder="Referrer" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Referrers</SelectItem>
+                {Array.from(new Set(pluginEvents.map(e => e.referrer))).sort().map(r => (
+                  <SelectItem key={r} value={r}>🔗 {r.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <AnalyticsDataTable
-            columns={["Data/Hora", "Tipo de Evento", "Página", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
+            columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
             rows={filteredEvents.map(e => [
               new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
               `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type]}`,
               e.page_url.replace(/^https?:\/\/[^/]+/, "") || "/",
+              `🔗 ${e.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || e.referrer}`,
               e.cta_text || e.event_type.replace(/_/g, " "),
               `${DEVICE_EMOJI[e.device] || "💻"} ${e.device.charAt(0).toUpperCase() + e.device.slice(1)}`,
               `${BROWSER_EMOJI[e.browser] || "🌐"} ${e.browser}`,
