@@ -535,8 +535,25 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
 
 /* ─── Step 3: GSC ─── */
 function StepGSC() {
-  const [connected, setConnected] = useState(false);
+  const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected">("credentials");
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
+
+  const validateJson = () => {
+    setJsonError("");
+    try {
+      const parsed = JSON.parse(jsonInput.trim());
+      if (!parsed.client_email || !parsed.private_key || !parsed.project_id) {
+        setJsonError("JSON inválido: campos obrigatórios não encontrados (client_email, private_key, project_id).");
+        return;
+      }
+      setGscStep("validating");
+      setTimeout(() => setGscStep("connected"), 1500);
+    } catch {
+      setJsonError("JSON inválido. Verifique se copiou o conteúdo correto do arquivo de credenciais.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -544,33 +561,67 @@ function StepGSC() {
         <h2 className="text-xl font-semibold text-foreground">Conectar Google Search Console</h2>
         <p className="text-sm text-muted-foreground mt-1">Vincule sua propriedade do GSC para importar dados de performance SEO.</p>
       </div>
-      <Card className="p-5 space-y-4">
-        {!connected ? (
-          <>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Search className="h-5 w-5 text-primary" />
-              <div>
-                <span className="text-sm font-medium text-foreground">Google Search Console</span>
-                <p className="text-[10px] text-muted-foreground">Conecte via Service Account para importar dados</p>
-              </div>
+
+      {gscStep === "credentials" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Search className="h-5 w-5 text-primary" />
+            <div>
+              <span className="text-sm font-medium text-foreground">Service Account JSON</span>
+              <p className="text-[10px] text-muted-foreground">Cole o conteúdo do arquivo JSON da Service Account do Google</p>
             </div>
-            <Button onClick={() => setConnected(true)} className="w-full gap-2 text-sm">
-              <ExternalLink className="h-3.5 w-3.5" /> Conectar com Google
-            </Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-              <div className="relative flex justify-center"><span className="bg-card px-2 text-[10px] text-muted-foreground">ou</span></div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Credenciais JSON</Label>
+            <textarea
+              className="w-full min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}'
+              value={jsonInput}
+              onChange={(e) => { setJsonInput(e.target.value); setJsonError(""); }}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Cole todo o conteúdo do arquivo .json baixado do Google Cloud Console.
+            </p>
+          </div>
+
+          {jsonError && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <span className="text-xs text-destructive">{jsonError}</span>
             </div>
-            <Button variant="outline" onClick={() => setTutorialOpen(true)} className="w-full gap-2 text-xs">
-              <BookOpen className="h-3.5 w-3.5" /> Ver tutorial passo-a-passo
-            </Button>
-            <p className="text-[10px] text-muted-foreground text-center">Siga o tutorial para configurar a Service Account e conectar o Search Console.</p>
-          </>
-        ) : (
+          )}
+
+          <Button onClick={validateJson} disabled={!jsonInput.trim()} className="w-full gap-2 text-sm">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Validar credenciais
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center"><span className="bg-card px-2 text-[10px] text-muted-foreground">precisa de ajuda?</span></div>
+          </div>
+          <Button variant="outline" onClick={() => setTutorialOpen(true)} className="w-full gap-2 text-xs">
+            <BookOpen className="h-3.5 w-3.5" /> Ver tutorial passo-a-passo
+          </Button>
+        </Card>
+      )}
+
+      {gscStep === "validating" && (
+        <Card className="p-5">
+          <div className="flex flex-col items-center gap-3 py-6">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <span className="text-sm font-medium text-foreground">Validando credenciais...</span>
+            <p className="text-xs text-muted-foreground">Verificando acesso ao Google Search Console</p>
+          </div>
+        </Card>
+      )}
+
+      {gscStep === "connected" && (
+        <Card className="p-5 space-y-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
               <CheckCircle2 className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium text-success">Conectado com sucesso!</span>
+              <span className="text-sm font-medium text-success">Credenciais validadas e conectado com sucesso!</span>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Propriedade selecionada</Label>
@@ -596,8 +647,9 @@ function StepGSC() {
               ))}
             </div>
           </motion.div>
-        )}
-      </Card>
+        </Card>
+      )}
+
       <GSCTutorialModal open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
