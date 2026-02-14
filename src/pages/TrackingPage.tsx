@@ -10,7 +10,7 @@ import { SessionsTab } from "@/components/tracking/SessionsTab";
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Analítica" subtitle="Métricas comportamentais e qualidade de acesso" />
+      <TopBar title="Eventos e Sessões" subtitle="Métricas comportamentais e qualidade de acesso" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
