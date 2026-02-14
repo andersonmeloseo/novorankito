@@ -20,7 +20,7 @@ import {
 import {
   ArrowLeft, ArrowRight, Check, Globe, MapPin, Clock, FileText, Search,
   Link2, Zap, BarChart3, Bot, MonitorSmartphone, Loader2, CheckCircle2,
-  AlertCircle, ExternalLink, Copy, Wifi, Target, TrendingUp, DollarSign,
+  AlertCircle, ExternalLink, Copy, Wifi, Target, TrendingUp, DollarSign, Upload,
   Bell, Megaphone, BookOpen, ChevronsUpDown, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -589,6 +589,31 @@ function StepGSC() {
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Credenciais JSON</Label>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="flex-1 cursor-pointer">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const text = evt.target?.result as string;
+                      setJsonInput(text);
+                      setJsonError("");
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2.5 text-xs text-muted-foreground">
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Fazer upload do arquivo .json</span>
+                </div>
+              </label>
+            </div>
             <textarea
               className="w-full min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
               placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}'
@@ -596,7 +621,7 @@ function StepGSC() {
               onChange={(e) => { setJsonInput(e.target.value); setJsonError(""); }}
             />
             <p className="text-[10px] text-muted-foreground">
-              Cole todo o conteúdo do arquivo .json baixado do Google Cloud Console.
+              Faça upload do arquivo .json ou cole o conteúdo manualmente.
             </p>
           </div>
 
