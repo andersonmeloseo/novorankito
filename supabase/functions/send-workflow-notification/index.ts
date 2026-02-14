@@ -96,15 +96,16 @@ serve(async (req) => {
       for (const phone of (schedule.whatsapp_recipients || [])) {
         try {
           const cleanPhone = phone.replace(/\D/g, "");
-          const res = await fetch(`${WHATSAPP_API_URL}/send-text`, {
+          // Evolution API v2 format: /message/sendText/{instanceName}
+          const res = await fetch(`${WHATSAPP_API_URL}/message/sendText/rankito`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${WHATSAPP_API_KEY}`,
+              apikey: WHATSAPP_API_KEY,
             },
             body: JSON.stringify({
-              phone: cleanPhone,
-              message: whatsappMessage,
+              number: cleanPhone,
+              text: whatsappMessage,
             }),
           });
 
