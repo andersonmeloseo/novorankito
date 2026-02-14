@@ -228,6 +228,56 @@ export type Database = {
           },
         ]
       }
+      ga4_connections: {
+        Row: {
+          client_email: string
+          connection_name: string
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          owner_id: string
+          private_key: string
+          project_id: string
+          property_id: string | null
+          property_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_email: string
+          connection_name: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_id: string
+          private_key: string
+          project_id: string
+          property_id?: string | null
+          property_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string
+          connection_name?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_id?: string
+          private_key?: string
+          project_id?: string
+          property_id?: string | null
+          property_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ga4_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gsc_connections: {
         Row: {
           client_email: string
