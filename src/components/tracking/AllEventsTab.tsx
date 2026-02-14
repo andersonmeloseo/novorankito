@@ -60,6 +60,14 @@ function SparkKpi({ label, value, change, suffix, sparkData, color, icon: Icon }
 const heatmapData = generateConversionsHeatmap();
 
 export function AllEventsTab() {
+  const DEVICE_EMOJI: Record<string, string> = { mobile: "📱", desktop: "🖥️", tablet: "📟" };
+  const BROWSER_EMOJI: Record<string, string> = { Chrome: "🌐", Firefox: "🦊", Safari: "🧭", Edge: "🔷", Opera: "🔴", Samsung: "📱" };
+  const EVENT_EMOJI: Record<string, string> = {
+    page_view: "👁️", page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
+    email_click: "✉️", button_click: "🖱️", form_submit: "📝", product_view: "🛍️",
+    add_to_cart: "🛒", remove_from_cart: "❌", begin_checkout: "💳", purchase: "💰", search: "🔍",
+  };
+
   const totalEvents = pluginEvents.length;
   const trackingEvents = pluginEvents.filter(e => EVENT_CATEGORIES.tracking.includes(e.event_type)).length;
   const conversionEvents = pluginEvents.filter(e => EVENT_CATEGORIES.conversions.includes(e.event_type)).length;
@@ -272,12 +280,12 @@ export function AllEventsTab() {
             columns={["Data/Hora", "Tipo de Evento", "Página", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
             rows={pluginEvents.slice(0, 100).map(e => [
               new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-              EVENT_LABELS[e.event_type],
+              `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type]}`,
               e.page_url.replace(/^https?:\/\/[^/]+/, "") || "/",
               e.cta_text || e.event_type.replace(/_/g, " "),
-              e.device.charAt(0).toUpperCase() + e.device.slice(1),
-              e.browser,
-              `${e.city}, ${e.state}`,
+              `${DEVICE_EMOJI[e.device] || "💻"} ${e.device.charAt(0).toUpperCase() + e.device.slice(1)}`,
+              `${BROWSER_EMOJI[e.browser] || "🌐"} ${e.browser}`,
+              `📍 ${e.city}, ${e.state}`,
             ])}
             pageSize={15}
           />
