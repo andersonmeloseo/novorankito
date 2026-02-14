@@ -11,14 +11,20 @@ import {
   type MockSession,
 } from "@/lib/mock-data";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ScatterChart, Scatter, ZAxis, CartesianGrid,
 } from "recharts";
-import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Users, Clock, Layers, Globe, Smartphone, Monitor } from "lucide-react";
+import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Users, Clock, Layers, Globe, Smartphone } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
+  ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
+  FunnelStep, PipelineVisual, CohortHeatmap, DonutCenterLabel,
+} from "@/components/analytics/ChartPrimitives";
 
 const PERIOD_OPTIONS = [
   { value: "1", label: "Hoje" },
@@ -77,15 +83,7 @@ const CITY_OPTIONS = [
   ...Array.from(new Set(mockSessionsDetailed.map((s) => s.city))).sort().map((c) => ({ value: c, label: c })),
 ];
 
-const VIVID_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--success))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--chart-5))",
-  "hsl(250 85% 72%)",
-  "hsl(180 60% 50%)",
-];
+const VIVID_COLORS = CHART_COLORS;
 
 const SOURCE_COLORS: Record<string, string> = {
   google: "hsl(var(--primary))",
@@ -104,7 +102,6 @@ const STATUS_BADGE: Record<string, string> = {
 
 const heatmapData = generateConversionsHeatmap();
 
-// ── Sparkline ──
 function generateSparkline(length = 12, base = 50, variance = 20): number[] {
   return Array.from({ length }, () => Math.max(0, base + Math.floor((Math.random() - 0.3) * variance)));
 }
@@ -254,6 +251,54 @@ const sessionsByCity = (() => {
   return Array.from(map.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 8);
 })();
 
+// Scatter: duration vs pages per source
+const scatterBySource = (() => {
+  const map = new Map<string, { totalDuration: number; totalPages: number; count: number }>();
+  mockSessionsDetailed.forEach((s) => {
+    const entry = map.get(s.source) || { totalDuration: 0, totalPages: 0, count: 0 };
+    entry.totalDuration += s.duration_sec;
+    entry.totalPages += s.pages_viewed;
+    entry.count++;
+    map.set(s.source, entry);
+  });
+  return Array.from(map.entries()).map(([source, v]) => ({
+    source: source.charAt(0).toUpperCase() + source.slice(1),
+    avgDuration: Math.round(v.totalDuration / v.count),
+    avgPages: Number((v.totalPages / v.count).toFixed(1)),
+    count: v.count,
+  }));
+})();
+
+// Session funnel: total → engaged → multi-page → long (>60s)
+const sessionFunnel = (() => {
+  const total = mockSessionsDetailed.length;
+  const engaged = mockSessionsDetailed.filter((s) => !s.is_bounce).length;
+  const multiPage = mockSessionsDetailed.filter((s) => s.pages_viewed >= 3).length;
+  const longSessions = mockSessionsDetailed.filter((s) => s.duration_sec > 60).length;
+  const deepEngaged = mockSessionsDetailed.filter((s) => s.pages_viewed >= 5 && s.duration_sec > 120).length;
+  return [
+    { label: "Total Sessões", value: total, color: "hsl(var(--primary))" },
+    { label: "Engajadas", value: engaged, color: "hsl(var(--success))" },
+    { label: "Multi-página (3+)", value: multiPage, color: "hsl(var(--info))" },
+    { label: "Longas (>1min)", value: longSessions, color: "hsl(var(--warning))" },
+    { label: "Deep Engaged", value: deepEngaged, color: "hsl(var(--chart-5))" },
+  ];
+})();
+
+// Cohort: source × device
+const cohortData = (() => {
+  const sources = ["google", "direct", "facebook", "instagram"];
+  const devices = ["mobile", "desktop", "tablet"];
+  const data = sources.map((src) => devices.map((d) =>
+    mockSessionsDetailed.filter((s) => s.source === src && s.device === d).length
+  ));
+  return {
+    data,
+    xLabels: devices.map(d => d.charAt(0).toUpperCase() + d.slice(1)),
+    yLabels: sources.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+  };
+})();
+
 const PAGE_SIZE = 20;
 type SortKey = keyof MockSession;
 type SortDir = "asc" | "desc";
@@ -290,8 +335,6 @@ function downloadBlob(blob: Blob, filename: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
-
-const tooltipStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 };
 
 export function SessionsTab() {
   const [period, setPeriod] = useState("30");
@@ -372,6 +415,7 @@ export function SessionsTab() {
   }, [sorted]);
 
   const statusLabel: Record<string, string> = { bounce: "Bounce", engaged: "Engajada" };
+  const totalSourcePie = sourcePieData.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -402,93 +446,89 @@ export function SessionsTab() {
         <SparkKpi label="Mobile" value={totalSessions > 0 ? Math.round((filtered.filter((s) => s.device === "mobile").length / totalSessions) * 100) : 0} change={3.5} suffix="%" sparkData={generateSparkline(12, 55, 10)} color="hsl(var(--success))" icon={Smartphone} />
       </StaggeredGrid>
 
-      {/* Engagement trend */}
+      {/* ═══ Multi-line com hover emphasis — Qualidade do Acesso ═══ */}
       <AnimatedContainer>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Qualidade do Acesso ao Longo do Tempo</h3>
+          <ChartHeader title="Qualidade do Acesso ao Longo do Tempo" subtitle="Area chart com transparência e glow" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sessionsByDay}>
                 <defs>
-                  <linearGradient id="engGrad2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="bounceGrad2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--warning))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--warning))" stopOpacity={0} />
-                  </linearGradient>
+                  <LineGlowGradient id="engGlow" color="hsl(var(--success))" />
+                  <LineGlowGradient id="bounceGlow" color="hsl(var(--warning))" />
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} unit="%" />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="engagementRate" stroke="hsl(var(--success))" fill="url(#engGrad2)" strokeWidth={2} name="Engajamento %" />
-                <Area type="monotone" dataKey="bounceRate" stroke="hsl(var(--warning))" fill="url(#bounceGrad2)" strokeWidth={2} name="Rejeição %" />
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="date" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} unit="%" />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Area type="monotone" dataKey="engagementRate" stroke="hsl(var(--success))" fill="url(#engGlow)" strokeWidth={2.5} name="Engajamento %" dot={false} activeDot={{ r: 5, strokeWidth: 2, fill: "hsl(var(--success))" }} />
+                <Area type="monotone" dataKey="bounceRate" stroke="hsl(var(--warning))" fill="url(#bounceGlow)" strokeWidth={2.5} name="Rejeição %" dot={false} activeDot={{ r: 5, strokeWidth: 2, fill: "hsl(var(--warning))" }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Sessions line */}
+      {/* ═══ Line Chart com gradiente — Sessões e Engajamento ═══ */}
       <AnimatedContainer delay={0.05}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Sessões e Engajamento</h3>
+          <ChartHeader title="Sessões e Engajamento" subtitle="Multi-line com destaque dinâmico (hover emphasis)" />
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sessionsByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="sessions" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Sessões" />
-                <Line type="monotone" dataKey="engaged" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Engajadas" />
-                <Line type="monotone" dataKey="bounces" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Bounces" />
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="date" {...AXIS_STYLE} />
+                <YAxis {...AXIS_STYLE} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Line type="monotone" dataKey="sessions" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 2, fill: "hsl(var(--primary))" }} name="Sessões" />
+                <Line type="monotone" dataKey="engaged" stroke="hsl(var(--success))" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 2 }} name="Engajadas" />
+                <Line type="monotone" dataKey="bounces" stroke="hsl(var(--warning))" strokeWidth={2} strokeDasharray="6 3" dot={false} activeDot={{ r: 5 }} name="Bounces" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Duration distribution + Radar device */}
+      {/* ═══ Step Funnel — Pipeline de Sessão ═══ */}
+      <AnimatedContainer delay={0.08}>
+        <Card className="p-5">
+          <ChartHeader title="Funil de Qualidade de Sessão" subtitle="Step funnel — queda entre etapas" />
+          <div className="space-y-2">
+            {sessionFunnel.map((step, i) => (
+              <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={sessionFunnel[0].value} color={step.color} index={i} />
+            ))}
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Row: Duration funnel + Radar ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Distribuição de Duração</h3>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={durationDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Sessões">
-                    {durationDistribution.map((_, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <ChartHeader title="Distribuição de Duração" subtitle="Funnel horizontal minimal" />
+            <div className="space-y-1.5">
+              {durationDistribution.map((bucket, i) => (
+                <FunnelStep key={bucket.label} label={bucket.label} value={bucket.count} maxValue={Math.max(...durationDistribution.map(d => d.count))} color={VIVID_COLORS[i % VIVID_COLORS.length]} index={i} />
+              ))}
             </div>
           </Card>
         </AnimatedContainer>
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Engajamento por Dispositivo</h3>
-            <div className="h-[260px]">
+            <ChartHeader title="Engajamento por Dispositivo" subtitle="Radar chart multi-dimensional" />
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={qualityByDevice}>
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="device" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <PolarAngleAxis dataKey="device" {...AXIS_STYLE} />
                   <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                  <Radar name="Engajamento %" dataKey="engagementRate" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.25} strokeWidth={2} />
-                  <Radar name="Págs/Sessão" dataKey="pagesPerSession" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.15} strokeWidth={2} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Radar name="Engajamento %" dataKey="engagementRate" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.2} strokeWidth={2} />
+                  <Radar name="Págs/Sessão" dataKey="pagesPerSession" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.12} strokeWidth={2} />
+                  <Legend {...LEGEND_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -496,22 +536,49 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Source quality + Source pie */}
+      {/* ═══ Scatter/Bubble — Duração × Páginas por Source ═══ */}
+      <AnimatedContainer delay={0.18}>
+        <Card className="p-5">
+          <ChartHeader title="Duração × Páginas por Source" subtitle="Scatter/Bubble — tamanho = volume de sessões" />
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ left: 10, bottom: 10 }}>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="avgDuration" name="Duração Média (s)" {...AXIS_STYLE} label={{ value: "Duração (s)", position: "insideBottom", offset: -5, style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
+                <YAxis dataKey="avgPages" name="Páginas/Sessão" {...AXIS_STYLE} label={{ value: "Págs/Sessão", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
+                <ZAxis dataKey="count" range={[60, 400]} name="Sessões" />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(value: any, name: string) => [typeof value === 'number' ? value.toLocaleString("pt-BR") : value, name]} />
+                <Scatter data={scatterBySource} fill="hsl(var(--primary))" fillOpacity={0.6} stroke="hsl(var(--primary))" strokeWidth={1}>
+                  {scatterBySource.map((entry, i) => (
+                    <Cell key={i} fill={SOURCE_COLORS[entry.source.toLowerCase()] || VIVID_COLORS[i % VIVID_COLORS.length]} fillOpacity={0.65} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Row: Source quality bar + Donut ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.2}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Source</h3>
+            <ChartHeader title="Qualidade por Source" subtitle="Barras com gradiente horizontal" />
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={qualityBySource} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} unit="%" />
-                  <YAxis dataKey="source" type="category" width={80} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="engagementRate" radius={[0, 6, 6, 0]} name="Engajamento %">
+                  <defs>
                     {qualityBySource.map((_, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                      <BarGradient key={i} id={`srcGrad-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis type="number" {...AXIS_STYLE} unit="%" />
+                  <YAxis dataKey="source" type="category" width={80} {...AXIS_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Bar dataKey="engagementRate" radius={[0, 8, 8, 0]} name="Engajamento %">
+                    {qualityBySource.map((_, i) => (
+                      <Cell key={i} fill={`url(#srcGrad-${i})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -522,7 +589,7 @@ export function SessionsTab() {
 
         <AnimatedContainer delay={0.25}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Source</h3>
+            <ChartHeader title="Distribuição por Source" subtitle="Donut chart com label central" />
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -530,9 +597,10 @@ export function SessionsTab() {
                     {sourcePieData.map((entry, i) => (
                       <Cell key={i} fill={SOURCE_COLORS[entry.name] || VIVID_COLORS[i % VIVID_COLORS.length]} />
                     ))}
+                    <DonutCenterLabel viewBox={{ cx: "50%", cy: "50%" }} value={totalSourcePie} label="Total" />
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -540,42 +608,47 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Top Landing Pages + City proximity */}
+      {/* ═══ Cohort Heatmap — Source × Device ═══ */}
+      <AnimatedContainer delay={0.28}>
+        <Card className="p-5">
+          <ChartHeader title="Heatmap: Source × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
+          <CohortHeatmap
+            data={cohortData.data}
+            xLabels={cohortData.xLabels}
+            yLabels={cohortData.yLabels}
+            maxValue={Math.max(...cohortData.data.flat())}
+            hue={150}
+          />
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Row: Pipeline + Landing Pages ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.3}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Top Landing Pages</h3>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topLandingPages} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="url" type="category" width={160} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} name="Sessões">
-                    {topLandingPages.map((_, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartHeader title="Pipeline Visual de Sessões" subtitle="Barras verticais proporcionais" />
+            <PipelineVisual steps={sessionFunnel} />
           </Card>
         </AnimatedContainer>
 
-        <AnimatedContainer delay={0.35}>
+        <AnimatedContainer delay={0.32}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Proximidade por Cidade</h3>
-            <div className="h-[280px]">
+            <ChartHeader title="Top Landing Pages" subtitle="Barras com gradiente" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sessionsByCity}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="city" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} angle={-25} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Sessões">
-                    {sessionsByCity.map((_, i) => (
-                      <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                <BarChart data={topLandingPages} layout="vertical" margin={{ left: 10 }}>
+                  <defs>
+                    {topLandingPages.map((_, i) => (
+                      <BarGradient key={i} id={`lpGrad-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                    ))}
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis type="number" {...AXIS_STYLE} />
+                  <YAxis dataKey="url" type="category" width={140} {...AXIS_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]} name="Sessões">
+                    {topLandingPages.map((_, i) => (
+                      <Cell key={i} fill={`url(#lpGrad-${i})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -585,12 +658,37 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Heatmap */}
+      {/* ═══ City proximity bar with gradient ═══ */}
+      <AnimatedContainer delay={0.35}>
+        <Card className="p-5">
+          <ChartHeader title="Proximidade por Cidade" subtitle="Barras verticais com gradiente" />
+          <div className="h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sessionsByCity}>
+                <defs>
+                  {sessionsByCity.map((_, i) => (
+                    <ChartGradient key={i} id={`cityGradS-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} opacity={0.9} />
+                  ))}
+                </defs>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="city" {...AXIS_STYLE} angle={-25} textAnchor="end" height={50} />
+                <YAxis {...AXIS_STYLE} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} name="Sessões">
+                  {sessionsByCity.map((_, i) => (
+                    <Cell key={i} fill={VIVID_COLORS[i % VIVID_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ═══ Heatmap Dia × Hora ═══ */}
       <AnimatedContainer delay={0.4}>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-            <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Sessões (Dia × Hora)
-          </h3>
+          <ChartHeader title="Mapa de Calor de Sessões (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <div className="flex gap-0.5 mb-1 ml-10">
@@ -601,18 +699,24 @@ export function SessionsTab() {
               {heatmapData.map((row) => (
                 <div key={row.day} className="flex items-center gap-0.5 mb-0.5">
                   <span className="text-[10px] text-muted-foreground w-10 text-right pr-2">{row.day}</span>
-                  {row.hours.map((cell) => (
-                    <div
-                      key={cell.hour}
-                      className="flex-1 h-7 rounded-sm flex items-center justify-center"
-                      style={{ backgroundColor: `hsl(var(--info) / ${Math.max(0.05, cell.value / 40)})` }}
-                      title={`${row.day} ${cell.hour}:00 — ${cell.value} sessões`}
-                    >
-                      <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-info-foreground" : "text-muted-foreground"}`}>
-                        {cell.value}
-                      </span>
-                    </div>
-                  ))}
+                  {row.hours.map((cell) => {
+                    const intensity = Math.max(0.05, cell.value / 40);
+                    return (
+                      <div
+                        key={cell.hour}
+                        className="flex-1 h-7 rounded-md flex items-center justify-center transition-transform hover:scale-[1.08] cursor-default"
+                        style={{
+                          background: `hsl(var(--info) / ${intensity})`,
+                          border: `1px solid hsl(var(--info) / ${intensity * 0.4})`,
+                        }}
+                        title={`${row.day} ${cell.hour}:00 — ${cell.value} sessões`}
+                      >
+                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>
+                          {cell.value}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -620,7 +724,7 @@ export function SessionsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Detailed Table with filters inside */}
+      {/* Detailed Table */}
       <AnimatedContainer delay={0.45}>
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
@@ -648,7 +752,6 @@ export function SessionsTab() {
                 </DropdownMenu>
               </div>
             </div>
-            {/* Filters inside table card */}
             <div className="flex flex-wrap gap-2">
               <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
                 <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Source" /></SelectTrigger>
