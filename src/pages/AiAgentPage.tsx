@@ -124,11 +124,20 @@ export default function AiAgentPage() {
     enabled: !!projectId,
   });
 
-  // Seed system agents
+  // Seed system agents - with retry and auth check
+  const [seeded, setSeeded] = useState(false);
   useEffect(() => {
-    if (!projectId || !user || agents === undefined) return;
-    const hasSystem = agents.some((a: any) => a.is_system);
-    if (!hasSystem && agents.length === 0) {
+    if (!projectId || !user || seeded) return;
+    if (agents === undefined || agents.length > 0) return;
+    
+    const doSeed = async () => {
+      // Verify we have an active session before inserting
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn("No active session, skipping agent seed");
+        return;
+      }
+
       const seedAgents = SYSTEM_AGENTS.map(a => ({
         ...a,
         project_id: projectId,
@@ -136,12 +145,22 @@ export default function AiAgentPage() {
         is_system: true,
         enabled: true,
       }));
-      supabase.from("ai_agents").insert(seedAgents).then(({ error }) => {
-        if (error) console.error("Failed to seed agents:", error);
-        queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
-      });
-    }
-  }, [projectId, user, agents]);
+      
+      const { error } = await supabase.from("ai_agents").insert(seedAgents);
+      if (error) {
+        console.error("Failed to seed agents:", error);
+        toast.error("Falha ao criar agentes. Tente recarregar a página.");
+      } else {
+        setSeeded(true);
+        toast.success("Agentes de sistema criados! 🤖");
+      }
+      queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+    };
+    
+    // Small delay to ensure auth is fully ready
+    const timer = setTimeout(doSeed, 500);
+    return () => clearTimeout(timer);
+  }, [projectId, user, agents, seeded]);
 
   const handleCreateAgent = async (form: any) => {
     if (!projectId || !user) return;
@@ -258,15 +277,17 @@ export default function AiAgentPage() {
           </TabsContent>
 
           <TabsContent value="workflows" className="mt-4">
-            <AgentWorkflows onExecuteWorkflow={(name, steps) => {
-              // Switch to chat with workflow context
-              const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
-              setChatAgent({
-                name: `Workflow: ${name}`,
-                instructions: `Você está executando o workflow "${name}". Execute cada passo em sequência, usando os dados do projeto:\n\n${allPrompts}\n\nExecute TODOS os passos e apresente os resultados de forma estruturada.`,
-              });
-              setTab("chat");
-            }} />
+            <AgentWorkflows
+              projectId={projectId || undefined}
+              onExecuteWorkflow={(name, steps) => {
+                const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
+                setChatAgent({
+                  name: `Workflow: ${name}`,
+                  instructions: `Você está executando o workflow "${name}". Execute cada passo em sequência, usando os dados do projeto:\n\n${allPrompts}\n\nExecute TODOS os passos e apresente os resultados de forma estruturada.`,
+                });
+                setTab("chat");
+              }}
+            />
           </TabsContent>
         </Tabs>
 
