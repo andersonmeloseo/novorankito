@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,23 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
   ArrowLeft, ArrowRight, Check, Globe, MapPin, Clock, FileText, Search,
   Link2, Zap, BarChart3, Bot, MonitorSmartphone, Loader2, CheckCircle2,
   AlertCircle, ExternalLink, Copy, Wifi, Target, TrendingUp, DollarSign,
-  Bell, Megaphone,
+  Bell, Megaphone, BookOpen, ChevronsUpDown, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { COUNTRIES_DATA, getTimezoneLabel } from "@/lib/geo-data";
+import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 
 const STEPS = [
   { label: "Projeto", icon: Globe },
@@ -43,27 +51,6 @@ const SITE_TYPES = [
   { value: "portfolio", label: "Portfólio", icon: "🎨" },
 ];
 
-const COUNTRIES = [
-  { value: "BR", label: "Brasil" },
-  { value: "US", label: "Estados Unidos" },
-  { value: "PT", label: "Portugal" },
-  { value: "ES", label: "Espanha" },
-  { value: "UK", label: "Reino Unido" },
-  { value: "DE", label: "Alemanha" },
-  { value: "FR", label: "França" },
-  { value: "MX", label: "México" },
-];
-
-const TIMEZONES = [
-  { value: "America/Sao_Paulo", label: "São Paulo (GMT-3)" },
-  { value: "America/New_York", label: "New York (GMT-5)" },
-  { value: "Europe/Lisbon", label: "Lisboa (GMT+0)" },
-  { value: "Europe/Madrid", label: "Madrid (GMT+1)" },
-  { value: "Europe/London", label: "Londres (GMT+0)" },
-  { value: "Europe/Berlin", label: "Berlim (GMT+1)" },
-  { value: "America/Mexico_City", label: "Cidade do México (GMT-6)" },
-];
-
 const pageVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
@@ -77,7 +64,8 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [project, setProject] = useState({
-    name: "", domain: "", type: "", country: "", timezone: "",
+    name: "", domain: "", type: "", country: "", city: "", timezone: "",
+    isRankRent: false, rrPrice: "", rrDeadline: "", rrClient: "",
   });
 
   const canAdvance =
@@ -94,16 +82,15 @@ export default function Onboarding() {
         domain: project.domain.trim(),
         site_type: project.type,
         country: project.country,
+        city: project.city || null,
         timezone: project.timezone || null,
         owner_id: user.id,
+        monetization_status: project.isRankRent ? "rank_rent" : "disponivel",
       }).select("id").single();
       if (error) throw error;
       setProjectId(data.id);
-      // Also add user as project member with owner role
       await supabase.from("project_members").insert({
-        project_id: data.id,
-        user_id: user.id,
-        role: "owner",
+        project_id: data.id, user_id: user.id, role: "owner",
       });
       setStep(1);
     } catch (err: any) {
@@ -114,10 +101,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (step === 0) {
-      saveProject();
-      return;
-    }
+    if (step === 0) { saveProject(); return; }
     if (step < STEPS.length - 1) setStep(step + 1);
     else navigate("/overview");
   };
@@ -140,22 +124,15 @@ export default function Onboarding() {
             const active = i === step;
             return (
               <div key={s.label} className="flex items-center flex-1 last:flex-initial">
-                <button
-                  onClick={() => i <= step && setStep(i)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-                    active && "bg-primary/10 text-primary",
-                    done && "text-primary cursor-pointer",
-                    !active && !done && "text-muted-foreground"
-                  )}
-                >
+                <button onClick={() => i <= step && setStep(i)}
+                  className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                    active && "bg-primary/10 text-primary", done && "text-primary cursor-pointer",
+                    !active && !done && "text-muted-foreground")}>
                   {done ? (
                     <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
                       <Check className="h-2.5 w-2.5 text-primary-foreground" />
                     </div>
-                  ) : (
-                    <Icon className="h-3.5 w-3.5" />
-                  )}
+                  ) : (<Icon className="h-3.5 w-3.5" />)}
                   <span className="hidden sm:inline">{s.label}</span>
                 </button>
                 {i < STEPS.length - 1 && (
@@ -170,16 +147,9 @@ export default function Onboarding() {
       <div className="flex-1 flex items-start justify-center px-4 sm:px-6 py-6 sm:py-10 overflow-y-auto">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.2 }}
-            >
+            <motion.div key={step} variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               {step === 0 && <StepCreateProject project={project} setProject={setProject} />}
-              {step === 1 && <StepSitemap />}
+              {step === 1 && <StepSitemap projectId={projectId} />}
               {step === 2 && <StepGSC />}
               {step === 3 && <StepGA4 />}
               {step === 4 && <StepTracking />}
@@ -206,11 +176,43 @@ export default function Onboarding() {
   );
 }
 
-/* Step 1: Create Project */
+/* ─── Step 1: Create Project ─── */
 function StepCreateProject({ project, setProject }: {
-  project: { name: string; domain: string; type: string; country: string; timezone: string };
+  project: { name: string; domain: string; type: string; country: string; city: string; timezone: string; isRankRent: boolean; rrPrice: string; rrDeadline: string; rrClient: string };
   setProject: React.Dispatch<React.SetStateAction<typeof project>>;
 }) {
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [citySearch, setCitySearch] = useState("");
+
+  const selectedCountry = COUNTRIES_DATA.find((c) => c.code === project.country);
+
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch) return COUNTRIES_DATA;
+    const q = countrySearch.toLowerCase();
+    return COUNTRIES_DATA.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+  }, [countrySearch]);
+
+  const filteredCities = useMemo(() => {
+    if (!selectedCountry) return [];
+    if (!citySearch) return selectedCountry.timezones;
+    const q = citySearch.toLowerCase();
+    return selectedCountry.timezones.filter((t) => t.city.toLowerCase().includes(q));
+  }, [selectedCountry, citySearch]);
+
+  const handleCountrySelect = (code: string) => {
+    setProject((p) => ({ ...p, country: code, city: "", timezone: "" }));
+    setCountryOpen(false);
+    setCountrySearch("");
+  };
+
+  const handleCitySelect = (city: string, tz: string) => {
+    setProject((p) => ({ ...p, city, timezone: tz }));
+    setCityOpen(false);
+    setCitySearch("");
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -242,45 +244,183 @@ function StepCreateProject({ project, setProject }: {
             ))}
           </div>
         </div>
+
+        {/* Country autocomplete */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium flex items-center gap-1"><MapPin className="h-3 w-3" /> País</Label>
-            <Select value={project.country} onValueChange={(v) => setProject((p) => ({ ...p, country: v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{COUNTRIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-            </Select>
+            <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={countryOpen} className="w-full justify-between text-xs font-normal h-10">
+                  {selectedCountry ? selectedCountry.name : "Digite o país..."}
+                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar país..." value={countrySearch} onValueChange={setCountrySearch} className="text-xs" />
+                  <CommandList>
+                    <CommandEmpty className="text-xs p-2">Nenhum país encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredCountries.map((c) => (
+                        <CommandItem key={c.code} value={c.name} onSelect={() => handleCountrySelect(c.code)} className="text-xs">
+                          <Check className={cn("mr-2 h-3 w-3", project.country === c.code ? "opacity-100" : "opacity-0")} />
+                          {c.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
+          {/* City autocomplete */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium flex items-center gap-1"><Clock className="h-3 w-3" /> Fuso horário</Label>
-            <Select value={project.timezone} onValueChange={(v) => setProject((p) => ({ ...p, timezone: v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{TIMEZONES.map((tz) => <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>)}</SelectContent>
-            </Select>
+            <Label className="text-xs font-medium flex items-center gap-1"><Building2 className="h-3 w-3" /> Cidade</Label>
+            <Popover open={cityOpen} onOpenChange={setCityOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={cityOpen} disabled={!selectedCountry} className="w-full justify-between text-xs font-normal h-10">
+                  {project.city || "Digite a cidade..."}
+                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cidade..." value={citySearch} onValueChange={setCitySearch} className="text-xs" />
+                  <CommandList>
+                    <CommandEmpty className="text-xs p-2">Nenhuma cidade encontrada.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredCities.map((t) => (
+                        <CommandItem key={t.city} value={t.city} onSelect={() => handleCitySelect(t.city, t.tz)} className="text-xs">
+                          <Check className={cn("mr-2 h-3 w-3", project.city === t.city ? "opacity-100" : "opacity-0")} />
+                          {t.city}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
+
+        {/* Auto timezone */}
+        {project.timezone && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex items-center gap-2 p-2.5 rounded-lg bg-success/10 border border-success/20">
+            <Clock className="h-3.5 w-3.5 text-success" />
+            <span className="text-xs text-success font-medium">
+              Fuso horário detectado: {project.timezone} ({getTimezoneLabel(project.timezone)})
+            </span>
+          </motion.div>
+        )}
+
+        {/* Rank & Rent toggle */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <div>
+                <span className="text-xs font-medium text-foreground">Este projeto é Rank & Rent?</span>
+                <p className="text-[10px] text-muted-foreground">Ative para configurar monetização por locação</p>
+              </div>
+            </div>
+            <Switch checked={project.isRankRent} onCheckedChange={(v) => setProject((p) => ({ ...p, isRankRent: v }))} />
+          </div>
+
+          {project.isRankRent && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 pt-2 border-t border-border">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Preço mensal (R$)</Label>
+                  <Input placeholder="2.500" type="number" className="h-8 text-xs" value={project.rrPrice} onChange={(e) => setProject((p) => ({ ...p, rrPrice: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Prazo do contrato</Label>
+                  <Select value={project.rrDeadline} onValueChange={(v) => setProject((p) => ({ ...p, rrDeadline: v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 meses</SelectItem>
+                      <SelectItem value="6">6 meses</SelectItem>
+                      <SelectItem value="12">12 meses</SelectItem>
+                      <SelectItem value="24">24 meses</SelectItem>
+                      <SelectItem value="indefinido">Indefinido</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">Nome do cliente (opcional)</Label>
+                <Input placeholder="Nome da empresa cliente" className="h-8 text-xs" value={project.rrClient} onChange={(e) => setProject((p) => ({ ...p, rrClient: e.target.value }))} />
+              </div>
+            </motion.div>
+          )}
+        </Card>
       </div>
     </div>
   );
 }
 
-/* Step 2: Sitemap */
-function StepSitemap() {
-  const [url, setUrl] = useState("https://acme.com/sitemap.xml");
-  const [fetched, setFetched] = useState(false);
-  const mockUrls = [
-    { url: "/", status: "ok", type: "page" },
-    { url: "/products", status: "ok", type: "category" },
-    { url: "/products/wireless-headphones", status: "ok", type: "product" },
-    { url: "/blog/best-noise-cancelling-2026", status: "ok", type: "post" },
-    { url: "/old-promo", status: "redirect", type: "page" },
-    { url: "/products/discontinued", status: "noindex", type: "product" },
-  ];
+/* ─── Step 2: Sitemap ─── */
+function StepSitemap({ projectId }: { projectId: string | null }) {
+  const { user } = useAuth();
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ urls: { loc: string; lastmod?: string }[]; total: number; sitemaps_processed: string[] } | null>(null);
+  const [error, setError] = useState("");
+  const [savingUrls, setSavingUrls] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const fetchSitemap = async () => {
+    if (!url.trim()) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("fetch-sitemap", {
+        body: { url: url.trim() },
+      });
+      if (fnError) throw fnError;
+      if (data.error) throw new Error(data.error);
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || "Erro ao buscar sitemap");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveUrlsToDb = async () => {
+    if (!result || !projectId || !user) return;
+    setSavingUrls(true);
+    try {
+      const batch = result.urls.slice(0, 500).map((u) => ({
+        project_id: projectId,
+        owner_id: user.id,
+        url: u.loc,
+        url_type: "page",
+        status: "active",
+      }));
+      // Insert in batches of 100
+      for (let i = 0; i < batch.length; i += 100) {
+        const chunk = batch.slice(i, i + 100);
+        const { error } = await supabase.from("site_urls").insert(chunk);
+        if (error) throw error;
+      }
+      setSaved(true);
+      toast({ title: "URLs importadas!", description: `${batch.length} URLs salvas no inventário.` });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingUrls(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-foreground">Conectar Sitemap</h2>
-        <p className="text-sm text-muted-foreground mt-1">Importe as URLs do seu site automaticamente via sitemap.</p>
+        <p className="text-sm text-muted-foreground mt-1">Importe as URLs do seu site automaticamente via sitemap. Suportamos sitemap index com múltiplos sitemaps aninhados.</p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">
@@ -290,39 +430,66 @@ function StepSitemap() {
               <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input className="pl-9 text-sm" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://seusite.com/sitemap.xml" />
             </div>
-            <Button size="sm" onClick={() => setFetched(true)} className="gap-1.5 text-xs">
-              {fetched ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
-              {fetched ? "Importado" : "Buscar URLs"}
+            <Button size="sm" onClick={fetchSitemap} disabled={loading || !url.trim()} className="gap-1.5 text-xs">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              {loading ? "Buscando..." : "Buscar URLs"}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground">Suportamos sitemap.xml, sitemap index e múltiplos sitemaps.</p>
+          <p className="text-[10px] text-muted-foreground">Cole a URL do sitemap.xml ou sitemap index. Todos os sitemaps aninhados serão processados recursivamente.</p>
         </div>
 
-        {fetched && (
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <span className="text-xs text-destructive">{error}</span>
+          </div>
+        )}
+
+        {result && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">{mockUrls.length} URLs encontradas</span>
-              <Badge variant="secondary" className="text-[10px]">sitemap.xml</Badge>
-            </div>
-            <Card className="overflow-hidden">
-              <div className="divide-y divide-border max-h-48 overflow-y-auto scrollbar-thin">
-                {mockUrls.map((u) => (
-                  <div key={u.url} className="flex items-center justify-between px-3 py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Checkbox defaultChecked={u.status === "ok"} />
-                      <span className="font-mono text-foreground">{u.url}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-[9px]">{u.type}</Badge>
-                      <span className={cn("text-[9px] font-medium", u.status === "ok" ? "text-success" : u.status === "redirect" ? "text-warning" : "text-muted-foreground")}>
-                        {u.status}
-                      </span>
-                    </div>
-                  </div>
+              <span className="text-xs font-medium text-foreground">{result.total} URLs encontradas</span>
+              <div className="flex gap-1.5">
+                {result.sitemaps_processed.map((s, i) => (
+                  <Badge key={i} variant="secondary" className="text-[9px] max-w-[120px] truncate">
+                    {s.split("/").pop()}
+                  </Badge>
                 ))}
               </div>
+            </div>
+            {result.sitemaps_processed.length > 1 && (
+              <p className="text-[10px] text-muted-foreground">{result.sitemaps_processed.length} sitemaps processados recursivamente</p>
+            )}
+            <Card className="overflow-hidden">
+              <div className="divide-y divide-border max-h-48 overflow-y-auto scrollbar-thin">
+                {result.urls.slice(0, 50).map((u, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Checkbox defaultChecked />
+                      <span className="font-mono text-foreground truncate">{u.loc}</span>
+                    </div>
+                    {u.lastmod && <span className="text-[9px] text-muted-foreground flex-shrink-0">{u.lastmod.slice(0, 10)}</span>}
+                  </div>
+                ))}
+                {result.urls.length > 50 && (
+                  <div className="px-3 py-2 text-[10px] text-muted-foreground text-center">
+                    ... e mais {result.urls.length - 50} URLs
+                  </div>
+                )}
+              </div>
             </Card>
-            <p className="text-[10px] text-muted-foreground">As URLs importadas serão adicionadas ao Inventário de URLs com tags e grupos editáveis.</p>
+
+            {!saved ? (
+              <Button onClick={saveUrlsToDb} disabled={savingUrls} className="w-full gap-1.5 text-xs" size="sm">
+                {savingUrls ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                {savingUrls ? "Salvando..." : `Importar ${Math.min(result.urls.length, 500)} URLs`}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <span className="text-xs font-medium text-success">URLs importadas com sucesso!</span>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
@@ -330,9 +497,11 @@ function StepSitemap() {
   );
 }
 
-/* Step 3: GSC */
+/* ─── Step 3: GSC ─── */
 function StepGSC() {
   const [connected, setConnected] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div>
@@ -346,13 +515,20 @@ function StepGSC() {
               <Search className="h-5 w-5 text-primary" />
               <div>
                 <span className="text-sm font-medium text-foreground">Google Search Console</span>
-                <p className="text-[10px] text-muted-foreground">Autorize o acesso via OAuth para importar dados</p>
+                <p className="text-[10px] text-muted-foreground">Conecte via Service Account para importar dados</p>
               </div>
             </div>
             <Button onClick={() => setConnected(true)} className="w-full gap-2 text-sm">
               <ExternalLink className="h-3.5 w-3.5" /> Conectar com Google
             </Button>
-            <p className="text-[10px] text-muted-foreground text-center">Precisamos de permissão de leitura para acessar métricas do Search Console.</p>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center"><span className="bg-card px-2 text-[10px] text-muted-foreground">ou</span></div>
+            </div>
+            <Button variant="outline" onClick={() => setTutorialOpen(true)} className="w-full gap-2 text-xs">
+              <BookOpen className="h-3.5 w-3.5" /> Ver tutorial passo-a-passo
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">Siga o tutorial para configurar a Service Account e conectar o Search Console.</p>
           </>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
@@ -372,10 +548,10 @@ function StepGSC() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Status", value: "Verificado", ok: true },
-                { label: "Dados disponíveis", value: "16 meses", ok: true },
-                { label: "Permissão", value: "Leitura", ok: true },
-                { label: "Última sincronização", value: "Agora", ok: true },
+                { label: "Status", value: "Verificado" },
+                { label: "Dados disponíveis", value: "16 meses" },
+                { label: "Permissão", value: "Leitura" },
+                { label: "Última sincronização", value: "Agora" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
                   <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
@@ -386,11 +562,12 @@ function StepGSC() {
           </motion.div>
         )}
       </Card>
+      <GSCTutorialModal open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 }
 
-/* Step 4: GA4 */
+/* ─── Step 4: GA4 ─── */
 function StepGA4() {
   const [connected, setConnected] = useState(false);
   return (
@@ -443,11 +620,10 @@ function StepGA4() {
   );
 }
 
-/* Step 5: Tracking */
+/* ─── Step 5: Tracking ─── */
 function StepTracking() {
   const [method, setMethod] = useState<"script" | "plugin">("script");
   const [liveReceived, setLiveReceived] = useState(false);
-
   return (
     <div className="space-y-6">
       <div>
@@ -456,20 +632,9 @@ function StepTracking() {
       </div>
       <div className="space-y-4">
         <div className="flex gap-2">
-          <button onClick={() => setMethod("script")}
-            className={cn("flex-1 p-3 rounded-lg border text-xs font-medium text-center transition-all",
-              method === "script" ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-foreground/20"
-            )}>
-            📋 Script / Tag
-          </button>
-          <button onClick={() => setMethod("plugin")}
-            className={cn("flex-1 p-3 rounded-lg border text-xs font-medium text-center transition-all",
-              method === "plugin" ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-foreground/20"
-            )}>
-            🔌 Plugin WordPress
-          </button>
+          <button onClick={() => setMethod("script")} className={cn("flex-1 p-3 rounded-lg border text-xs font-medium text-center transition-all", method === "script" ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-foreground/20")}>📋 Script / Tag</button>
+          <button onClick={() => setMethod("plugin")} className={cn("flex-1 p-3 rounded-lg border text-xs font-medium text-center transition-all", method === "plugin" ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-foreground/20")}>🔌 Plugin WordPress</button>
         </div>
-
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium">Chave do Projeto</Label>
@@ -477,7 +642,6 @@ function StepTracking() {
           </div>
           <div className="bg-muted rounded-md p-2 font-mono text-xs text-foreground">rk_live_a1b2c3d4e5f6</div>
         </Card>
-
         {method === "script" ? (
           <Card className="p-4 space-y-3">
             <Label className="text-xs font-medium">Adicione antes do {"</body>"}</Label>
@@ -493,7 +657,6 @@ function StepTracking() {
             <Button variant="outline" size="sm" className="text-xs gap-1.5 w-full">Baixar Plugin (.zip)</Button>
           </Card>
         )}
-
         <Card className={cn("p-4 flex items-center gap-3 transition-colors", liveReceived ? "border-success/30 bg-success/5" : "")}>
           {liveReceived ? (
             <>
@@ -522,7 +685,7 @@ function StepTracking() {
   );
 }
 
-/* Step 6: Ads */
+/* ─── Step 6: Ads ─── */
 function StepAds() {
   const [gadsConnected, setGadsConnected] = useState(false);
   const [metaConnected, setMetaConnected] = useState(false);
@@ -536,50 +699,30 @@ function StepAds() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Megaphone className="h-4 w-4 text-primary" />
-              </div>
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center"><Megaphone className="h-4 w-4 text-primary" /></div>
               <div>
                 <span className="text-sm font-medium text-foreground">Google Ads</span>
                 <p className="text-[10px] text-muted-foreground">Campanhas, custos, conversões e ROAS</p>
               </div>
             </div>
-            {gadsConnected ? (
-              <Badge className="text-[10px] bg-success/10 text-success border-0">Conectado</Badge>
-            ) : (
-              <Button size="sm" className="text-xs gap-1.5" onClick={() => setGadsConnected(true)}>
-                <ExternalLink className="h-3 w-3" /> Conectar
-              </Button>
-            )}
+            {gadsConnected ? <Badge className="text-[10px] bg-success/10 text-success border-0">Conectado</Badge> : <Button size="sm" className="text-xs gap-1.5" onClick={() => setGadsConnected(true)}><ExternalLink className="h-3 w-3" /> Conectar</Button>}
           </div>
           {gadsConnected && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 pt-3 border-t border-border">
-              <Select defaultValue="123-456-7890">
-                <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="123-456-7890">Conta: 123-456-7890 (acme.com)</SelectItem></SelectContent>
-              </Select>
+              <Select defaultValue="123-456-7890"><SelectTrigger className="text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="123-456-7890">Conta: 123-456-7890</SelectItem></SelectContent></Select>
             </motion.div>
           )}
         </Card>
-
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary" />
-              </div>
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center"><Zap className="h-4 w-4 text-primary" /></div>
               <div>
                 <span className="text-sm font-medium text-foreground">Meta Ads</span>
                 <p className="text-[10px] text-muted-foreground">Facebook & Instagram Ads, pixel e eventos</p>
               </div>
             </div>
-            {metaConnected ? (
-              <Badge className="text-[10px] bg-success/10 text-success border-0">Conectado</Badge>
-            ) : (
-              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setMetaConnected(true)}>
-                <ExternalLink className="h-3 w-3" /> Conectar
-              </Button>
-            )}
+            {metaConnected ? <Badge className="text-[10px] bg-success/10 text-success border-0">Conectado</Badge> : <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setMetaConnected(true)}><ExternalLink className="h-3 w-3" /> Conectar</Button>}
           </div>
           {metaConnected && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 pt-3 border-t border-border">
@@ -591,18 +734,16 @@ function StepAds() {
             </motion.div>
           )}
         </Card>
-
         <p className="text-[10px] text-muted-foreground text-center">Você pode pular esta etapa e conectar depois em Configurações.</p>
       </div>
     </div>
   );
 }
 
-/* Step 7: AI Agent */
+/* ─── Step 7: AI Agent ─── */
 function StepAIAgent() {
   const [objective, setObjective] = useState("");
   const [frequency, setFrequency] = useState("weekly");
-
   return (
     <div className="space-y-6">
       <div>
@@ -621,45 +762,25 @@ function StepAIAgent() {
             ].map((obj) => (
               <button key={obj.value} onClick={() => setObjective(obj.value)}
                 className={cn("flex items-center gap-2 p-3 rounded-lg border text-xs font-medium transition-all",
-                  objective === obj.value ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" : "border-border text-muted-foreground hover:border-foreground/20"
-                )}>
+                  objective === obj.value ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" : "border-border text-muted-foreground hover:border-foreground/20")}>
                 <obj.icon className="h-4 w-4" />{obj.label}
               </button>
             ))}
           </div>
         </div>
-
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">Frequência de análises</Label>
-          <Select value={frequency} onValueChange={setFrequency}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Diário</SelectItem>
-              <SelectItem value="weekly">Semanal</SelectItem>
-              <SelectItem value="monthly">Mensal</SelectItem>
-            </SelectContent>
-          </Select>
+          <Select value={frequency} onValueChange={setFrequency}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="daily">Diário</SelectItem><SelectItem value="weekly">Semanal</SelectItem><SelectItem value="monthly">Mensal</SelectItem></SelectContent></Select>
         </div>
-
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">Metas (opcional)</Label>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Cliques/mês</Label>
-              <Input placeholder="30000" type="number" className="h-8 text-xs" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Conversões/mês</Label>
-              <Input placeholder="500" type="number" className="h-8 text-xs" />
-            </div>
+            <div className="space-y-1"><Label className="text-[10px] text-muted-foreground">Cliques/mês</Label><Input placeholder="30000" type="number" className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px] text-muted-foreground">Conversões/mês</Label><Input placeholder="500" type="number" className="h-8 text-xs" /></div>
           </div>
         </div>
-
         <Card className="p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-warning" />
-            <Label className="text-xs font-medium">Alertas Automáticos</Label>
-          </div>
+          <div className="flex items-center gap-2"><Bell className="h-4 w-4 text-warning" /><Label className="text-xs font-medium">Alertas Automáticos</Label></div>
           {[
             { label: "Queda significativa de cliques (>20%)", default: true },
             { label: "Perda de posição em keywords prioritárias", default: true },
