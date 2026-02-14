@@ -103,7 +103,7 @@ export function EcommerceTrackingTab() {
           <ChartHeader title="Funil de E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
           <div className="flex flex-col items-center py-4 gap-0">
             {ecommerceFunnelTotals.map((step, i) => {
-              const fixedWidths = [100, 80, 50, 30];
+              const fixedWidths = [90, 65, 50, 30];
               const widthPct = fixedWidths[i] || 30;
               const prevVal = i > 0 ? ecommerceFunnelTotals[i - 1].value : null;
               const dropRate = prevVal && prevVal > 0 ? (((prevVal - step.value) / prevVal) * 100).toFixed(1) : null;
