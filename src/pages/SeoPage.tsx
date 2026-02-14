@@ -22,11 +22,12 @@ import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2,
 } from "lucide-react";
-import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type SortDir = "asc" | "desc";
 type DateRange = "1" | "7" | "28" | "90" | "180" | "480" | "custom";
+type CompareMode = "previous" | "year" | "custom" | "none";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
@@ -82,6 +83,7 @@ export default function SeoPage() {
   const [dateRange, setDateRange] = useState<DateRange>("28");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [compareMode, setCompareMode] = useState<CompareMode>("previous");
 
   // Search / filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,22 +146,33 @@ export default function SeoPage() {
       from = subDays(refDate, days - 1);
     }
 
-    const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
-    const prevFrom = subDays(from, periodLength);
-    const prevTo = subDays(from, 1);
+    const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    let prevFrom: Date, prevTo: Date;
+
+    if (compareMode === "year") {
+      prevFrom = subYears(from, 1);
+      prevTo = subYears(to, 1);
+    } else if (compareMode === "previous") {
+      prevTo = subDays(from, 1);
+      prevFrom = subDays(prevTo, periodLength - 1);
+    } else {
+      // "none" or "custom" without impl — no comparison
+      prevFrom = new Date(0);
+      prevTo = new Date(0);
+    }
 
     const filtered = baseMetrics.filter((m: any) => {
       const d = parseISO(m.metric_date);
       return isWithinInterval(d, { start: from, end: to });
     });
 
-    const prev = baseMetrics.filter((m: any) => {
+    const prev = compareMode !== "none" ? baseMetrics.filter((m: any) => {
       const d = parseISO(m.metric_date);
       return isWithinInterval(d, { start: prevFrom, end: prevTo });
-    });
+    }) : [];
 
     return { filteredMetrics: filtered, prevMetrics: prev };
-  }, [baseMetrics, dateRange, customFrom, customTo]);
+  }, [baseMetrics, dateRange, customFrom, customTo, compareMode]);
 
   const metrics = filteredMetrics;
 
@@ -295,6 +308,20 @@ export default function SeoPage() {
                     <SelectItem value="180">Últimos 6 meses</SelectItem>
                     <SelectItem value="480">Últimos 16 meses</SelectItem>
                     <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">vs</span>
+                <Select value={compareMode} onValueChange={(v) => setCompareMode(v as CompareMode)}>
+                  <SelectTrigger className="w-[180px] h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="previous">Período anterior</SelectItem>
+                    <SelectItem value="year">Mesmo período ano anterior</SelectItem>
+                    <SelectItem value="none">Sem comparação</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
