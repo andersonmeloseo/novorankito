@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { COUNTRIES_DATA, getTimezoneLabel } from "@/lib/geo-data";
 import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
+import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
 const STEPS = [
   { label: "Projeto", icon: Globe },
@@ -100,10 +101,51 @@ export default function Onboarding() {
     }
   };
 
+  // Persist onboarding step to database
+  const persistStep = async (nextStep: number) => {
+    if (projectId) {
+      await supabase.from("projects").update({ onboarding_step: nextStep }).eq("id", projectId);
+    }
+  };
+
+  // Restore progress on mount — find last project with incomplete onboarding
+  useEffect(() => {
+    if (!user) return;
+    const restore = async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("id, name, domain, site_type, country, city, timezone, monetization_status, onboarding_step, onboarding_completed")
+        .eq("owner_id", user.id)
+        .eq("onboarding_completed", false)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && !data.onboarding_completed) {
+        setProjectId(data.id);
+        setProject({
+          name: data.name, domain: data.domain, type: data.site_type || "",
+          country: data.country || "", city: data.city || "", timezone: data.timezone || "",
+          isRankRent: data.monetization_status === "rank_rent", rrPrice: "", rrDeadline: "", rrClient: "",
+        });
+        setStep(data.onboarding_step || 1); // at least skip step 0 since project exists
+      }
+    };
+    restore();
+  }, [user]);
+
   const handleNext = () => {
     if (step === 0) { saveProject(); return; }
-    if (step < STEPS.length - 1) setStep(step + 1);
-    else navigate("/overview");
+    const nextStep = step + 1;
+    if (nextStep < STEPS.length) {
+      setStep(nextStep);
+      persistStep(nextStep);
+    } else {
+      // Mark onboarding as complete
+      if (projectId) {
+        supabase.from("projects").update({ onboarding_completed: true, onboarding_step: STEPS.length }).eq("id", projectId);
+      }
+      navigate("/overview");
+    }
   };
 
   return (
@@ -742,53 +784,185 @@ function StepGSC() {
 
 /* ─── Step 4: GA4 ─── */
 function StepGA4() {
-  const [connected, setConnected] = useState(false);
+  const [ga4Step, setGa4Step] = useState<"credentials" | "validating" | "connected" | "error">("credentials");
+  const [connectionName, setConnectionName] = useState("");
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [properties, setProperties] = useState<{ propertyId: string; displayName: string; account: string }[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  const [validationError, setValidationError] = useState("");
+
+  const validateAndConnect = async () => {
+    if (!connectionName.trim()) { setJsonError("Informe um nome para a conexão."); return; }
+    setJsonError("");
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonInput.trim());
+      if (!parsed.client_email || !parsed.private_key) {
+        setJsonError("JSON inválido: campos obrigatórios não encontrados (client_email, private_key).");
+        return;
+      }
+    } catch {
+      setJsonError("JSON inválido. Verifique se copiou o conteúdo correto do arquivo de credenciais.");
+      return;
+    }
+
+    setGa4Step("validating");
+    setValidationError("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-ga4", {
+        body: { credentials: { client_email: parsed.client_email, private_key: parsed.private_key } },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || "Falha na verificação");
+
+      const fetched = data.properties || [];
+      if (fetched.length === 0) {
+        setValidationError("Nenhuma propriedade GA4 encontrada. Verifique se a Service Account foi adicionada como Leitor na propriedade GA4.");
+        setGa4Step("error");
+        return;
+      }
+      setProperties(fetched);
+      setSelectedProperty(fetched[0]?.propertyId || "");
+      setGa4Step("connected");
+    } catch (err: any) {
+      console.error("GA4 verification failed:", err);
+      setValidationError(err.message || "Erro ao verificar credenciais.");
+      setGa4Step("error");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-foreground">Conectar Google Analytics 4</h2>
         <p className="text-sm text-muted-foreground mt-1">Vincule sua propriedade GA4 para importar dados de tráfego e conversões.</p>
       </div>
-      <Card className="p-5 space-y-4">
-        {!connected ? (
-          <>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div>
-                <span className="text-sm font-medium text-foreground">Google Analytics 4</span>
-                <p className="text-[10px] text-muted-foreground">Autorize o acesso para importar métricas e dimensões</p>
-              </div>
+
+      {ga4Step === "credentials" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <div>
+              <span className="text-sm font-medium text-foreground">Service Account JSON</span>
+              <p className="text-[10px] text-muted-foreground">Mesma Service Account do GSC ou uma nova com acesso ao GA4</p>
             </div>
-            <Button onClick={() => setConnected(true)} className="w-full gap-2 text-sm">
-              <ExternalLink className="h-3.5 w-3.5" /> Conectar com Google
-            </Button>
-          </>
-        ) : (
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Nome da conexão</Label>
+            <Input placeholder="Ex: GA4 - Meu Site" value={connectionName} onChange={(e) => { setConnectionName(e.target.value); setJsonError(""); }} />
+            <p className="text-[10px] text-muted-foreground">Um nome para identificar essa conexão no painel.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Credenciais JSON</Label>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="flex-1 cursor-pointer">
+                <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (evt) => { setJsonInput(evt.target?.result as string); setJsonError(""); };
+                  reader.readAsText(file);
+                  e.target.value = "";
+                }} />
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2.5 text-xs text-muted-foreground">
+                  <Upload className="h-3.5 w-3.5" /><span>Fazer upload do arquivo .json</span>
+                </div>
+              </label>
+            </div>
+            <textarea
+              className="w-full min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}'
+              value={jsonInput} onChange={(e) => { setJsonInput(e.target.value); setJsonError(""); }}
+            />
+            <p className="text-[10px] text-muted-foreground">Faça upload do arquivo .json ou cole o conteúdo manualmente.</p>
+          </div>
+
+          {jsonError && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <span className="text-xs text-destructive">{jsonError}</span>
+            </div>
+          )}
+
+          <Button onClick={validateAndConnect} disabled={!jsonInput.trim() || !connectionName.trim()} className="w-full gap-2 text-sm">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center"><span className="bg-card px-2 text-[10px] text-muted-foreground">precisa de ajuda?</span></div>
+          </div>
+          <Button variant="outline" onClick={() => setTutorialOpen(true)} className="w-full gap-2 text-xs">
+            <BookOpen className="h-3.5 w-3.5" /> Ver tutorial passo-a-passo
+          </Button>
+        </Card>
+      )}
+
+      {ga4Step === "validating" && (
+        <Card className="p-5">
+          <div className="flex flex-col items-center gap-3 py-6">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <span className="text-sm font-medium text-foreground">Verificando conexão com o GA4...</span>
+            <p className="text-xs text-muted-foreground">Autenticando e buscando propriedades disponíveis</p>
+          </div>
+        </Card>
+      )}
+
+      {ga4Step === "error" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+            <span className="text-xs text-destructive">{validationError}</span>
+          </div>
+          <Button variant="outline" onClick={() => setGa4Step("credentials")} className="w-full gap-2 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" /> Voltar e tentar novamente
+          </Button>
+        </Card>
+      )}
+
+      {ga4Step === "connected" && (
+        <Card className="p-5 space-y-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
               <CheckCircle2 className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium text-success">GA4 conectado!</span>
+              <span className="text-sm font-medium text-success">Conexão GA4 verificada com sucesso!</span>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Propriedade / Stream</Label>
-              <Select defaultValue="properties/123456789">
+              <Label className="text-xs font-medium">Propriedade ({properties.length} encontrada{properties.length !== 1 ? "s" : ""})</Label>
+              <Select value={selectedProperty} onValueChange={setSelectedProperty}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="properties/123456789">acme.com — Web Stream</SelectItem>
+                  {properties.map((p) => (
+                    <SelectItem key={p.propertyId} value={p.propertyId}>
+                      {p.displayName} ({p.account})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs font-medium mb-2 block">Eventos principais detectados</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {["page_view", "session_start", "first_visit", "scroll", "click", "purchase", "add_to_cart"].map((ev) => (
-                  <Badge key={ev} variant="secondary" className="text-[10px]">{ev}</Badge>
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Conexão", value: connectionName },
+                { label: "Propriedade ID", value: selectedProperty },
+                { label: "Total", value: `${properties.length} propriedade${properties.length !== 1 ? "s" : ""}` },
+                { label: "Status", value: "Conectado" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
+                  <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
+                  <div><span className="text-muted-foreground">{item.label}:</span> <span className="font-medium text-foreground">{item.value}</span></div>
+                </div>
+              ))}
             </div>
           </motion.div>
-        )}
-      </Card>
+        </Card>
+      )}
+
+      <GA4TutorialModal open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 }
