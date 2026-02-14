@@ -10,7 +10,7 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGA4Report } from "@/hooks/use-ga4-reports";
+import { useGA4Report, GA4Filters } from "@/hooks/use-ga4-reports";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,7 +30,7 @@ import { Tooltip as RadixTooltip, TooltipContent, TooltipProvider, TooltipTrigge
 import {
   Activity, Calendar, RefreshCw, Loader2, TrendingUp, Users, MousePointerClick,
   Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck, ArrowLeftRight,
-  ChevronDown, ChevronUp, Bot, Info,
+  ChevronDown, ChevronUp, Bot, Info, Filter, X,
 } from "lucide-react";
 import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -154,6 +154,14 @@ export default function AnalyticsPage() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [compareEnabled, setCompareEnabled] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<GA4Filters>({});
+  const activeFilterCount = Object.values(filters).filter(v => v && v.trim()).length;
+
+  const updateFilter = (key: keyof GA4Filters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+  const clearFilters = () => setFilters({});
 
   const { start: startDate, end: endDate } = useMemo(() => {
     if (datePreset === "custom" && customFrom && customTo) return { start: customFrom, end: customTo };
@@ -164,19 +172,19 @@ export default function AnalyticsPage() {
     () => getComparisonRange(startDate, endDate), [startDate, endDate]
   );
 
-  // Load realtime + overview first
+  // Load realtime + overview first (realtime has no filters)
   const { data: realtimeData, isLoading: loadingRealtime } = useGA4Report(projectId, "realtime");
-  const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useGA4Report(projectId, "overview", startDate, endDate);
+  const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useGA4Report(projectId, "overview", startDate, endDate, filters);
   const overviewReady = !!overviewData && !loadingOverview;
-  const { data: compOverviewData } = useGA4Report(compareEnabled ? projectId : undefined, "overview", compStart, compEnd);
+  const { data: compOverviewData } = useGA4Report(compareEnabled ? projectId : undefined, "overview", compStart, compEnd, filters);
   // Secondary reports staggered to avoid GA4 429 quota errors
-  const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(overviewReady ? projectId : undefined, "acquisition", startDate, endDate);
-  const { data: engagementData, isLoading: loadingEngagement } = useGA4Report(overviewReady ? projectId : undefined, "engagement", startDate, endDate);
-  const { data: demographicsData, isLoading: loadingDemographics } = useGA4Report(overviewReady ? projectId : undefined, "demographics", startDate, endDate);
+  const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(overviewReady ? projectId : undefined, "acquisition", startDate, endDate, filters);
+  const { data: engagementData, isLoading: loadingEngagement } = useGA4Report(overviewReady ? projectId : undefined, "engagement", startDate, endDate, filters);
+  const { data: demographicsData, isLoading: loadingDemographics } = useGA4Report(overviewReady ? projectId : undefined, "demographics", startDate, endDate, filters);
   const acqReady = overviewReady && !!acquisitionData;
-  const { data: technologyData, isLoading: loadingTechnology } = useGA4Report(acqReady ? projectId : undefined, "technology", startDate, endDate);
-  const { data: retentionData, isLoading: loadingRetention } = useGA4Report(acqReady ? projectId : undefined, "retention", startDate, endDate);
-  const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(acqReady ? projectId : undefined, "ecommerce", startDate, endDate);
+  const { data: technologyData, isLoading: loadingTechnology } = useGA4Report(acqReady ? projectId : undefined, "technology", startDate, endDate, filters);
+  const { data: retentionData, isLoading: loadingRetention } = useGA4Report(acqReady ? projectId : undefined, "retention", startDate, endDate, filters);
+  const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(acqReady ? projectId : undefined, "ecommerce", startDate, endDate, filters);
 
   const [syncing, setSyncing] = useState(false);
   const handleRefresh = async () => { setSyncing(true); await refetchOverview(); setSyncing(false); };
@@ -300,6 +308,17 @@ export default function AnalyticsPage() {
                 </div>
               )}
               <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  size="sm" variant={showFilters ? "default" : "outline"}
+                  className="text-xs h-7 gap-1.5"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtros
+                  {activeFilterCount > 0 && (
+                    <span className="bg-primary-foreground text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{activeFilterCount}</span>
+                  )}
+                </Button>
                 <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
                 <Label htmlFor="compare-toggle" className="text-xs text-muted-foreground cursor-pointer">Comparar</Label>
                 <Switch id="compare-toggle" checked={compareEnabled} onCheckedChange={setCompareEnabled} className="scale-75" />
@@ -308,6 +327,44 @@ export default function AnalyticsPage() {
                 )}
               </div>
             </div>
+
+            {/* Expandable filters panel */}
+            {showFilters && (
+              <div className="pt-3 border-t border-border mt-3 space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {([
+                    { key: "source" as const, label: "Origem", placeholder: "ex: google, facebook" },
+                    { key: "medium" as const, label: "Mídia", placeholder: "ex: organic, cpc, referral" },
+                    { key: "channel" as const, label: "Canal", placeholder: "ex: Organic Search" },
+                    { key: "campaign" as const, label: "Campanha", placeholder: "ex: black_friday" },
+                    { key: "device" as const, label: "Dispositivo", placeholder: "ex: desktop, mobile" },
+                    { key: "country" as const, label: "País", placeholder: "ex: Brazil" },
+                    { key: "page" as const, label: "Página (URL)", placeholder: "ex: /blog, /contato" },
+                    { key: "browser" as const, label: "Navegador", placeholder: "ex: Chrome, Safari" },
+                    { key: "os" as const, label: "Sistema Op.", placeholder: "ex: Windows, iOS" },
+                    { key: "language" as const, label: "Idioma", placeholder: "ex: pt-br, en-us" },
+                  ]).map(f => (
+                    <div key={f.key} className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{f.label}</label>
+                      <Input
+                        value={filters[f.key] || ""}
+                        onChange={e => updateFilter(f.key, e.target.value)}
+                        placeholder={f.placeholder}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {activeFilterCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground" onClick={clearFilters}>
+                      <X className="h-3 w-3" /> Limpar filtros
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground">{activeFilterCount} filtro(s) ativo(s) — os dados serão filtrados via API do GA4</span>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </AnimatedContainer>
 
