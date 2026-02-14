@@ -316,10 +316,31 @@ export default function AnalyticsPage() {
         {hasConnection && (
           <div className="space-y-8">
 
-            {/* ═══ TEMPO REAL (primeiro!) ═══ */}
-            <DashboardSection title="Tempo Real" icon={Zap}>
-              <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
-            </DashboardSection>
+            {/* ═══ LINHA 0 — Card Principal de Destaques ═══ */}
+            <AnimatedContainer>
+              <Card className="p-5 bg-gradient-to-br from-primary/[0.06] to-transparent border-primary/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="h-5 w-5 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Destaques</h2>
+                </div>
+                {loadingOverview && loadingRealtime ? <KpiSkeleton count={4} /> : (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Usuários Ativos (Realtime) */}
+                    <Card className="p-4 flex flex-col items-center justify-center text-center bg-card/80 backdrop-blur-sm">
+                      <div className="h-2 w-2 rounded-full bg-success animate-pulse mb-2" />
+                      <span className="text-3xl font-bold font-display text-foreground">{realtimeData?.activeUsers || 0}</span>
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-1">Ativos Agora</span>
+                    </Card>
+                    {/* Usuários no Período */}
+                    <KpiCard label="Usuários" description="Total de visitantes únicos no período" value={totalUsers} change={calcChange(totalUsers, compTotals.totalUsers || 0)} prevValue={compTotals.totalUsers || 0} showComparison={compareEnabled} sparklineData={sparkUsers} sparklinePrevData={compareEnabled ? compSparkUsers : undefined} sparklineColor="hsl(var(--chart-1))" />
+                    {/* Eventos */}
+                    <KpiCard label="Eventos" description="Total de interações rastreadas" value={events} change={calcChange(events, compTotals.eventCount || 0)} prevValue={compTotals.eventCount || 0} showComparison={compareEnabled} sparklineData={sparkEvents} sparklinePrevData={compareEnabled ? compSparkEvents : undefined} sparklineColor="hsl(var(--chart-4))" />
+                    {/* Taxa de Rejeição */}
+                    <KpiCard label="Tx. Rejeição" description="Sessões sem interação" value={bounceRate} suffix="%" change={calcChange(bounceRate, (compTotals.bounceRate || 0) * 100)} prevValue={(compTotals.bounceRate || 0) * 100} showComparison={compareEnabled} sparklineData={sparkBounce} sparklinePrevData={compareEnabled ? compSparkBounce : undefined} sparklineColor="hsl(var(--chart-2))" />
+                  </div>
+                )}
+              </Card>
+            </AnimatedContainer>
 
             {/* ═══ LINHA 1 — KPIs Executivos ═══ */}
             <DashboardSection title="Visão Geral" icon={TrendingUp}>
@@ -337,6 +358,11 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               )}
+            </DashboardSection>
+
+            {/* ═══ TEMPO REAL ═══ */}
+            <DashboardSection title="Tempo Real" icon={Zap}>
+              <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
             </DashboardSection>
 
             {/* ═══ LINHA 2 — Tendência + Score ═══ */}
