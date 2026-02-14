@@ -90,7 +90,7 @@ export default function Overview() {
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name, domain").order("created_at", { ascending: false }).limit(1);
+      const { data } = await supabase.from("projects").select("id, name, domain").eq("owner_id", user!.id).order("created_at", { ascending: false }).limit(1);
       return data || [];
     },
     enabled: !!user,
