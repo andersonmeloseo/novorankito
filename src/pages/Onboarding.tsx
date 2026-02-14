@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -370,6 +370,23 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
   const [error, setError] = useState("");
   const [savingUrls, setSavingUrls] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [existingCount, setExistingCount] = useState<number | null>(null);
+
+  // Check if URLs were already imported for this project
+  useEffect(() => {
+    if (!projectId) return;
+    const checkExisting = async () => {
+      const { count, error } = await supabase
+        .from("site_urls")
+        .select("*", { count: "exact", head: true })
+        .eq("project_id", projectId);
+      if (!error && count && count > 0) {
+        setExistingCount(count);
+        setSaved(true);
+      }
+    };
+    checkExisting();
+  }, [projectId]);
 
   const fetchSitemap = async () => {
     if (!url.trim()) return;
@@ -496,6 +513,19 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
                 <span className="text-xs font-medium text-success">URLs importadas com sucesso!</span>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* Show existing import status when returning to this step */}
+        {saved && !result && existingCount !== null && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <span className="text-xs font-medium text-success">
+                {existingCount.toLocaleString("pt-BR")} URLs já importadas neste projeto.
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Você pode buscar o sitemap novamente para adicionar novas URLs. URLs duplicadas serão ignoradas.</p>
           </motion.div>
         )}
       </div>
