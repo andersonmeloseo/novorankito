@@ -1,6 +1,8 @@
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   pluginEvents, allEventsByDay, eventTypeTotals, platformDistribution,
   pageExitAnalysis, EVENT_LABELS, PLUGIN_EVENT_TYPES, EVENT_CATEGORIES,
@@ -67,6 +69,22 @@ export function AllEventsTab() {
     email_click: "✉️", button_click: "🖱️", form_submit: "📝", product_view: "🛍️",
     add_to_cart: "🛒", remove_from_cart: "❌", begin_checkout: "💳", purchase: "💰", search: "🔍",
   };
+
+  const [eventTypeFilter, setEventTypeFilter] = useState("all");
+  const [deviceFilter, setDeviceFilter] = useState("all");
+  const [browserFilter, setBrowserFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
+
+  const filteredEvents = useMemo(() => {
+    let data = pluginEvents;
+    if (eventTypeFilter !== "all") data = data.filter(e => e.event_type === eventTypeFilter);
+    if (deviceFilter !== "all") data = data.filter(e => e.device === deviceFilter);
+    if (browserFilter !== "all") data = data.filter(e => e.browser === browserFilter);
+    if (cityFilter !== "all") data = data.filter(e => e.city === cityFilter);
+    if (platformFilter !== "all") data = data.filter(e => e.platform === platformFilter);
+    return data.slice(0, 200);
+  }, [eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter]);
 
   const totalEvents = pluginEvents.length;
   const trackingEvents = pluginEvents.filter(e => EVENT_CATEGORIES.tracking.includes(e.event_type)).length;
@@ -304,13 +322,60 @@ export function AllEventsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* Detailed Events Table */}
+      {/* Detailed Events Table with Filters */}
       <AnimatedContainer delay={0.4}>
         <Card className="p-5">
-          <ChartHeader title="Eventos Detalhados" subtitle="Últimos eventos capturados com URLs, dispositivo e tipo" />
-           <AnalyticsDataTable
+          <ChartHeader title="Eventos Detalhados" subtitle="Filtre por tipo de evento, dispositivo, navegador, cidade e plataforma para análise granular" />
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Tipos</SelectItem>
+                {PLUGIN_EVENT_TYPES.filter(t => pluginEvents.some(e => e.event_type === t)).map(t => (
+                  <SelectItem key={t} value={t}>{EVENT_EMOJI[t] || "⚡"} {EVENT_LABELS[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {Array.from(new Set(pluginEvents.map(e => e.device))).sort().map(d => (
+                  <SelectItem key={d} value={d}>{DEVICE_EMOJI[d] || "💻"} {d.charAt(0).toUpperCase() + d.slice(1)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={browserFilter} onValueChange={setBrowserFilter}>
+              <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {Array.from(new Set(pluginEvents.map(e => e.browser))).sort().map(b => (
+                  <SelectItem key={b} value={b}>{BROWSER_EMOJI[b] || "🌐"} {b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={cityFilter} onValueChange={setCityFilter}>
+              <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {Array.from(new Set(pluginEvents.map(e => e.city))).sort().map(c => (
+                  <SelectItem key={c} value={c}>📍 {c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Plataforma" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {Array.from(new Set(pluginEvents.map(e => e.platform))).sort().map(p => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AnalyticsDataTable
             columns={["Data/Hora", "Tipo de Evento", "Página", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
-            rows={pluginEvents.slice(0, 100).map(e => [
+            rows={filteredEvents.map(e => [
               new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
               `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type]}`,
               e.page_url.replace(/^https?:\/\/[^/]+/, "") || "/",
