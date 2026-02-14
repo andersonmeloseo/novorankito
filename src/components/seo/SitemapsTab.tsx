@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/hooks/use-toast";
-import { Map, Loader2, Plus, Trash2, RefreshCw, CheckCircle2, AlertTriangle, XCircle, FileText } from "lucide-react";
+import { MapPin, Loader2, Plus, Trash2, RefreshCw, XCircle, FileText, ArrowUpDown, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 
@@ -15,11 +15,23 @@ interface Props {
   projectId: string | undefined;
 }
 
+type SortDir = "asc" | "desc";
+
+function sortData(data: any[], key: string, dir: SortDir) {
+  return [...data].sort((a, b) => {
+    const av = a[key], bv = b[key];
+    if (typeof av === "number" && typeof bv === "number") return dir === "desc" ? bv - av : av - bv;
+    return dir === "desc" ? String(bv || "").localeCompare(String(av || "")) : String(av || "").localeCompare(String(bv || ""));
+  });
+}
+
 export function SitemapsTab({ projectId }: Props) {
   const queryClient = useQueryClient();
   const [newSitemapUrl, setNewSitemapUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: "path", dir: "asc" });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["gsc-sitemaps", projectId],
@@ -34,7 +46,19 @@ export function SitemapsTab({ projectId }: Props) {
     enabled: !!projectId,
   });
 
-  const sitemaps = data?.sitemap || [];
+  const rawSitemaps = data?.sitemap || [];
+
+  const sitemaps = useMemo(() => {
+    let rows = rawSitemaps.map((sm: any) => ({
+      path: sm.path || "",
+      type: sm.type || "—",
+      status: sm.lastSubmitted ? "success" : "pending",
+      urls: sm.contents?.map((c: any) => c.submitted || "—").join(", ") || "—",
+      lastDownloaded: sm.lastDownloaded || "",
+    }));
+    if (searchTerm) rows = rows.filter((r: any) => r.path.toLowerCase().includes(searchTerm.toLowerCase()));
+    return sortData(rows, sort.key, sort.dir);
+  }, [rawSitemaps, searchTerm, sort]);
 
   const submitSitemap = async () => {
     if (!projectId || !newSitemapUrl.trim()) return;
@@ -74,13 +98,18 @@ export function SitemapsTab({ projectId }: Props) {
   };
 
   const statusBadge = (status: string) => {
-    if (!status) return <Badge variant="outline" className="text-[10px]">—</Badge>;
-    const s = status.toLowerCase();
-    if (s === "success") return <Badge variant="default" className="text-[10px] bg-success">Sucesso</Badge>;
-    if (s.includes("error")) return <Badge variant="destructive" className="text-[10px]">Erro</Badge>;
-    if (s === "pending") return <Badge variant="secondary" className="text-[10px]">Pendente</Badge>;
+    if (status === "success") return <Badge variant="default" className="text-[10px] bg-success">Sucesso</Badge>;
+    if (status === "pending") return <Badge variant="secondary" className="text-[10px]">Pendente</Badge>;
     return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
   };
+
+  const columns = [
+    { key: "path", label: "URL" },
+    { key: "type", label: "Tipo" },
+    { key: "status", label: "Status" },
+    { key: "urls", label: "URLs" },
+    { key: "lastDownloaded", label: "Último Download" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -89,7 +118,7 @@ export function SitemapsTab({ projectId }: Props) {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Map className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="URL do sitemap (ex: https://seusite.com/sitemap.xml)"
                 value={newSitemapUrl}
@@ -106,6 +135,17 @@ export function SitemapsTab({ projectId }: Props) {
         </Card>
       </AnimatedContainer>
 
+      {/* Search filter */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Buscar sitemaps..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="pl-8 h-9 text-xs"
+        />
+      </div>
+
       {/* Sitemaps list */}
       {isLoading ? (
         <Card className="p-8 flex items-center justify-center">
@@ -118,7 +158,7 @@ export function SitemapsTab({ projectId }: Props) {
             {(error as Error).message}
           </div>
         </Card>
-      ) : sitemaps.length === 0 ? (
+      ) : sitemaps.length === 0 && !searchTerm ? (
         <EmptyState
           icon={FileText}
           title="Nenhum sitemap encontrado"
@@ -143,39 +183,48 @@ export function SitemapsTab({ projectId }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">URL</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">URLs</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Último Download</th>
+                    {columns.map(col => (
+                      <th
+                        key={col.key}
+                        className="px-4 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => setSort(prev => ({ key: col.key, dir: prev.key === col.key && prev.dir === "desc" ? "asc" : "desc" }))}
+                      >
+                        <span className="flex items-center gap-1">
+                          {col.label}
+                          <ArrowUpDown className={`h-3 w-3 ${sort.key === col.key ? "text-primary" : "opacity-40"}`} />
+                        </span>
+                      </th>
+                    ))}
                     <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sitemaps.map((sm: any, i: number) => (
-                    <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                      <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate">{sm.path}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{sm.type || "—"}</td>
-                      <td className="px-4 py-3">{statusBadge(sm.lastSubmitted ? "success" : "pending")}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {sm.contents?.map((c: any) => c.submitted || "—").join(", ") || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {sm.lastDownloaded ? format(parseISO(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => deleteSitemap(sm.path)}
-                          disabled={deletingUrl === sm.path}
-                        >
-                          {deletingUrl === sm.path ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {sitemaps.length === 0 ? (
+                    <tr><td colSpan={columns.length + 1} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
+                  ) : (
+                    sitemaps.map((sm: any, i: number) => (
+                      <tr key={i} className="border-b border-border last:border-0 table-row-hover">
+                        <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate">{sm.path}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{sm.type}</td>
+                        <td className="px-4 py-3">{statusBadge(sm.status)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{sm.urls}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {sm.lastDownloaded ? format(parseISO(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            onClick={() => deleteSitemap(sm.path)}
+                            disabled={deletingUrl === sm.path}
+                          >
+                            {deletingUrl === sm.path ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
