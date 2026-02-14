@@ -4,24 +4,25 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useInventory, useIndexingRequests, useSubmitUrls, useRetryRequest, useInspectUrls,
   type InventoryUrl, type IndexingRequest,
 } from "@/hooks/use-indexing";
+import { IndexingDashboard } from "@/components/indexing/IndexingDashboard";
+import { ScheduleDialog, type ManualSchedule, type CronConfig } from "@/components/indexing/ScheduleDialog";
 import {
   Send, CheckCircle2, Clock, AlertTriangle, RotateCcw, Zap, Globe, Link2,
   ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
   ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, ChevronDown, Layers, History, Package, ScanSearch,
-  AlertCircle, Ban, Info, Map, FileText
+  AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,7 +61,8 @@ function StatusBadge({ status, map }: { status: string | null; map: Record<strin
 
 export default function IndexingPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("inventory");
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [searchFilter, setSearchFilter] = useState("");
   const [verdictFilter, setVerdictFilter] = useState("all");
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
@@ -131,6 +133,63 @@ export default function IndexingPage() {
       indexedCount: sm.contents?.reduce((acc: number, c: any) => acc + (parseInt(String(c.indexed), 10) || 0), 0) || 0,
     }));
   }, [sitemapsData]);
+
+  // ─── Schedule Config ───
+  const { data: scheduleData } = useQuery({
+    queryKey: ["indexing-schedule", projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("indexing_schedules")
+        .select("*")
+        .eq("project_id", projectId!)
+        .eq("schedule_type", "cron")
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  const cronConfig: CronConfig = {
+    enabled: scheduleData?.enabled ?? false,
+    time: scheduleData?.cron_time ?? "03:00",
+    actions: (scheduleData?.actions as ("indexing" | "inspection")[]) ?? [],
+    maxUrls: scheduleData?.max_urls ?? 200,
+  };
+
+  const handleToggleAutoCron = async (enabled: boolean, config: CronConfig) => {
+    if (!projectId || !user) return;
+    const payload = {
+      project_id: projectId,
+      owner_id: user.id,
+      schedule_type: "cron" as const,
+      enabled,
+      cron_time: config.time,
+      actions: config.actions,
+      max_urls: config.maxUrls,
+      status: "active" as const,
+    };
+    if (scheduleData?.id) {
+      await supabase.from("indexing_schedules").update(payload).eq("id", scheduleData.id);
+    } else {
+      await supabase.from("indexing_schedules").insert(payload);
+    }
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+  };
+
+  const handleScheduleManual = async (config: ManualSchedule) => {
+    if (!projectId || !user) return;
+    await supabase.from("indexing_schedules").insert({
+      project_id: projectId,
+      owner_id: user.id,
+      schedule_type: "manual",
+      enabled: true,
+      actions: [config.type],
+      max_urls: config.urlCount,
+      scheduled_at: config.scheduledAt,
+      status: "pending",
+    });
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+  };
 
   // ─── Filtered & Sorted Inventory ───
   const filteredInventory = useMemo(() => {
@@ -224,47 +283,18 @@ export default function IndexingPage() {
     inspectMutation.mutate(unknowns);
   };
 
-  const quotaUsedPercent = Math.min(100, Math.round((stats.sentToday / stats.dailyLimit) * 100));
-
   return (
     <>
       <TopBar title="Indexação" subtitle="Gerencie a indexação das suas páginas via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* KPIs */}
-        {invLoading ? <KpiSkeleton /> : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <KpiCard label="URLs no Inventário" value={stats.totalUrls} change={0} />
-            <Card className="p-3 flex flex-col items-center justify-center">
-              <div className="text-2xl font-bold text-success">{stats.indexed}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Indexadas</div>
-            </Card>
-            <Card className="p-3 flex flex-col items-center justify-center">
-              <div className="text-2xl font-bold text-destructive">{stats.notIndexed}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Não Indexadas</div>
-            </Card>
-            <Card className="p-3 flex flex-col items-center justify-center">
-              <div className="text-2xl font-bold text-muted-foreground">{stats.unknown}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Sem Inspeção</div>
-            </Card>
-            <Card className="p-3 flex flex-col items-center justify-center">
-              <div className="text-2xl font-bold text-foreground">{stats.sentToday}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Enviadas Hoje</div>
-            </Card>
-            <Card className="p-3 flex flex-col items-center justify-center space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Zap className="h-3 w-3 text-primary" />
-                <span className="text-xs font-medium text-foreground">{stats.sentToday}/{stats.dailyLimit}</span>
-              </div>
-              <Progress value={quotaUsedPercent} className="h-1.5 w-full" />
-              <div className="text-[9px] text-muted-foreground">Quota Diária</div>
-            </Card>
-          </div>
-        )}
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <TabsList>
+              <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
+                <LayoutDashboard className="h-3 w-3" /> Dashboard
+              </TabsTrigger>
               <TabsTrigger value="inventory" className="gap-1.5 text-xs">
                 <Layers className="h-3 w-3" /> Inventário
               </TabsTrigger>
@@ -276,12 +306,14 @@ export default function IndexingPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Filters */}
+            {/* Filters & Schedule */}
             <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
-              </div>
+              {activeTab !== "dashboard" && (
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
+                </div>
+              )}
               {activeTab === "inventory" && (
                 <Select value={verdictFilter} onValueChange={v => { setVerdictFilter(v); setInvPage(0); }}>
                   <SelectTrigger className="w-[150px] h-9 text-xs">
@@ -309,8 +341,29 @@ export default function IndexingPage() {
                   </SelectContent>
                 </Select>
               )}
+              <ScheduleDialog
+                projectId={projectId}
+                totalUrls={stats.totalUrls}
+                unknownUrls={stats.unknown}
+                onScheduleManual={handleScheduleManual}
+                onToggleAutoCron={handleToggleAutoCron}
+                cronEnabled={cronConfig.enabled}
+                cronConfig={cronConfig}
+              />
             </div>
           </div>
+
+          {/* ─── DASHBOARD TAB ─── */}
+          <TabsContent value="dashboard" className="mt-4">
+            {invLoading ? <KpiSkeleton /> : (
+              <IndexingDashboard
+                stats={stats}
+                inventory={inventory}
+                requests={requests || []}
+                sitemaps={sitemaps}
+              />
+            )}
+          </TabsContent>
 
           {/* ─── INVENTORY TAB ─── */}
           <TabsContent value="inventory" className="mt-4 space-y-4">
