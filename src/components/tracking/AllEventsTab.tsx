@@ -268,16 +268,16 @@ export function AllEventsTab() {
       <AnimatedContainer delay={0.4}>
         <Card className="p-5">
           <ChartHeader title="Eventos Detalhados" subtitle="Últimos eventos capturados com URLs, dispositivo e tipo" />
-          <AnalyticsDataTable
-            columns={["Evento", "URL", "Dispositivo", "Browser", "Cidade", "Plataforma", "Data/Hora"]}
+           <AnalyticsDataTable
+            columns={["Data/Hora", "Tipo de Evento", "Página", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
             rows={pluginEvents.slice(0, 100).map(e => [
+              new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
               EVENT_LABELS[e.event_type],
-              e.page_url,
+              e.page_url.replace(/^https?:\/\/[^/]+/, "") || "/",
+              e.cta_text || e.event_type.replace(/_/g, " "),
               e.device.charAt(0).toUpperCase() + e.device.slice(1),
               e.browser,
-              `${e.city}/${e.state}`,
-              e.platform,
-              new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+              `${e.city}, ${e.state}`,
             ])}
             pageSize={15}
           />
