@@ -1,138 +1,222 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { InsightCard } from "@/components/dashboard/InsightCard";
-import { mockInsights } from "@/lib/mock-data";
-import {
-  Bot, Send, Lightbulb, ListChecks, Settings2, Sparkles,
-  CheckCircle2, Clock, AlertCircle, User,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Bot, MessageSquare, Plus, Sparkles, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { AgentChatTab } from "@/components/ai-agent/AgentChatTab";
+import { AgentCard } from "@/components/ai-agent/AgentCard";
+import { CreateAgentDialog } from "@/components/ai-agent/CreateAgentDialog";
 
-const MOCK_MESSAGES = [
-  { role: "assistant" as const, content: "Olá! Sou o Agente Rankito. Analisei os dados do seu projeto e encontrei 3 insights prioritários. O mais crítico é a queda de 34% em cliques na /products/smart-speaker. Quer que eu detalhe as possíveis causas?" },
-  { role: "user" as const, content: "Sim, detalhe as causas e sugira ações." },
-  { role: "assistant" as const, content: "A queda na /products/smart-speaker está associada a:\n\n1. **Perda de posição** — posição média caiu de 5.8 → 9.2 nas últimas 2 semanas\n2. **Novo concorrente** — um resultado do TechRadar entrou no top 3 para 'smart speaker comparison'\n3. **CTR reduzido** — o snippet atual tem CTR 1.2%, abaixo da média do segmento (2.8%)\n\n**Ações recomendadas:**\n- Reescrever title tag com benefício claro (estimativa: +40% CTR)\n- Adicionar FAQ schema markup\n- Criar 2 internal links de páginas com autoridade\n\nQuer que eu crie tarefas para essas ações?" },
+const SYSTEM_AGENTS = [
+  {
+    speciality: "growth",
+    name: "Agente Growth",
+    description: "Monitora métricas de crescimento, identifica oportunidades de expansão e sugere estratégias para aumentar tráfego e conversões.",
+    instructions: "Você é um especialista em Growth Marketing. Analise dados de tráfego, conversões, fontes de aquisição e sugira estratégias de crescimento. Foque em métricas como taxa de conversão, CAC, LTV e ROI. Identifique quick wins e oportunidades de escala.",
+  },
+  {
+    speciality: "seo",
+    name: "Agente SEO",
+    description: "Analisa posições, backlinks, oportunidades de keywords e problemas técnicos de SEO para melhorar o ranking orgânico.",
+    instructions: "Você é um especialista em SEO técnico e de conteúdo. Analise posições de keywords, CTR, backlinks, cobertura de indexação, canibalizacão e problemas técnicos. Sugira otimizações de title tags, meta descriptions, internal linking e content gaps.",
+  },
+  {
+    speciality: "analytics",
+    name: "Agente Analytics",
+    description: "Interpreta dados do GA4 e GSC, gera relatórios de performance e identifica anomalias nos dados do projeto.",
+    instructions: "Você é um analista de dados especializado em web analytics. Interprete dados do Google Analytics e Search Console, identifique tendências, anomalias e padrões. Gere insights acionáveis sobre comportamento do usuário, jornada de conversão e performance de conteúdo.",
+  },
 ];
-
-const MOCK_TASKS = [
-  { id: "1", title: "Reescrever title tag da /products/smart-speaker", status: "a_fazer" as const, priority: "alta", assignee: "João", due: "2026-02-15" },
-  { id: "2", title: "Adicionar FAQ schema na página de smart speaker", status: "em_progresso" as const, priority: "alta", assignee: "Maria", due: "2026-02-16" },
-  { id: "3", title: "Otimizar meta descriptions do grupo 'Blog'", status: "concluido" as const, priority: "média", assignee: "João", due: "2026-02-12" },
-  { id: "4", title: "Criar internal links para /products/smart-speaker", status: "a_fazer" as const, priority: "alta", assignee: "—", due: "2026-02-17" },
-  { id: "5", title: "Revisar canibalizacão em 'headphones' queries", status: "a_fazer" as const, priority: "média", assignee: "—", due: "2026-02-18" },
-];
-
-const TASK_STATUS_STYLE: Record<string, { bg: string; icon: React.ElementType; label: string }> = {
-  a_fazer: { bg: "bg-muted text-muted-foreground", icon: Clock, label: "A fazer" },
-  em_progresso: { bg: "bg-primary/10 text-primary", icon: AlertCircle, label: "Em progresso" },
-  concluido: { bg: "bg-success/10 text-success", icon: CheckCircle2, label: "Concluído" },
-};
 
 export default function AiAgentPage() {
-  const [mode, setMode] = useState<"executive" | "technical">("executive");
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("chat");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<any>(null);
+  const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string } | null>(null);
+
+  // Get current project from localStorage
+  const projectId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
+
+  // Fetch agents
+  const { data: agents = [] } = useQuery({
+    queryKey: ["ai-agents", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from("ai_agents")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("is_system", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
+
+  // Seed system agents if none exist
+  useEffect(() => {
+    if (!projectId || !user || agents === undefined) return;
+    const hasSystem = agents.some((a: any) => a.is_system);
+    if (!hasSystem && agents.length === 0) {
+      const seedAgents = SYSTEM_AGENTS.map(a => ({
+        ...a,
+        project_id: projectId,
+        owner_id: user.id,
+        is_system: true,
+        enabled: true,
+      }));
+      supabase.from("ai_agents").insert(seedAgents).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+      });
+    }
+  }, [projectId, user, agents]);
+
+  const handleCreateAgent = async (form: any) => {
+    if (!projectId || !user) return;
+    const { error } = await supabase.from("ai_agents").insert({
+      project_id: projectId,
+      owner_id: user.id,
+      name: form.name,
+      description: form.description,
+      instructions: form.instructions,
+      speciality: form.speciality,
+      avatar_url: form.avatar_url || null,
+      whatsapp_number: form.whatsapp_number || null,
+      notification_destination: form.notification_destination || null,
+      notification_triggers: form.notification_triggers,
+      enabled: form.enabled,
+    });
+    if (error) { toast.error(error.message); throw error; }
+    queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+    toast.success("Agente criado!");
+  };
+
+  const handleEditAgent = async (form: any) => {
+    if (!editingAgent) return;
+    const { error } = await supabase.from("ai_agents").update({
+      name: form.name,
+      description: form.description,
+      instructions: form.instructions,
+      speciality: form.speciality,
+      avatar_url: form.avatar_url || null,
+      whatsapp_number: form.whatsapp_number || null,
+      notification_destination: form.notification_destination || null,
+      notification_triggers: form.notification_triggers,
+      enabled: form.enabled,
+    }).eq("id", editingAgent.id);
+    if (error) { toast.error(error.message); throw error; }
+    queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+    setEditingAgent(null);
+    toast.success("Agente atualizado!");
+  };
+
+  const handleToggle = async (id: string, enabled: boolean) => {
+    await supabase.from("ai_agents").update({ enabled }).eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+  };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("ai_agents").delete().eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
+    toast.success("Agente excluído");
+  };
+
+  const handleOpenEdit = (id: string) => {
+    const agent = agents.find((a: any) => a.id === id);
+    if (agent) setEditingAgent(agent);
+  };
+
+  const handleOpenChat = (agent: any) => {
+    setChatAgent({ name: agent.name, instructions: agent.instructions || "" });
+    setTab("chat");
+  };
 
   return (
     <>
-      <TopBar title="Agente IA" subtitle="Converse com a IA para obter insights e criar tarefas automaticamente" />
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Mode Toggle */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => setMode("executive")}
-              className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", mode === "executive" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
-            >
-              Executivo
-            </button>
-            <button
-              onClick={() => setMode("technical")}
-              className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", mode === "technical" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
-            >
-              Técnico
-            </button>
-          </div>
-          <Button variant="outline" size="sm" className="text-xs gap-1.5 ml-auto">
-            <Settings2 className="h-3 w-3" /> Configurar
-          </Button>
-        </div>
-
+      <TopBar title="Agentes IA" subtitle="Converse com a IA, configure agentes autônomos e crie seus próprios robôs" />
+      <div className="p-4 sm:p-6 space-y-4">
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="chat" className="text-xs gap-1.5"><Bot className="h-3 w-3" /> Chat</TabsTrigger>
-            <TabsTrigger value="insights" className="text-xs gap-1.5"><Lightbulb className="h-3 w-3" /> Insights</TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs gap-1.5"><ListChecks className="h-3 w-3" /> Tarefas</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <TabsList>
+              <TabsTrigger value="chat" className="text-xs gap-1.5"><MessageSquare className="h-3 w-3" /> Chat</TabsTrigger>
+              <TabsTrigger value="agents" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Agentes</TabsTrigger>
+            </TabsList>
+            {tab === "agents" && (
+              <Button size="sm" onClick={() => setCreateOpen(true)} className="text-xs gap-1.5">
+                <Plus className="h-3 w-3" /> Criar Agente
+              </Button>
+            )}
+            {tab === "chat" && chatAgent && (
+              <Button size="sm" variant="outline" onClick={() => setChatAgent(null)} className="text-xs gap-1.5">
+                <Sparkles className="h-3 w-3" /> Voltar ao Rankito
+              </Button>
+            )}
+          </div>
 
           <TabsContent value="chat" className="mt-4">
-            <Card className="flex flex-col h-[520px]">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-                {MOCK_MESSAGES.map((msg, i) => (
-                  <div key={i} className={cn("flex gap-3", msg.role === "user" && "justify-end")}>
-                    {msg.role === "assistant" && (
-                      <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                    )}
-                    <div className={cn(
-                      "max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed",
-                      msg.role === "assistant" ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
-                    )}>
-                      <p className="whitespace-pre-line">{msg.content}</p>
-                    </div>
-                    {msg.role === "user" && (
-                      <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-border p-3 flex gap-2">
-                <Input placeholder="Pergunte ao Agente Rankito..." className="flex-1 text-sm" />
-                <Button size="sm" className="gap-1.5">
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </Card>
+            <AgentChatTab
+              agentName={chatAgent?.name}
+              agentInstructions={chatAgent?.instructions}
+            />
           </TabsContent>
 
-          <TabsContent value="insights" className="mt-4 space-y-3">
-            {mockInsights.map((insight) => (
-              <InsightCard key={insight.id} {...insight} />
-            ))}
-          </TabsContent>
-
-          <TabsContent value="tasks" className="mt-4">
-            <Card className="overflow-hidden">
-              <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground">Central de Tarefas</h3>
-                <Badge variant="secondary" className="text-[10px]">{MOCK_TASKS.length} tarefas</Badge>
-              </div>
-              <div className="divide-y divide-border">
-                {MOCK_TASKS.map((task) => {
-                  const statusStyle = TASK_STATUS_STYLE[task.status];
-                  const StatusIcon = statusStyle.icon;
-                  return (
-                    <div key={task.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors flex-wrap sm:flex-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusStyle.bg}`}>
-                        <StatusIcon className="h-2.5 w-2.5" /> {statusStyle.label}
-                      </span>
-                      <span className="text-sm text-foreground flex-1">{task.title}</span>
-                      <span className="text-[10px] text-muted-foreground">{task.assignee}</span>
-                      <span className="text-[10px] text-muted-foreground">{task.due}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+          <TabsContent value="agents" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {agents.map((agent: any) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onToggle={handleToggle}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDelete}
+                  onChat={handleOpenChat}
+                />
+              ))}
+              {agents.length === 0 && (
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                  <Bot className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="text-sm">Nenhum agente configurado. Clique em "Criar Agente" para começar.</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
+
+        {/* Create Agent Dialog */}
+        <CreateAgentDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onSave={handleCreateAgent}
+        />
+
+        {/* Edit Agent Dialog */}
+        {editingAgent && (
+          <CreateAgentDialog
+            open={!!editingAgent}
+            onOpenChange={(o) => !o && setEditingAgent(null)}
+            onSave={handleEditAgent}
+            initialData={{
+              name: editingAgent.name,
+              description: editingAgent.description || "",
+              instructions: editingAgent.instructions || "",
+              speciality: editingAgent.speciality,
+              avatar_url: editingAgent.avatar_url || "",
+              whatsapp_number: editingAgent.whatsapp_number || "",
+              notification_destination: editingAgent.notification_destination || "",
+              notification_triggers: editingAgent.notification_triggers || [],
+              enabled: editingAgent.enabled,
+            }}
+            isEditing
+          />
+        )}
       </div>
     </>
   );
