@@ -737,11 +737,11 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
           <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Conectado</Badge>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleSync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Sincronizar Dados
-          </Button>
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleTest} disabled={testing}>
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />} Testar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Sincronizar
           </Button>
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setEditing(true)}>
             <Pencil className="h-3 w-3" /> Editar
