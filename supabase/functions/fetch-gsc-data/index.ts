@@ -95,7 +95,7 @@ async function fetchGscDimension(
 
     if (rows.length < rowLimit) break;
     startRow += rowLimit;
-    if (startRow >= 50000) break;
+    if (startRow >= 75000) break;
   }
 
   return allRows;
@@ -144,7 +144,7 @@ serve(async (req) => {
 
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 90);
+    startDate.setDate(endDate.getDate() - 480);
     const fmtDate = (d: Date) => d.toISOString().split("T")[0];
     const startStr = fmtDate(startDate);
     const endStr = fmtDate(endDate);
