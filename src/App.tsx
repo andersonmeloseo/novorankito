@@ -77,6 +77,15 @@ const App = () => (
               <Route path="/project-settings" element={<ProjectSettingsPage />} />
               <Route path="/account/users" element={<UsersPage />} />
               <Route path="/account/billing" element={<BillingPage />} />
+              {/* Rank & Rent */}
+              <Route path="/rank-rent" element={<RROverviewPage />} />
+              <Route path="/rank-rent/clients" element={<RRClientsPage />} />
+              <Route path="/rank-rent/contracts" element={<RRContractsPage />} />
+              <Route path="/rank-rent/pages" element={<RRPagesPage />} />
+              <Route path="/rank-rent/financial" element={<RRFinancialPage />} />
+              <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
+              <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
+              <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
             </Route>
             {/* Admin separado — sem sidebar */}
             <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
@@ -96,15 +105,6 @@ const App = () => (
               <Route path="/admin/flags" element={<AdminFlagsPage />} />
               <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
               <Route path="/onboarding" element={<Onboarding />} />
-              {/* Rank & Rent */}
-              <Route path="/rank-rent" element={<RROverviewPage />} />
-              <Route path="/rank-rent/clients" element={<RRClientsPage />} />
-              <Route path="/rank-rent/contracts" element={<RRContractsPage />} />
-              <Route path="/rank-rent/pages" element={<RRPagesPage />} />
-              <Route path="/rank-rent/financial" element={<RRFinancialPage />} />
-              <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
-              <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
-              <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
