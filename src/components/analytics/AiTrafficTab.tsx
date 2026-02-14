@@ -1,11 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
-import { Bot, TrendingUp, ExternalLink, Sparkles } from "lucide-react";
+import { Bot, TrendingUp, Sparkles, Users } from "lucide-react";
 import { useMemo } from "react";
+
+const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 // Known AI/LLM referral sources mapped to friendly labels + brand colors
 const AI_SOURCES: Record<string, { label: string; color: string }> = {
@@ -14,19 +17,19 @@ const AI_SOURCES: Record<string, { label: string; color: string }> = {
   "openai.com": { label: "OpenAI", color: "hsl(172 66% 40%)" },
   "gemini.google.com": { label: "Gemini", color: "hsl(217 91% 60%)" },
   "bard.google.com": { label: "Gemini (Bard)", color: "hsl(217 91% 60%)" },
-  "perplexity.ai": { label: "Perplexity", color: "hsl(210 80% 55%)" },
+  "perplexity.ai": { label: "Perplexity", color: "hsl(265 70% 58%)" },
   "claude.ai": { label: "Claude", color: "hsl(24 80% 55%)" },
   "anthropic.com": { label: "Anthropic", color: "hsl(24 80% 45%)" },
-  "copilot.microsoft.com": { label: "Copilot", color: "hsl(207 90% 54%)" },
-  "bing.com/chat": { label: "Bing Chat", color: "hsl(207 90% 45%)" },
-  "you.com": { label: "You.com", color: "hsl(260 70% 60%)" },
+  "copilot.microsoft.com": { label: "Copilot", color: "hsl(195 90% 50%)" },
+  "bing.com/chat": { label: "Bing Chat", color: "hsl(195 85% 45%)" },
+  "you.com": { label: "You.com", color: "hsl(290 65% 58%)" },
   "phind.com": { label: "Phind", color: "hsl(145 60% 45%)" },
-  "poe.com": { label: "Poe", color: "hsl(280 60% 55%)" },
+  "poe.com": { label: "Poe", color: "hsl(42 90% 52%)" },
   "meta.ai": { label: "Meta AI", color: "hsl(214 89% 52%)" },
   "kagi.com": { label: "Kagi", color: "hsl(45 90% 50%)" },
   "searchgpt.com": { label: "SearchGPT", color: "hsl(172 66% 45%)" },
-  "t.co": { label: "Grok (X)", color: "hsl(0 0% 40%)" },
-  "grok.x.ai": { label: "Grok", color: "hsl(0 0% 35%)" },
+  "t.co": { label: "Grok (X)", color: "hsl(0 0% 45%)" },
+  "grok.x.ai": { label: "Grok", color: "hsl(0 0% 40%)" },
   "deepseek.com": { label: "DeepSeek", color: "hsl(220 75% 55%)" },
   "huggingface.co": { label: "HuggingFace", color: "hsl(42 95% 55%)" },
   "mistral.ai": { label: "Mistral", color: "hsl(25 85% 50%)" },
@@ -37,7 +40,6 @@ function matchAiSource(source: string): { label: string; color: string } | null 
   for (const [domain, info] of Object.entries(AI_SOURCES)) {
     if (s.includes(domain) || s === domain.split(".")[0]) return info;
   }
-  // Catch generic AI patterns
   if (s.includes("chatgpt") || s.includes("openai")) return AI_SOURCES["chatgpt.com"];
   if (s.includes("gemini") || s.includes("bard")) return AI_SOURCES["gemini.google.com"];
   if (s.includes("perplexity")) return AI_SOURCES["perplexity.ai"];
@@ -55,27 +57,32 @@ function matchAiSource(source: string): { label: string; color: string } | null 
 interface AiTrafficTabProps {
   sources: any[];
   pages?: any[];
+  firstUserChannels?: any[];
 }
 
-export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
+export function AiTrafficTab({ sources, pages, firstUserChannels }: AiTrafficTabProps) {
   const aiData = useMemo(() => {
-    if (!sources?.length) return { grouped: [], totalUsers: 0, totalSessions: 0, byPage: [] };
+    if (!sources?.length) return { grouped: [], totalUsers: 0, totalSessions: 0, bySourceMedium: [], byFirstOrigin: [] };
 
-    // Group by AI brand
     const brandMap = new Map<string, { label: string; color: string; users: number; sessions: number; engagementRate: number; conversions: number; revenue: number; count: number }>();
+    // Also collect raw source/medium pairs for the detail table
+    const sourceMediumList: { source: string; medium: string; users: number; sessions: number; engagementRate: number; conversions: number; revenue: number; aiLabel: string }[] = [];
 
     for (const row of sources) {
       const src = row.sessionSource || row.source || "";
+      const medium = row.sessionMedium || row.medium || "";
       const match = matchAiSource(src);
       if (!match) continue;
 
-      const existing = brandMap.get(match.label);
       const users = row.totalUsers || 0;
       const sessions = row.sessions || 0;
       const engagement = row.engagementRate || 0;
       const conversions = row.conversions || 0;
       const revenue = row.totalRevenue || 0;
 
+      sourceMediumList.push({ source: src, medium, users, sessions, engagementRate: engagement, conversions, revenue, aiLabel: match.label });
+
+      const existing = brandMap.get(match.label);
       if (existing) {
         existing.users += users;
         existing.sessions += sessions;
@@ -95,18 +102,29 @@ export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
     const totalUsers = grouped.reduce((s, g) => s + g.users, 0);
     const totalSessions = grouped.reduce((s, g) => s + g.sessions, 0);
 
-    // Try to find AI-referred landing pages
-    const byPage: any[] = [];
-    if (pages?.length) {
-      // pages from engagement report have pagePath
-      // We can't directly link sources to pages from GA4 standard reports,
-      // but we show top pages as context
+    // Sort source/medium by sessions
+    const bySourceMedium = sourceMediumList.sort((a, b) => b.sessions - a.sessions);
+
+    // First user origin/media — filter AI sources
+    const byFirstOrigin: { channel: string; users: number; newUsers: number }[] = [];
+    if (firstUserChannels?.length) {
+      for (const f of firstUserChannels) {
+        const ch = (f.firstUserDefaultChannelGroup || "").toLowerCase();
+        // Check for AI-related first user channels
+        if (ch.includes("ai") || ch.includes("referral")) {
+          byFirstOrigin.push({
+            channel: f.firstUserDefaultChannelGroup || "—",
+            users: f.totalUsers || 0,
+            newUsers: f.newUsers || 0,
+          });
+        }
+      }
     }
 
-    return { grouped, totalUsers, totalSessions, byPage };
-  }, [sources, pages]);
+    return { grouped, totalUsers, totalSessions, bySourceMedium, byFirstOrigin };
+  }, [sources, pages, firstUserChannels]);
 
-  const { grouped, totalUsers, totalSessions } = aiData;
+  const { grouped, totalUsers, totalSessions, bySourceMedium, byFirstOrigin } = aiData;
 
   if (!grouped.length) {
     return (
@@ -122,10 +140,22 @@ export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
 
   const pieData = grouped.map(g => ({ name: g.label, value: g.sessions, color: g.color }));
   const totalConversions = grouped.reduce((s, g) => s + g.conversions, 0);
-  const totalRevenue = grouped.reduce((s, g) => s + g.revenue, 0);
   const avgEngagement = grouped.length > 0
     ? grouped.reduce((s, g) => s + g.engagementRate, 0) / grouped.length
     : 0;
+
+  // Source/medium bar chart (top 8)
+  const sourceMediumChart = bySourceMedium.slice(0, 8).map((sm, i) => {
+    const match = matchAiSource(sm.source);
+    return {
+      name: `${sm.source} / ${sm.medium}`.substring(0, 28),
+      sessions: sm.sessions,
+      color: match?.color || `hsl(var(--chart-${(i % 12) + 1}))`,
+    };
+  });
+
+  // Users by first origin bar
+  const firstOriginColors = ["hsl(var(--chart-6))", "hsl(var(--chart-8))", "hsl(var(--chart-10))", "hsl(var(--chart-12))"];
 
   return (
     <div className="space-y-4">
@@ -153,9 +183,8 @@ export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Charts Row 1: Sessões por Plataforma + Distribuição */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Bar Chart - Sessions by AI */}
         <Card className="p-4">
           <h3 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -168,51 +197,78 @@ export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                 <YAxis dataKey="label" type="category" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={80} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }}
-                  formatter={(value: number) => [value.toLocaleString("pt-BR"), "Sessões"]}
-                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number) => [value.toLocaleString("pt-BR"), "Sessões"]} />
                 <Bar dataKey="sessions" radius={[0, 4, 4, 0]}>
-                  {grouped.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
+                  {grouped.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        {/* Pie Chart - Share */}
         <Card className="p-4">
           <h3 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
             <Bot className="h-3.5 w-3.5 text-primary" />
             Distribuição de Tráfego IA
           </h3>
-          <p className="text-[10px] text-muted-foreground mb-3">Participação de cada plataforma no total de sessões via IA</p>
+          <p className="text-[10px] text-muted-foreground mb-3">Participação de cada plataforma no total</p>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  innerRadius={40}
-                  paddingAngle={2}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={{ strokeWidth: 1 }}
-                >
-                  {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={40} paddingAngle={2}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={{ strokeWidth: 1 }}>
+                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }}
-                  formatter={(value: number) => [value.toLocaleString("pt-BR"), "Sessões"]}
-                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number) => [value.toLocaleString("pt-BR"), "Sessões"]} />
               </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      {/* Charts Row 2: Sessões por Origem/Mídia + Usuários Ativos por Primeira Origem */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {sourceMediumChart.length > 0 && (
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              Sessões por Origem / Mídia
+            </h3>
+            <p className="text-[10px] text-muted-foreground mb-3">Detalhamento de fonte e canal de cada visita via IA</p>
+            <div className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sourceMediumChart} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={140} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number) => [value.toLocaleString("pt-BR"), "Sessões"]} />
+                  <Bar dataKey="sessions" radius={[0, 4, 4, 0]} barSize={14}>
+                    {sourceMediumChart.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {/* Users by AI platform (users not sessions) */}
+        <Card className="p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-primary" />
+            Usuários Ativos por Plataforma
+          </h3>
+          <p className="text-[10px] text-muted-foreground mb-3">Quantidade de usuários únicos de cada IA</p>
+          <div className="h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={grouped} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                <YAxis dataKey="label" type="category" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={80} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number) => [value.toLocaleString("pt-BR"), "Usuários"]} />
+                <Bar dataKey="users" radius={[0, 4, 4, 0]} barSize={14}>
+                  {grouped.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -222,43 +278,21 @@ export function AiTrafficTab({ sources, pages }: AiTrafficTabProps) {
       <Card className="p-4 overflow-x-auto">
         <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
           <TrendingUp className="h-3.5 w-3.5 text-primary" />
-          Detalhamento por Fonte de IA
+          Detalhamento por Origem / Mídia (IA)
         </h3>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 px-2 text-muted-foreground font-medium">Plataforma</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">Usuários</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">Sessões</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">Engajamento</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">Conversões</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">Receita</th>
-              <th className="text-right py-2 px-2 text-muted-foreground font-medium">% do Total IA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grouped.map((row) => (
-              <tr key={row.label} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                <td className="py-2 px-2 font-medium text-foreground flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
-                  {row.label}
-                </td>
-                <td className="text-right py-2 px-2 text-foreground">{row.users.toLocaleString("pt-BR")}</td>
-                <td className="text-right py-2 px-2 text-foreground">{row.sessions.toLocaleString("pt-BR")}</td>
-                <td className="text-right py-2 px-2 text-foreground">{(row.engagementRate * 100).toFixed(1)}%</td>
-                <td className="text-right py-2 px-2 text-foreground">{row.conversions.toLocaleString("pt-BR")}</td>
-                <td className="text-right py-2 px-2 text-foreground">
-                  {row.revenue > 0 ? `R$${row.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "–"}
-                </td>
-                <td className="text-right py-2 px-2">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {totalSessions > 0 ? ((row.sessions / totalSessions) * 100).toFixed(1) : 0}%
-                  </Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <AnalyticsDataTable
+          columns={["Plataforma", "Origem", "Mídia", "Usuários", "Sessões", "Engajamento", "Conversões", "Receita"]}
+          rows={bySourceMedium.map((row) => [
+            row.aiLabel,
+            row.source,
+            row.medium,
+            row.users.toLocaleString("pt-BR"),
+            row.sessions.toLocaleString("pt-BR"),
+            ((row.engagementRate || 0) * 100).toFixed(1) + "%",
+            row.conversions.toLocaleString("pt-BR"),
+            row.revenue > 0 ? `R$${row.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "–",
+          ])}
+        />
       </Card>
     </div>
   );

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { WorldMap } from "./WorldMap";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+const COLORS = ["hsl(var(--chart-6))", "hsl(var(--chart-8))", "hsl(var(--chart-10))", "hsl(var(--chart-1))", "hsl(var(--chart-5))"];
 const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 interface RealtimeTabProps {
@@ -98,7 +98,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={50} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="users" fill="hsl(var(--chart-8))" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -136,7 +136,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={55} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-4))" radius={[0, 4, 4, 0]} barSize={12} />
+                  <Bar dataKey="users" fill="hsl(var(--chart-12))" radius={[0, 4, 4, 0]} barSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

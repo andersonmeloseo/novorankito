@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
+const COLORS = ["hsl(var(--chart-9))", "hsl(var(--chart-7))", "hsl(var(--chart-6))", "hsl(var(--chart-12))"];
 const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 interface RetentionTabProps {
@@ -82,12 +82,12 @@ export function RetentionTab({ data }: RetentionTabProps) {
               <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="newGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="hsl(var(--chart-9))" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="hsl(var(--chart-9))" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="retGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="hsl(var(--chart-7))" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="hsl(var(--chart-7))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -95,8 +95,8 @@ export function RetentionTab({ data }: RetentionTabProps) {
                 <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={40} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                <Area type="monotone" dataKey="new" name="Novos" stroke="hsl(var(--chart-1))" fill="url(#newGrad)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="returning" name="Recorrentes" stroke="hsl(var(--chart-2))" fill="url(#retGrad)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="new" name="Novos" stroke="hsl(var(--chart-9))" fill="url(#newGrad)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="returning" name="Recorrentes" stroke="hsl(var(--chart-7))" fill="url(#retGrad)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

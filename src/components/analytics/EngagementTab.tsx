@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+const COLORS = ["hsl(var(--chart-7))", "hsl(var(--chart-11))", "hsl(var(--chart-9))", "hsl(var(--chart-8))", "hsl(var(--chart-3))"];
 const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 interface EngagementTabProps {
@@ -44,7 +44,7 @@ export function EngagementTab({ data }: EngagementTabProps) {
                   <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="views" fill="hsl(var(--chart-1))" radius={[0, 6, 6, 0]} barSize={16} />
+                  <Bar dataKey="views" fill="hsl(var(--chart-7))" radius={[0, 6, 6, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -61,7 +61,7 @@ export function EngagementTab({ data }: EngagementTabProps) {
                   <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={100} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[0, 6, 6, 0]} barSize={16} />
+                  <Bar dataKey="count" fill="hsl(var(--chart-11))" radius={[0, 6, 6, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -40,15 +40,15 @@ export function EcommerceTab({ data }: EcommerceTabProps) {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="hsl(var(--chart-10))" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="hsl(var(--chart-10))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                <Area type="monotone" dataKey="revenue" name="Receita" stroke="hsl(var(--chart-1))" fill="url(#revGrad)" strokeWidth={2} />
+                <Area type="monotone" dataKey="revenue" name="Receita" stroke="hsl(var(--chart-10))" fill="url(#revGrad)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
