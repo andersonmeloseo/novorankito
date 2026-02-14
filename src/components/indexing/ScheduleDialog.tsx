@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { CalendarClock, Clock, Send, RotateCcw, Info, Zap, Globe, ScanSearch } from "lucide-react";
+import { CalendarClock, Clock, Send, Info, Zap, ScanSearch } from "lucide-react";
 import { toast } from "sonner";
 
 interface ScheduleDialogProps {
@@ -22,16 +22,27 @@ interface ScheduleDialogProps {
 
 export interface ManualSchedule {
   type: "indexing" | "inspection";
-  scheduledAt: string; // ISO datetime
+  scheduledAt: string;
   urlCount: number;
 }
 
 export interface CronConfig {
   enabled: boolean;
-  time: string; // HH:mm
+  time: string;
   actions: ("indexing" | "inspection")[];
   maxUrls: number;
+  days?: string[];
 }
+
+const WEEKDAYS = [
+  { key: "mon", label: "Seg" },
+  { key: "tue", label: "Ter" },
+  { key: "wed", label: "Qua" },
+  { key: "thu", label: "Qui" },
+  { key: "fri", label: "Sex" },
+  { key: "sat", label: "Sáb" },
+  { key: "sun", label: "Dom" },
+];
 
 export function ScheduleDialog({
   projectId, totalUrls, unknownUrls,
@@ -46,6 +57,9 @@ export function ScheduleDialog({
   const [autoIndexing, setAutoIndexing] = useState(cronConfig.actions.includes("indexing"));
   const [autoInspection, setAutoInspection] = useState(cronConfig.actions.includes("inspection"));
   const [autoMaxUrls, setAutoMaxUrls] = useState(cronConfig.maxUrls || 200);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(
+    new Set(cronConfig.days || WEEKDAYS.map(d => d.key))
+  );
 
   // Manual state
   const [manualType, setManualType] = useState<"indexing" | "inspection">("indexing");
@@ -53,15 +67,33 @@ export function ScheduleDialog({
   const [manualTime, setManualTime] = useState("08:00");
   const [manualCount, setManualCount] = useState(50);
 
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return next;
+    });
+  };
+
   const handleSaveAuto = () => {
     const actions: ("indexing" | "inspection")[] = [];
     if (autoIndexing) actions.push("indexing");
     if (autoInspection) actions.push("inspection");
+    if (actions.length === 0 && autoEnabled) {
+      toast.warning("Selecione pelo menos uma ação");
+      return;
+    }
+    if (selectedDays.size === 0 && autoEnabled) {
+      toast.warning("Selecione pelo menos um dia da semana");
+      return;
+    }
     onToggleAutoCron(autoEnabled, {
       enabled: autoEnabled,
       time: autoTime,
       actions,
       maxUrls: autoMaxUrls,
+      days: Array.from(selectedDays),
     });
     toast.success(autoEnabled ? "Agendamento automático ativado!" : "Agendamento automático desativado");
     setOpen(false);
@@ -117,14 +149,37 @@ export function ScheduleDialog({
             {/* Enable Toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
               <div>
-                <div className="text-sm font-medium text-foreground">Cron Diário</div>
-                <div className="text-[10px] text-muted-foreground">Envio automático todo dia no horário definido</div>
+                <div className="text-sm font-medium text-foreground">Cron Automático</div>
+                <div className="text-[10px] text-muted-foreground">Envio automático nos dias e horários definidos</div>
               </div>
               <Switch checked={autoEnabled} onCheckedChange={setAutoEnabled} />
             </div>
 
             {autoEnabled && (
               <>
+                {/* Days of week */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Dias da semana</Label>
+                  <div className="flex gap-1.5">
+                    {WEEKDAYS.map(day => (
+                      <button
+                        key={day.key}
+                        onClick={() => toggleDay(day.key)}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all border ${
+                          selectedDays.has(day.key)
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-muted/30 text-muted-foreground border-border hover:border-primary/40"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-muted-foreground">
+                    {selectedDays.size === 7 ? "Todos os dias" : `${selectedDays.size} dia(s) selecionado(s)`}
+                  </p>
+                </div>
+
                 {/* Time */}
                 <div className="space-y-1.5">
                   <Label className="text-xs">Horário de execução</Label>
@@ -165,8 +220,8 @@ export function ScheduleDialog({
                     <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                     <div className="text-[11px] text-muted-foreground">
                       O sistema enviará até <strong className="text-foreground">{autoMaxUrls}</strong> URLs não indexadas
-                      todo dia às <strong className="text-foreground">{autoTime}</strong>.
-                      {totalUrls > 0 && ` Você tem ${totalUrls} URLs no inventário.`}
+                      às <strong className="text-foreground">{autoTime}</strong> nos dias selecionados.
+                      {totalUrls > 0 && ` Você tem ${totalUrls.toLocaleString("pt-BR")} URLs no inventário.`}
                     </div>
                   </div>
                 </Card>
@@ -214,8 +269,8 @@ export function ScheduleDialog({
               />
               <p className="text-[10px] text-muted-foreground">
                 {manualType === "indexing"
-                  ? `${totalUrls} URLs disponíveis no inventário`
-                  : `${unknownUrls} URLs sem inspeção`}
+                  ? `${totalUrls.toLocaleString("pt-BR")} URLs disponíveis`
+                  : `${unknownUrls.toLocaleString("pt-BR")} URLs sem inspeção`}
               </p>
             </div>
 

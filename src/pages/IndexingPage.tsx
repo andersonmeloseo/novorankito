@@ -296,7 +296,7 @@ export default function IndexingPage() {
                 <LayoutDashboard className="h-3 w-3" /> Dashboard
               </TabsTrigger>
               <TabsTrigger value="inventory" className="gap-1.5 text-xs">
-                <Layers className="h-3 w-3" /> Inventário
+                <Layers className="h-3 w-3" /> URLs
               </TabsTrigger>
               <TabsTrigger value="sitemap" className="gap-1.5 text-xs">
                 <Map className="h-3 w-3" /> Sitemap
