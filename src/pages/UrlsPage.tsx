@@ -184,17 +184,27 @@ export default function UrlsPage() {
         return { id, url: u?.url };
       }).filter((u) => u.url);
 
-      const { data, error } = await supabase.functions.invoke("fetch-meta-tags", {
-        body: { urls: urlsToFetch },
-      });
+      // Process in batches of 10 to avoid timeouts
+      let totalUpdated = 0;
+      for (let i = 0; i < urlsToFetch.length; i += 10) {
+        const batch = urlsToFetch.slice(i, i + 10);
+        const { data, error } = await supabase.functions.invoke("fetch-meta-tags", {
+          body: { urls: batch },
+        });
 
-      if (error) throw error;
+        if (error) {
+          console.error("Fetch meta error:", error);
+          continue;
+        }
+        totalUpdated += data?.updated || 0;
+      }
 
       queryClient.invalidateQueries({ queryKey: ["site-urls"] });
-      toast({ title: `Meta tags atualizadas para ${data?.updated || 0} URLs` });
+      toast({ title: `Meta tags atualizadas para ${totalUpdated} URLs` });
       setSelectedUrls([]);
     } catch (e: any) {
-      toast({ title: "Erro ao buscar meta tags", description: e.message, variant: "destructive" });
+      console.error("Meta fetch error:", e);
+      toast({ title: "Erro ao buscar meta tags", description: e.message || "Erro desconhecido", variant: "destructive" });
     } finally {
       setFetchingMeta(false);
     }
