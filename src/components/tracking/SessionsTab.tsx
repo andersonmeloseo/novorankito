@@ -457,9 +457,9 @@ export function SessionsTab() {
 
       {/* KPIs with Sparklines */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <SparkKpi label="Total Sessões" value={totalSessions} change={9.7} sparkData={generateSparkline(12, 80, 20)} color="hsl(var(--primary))" icon={Users} />
+        <SparkKpi label="Total Sessões" value={totalSessions} change={9.7} sparkData={generateSparkline(12, 80, 20)} color="hsl(var(--primary))" icon={Users} hideSparkline hideBadge smallValue />
         <SparkKpi label="Referrer" value={lastReferrer} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
-        <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} change={0} sparkData={[]} color="hsl(var(--info))" icon={Clock} hideSparkline hideBadge smallValue />
+        <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} change={5.3} sparkData={generateSparkline(12, 120, 40)} color="hsl(var(--info))" icon={Clock} />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Flame} hideSparkline hideBadge smallValue />
         <SparkKpi label="Cidade" value={lastSession ? lastSession.city : "—"} change={0} sparkData={[]} color="hsl(var(--info))" icon={Globe} hideSparkline hideBadge smallValue />
         <SparkKpi label="Source/Medium" value={lastSourceMedium} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
