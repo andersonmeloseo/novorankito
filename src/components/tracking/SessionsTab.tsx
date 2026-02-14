@@ -568,24 +568,26 @@ export function SessionsTab() {
         </AnimatedContainer>
       </div>
 
-      {/* ═══ Scatter/Bubble — Duração × Páginas por Source ═══ */}
+      {/* ═══ Duração × Páginas por Source ═══ */}
       <AnimatedContainer delay={0.18}>
         <Card className="p-5">
-          <ChartHeader title="Duração × Páginas por Source" subtitle="Scatter/Bubble — tamanho = volume de sessões" />
+          <ChartHeader title="Duração × Páginas por Source" subtitle="Barras agrupadas — duração média e páginas/sessão" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ left: 10, bottom: 10 }}>
-                <CartesianGrid {...GRID_STYLE} />
-                <XAxis dataKey="avgDuration" name="Duração Média (s)" {...AXIS_STYLE} label={{ value: "Duração (s)", position: "insideBottom", offset: -5, style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
-                <YAxis dataKey="avgPages" name="Páginas/Sessão" {...AXIS_STYLE} label={{ value: "Págs/Sessão", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
-                <ZAxis dataKey="count" range={[60, 400]} name="Sessões" />
-                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(value: any, name: string) => [typeof value === 'number' ? value.toLocaleString("pt-BR") : value, name]} />
-                <Scatter data={scatterBySource} fill="hsl(var(--primary))" fillOpacity={0.6} stroke="hsl(var(--primary))" strokeWidth={1}>
-                  {scatterBySource.map((entry, i) => (
-                    <Cell key={i} fill={SOURCE_COLORS[entry.source.toLowerCase()] || VIVID_COLORS[i % VIVID_COLORS.length]} fillOpacity={0.65} />
+              <BarChart data={scatterBySource} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <defs>
+                  {scatterBySource.map((_, i) => (
+                    <BarGradient key={i} id={`durGrad-${i}`} color={VIVID_COLORS[i % VIVID_COLORS.length]} />
                   ))}
-                </Scatter>
-              </ScatterChart>
+                </defs>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis type="number" {...AXIS_STYLE} />
+                <YAxis dataKey="source" type="category" width={80} {...AXIS_STYLE} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
+                <Bar dataKey="avgDuration" radius={[0, 8, 8, 0]} name="Duração Média (s)" fill="hsl(var(--primary))" fillOpacity={0.8} />
+                <Bar dataKey="avgPages" radius={[0, 8, 8, 0]} name="Páginas/Sessão" fill="hsl(var(--success))" fillOpacity={0.8} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
