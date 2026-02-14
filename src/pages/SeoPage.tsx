@@ -151,11 +151,20 @@ export default function SeoPage() {
     return { filteredMetrics: filtered, prevMetrics: prev };
   }, [allMetrics, dateRange, customFrom, customTo]);
 
-  // For date dimension, no device/country filters apply (data is aggregated by date only)
-  const metrics = filteredMetrics;
+  // When device or country filter is active, use that dimension's data for KPIs
+  const metrics = useMemo(() => {
+    if (deviceFilter !== "all") {
+      return deviceMetrics.filter((m: any) => m.device === deviceFilter);
+    }
+    if (countryFilter !== "all") {
+      return countryMetrics.filter((m: any) => m.country === countryFilter);
+    }
+    return filteredMetrics;
+  }, [filteredMetrics, deviceFilter, countryFilter, deviceMetrics, countryMetrics]);
+
   const prevFiltered = prevMetrics;
 
-  // KPIs - simple sums since each row is already a daily total
+  // KPIs - simple sums since each row is already a daily total (or aggregated by dimension)
   const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
