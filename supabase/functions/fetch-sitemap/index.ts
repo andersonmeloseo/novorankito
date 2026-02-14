@@ -82,7 +82,7 @@ serve(async (req) => {
     const sitemapsProcessed: string[] = [];
     const queue: string[] = [url];
     const visited = new Set<string>();
-    const MAX_SITEMAPS = 50;
+    const MAX_SITEMAPS = 200;
 
     while (queue.length > 0 && sitemapsProcessed.length < MAX_SITEMAPS) {
       const currentUrl = queue.shift()!;
@@ -105,7 +105,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        urls: allUrls.slice(0, 5000),
+        urls: allUrls,
         total: allUrls.length,
         sitemaps_processed: sitemapsProcessed,
       }),
