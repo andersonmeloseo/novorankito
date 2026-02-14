@@ -21,7 +21,12 @@ import {
 import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
+  Link2, MapPin, Compass, ScanSearch,
 } from "lucide-react";
+import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
+import { SitemapsTab } from "@/components/seo/SitemapsTab";
+import { LinksTab } from "@/components/seo/LinksTab";
+import { DiscoverNewsTab } from "@/components/seo/DiscoverNewsTab";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -742,6 +747,10 @@ export default function SeoPage() {
                       <TabsTrigger value="pages" className="text-xs" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}>Páginas</TabsTrigger>
                       <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
                       <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
+                      <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
+                      <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
+                      <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
+                      <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -847,6 +856,22 @@ export default function SeoPage() {
                       onPageChange={setDevicesPage}
                       onExport={() => exportCSV(compDeviceRows || deviceRows, "seo-dispositivos")}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="inspection" className="mt-0">
+                    <UrlInspectionTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="sitemaps" className="mt-0">
+                    <SitemapsTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="links" className="mt-0">
+                    <LinksTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="discover" className="mt-0">
+                    <DiscoverNewsTab projectId={projectId} />
                   </TabsContent>
                 </Tabs>
               </AnimatedContainer>
