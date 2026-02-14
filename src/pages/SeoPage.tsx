@@ -408,9 +408,9 @@ export default function SeoPage() {
 
             {/* Charts Section */}
             {hasData && trendData.length > 1 && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Main trend chart */}
-                <AnimatedContainer delay={0.1} className="lg:col-span-2">
+              <>
+                {/* Main trend chart - full width */}
+                <AnimatedContainer delay={0.1}>
                   <Card className="p-5">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -437,7 +437,7 @@ export default function SeoPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="h-[300px]">
+                    <div className="h-[400px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={trendData}>
                           <defs>
@@ -495,9 +495,9 @@ export default function SeoPage() {
                   </Card>
                 </AnimatedContainer>
 
-                {/* Device distribution pie */}
+                {/* Device distribution pie - below trend chart */}
                 <AnimatedContainer delay={0.15}>
-                  <Card className="p-5 h-full">
+                  <Card className="p-5">
                     <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
                       <Monitor className="h-4 w-4 text-primary" />
                       Cliques por Dispositivo
@@ -533,7 +533,7 @@ export default function SeoPage() {
                     </div>
                   </Card>
                 </AnimatedContainer>
-              </div>
+              </>
             )}
 
             {/* Top queries bar chart */}
