@@ -1,9 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--chart-1))", "hsl(var(--chart-3))"];
+const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
 
 interface DemographicsTabProps {
   data: any;
@@ -28,17 +29,19 @@ export function DemographicsTab({ data }: DemographicsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {genderChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Gênero</h3>
-            <div className="h-[220px]">
+            <h3 className="text-sm font-medium text-foreground mb-1">Gênero</h3>
+            <p className="text-[10px] text-muted-foreground mb-3">Distribuição de usuários por gênero</p>
+            <div className="h-[190px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={genderChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  <Pie data={genderChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={35} outerRadius={60} paddingAngle={3} label={false}>
                     {genderChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 6 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -46,15 +49,16 @@ export function DemographicsTab({ data }: DemographicsTabProps) {
         )}
         {ageChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Faixa Etária</h3>
-            <div className="h-[220px]">
+            <h3 className="text-sm font-medium text-foreground mb-1">Faixa Etária</h3>
+            <p className="text-[10px] text-muted-foreground mb-3">Distribuição por idade dos usuários</p>
+            <div className="h-[190px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={ageChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                <BarChart data={ageChart} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={40} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Bar dataKey="users" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
