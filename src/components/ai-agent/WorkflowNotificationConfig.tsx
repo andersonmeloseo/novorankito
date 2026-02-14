@@ -32,10 +32,13 @@ const DAYS = [
   { value: 6, label: "Sáb" },
 ];
 
-const HOURS = Array.from({ length: 24 }, (_, i) => ({
-  value: `${String(i).padStart(2, "0")}:00`,
-  label: `${String(i).padStart(2, "0")}:00`,
-}));
+const HOURS: { value: string; label: string }[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 15) {
+    const val = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    HOURS.push({ value: val, label: val });
+  }
+}
 
 export function WorkflowNotificationConfig({
   open,

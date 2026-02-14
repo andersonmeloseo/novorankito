@@ -469,8 +469,74 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
             <div className="text-[11px] text-muted-foreground">
               {Object.keys(stepResults).length} de {executingWorkflow?.steps.length} passos concluídos
             </div>
-            <div className="flex gap-2">
-              {!isRunning && Object.keys(stepResults).length > 0 && (
+            <div className="flex gap-2 flex-wrap justify-end">
+              {!isRunning && Object.keys(stepResults).length === executingWorkflow?.steps.length && (
+                <>
+                  <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
+                    <Copy className="h-3 w-3" /> Copiar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="text-xs gap-1.5"
+                    onClick={async () => {
+                      if (!executingWorkflow || !projectId) return;
+                      const fullReport = Object.entries(stepResults)
+                        .map(([idx, r]) => `## ${executingWorkflow.steps[Number(idx)].agent}\n${r}`)
+                        .join("\n\n---\n\n");
+                      try {
+                        const { data: sched } = await supabase
+                          .from("workflow_schedules")
+                          .select("id, notify_email, notify_whatsapp")
+                          .eq("workflow_id", executingWorkflow.id)
+                          .eq("project_id", projectId)
+                          .maybeSingle();
+                        if (!sched) {
+                          toast.warning("Configure as notificações primeiro (clique no 🔔)");
+                          return;
+                        }
+                        const res = await fetch(
+                          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-workflow-notification`,
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                            },
+                            body: JSON.stringify({
+                              schedule_id: sched.id,
+                              report: fullReport,
+                              workflow_name: executingWorkflow.name,
+                            }),
+                          }
+                        );
+                        if (res.ok) {
+                          toast.success("Relatório enviado agora! 📩");
+                        } else {
+                          const err = await res.json();
+                          toast.error(`Erro: ${err.error || "Falha ao enviar"}`);
+                        }
+                      } catch (e: any) {
+                        toast.error(`Erro: ${e.message}`);
+                      }
+                    }}
+                  >
+                    <Send className="h-3 w-3" /> Enviar Agora
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5"
+                    onClick={() => {
+                      if (!executingWorkflow) return;
+                      setNotifyWorkflowId(executingWorkflow.id);
+                    }}
+                  >
+                    <Bell className="h-3 w-3" /> Agendar
+                  </Button>
+                </>
+              )}
+              {!isRunning && Object.keys(stepResults).length > 0 && Object.keys(stepResults).length < (executingWorkflow?.steps.length || 0) && (
                 <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
                   <Copy className="h-3 w-3" /> Copiar Relatório
                 </Button>
