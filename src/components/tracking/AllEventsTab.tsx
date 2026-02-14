@@ -32,9 +32,10 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   return <svg width={w} height={h} className="ml-auto"><polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function SparkKpi({ label, value, change, suffix, sparkData, color, icon: Icon }: {
+function SparkKpi({ label, value, change, suffix, sparkData, color, icon: Icon, hideSparkline, hideBadge, smallValue }: {
   label: string; value: string | number; change: number; suffix?: string;
   sparkData: number[]; color: string; icon?: React.ElementType;
+  hideSparkline?: boolean; hideBadge?: boolean; smallValue?: boolean;
 }) {
   const isPositive = change >= 0;
   return (
@@ -46,13 +47,15 @@ function SparkKpi({ label, value, change, suffix, sparkData, color, icon: Icon }
             {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
           </div>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
-            {isPositive ? "+" : ""}{change}%
-          </span>
+          {!hideBadge && (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
+              {isPositive ? "+" : ""}{change}%
+            </span>
+          )}
         </div>
         <div className="flex items-end justify-between gap-2">
-          <span className="text-xl font-bold text-foreground font-display tracking-tight">{value}{suffix}</span>
-          <Sparkline data={sparkData} color={color} />
+          <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-xs" : "text-xl"}`}>{value}{suffix}</span>
+          {!hideSparkline && <Sparkline data={sparkData} color={color} />}
         </div>
       </div>
     </Card>
@@ -142,8 +145,8 @@ export function AllEventsTab() {
         <SparkKpi label="Visitantes Únicos" value={uniqueVisitors} change={9.2} sparkData={generateSparkline(12, 40, 12)} color="hsl(var(--info))" icon={Eye} />
         <SparkKpi label="Páginas Únicas" value={uniquePages} change={3.2} sparkData={generateSparkline(12, 8, 3)} color="hsl(var(--chart-5))" icon={Globe} />
         <SparkKpi label="Mobile" value={mobilePct} suffix="%" change={4.1} sparkData={generateSparkline(12, 60, 10)} color="hsl(var(--success))" icon={Smartphone} />
-        <SparkKpi label="Último Evento" value={lastEventLabel} change={0} sparkData={generateSparkline(12, 1, 1)} color="hsl(var(--warning))" icon={Zap} />
-        <SparkKpi label="Última Localização" value={lastLocation} change={0} sparkData={generateSparkline(12, 1, 1)} color="hsl(var(--chart-8))" icon={MapPin} />
+        <SparkKpi label="Último Evento" value={lastEventLabel} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Zap} hideSparkline hideBadge smallValue />
+        <SparkKpi label="Última Localização" value={lastLocation} change={0} sparkData={[]} color="hsl(var(--chart-8))" icon={MapPin} hideSparkline hideBadge smallValue />
       </StaggeredGrid>
 
       {/* Heatmap Day × Hour — Featured */}
