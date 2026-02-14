@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.fetch-meta-tags]
 verify_jwt = false
+
+[functions.fetch-gsc-data]
+verify_jwt = false

@@ -192,7 +192,7 @@ export default function Onboarding() {
             <motion.div key={step} variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               {step === 0 && <StepCreateProject project={project} setProject={setProject} />}
               {step === 1 && <StepSitemap projectId={projectId} />}
-              {step === 2 && <StepGSC />}
+              {step === 2 && <StepGSC projectId={projectId} />}
               {step === 3 && <StepGA4 />}
               {step === 4 && <StepTracking />}
               {step === 5 && <StepAds />}
@@ -576,8 +576,9 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
 }
 
 /* ─── Step 3: GSC ─── */
-function StepGSC() {
-  const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected" | "error">("credentials");
+function StepGSC({ projectId }: { projectId: string | null }) {
+  const { user } = useAuth();
+  const [gscStep, setGscStep] = useState<"credentials" | "validating" | "connected" | "saved" | "error">("credentials");
   const [connectionName, setConnectionName] = useState("");
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -585,6 +586,48 @@ function StepGSC() {
   const [sites, setSites] = useState<{ siteUrl: string; permissionLevel: string }[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [parsedCreds, setParsedCreds] = useState<{ client_email: string; private_key: string } | null>(null);
+  const [savingConnection, setSavingConnection] = useState(false);
+
+  // Check for existing connection
+  useEffect(() => {
+    if (!projectId) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from("gsc_connections")
+        .select("connection_name, site_url, last_sync_at")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (data) {
+        setConnectionName(data.connection_name);
+        setSelectedSite(data.site_url || "");
+        setGscStep("saved");
+      }
+    };
+    check();
+  }, [projectId]);
+
+  const saveConnection = async () => {
+    if (!projectId || !user || !parsedCreds || !selectedSite) return;
+    setSavingConnection(true);
+    try {
+      const { error } = await supabase.from("gsc_connections").upsert({
+        project_id: projectId,
+        owner_id: user.id,
+        connection_name: connectionName,
+        client_email: parsedCreds.client_email,
+        private_key: parsedCreds.private_key,
+        site_url: selectedSite,
+      }, { onConflict: "project_id" });
+      if (error) throw error;
+      setGscStep("saved");
+      toast({ title: "Conexão GSC salva!", description: "Os dados serão sincronizados na página SEO." });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar conexão", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingConnection(false);
+    }
+  };
 
   const validateAndConnect = async () => {
     if (!connectionName.trim()) {
@@ -624,6 +667,7 @@ function StepGSC() {
 
       setSites(fetchedSites);
       setSelectedSite(fetchedSites[0]?.siteUrl || "");
+      setParsedCreds({ client_email: parsed.client_email, private_key: parsed.private_key });
       setGscStep("connected");
     } catch (err: any) {
       console.error("GSC verification failed:", err);
@@ -773,7 +817,30 @@ function StepGSC() {
                 </div>
               ))}
             </div>
+            <Button onClick={saveConnection} disabled={savingConnection || !selectedSite} className="w-full gap-2 text-sm">
+              {savingConnection ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              {savingConnection ? "Salvando..." : "Salvar conexão e sincronizar dados"}
+            </Button>
           </motion.div>
+        </Card>
+      )}
+
+      {gscStep === "saved" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <span className="text-sm font-medium text-success">Conexão GSC salva! Os dados serão sincronizados na página SEO.</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
+              <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
+              <div><span className="text-muted-foreground">Conexão:</span> <span className="font-medium text-foreground">{connectionName}</span></div>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
+              <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
+              <div><span className="text-muted-foreground">Propriedade:</span> <span className="font-medium text-foreground">{selectedSite}</span></div>
+            </div>
+          </div>
         </Card>
       )}
 

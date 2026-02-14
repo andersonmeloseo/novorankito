@@ -67,11 +67,20 @@ export function useSeoMetrics(projectId?: string) {
   return useQuery({
     queryKey: ["seo-metrics", projectId],
     queryFn: async () => {
-      let q = supabase.from("seo_metrics").select("*").order("metric_date", { ascending: false }).limit(500);
-      if (projectId) q = q.eq("project_id", projectId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data || [];
+      const allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        let q = supabase.from("seo_metrics").select("*").order("metric_date", { ascending: false }).range(from, from + pageSize - 1);
+        if (projectId) q = q.eq("project_id", projectId);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return allData;
     },
     enabled: !!user,
   });
