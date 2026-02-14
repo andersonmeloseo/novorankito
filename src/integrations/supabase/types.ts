@@ -449,6 +449,65 @@ export type Database = {
           },
         ]
       }
+      indexing_schedules: {
+        Row: {
+          actions: string[]
+          created_at: string
+          cron_time: string | null
+          enabled: boolean
+          id: string
+          last_run_at: string | null
+          last_run_result: Json | null
+          max_urls: number
+          owner_id: string
+          project_id: string
+          schedule_type: string
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: string[]
+          created_at?: string
+          cron_time?: string | null
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          max_urls?: number
+          owner_id: string
+          project_id: string
+          schedule_type?: string
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: string[]
+          created_at?: string
+          cron_time?: string | null
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          max_urls?: number
+          owner_id?: string
+          project_id?: string
+          schedule_type?: string
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indexing_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
