@@ -115,7 +115,7 @@ export default function ConversionsPage() {
                       </thead>
                       <tbody>
                         {conversions.map((c: any) => (
-                          <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                          <tr key={c.id} className="border-b border-border last:border-0 table-row-hover">
                             <td className="px-4 py-3"><Badge variant="secondary" className="text-[10px]">{EVENT_LABELS[c.event_type] || c.event_type}</Badge></td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground">{c.page || "—"}</td>
                             <td className="px-4 py-3 text-xs text-foreground font-medium">{c.value ? `R$ ${Number(c.value).toFixed(2).replace(".", ",")}` : "—"}</td>

@@ -215,7 +215,7 @@ function SimpleTable({ columns, rows }: { columns: string[]; rows: string[][] })
               <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
             ) : (
               rows.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                <tr key={i} className="border-b border-border last:border-0 table-row-hover">
                   {row.map((cell, j) => (
                     <td key={j} className={`px-4 py-3 text-xs ${j === 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>{cell}</td>
                   ))}

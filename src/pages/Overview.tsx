@@ -175,7 +175,7 @@ export default function Overview() {
                     </TableHeader>
                     <TableBody>
                       {topPages.map((page) => (
-                        <TableRow key={page.url} className="cursor-pointer hover:bg-accent/50 transition-colors">
+                        <TableRow key={page.url} className="cursor-pointer table-row-hover">
                           <TableCell className="text-xs font-medium text-primary truncate max-w-[200px]">{page.url}</TableCell>
                           <TableCell className="text-xs text-right tabular-nums font-semibold">{page.clicks.toLocaleString()}</TableCell>
                           <TableCell className="text-xs text-right tabular-nums">{page.ctr}%</TableCell>
