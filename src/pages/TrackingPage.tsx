@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTrackingEvents } from "@/lib/mock-data";
 import { MonitorSmartphone, Flame } from "lucide-react";
+import { EventsTab } from "@/components/tracking/EventsTab";
 
 const HEATMAP_HOURS = Array.from({ length: 24 }, (_, h) => h);
 const HEATMAP_DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -43,33 +44,7 @@ export default function TrackingPage() {
           </TabsList>
 
           <TabsContent value="events" className="mt-4">
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30">
-                      {["Evento", "Elemento", "Página", "Dispositivo", "País", "Horário"].map((col) => (
-                        <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockTrackingEvents.map((ev) => (
-                      <tr key={ev.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3">
-                          <Badge variant="secondary" className="text-[10px]">{ev.event}</Badge>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-foreground">{"element" in ev ? ev.element : `${(ev as any).depth}`}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.page}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.device === "mobile" ? "Celular" : ev.device === "desktop" ? "Desktop" : "Tablet"}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.country}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{ev.timestamp}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            <EventsTab />
           </TabsContent>
 
           <TabsContent value="heatmap" className="mt-4 space-y-4">
