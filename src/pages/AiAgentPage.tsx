@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Globe } from "lucide-react";
+import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Globe, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { AgentChatTab } from "@/components/ai-agent/AgentChatTab";
 import { AgentCard } from "@/components/ai-agent/AgentCard";
 import { CreateAgentDialog } from "@/components/ai-agent/CreateAgentDialog";
 import { AgentWorkflows } from "@/components/ai-agent/AgentWorkflows";
+import { WorkflowSchedulesTab } from "@/components/ai-agent/WorkflowSchedulesTab";
 
 const SYSTEM_AGENTS = [
   {
@@ -289,6 +290,7 @@ export default function AiAgentPage() {
               <TabsTrigger value="chat" className="text-xs gap-1.5"><MessageSquare className="h-3 w-3" /> Chat</TabsTrigger>
               <TabsTrigger value="agents" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Agentes</TabsTrigger>
               <TabsTrigger value="workflows" className="text-xs gap-1.5"><GitBranch className="h-3 w-3" /> Workflows</TabsTrigger>
+              <TabsTrigger value="schedules" className="text-xs gap-1.5"><Calendar className="h-3 w-3" /> Agendamentos</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
               {tab === "agents" && (
@@ -345,6 +347,10 @@ export default function AiAgentPage() {
                 setTab("chat");
               }}
             />
+          </TabsContent>
+
+          <TabsContent value="schedules" className="mt-4">
+            <WorkflowSchedulesTab projectId={projectId || undefined} />
           </TabsContent>
         </Tabs>
 
