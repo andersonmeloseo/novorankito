@@ -25,7 +25,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
   }));
 
   const sourceChart = bySource.slice(0, 8).map((s: any) => ({
-    name: (s.source || "—").substring(0, 20),
+    name: (s.platform || "—").substring(0, 20),
     users: s.activeUsers || 0,
   }));
 
@@ -74,7 +74,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
         )}
         {sourceChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Origens</h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Plataformas</h3>
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sourceChart} layout="vertical">
@@ -119,10 +119,10 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
         </div>
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-foreground mb-2">Origens</h3>
+            <h3 className="text-sm font-medium text-foreground mb-2">Plataformas</h3>
             <AnalyticsDataTable
-              columns={["Origem", "Usuários Ativos"]}
-              rows={bySource.map((s: any) => [s.source || "—", (s.activeUsers || 0).toLocaleString()])}
+              columns={["Plataforma", "Usuários Ativos"]}
+              rows={bySource.map((s: any) => [s.platform || "—", (s.activeUsers || 0).toLocaleString()])}
             />
           </div>
           <div>
