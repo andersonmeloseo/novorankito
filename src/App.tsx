@@ -12,7 +12,7 @@ import ProjectsList from "@/pages/ProjectsList";
 import Onboarding from "@/pages/Onboarding";
 import UrlsPage from "@/pages/UrlsPage";
 import SeoPage from "@/pages/SeoPage";
-import AnalyticsPage from "@/pages/AnalyticsPage";
+import GA4Page from "@/pages/AnalyticsPage";
 import IndexingPage from "@/pages/IndexingPage";
 import AiAgentPage from "@/pages/AiAgentPage";
 import TrackingPage from "@/pages/TrackingPage";
@@ -51,7 +51,7 @@ const App = () => (
               <Route path="/projects" element={<ProjectsList />} />
               <Route path="/urls" element={<UrlsPage />} />
               <Route path="/seo" element={<SeoPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/ga4" element={<GA4Page />} />
               <Route path="/indexing" element={<IndexingPage />} />
               <Route path="/ai-agent" element={<AiAgentPage />} />
               <Route path="/analitica" element={<TrackingPage />} />

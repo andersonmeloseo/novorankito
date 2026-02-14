@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <TopBar title="Analytics" subtitle="Dashboard GA4 — Análise Avançada" />
+      <TopBar title="GA4" subtitle="Dashboard GA4 — Análise Avançada" />
       <div className="p-4 sm:p-6 space-y-6">
         {/* Connection bar */}
         {ga4Connection && (
