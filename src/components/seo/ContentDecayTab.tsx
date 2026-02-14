@@ -72,6 +72,8 @@ export function ContentDecayTab({ projectId }: Props) {
     { key: "previousClicks", label: "Cliques Anterior" },
     { key: "diffClicks", label: "Diferença" },
     { key: "pctChange", label: "Variação %" },
+    { key: "currentImpressions", label: "Impr. Atual" },
+    { key: "previousImpressions", label: "Impr. Anterior" },
     { key: "currentPosition", label: "Pos. Atual" },
     { key: "previousPosition", label: "Pos. Anterior" },
   ];
@@ -88,7 +90,7 @@ export function ContentDecayTab({ projectId }: Props) {
   }
 
   if (rows.length === 0 && !searchTerm) {
-    return <EmptyState icon={TrendingDown} title="Nenhum conteúdo em decay" description="Páginas perdendo mais de 20% de cliques vs período anterior aparecerão aqui." />;
+    return <EmptyState icon={TrendingDown} title="Nenhum conteúdo em declínio" description="Páginas perdendo mais de 20% de cliques vs período anterior aparecerão aqui." />;
   }
 
   return (
@@ -97,8 +99,8 @@ export function ContentDecayTab({ projectId }: Props) {
         <Card className="p-3 bg-destructive/5 border-destructive/20">
           <div className="flex items-center gap-2 text-xs">
             <AlertTriangle className="h-4 w-4 text-destructive" />
-            <span className="text-foreground font-medium">Content Decay:</span>
-            <span className="text-muted-foreground">Páginas com queda de 20%+ em cliques nos últimos 28 dias vs período anterior. Atualize o conteúdo para recuperar tráfego.</span>
+             <span className="text-foreground font-medium">Declínio de Conteúdo:</span>
+             <span className="text-muted-foreground">Páginas com queda de 20%+ em cliques nos últimos 28 dias vs período anterior. Atualize o conteúdo para recuperar tráfego.</span>
           </div>
         </Card>
       </AnimatedContainer>
@@ -113,7 +115,7 @@ export function ContentDecayTab({ projectId }: Props) {
       <AnimatedContainer delay={0.05}>
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-            <span className="text-xs text-muted-foreground">{rows.length} páginas em decay</span>
+            <span className="text-xs text-muted-foreground">{rows.length} páginas em declínio</span>
             <Button variant="ghost" size="sm" className="text-xs h-7" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5 mr-1" /> CSV
             </Button>
@@ -137,13 +139,15 @@ export function ContentDecayTab({ projectId }: Props) {
                   <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
                 ) : paginated.map((row: any, i: number) => (
                   <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                    <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.page}>{row.page}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.currentClicks).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.previousClicks).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs text-destructive font-semibold">{row.diffClicks}</td>
-                    <td className="px-4 py-3">{severityBadge(row.pctChange)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{row.currentPosition}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{row.previousPosition}</td>
+                     <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.page}>{row.page}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.currentClicks).toLocaleString()}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.previousClicks).toLocaleString()}</td>
+                     <td className="px-4 py-3 text-xs text-destructive font-semibold">{row.diffClicks}</td>
+                     <td className="px-4 py-3">{severityBadge(row.pctChange)}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.currentImpressions).toLocaleString()}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.previousImpressions).toLocaleString()}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{row.currentPosition}</td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground">{row.previousPosition}</td>
                   </tr>
                 ))}
               </tbody>

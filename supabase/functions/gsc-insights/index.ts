@@ -176,7 +176,7 @@ serve(async (req) => {
               pageCount: pages.length,
               totalClicks,
               totalImpressions,
-              pages: pages.sort((a, b) => b.clicks - a.clicks).slice(0, 5),
+              pages: pages.sort((a, b) => b.clicks - a.clicks),
             });
           }
         }
