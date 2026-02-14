@@ -1,6 +1,7 @@
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 interface KpiCardProps {
   label: string;
@@ -10,6 +11,9 @@ interface KpiCardProps {
   suffix?: string;
   prevValue?: number;
   showComparison?: boolean;
+  sparklineData?: number[];
+  sparklinePrevData?: number[];
+  sparklineColor?: string;
 }
 
 function formatValue(value: number, suffix?: string) {
@@ -19,8 +23,13 @@ function formatValue(value: number, suffix?: string) {
   return value.toString();
 }
 
-export function KpiCard({ label, value, change, prefix, suffix, prevValue, showComparison }: KpiCardProps) {
+export function KpiCard({ label, value, change, prefix, suffix, prevValue, showComparison, sparklineData, sparklinePrevData, sparklineColor = "hsl(var(--primary))" }: KpiCardProps) {
   const isPositive = change >= 0;
+
+  const chartData = sparklineData?.map((v, i) => ({
+    v,
+    prev: sparklinePrevData?.[i] ?? undefined,
+  })) || [];
 
   return (
     <Card className="p-4 card-hover group relative overflow-hidden">
@@ -48,6 +57,18 @@ export function KpiCard({ label, value, change, prefix, suffix, prevValue, showC
             </span>
           )}
         </div>
+        {chartData.length > 1 && (
+          <div className="h-10 mt-2 -mx-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <Line type="monotone" dataKey="v" stroke={sparklineColor} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                {showComparison && sparklinePrevData && sparklinePrevData.length > 0 && (
+                  <Line type="monotone" dataKey="prev" stroke={sparklineColor} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.35} dot={false} isAnimationActive={false} />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </Card>
   );
