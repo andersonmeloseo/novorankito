@@ -108,15 +108,26 @@ export default function SeoPage() {
   const { data: pageMetrics = [], isLoading: loadingPage } = useSeoMetrics(projectId, "page");
   const { data: countryMetrics = [], isLoading: loadingCountry } = useSeoMetrics(projectId, "country");
   const { data: deviceMetrics = [], isLoading: loadingDevice } = useSeoMetrics(projectId, "device");
+  const { data: dateDeviceMetrics = [] } = useSeoMetrics(projectId, "date_device");
+  const { data: dateCountryMetrics = [] } = useSeoMetrics(projectId, "date_country");
   
   // Fallback: also load combined (legacy data before migration)
   const { data: combinedMetrics = [], isLoading: loadingCombined } = useSeoMetrics(projectId, "combined");
   
-  // Use date metrics for KPIs/trend if available, otherwise fall back to combined
-  const allMetrics = dateMetrics.length > 0 ? dateMetrics : combinedMetrics;
+  // Choose the right data source based on active filters
+  const baseMetrics = useMemo(() => {
+    if (deviceFilter !== "all" && dateDeviceMetrics.length > 0) {
+      return dateDeviceMetrics.filter((m: any) => m.device === deviceFilter);
+    }
+    if (countryFilter !== "all" && dateCountryMetrics.length > 0) {
+      return dateCountryMetrics.filter((m: any) => m.country === countryFilter);
+    }
+    return dateMetrics.length > 0 ? dateMetrics : combinedMetrics;
+  }, [dateMetrics, combinedMetrics, dateDeviceMetrics, dateCountryMetrics, deviceFilter, countryFilter]);
+  
   const isLoading = loadingDate || loadingCombined;
 
-  // Date filtering for KPIs and trend chart (uses "date" dimension data)
+  // Date filtering for KPIs and trend chart
   const { filteredMetrics, prevMetrics } = useMemo(() => {
     let from: Date, to: Date;
 
@@ -124,9 +135,8 @@ export default function SeoPage() {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
-      // Use the most recent date in the data as reference (GSC has ~3 day delay)
-      const latestDate = allMetrics.length > 0
-        ? allMetrics.reduce((max: string, m: any) => m.metric_date > max ? m.metric_date : max, allMetrics[0].metric_date)
+      const latestDate = baseMetrics.length > 0
+        ? baseMetrics.reduce((max: string, m: any) => m.metric_date > max ? m.metric_date : max, baseMetrics[0].metric_date)
         : null;
       const refDate = latestDate ? parseISO(latestDate) : new Date();
       const days = parseInt(dateRange);
@@ -138,29 +148,20 @@ export default function SeoPage() {
     const prevFrom = subDays(from, periodLength);
     const prevTo = subDays(from, 1);
 
-    const filtered = allMetrics.filter((m: any) => {
+    const filtered = baseMetrics.filter((m: any) => {
       const d = parseISO(m.metric_date);
       return isWithinInterval(d, { start: from, end: to });
     });
 
-    const prev = allMetrics.filter((m: any) => {
+    const prev = baseMetrics.filter((m: any) => {
       const d = parseISO(m.metric_date);
       return isWithinInterval(d, { start: prevFrom, end: prevTo });
     });
 
     return { filteredMetrics: filtered, prevMetrics: prev };
-  }, [allMetrics, dateRange, customFrom, customTo]);
+  }, [baseMetrics, dateRange, customFrom, customTo]);
 
-  // When device or country filter is active, use that dimension's data for KPIs
-  const metrics = useMemo(() => {
-    if (deviceFilter !== "all") {
-      return deviceMetrics.filter((m: any) => m.device === deviceFilter);
-    }
-    if (countryFilter !== "all") {
-      return countryMetrics.filter((m: any) => m.country === countryFilter);
-    }
-    return filteredMetrics;
-  }, [filteredMetrics, deviceFilter, countryFilter, deviceMetrics, countryMetrics]);
+  const metrics = filteredMetrics;
 
   const prevFiltered = prevMetrics;
 

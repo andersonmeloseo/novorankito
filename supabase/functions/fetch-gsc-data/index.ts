@@ -163,6 +163,8 @@ serve(async (req) => {
       { type: "page", dims: ["page"] },
       { type: "country", dims: ["country"] },
       { type: "device", dims: ["device"] },
+      { type: "date_device", dims: ["date", "device"] },
+      { type: "date_country", dims: ["date", "country"] },
     ];
 
     // Delete existing metrics for this project
@@ -177,7 +179,6 @@ serve(async (req) => {
       if (rows.length === 0) continue;
 
       const metricsToInsert = rows.map((row: any) => {
-        const key = row.keys[0] || null;
         const base = {
           project_id,
           owner_id: conn.owner_id,
@@ -194,15 +195,21 @@ serve(async (req) => {
         };
 
         if (group.type === "date") {
-          base.metric_date = key || base.metric_date;
+          base.metric_date = row.keys[0] || base.metric_date;
         } else if (group.type === "query") {
-          base.query = key;
+          base.query = row.keys[0];
         } else if (group.type === "page") {
-          base.url = key;
+          base.url = row.keys[0];
         } else if (group.type === "country") {
-          base.country = key;
+          base.country = row.keys[0];
         } else if (group.type === "device") {
-          base.device = key;
+          base.device = row.keys[0];
+        } else if (group.type === "date_device") {
+          base.metric_date = row.keys[0] || base.metric_date;
+          base.device = row.keys[1] || null;
+        } else if (group.type === "date_country") {
+          base.metric_date = row.keys[0] || base.metric_date;
+          base.country = row.keys[1] || null;
         }
 
         return base;
