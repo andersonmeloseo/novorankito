@@ -650,7 +650,7 @@ export default function SeoPage() {
                           ]}
                           rows={drillPagesForQuery}
                           sort={pagesSort}
-                          onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                          onSort={(key) => { setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setPagesPage(1); }}
                           page={pagesPage}
                           onPageChange={setPagesPage}
                           onExport={() => exportCSV(drillPagesForQuery, `seo-paginas-${selectedQuery}`)}
@@ -667,7 +667,7 @@ export default function SeoPage() {
                         ]}
                         rows={queryRows}
                         sort={queriesSort}
-                        onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                        onSort={(key) => { setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setQueriesPage(1); }}
                         page={queriesPage}
                         onPageChange={setQueriesPage}
                         onExport={() => exportCSV(queryRows, "seo-consultas")}
@@ -713,7 +713,7 @@ export default function SeoPage() {
                         ]}
                         rows={pageRows}
                         sort={pagesSort}
-                        onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                        onSort={(key) => { setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setPagesPage(1); }}
                         page={pagesPage}
                         onPageChange={setPagesPage}
                         onExport={() => exportCSV(pageRows, "seo-paginas")}
@@ -733,7 +733,7 @@ export default function SeoPage() {
                       ]}
                       rows={countryRows}
                       sort={countriesSort}
-                      onSort={(key) => setCountriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                      onSort={(key) => { setCountriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setCountriesPage(1); }}
                       page={countriesPage}
                       onPageChange={setCountriesPage}
                       onExport={() => exportCSV(countryRows, "seo-paises")}
