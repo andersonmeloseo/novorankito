@@ -50,12 +50,17 @@ interface ReportRequest {
   metricFilter?: any;
 }
 
-async function runReport(accessToken: string, propertyId: string, request: ReportRequest) {
+async function runReport(accessToken: string, propertyId: string, request: ReportRequest, globalDimensionFilter?: any) {
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+  // Merge global dimension filter with request-level filter
+  let finalRequest = { ...request };
+  if (globalDimensionFilter && !request.dimensionFilter) {
+    finalRequest.dimensionFilter = globalDimensionFilter;
+  }
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(request),
+    body: JSON.stringify(finalRequest),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -94,7 +99,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project_id, report_type, start_date, end_date } = await req.json();
+    const { project_id, report_type, start_date, end_date, filters } = await req.json();
     if (!project_id) throw new Error("project_id obrigatório");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -111,13 +116,48 @@ serve(async (req) => {
     const eDate = end_date || "yesterday";
     const dateRanges = [{ startDate: sDate, endDate: eDate }];
 
+    // Build GA4 dimensionFilter from filters object
+    let dimensionFilter: any = undefined;
+    if (filters && typeof filters === "object") {
+      const filterExpressions: any[] = [];
+      const filterMap: Record<string, string> = {
+        source: "sessionSource",
+        medium: "sessionMedium",
+        device: "deviceCategory",
+        country: "country",
+        campaign: "sessionCampaignName",
+        page: "pagePath",
+        channel: "sessionDefaultChannelGroup",
+        language: "language",
+        browser: "browser",
+        os: "operatingSystem",
+      };
+      for (const [key, value] of Object.entries(filters)) {
+        if (value && typeof value === "string" && value.trim() && filterMap[key]) {
+          filterExpressions.push({
+            filter: {
+              fieldName: filterMap[key],
+              stringFilter: { matchType: "CONTAINS", value: value.trim(), caseSensitive: false },
+            },
+          });
+        }
+      }
+      if (filterExpressions.length === 1) {
+        dimensionFilter = filterExpressions[0];
+      } else if (filterExpressions.length > 1) {
+        dimensionFilter = { andGroup: { expressions: filterExpressions } };
+      }
+    }
+
+    // Helper to auto-inject global dimension filter
+    const run = (request: ReportRequest) => runReport(accessToken, propId, request, dimensionFilter);
+
     let result: any = {};
 
     switch (report_type) {
       case "overview": {
-        // Split overview into 2 batches (GA4 API limits to 10 metrics per request)
         const [overviewA, overviewB, trend] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [],
             metrics: [
               { name: "totalUsers" }, { name: "newUsers" }, { name: "sessions" },
@@ -128,14 +168,14 @@ serve(async (req) => {
             ],
             dateRanges,
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [],
             metrics: [
               { name: "conversions" }, { name: "totalRevenue" }, { name: "ecommercePurchases" },
             ],
             dateRanges,
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "date" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" }, { name: "screenPageViews" },
@@ -158,7 +198,7 @@ serve(async (req) => {
 
       case "acquisition": {
         const [channels, sources, campaigns, firstUser] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "sessionDefaultChannelGroup" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" }, { name: "engagedSessions" },
@@ -167,7 +207,7 @@ serve(async (req) => {
             dateRanges, limit: 50,
             orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" },
@@ -176,7 +216,7 @@ serve(async (req) => {
             dateRanges, limit: 100,
             orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "sessionCampaignName" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" }, { name: "conversions" },
@@ -185,7 +225,7 @@ serve(async (req) => {
             dateRanges, limit: 50,
             orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "firstUserDefaultChannelGroup" }],
             metrics: [
               { name: "totalUsers" }, { name: "newUsers" }, { name: "engagementRate" },
@@ -206,7 +246,7 @@ serve(async (req) => {
 
       case "engagement": {
         const [pages, events, landingPages] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "pageTitle" }, { name: "pagePath" }],
             metrics: [
               { name: "screenPageViews" }, { name: "totalUsers" },
@@ -216,7 +256,7 @@ serve(async (req) => {
             dateRanges, limit: 200,
             orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "eventName" }],
             metrics: [
               { name: "eventCount" }, { name: "totalUsers" },
@@ -225,7 +265,7 @@ serve(async (req) => {
             dateRanges, limit: 100,
             orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "landingPage" }],
             metrics: [
               { name: "sessions" }, { name: "totalUsers" },
@@ -246,31 +286,31 @@ serve(async (req) => {
 
       case "demographics": {
         const [countries, cities, languages, age, gender] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "country" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }, { name: "conversions" }],
             dateRanges, limit: 100,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "city" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }],
             dateRanges, limit: 100,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "language" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }],
             dateRanges, limit: 50,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "userAgeBracket" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }],
             dateRanges, limit: 10,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "userGender" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }],
             dateRanges, limit: 10,
@@ -288,19 +328,19 @@ serve(async (req) => {
 
       case "technology": {
         const [browsers, os, devices, screenRes] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "browser" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }, { name: "bounceRate" }],
             dateRanges, limit: 30,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "operatingSystem" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "engagementRate" }],
             dateRanges, limit: 20,
             orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "deviceCategory" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" },
@@ -309,7 +349,7 @@ serve(async (req) => {
             ],
             dateRanges, limit: 10,
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "screenResolution" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }],
             dateRanges, limit: 20,
@@ -347,7 +387,7 @@ serve(async (req) => {
 
       case "retention": {
         const [newVsReturning, cohort] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "newVsReturning" }],
             metrics: [
               { name: "totalUsers" }, { name: "sessions" },
@@ -356,7 +396,7 @@ serve(async (req) => {
             ],
             dateRanges,
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "date" }, { name: "newVsReturning" }],
             metrics: [{ name: "totalUsers" }, { name: "sessions" }],
             dateRanges, limit: 500,
@@ -372,7 +412,7 @@ serve(async (req) => {
 
       case "ecommerce": {
         const [transactions, items] = await Promise.all([
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "date" }],
             metrics: [
               { name: "ecommercePurchases" }, { name: "totalRevenue" },
@@ -382,7 +422,7 @@ serve(async (req) => {
             dateRanges, limit: 500,
             orderBys: [{ metric: { metricName: "totalRevenue" }, desc: false }],
           }),
-          runReport(accessToken, propId, {
+          run({
             dimensions: [{ name: "itemName" }],
             metrics: [
               { name: "itemsViewed" }, { name: "itemsAddedToCart" },
