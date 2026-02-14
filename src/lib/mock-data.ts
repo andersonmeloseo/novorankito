@@ -94,6 +94,84 @@ export const mockConversions = [
   { id: "4", event: "newsletter_signup", page: "/blog/home-audio-guide", value: 0, source: "google / organic", device: "mobile", date: "2026-02-12" },
 ];
 
+// ── Extended mock data for Tracking Events Dashboard ──
+
+const EVENT_TYPES = ["whatsapp_click", "form_submit", "phone_call", "page_view", "cta_click", "scroll_depth"];
+const CONVERSION_TYPES = ["conversion", "micro_conversion"];
+const DEVICES = ["mobile", "desktop", "tablet"];
+const BROWSERS = ["Chrome", "Safari", "Firefox", "Edge"];
+const PAGES = [
+  "/products/wireless-headphones", "/products/smart-speaker", "/blog/best-noise-cancelling-2026",
+  "/contact", "/pricing", "/blog/home-audio-guide", "/checkout", "/category/headphones",
+  "/landing/promo-verao", "/landing/black-friday",
+];
+const CTA_TEXTS = ["Chamar no WhatsApp", "Enviar Formulário", "Ligar Agora", "Ver Planos", "Comprar", "Saiba Mais"];
+const GOALS = ["Chamada no Whats", "Lead Captado", "Venda Realizada", "Newsletter", "Download PDF", "Agendamento"];
+const CITIES = ["São Paulo", "Rio de Janeiro", "Curitiba", "Belo Horizonte", "Porto Alegre", "Salvador", "Recife", "Brasília"];
+const STATES = ["SP", "RJ", "PR", "MG", "RS", "BA", "PE", "DF"];
+
+function randomFrom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+export interface MockTrackingEvent {
+  event_id: string;
+  timestamp: string;
+  event_type: string;
+  conversion_type: string;
+  page_url: string;
+  cta_text: string;
+  goal: string;
+  value: number;
+  device: string;
+  browser: string;
+  location_city: string;
+  location_state: string;
+}
+
+export const mockTrackingEventsDetailed: MockTrackingEvent[] = Array.from({ length: 120 }, (_, i) => {
+  const d = new Date(2026, 1, 14 - Math.floor(i / 4));
+  d.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+  const evType = randomFrom(EVENT_TYPES);
+  const isConversion = ["whatsapp_click", "form_submit", "phone_call", "cta_click"].includes(evType);
+  return {
+    event_id: `ev-${i + 1}`,
+    timestamp: d.toISOString(),
+    event_type: evType,
+    conversion_type: isConversion ? "conversion" : "micro_conversion",
+    page_url: randomFrom(PAGES),
+    cta_text: randomFrom(CTA_TEXTS),
+    goal: randomFrom(GOALS),
+    value: isConversion ? parseFloat((Math.random() * 50 + 5).toFixed(2)) : 0,
+    device: randomFrom(DEVICES),
+    browser: randomFrom(BROWSERS),
+    location_city: randomFrom(CITIES),
+    location_state: randomFrom(STATES),
+  };
+});
+
+export function generateConversionsHeatmap() {
+  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  return days.map((day) => ({
+    day,
+    hours: Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      value: Math.floor(Math.random() * 40),
+    })),
+  }));
+}
+
+export const mockConversionsByDay = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(2026, 0, 15 + i);
+  return {
+    date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+    whatsapp_click: Math.floor(Math.random() * 20 + 5),
+    form_submit: Math.floor(Math.random() * 12 + 2),
+    phone_call: Math.floor(Math.random() * 8 + 1),
+    cta_click: Math.floor(Math.random() * 15 + 3),
+  };
+});
+
 export const mockAdsCampaigns = [
   { name: "Brand - Search", platform: "Google Ads", cost: 2840, clicks: 4200, conversions: 182, cpa: 15.60, roas: 4.2 },
   { name: "Products - Shopping", platform: "Google Ads", cost: 5420, clicks: 8900, conversions: 310, cpa: 17.48, roas: 3.8 },
