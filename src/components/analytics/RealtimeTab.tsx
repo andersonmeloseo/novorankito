@@ -2,10 +2,8 @@ import { Card } from "@/components/ui/card";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
 import { Badge } from "@/components/ui/badge";
 import { WorldMap } from "./WorldMap";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-
-const COLORS = ["hsl(var(--chart-6))", "hsl(var(--chart-8))", "hsl(var(--chart-10))", "hsl(var(--chart-1))", "hsl(var(--chart-5))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Label } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE, ChartHeader, BarGradient, DonutCenterLabel } from "./ChartPrimitives";
 
 interface RealtimeTabProps {
   data: any;
@@ -27,6 +25,8 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
     value: d.activeUsers || 0,
   }));
 
+  const totalDeviceActive = deviceChart.reduce((s: number, d: any) => s + d.value, 0);
+
   const sourceChart = bySource.slice(0, 6).map((s: any) => ({
     name: (s.platform || "—").substring(0, 16),
     users: s.activeUsers || 0,
@@ -37,6 +37,8 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
     value: c.activeUsers || 0,
   }));
 
+  const totalCountryActive = countryChart.reduce((s: number, c: any) => s + c.value, 0);
+
   const mapData = byCountry.map((c: any) => ({
     name: c.country || "",
     value: c.activeUsers || 0,
@@ -44,7 +46,6 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* 5 cards in 1 row: Active Users + 4 charts */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Active Users hero card */}
         <Card className="p-4 flex flex-col items-center justify-center">
@@ -69,16 +70,15 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
         {/* Dispositivos */}
         <Card className="p-4">
-          <h3 className="text-xs font-medium text-foreground mb-1">Dispositivos</h3>
-          <p className="text-[10px] text-muted-foreground mb-2">Ativos por tipo</p>
+          <ChartHeader title="Dispositivos" subtitle="Ativos por tipo" />
           {deviceChart.length > 0 ? (
             <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={22} outerRadius={40} paddingAngle={3} label={false}>
-                    {deviceChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={22} outerRadius={42} paddingAngle={4} strokeWidth={0} animationDuration={800}>
+                    {deviceChart.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                   <Legend iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 2 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -88,17 +88,19 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
         {/* Plataformas */}
         <Card className="p-4">
-          <h3 className="text-xs font-medium text-foreground mb-1">Plataformas</h3>
-          <p className="text-[10px] text-muted-foreground mb-2">Web, iOS, Android</p>
+          <ChartHeader title="Plataformas" subtitle="Web, iOS, Android" />
           {sourceChart.length > 0 ? (
             <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sourceChart} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={50} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-8))" radius={[0, 4, 4, 0]} barSize={14} />
+                  <defs>
+                    <BarGradient id="rtPlatGrad" color="hsl(var(--chart-6))" />
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} horizontal={false} />
+                  <XAxis type="number" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis dataKey="name" type="category" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={50} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Bar dataKey="users" fill="url(#rtPlatGrad)" radius={[0, 6, 6, 0]} barSize={14} animationDuration={700} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -107,16 +109,15 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
         {/* Países */}
         <Card className="p-4">
-          <h3 className="text-xs font-medium text-foreground mb-1">Países</h3>
-          <p className="text-[10px] text-muted-foreground mb-2">Top países ativos</p>
+          <ChartHeader title="Países" subtitle="Top países ativos" />
           {countryChart.length > 0 ? (
             <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={countryChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={22} outerRadius={40} paddingAngle={3} label={false}>
-                    {countryChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={countryChart} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={22} outerRadius={42} paddingAngle={4} strokeWidth={0} animationDuration={800}>
+                    {countryChart.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[(i + 3) % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                   <Legend iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 2 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -126,17 +127,19 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
 
         {/* Cidades */}
         <Card className="p-4">
-          <h3 className="text-xs font-medium text-foreground mb-1">Cidades</h3>
-          <p className="text-[10px] text-muted-foreground mb-2">Top cidades ativas</p>
+          <ChartHeader title="Cidades" subtitle="Top cidades ativas" />
           {byCity.length > 0 ? (
             <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byCity.slice(0, 5).map((c: any) => ({ name: (c.city || "—").substring(0, 10), users: c.activeUsers || 0 }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={55} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="users" fill="hsl(var(--chart-12))" radius={[0, 4, 4, 0]} barSize={12} />
+                  <defs>
+                    <BarGradient id="rtCityGrad" color="hsl(var(--chart-9))" />
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} horizontal={false} />
+                  <XAxis type="number" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis dataKey="name" type="category" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={55} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Bar dataKey="users" fill="url(#rtCityGrad)" radius={[0, 6, 6, 0]} barSize={12} animationDuration={700} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -147,8 +150,7 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
       {/* World Map */}
       {mapData.length > 0 && (
         <Card className="p-4">
-          <h3 className="text-xs font-medium text-foreground mb-1">Mapa de Usuários Ativos</h3>
-          <p className="text-[10px] text-muted-foreground mb-3">Distribuição geográfica em tempo real — zoom e arraste para navegar, cidades visíveis com zoom</p>
+          <ChartHeader title="Mapa de Usuários Ativos" subtitle="Distribuição geográfica em tempo real — zoom e arraste para navegar" />
           <div className="h-[340px]">
             <WorldMap
               countryData={mapData}
@@ -158,10 +160,10 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
         </Card>
       )}
 
-      {/* Tables in same row: Pages | Platforms + Countries + Cities */}
+      {/* Tables */}
       <div className="grid lg:grid-cols-3 gap-4">
         <div>
-          <h3 className="text-xs font-medium text-foreground mb-2">Páginas ativas</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-2">Páginas ativas</h3>
           <AnalyticsDataTable
             columns={["Página", "Usuários", "Views"]}
             rows={byPage.map((p: any) => [
@@ -172,14 +174,14 @@ export function RealtimeTab({ data, isLoading }: RealtimeTabProps) {
           />
         </div>
         <div>
-          <h3 className="text-xs font-medium text-foreground mb-2">Plataformas</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-2">Plataformas</h3>
           <AnalyticsDataTable
             columns={["Plataforma", "Usuários Ativos"]}
             rows={bySource.map((s: any) => [s.platform || "—", (s.activeUsers || 0).toLocaleString()])}
           />
         </div>
         <div>
-          <h3 className="text-xs font-medium text-foreground mb-2">Países & Cidades</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-2">Países & Cidades</h3>
           <AnalyticsDataTable
             columns={["País / Cidade", "Usuários Ativos"]}
             rows={[

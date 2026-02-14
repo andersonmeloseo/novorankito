@@ -1,21 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Label } from "recharts";
 import { StaggeredGrid } from "@/components/ui/animated-container";
-
-const COLORS = ["hsl(var(--chart-11))", "hsl(var(--chart-7))", "hsl(var(--chart-9))", "hsl(var(--chart-5))", "hsl(var(--chart-3))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, LEGEND_STYLE, ChartHeader, DonutCenterLabel, formatDuration } from "./ChartPrimitives";
 
 interface TechnologyTabProps {
   data: any;
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return "0s";
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
 export function TechnologyTab({ data }: TechnologyTabProps) {
@@ -29,21 +20,23 @@ export function TechnologyTab({ data }: TechnologyTabProps) {
     value: d.totalUsers || 0,
   }));
 
+  const totalDeviceUsers = deviceChart.reduce((s: number, d: any) => s + d.value, 0);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {deviceChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Dispositivos</h3>
-            <p className="text-[10px] text-muted-foreground mb-3">Desktop, mobile e tablet</p>
-            <div className="h-[190px]">
+            <ChartHeader title="Dispositivos" subtitle="Desktop, mobile e tablet" />
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={35} outerRadius={60} paddingAngle={3} label={false}>
-                    {deviceChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={deviceChart} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} strokeWidth={0} animationDuration={900}>
+                    {deviceChart.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    <Label content={<DonutCenterLabel value={totalDeviceUsers.toLocaleString("pt-BR")} label="usuários" />} />
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 6 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend {...LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -53,7 +46,7 @@ export function TechnologyTab({ data }: TechnologyTabProps) {
           <StaggeredGrid className="grid gap-2">
             {devices.map((d: any) => (
               <Card key={d.deviceCategory} className="p-3">
-                <div className="text-xs font-medium text-foreground mb-1.5">{d.deviceCategory || "—"}</div>
+                <div className="text-xs font-semibold text-foreground mb-1.5">{d.deviceCategory || "—"}</div>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                   <div>Usuários: <span className="text-foreground font-medium">{(d.totalUsers || 0).toLocaleString()}</span></div>
                   <div>Sessões: <span className="text-foreground font-medium">{(d.sessions || 0).toLocaleString()}</span></div>

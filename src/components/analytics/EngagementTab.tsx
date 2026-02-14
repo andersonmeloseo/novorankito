@@ -1,10 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-
-const COLORS = ["hsl(var(--chart-7))", "hsl(var(--chart-11))", "hsl(var(--chart-9))", "hsl(var(--chart-8))", "hsl(var(--chart-3))"];
-const TOOLTIP_STYLE = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" };
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Label } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_COLORS, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE, ChartHeader, BarGradient, DonutCenterLabel, formatDuration } from "./ChartPrimitives";
 
 interface EngagementTabProps {
   data: any;
@@ -30,21 +28,25 @@ export function EngagementTab({ data }: EngagementTabProps) {
     value: l.sessions || 0,
   }));
 
+  const totalLandingSessions = landingChart.reduce((s: number, l: any) => s + l.value, 0);
+
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         {topPagesChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Top Páginas</h3>
-            <p className="text-[10px] text-muted-foreground mb-4">Páginas mais visualizadas no período</p>
-            <div className="h-[220px]">
+            <ChartHeader title="Top Páginas" subtitle="Páginas mais visualizadas no período" />
+            <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topPagesChart} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="views" fill="hsl(var(--chart-7))" radius={[0, 6, 6, 0]} barSize={16} />
+                  <defs>
+                    <BarGradient id="pagesBarGrad" color="hsl(var(--chart-1))" />
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} horizontal={false} />
+                  <XAxis type="number" {...AXIS_STYLE} />
+                  <YAxis dataKey="name" type="category" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={110} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
+                  <Bar dataKey="views" fill="url(#pagesBarGrad)" radius={[0, 8, 8, 0]} barSize={18} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -52,16 +54,18 @@ export function EngagementTab({ data }: EngagementTabProps) {
         )}
         {topEventsChart.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-1">Top Eventos</h3>
-            <p className="text-[10px] text-muted-foreground mb-4">Eventos mais disparados pelos usuários</p>
-            <div className="h-[220px]">
+            <ChartHeader title="Top Eventos" subtitle="Eventos mais disparados pelos usuários" />
+            <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topEventsChart} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={100} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="count" fill="hsl(var(--chart-11))" radius={[0, 6, 6, 0]} barSize={16} />
+                  <defs>
+                    <BarGradient id="eventsBarGrad" color="hsl(var(--chart-6))" />
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} horizontal={false} />
+                  <XAxis type="number" {...AXIS_STYLE} />
+                  <YAxis dataKey="name" type="category" {...AXIS_STYLE} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={100} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
+                  <Bar dataKey="count" fill="url(#eventsBarGrad)" radius={[0, 8, 8, 0]} barSize={18} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -71,16 +75,16 @@ export function EngagementTab({ data }: EngagementTabProps) {
 
       {landingChart.length > 0 && (
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-1">Páginas de Entrada</h3>
-          <p className="text-[10px] text-muted-foreground mb-4">Sessões por landing page</p>
-          <div className="h-[200px]">
+          <ChartHeader title="Páginas de Entrada" subtitle="Sessões por landing page" />
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={landingChart} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={40} outerRadius={70} paddingAngle={2} label={false}>
-                  {landingChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={landingChart} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} strokeWidth={0} animationDuration={900}>
+                  {landingChart.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  <Label content={<DonutCenterLabel value={totalLandingSessions.toLocaleString("pt-BR")} label="sessões" />} />
                 </Pie>
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Legend {...LEGEND_STYLE} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -136,11 +140,4 @@ export function EngagementTab({ data }: EngagementTabProps) {
       </Tabs>
     </div>
   );
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return "0s";
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
