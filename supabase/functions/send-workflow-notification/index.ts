@@ -121,11 +121,8 @@ serve(async (req) => {
           // Convert markdown bold **text** to WhatsApp bold *text*
           .replace(/\*\*(.+?)\*\*/g, "*$1*")
           // Convert markdown italic _text_ (keep as is, WhatsApp uses same)
-          // Convert markdown tables to aligned text
-          .replace(/\|([^\n]+)\|/g, (match) => {
-            const cells = match.split("|").filter(c => c.trim());
-            return cells.map(c => c.trim()).join("  |  ");
-          })
+          // Remove markdown tables entirely (hard to read on WhatsApp)
+          .replace(/\|[^\n]+\|/g, "")
           // Remove table separator lines (---|---|---)
           .replace(/^[\s|:-]+$/gm, "")
           // Remove markdown links [text](url) -> text (url)
