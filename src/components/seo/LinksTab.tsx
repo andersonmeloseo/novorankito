@@ -217,7 +217,7 @@ function SortableLinksTable({
               paginated.map((row, i) => (
                 <tr key={i} className="border-b border-border last:border-0 table-row-hover">
                   {columns.map(col => (
-                    <td key={col.key} className={`px-4 py-3 text-xs ${col.key === "page" ? "font-mono text-foreground max-w-[400px] truncate" : col.key === "queryCount" ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                    <td key={col.key} title={col.key === "page" || col.key === linkKey ? row[col.key] : undefined} className={`px-4 py-3 text-xs ${col.key === "page" ? "font-mono text-foreground max-w-[400px] truncate" : col.key === "queryCount" ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                       {col.key === linkKey ? (
                         <a href={row[col.key]} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
                           {row[col.key]}

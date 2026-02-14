@@ -136,7 +136,7 @@ export function OpportunitiesTab({ projectId }: Props) {
                   <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
                 ) : paginated.map((row: any, i: number) => (
                   <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                    <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate">{row.query}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.query}>{row.query}</td>
                     <td className="px-4 py-3 text-xs font-semibold text-primary">{Number(row.impressions).toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{Number(row.clicks).toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs text-destructive font-medium">{row.ctr}%</td>

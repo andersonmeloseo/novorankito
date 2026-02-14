@@ -227,7 +227,7 @@ export function DiscoverNewsTab({ projectId }: Props) {
                       ) : (
                         paginated.map((row, i) => (
                           <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                            <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[400px] truncate">
+                            <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[400px] truncate" title={row.page}>
                               <a href={row.page} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
                                 {row.page}
                                 <ExternalLink className="h-3 w-3 opacity-40 shrink-0" />

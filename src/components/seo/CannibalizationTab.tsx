@@ -140,7 +140,7 @@ export function CannibalizationTab({ projectId }: Props) {
                       <td className="px-4 py-3">
                         {expandedQuery === row.query ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                       </td>
-                      <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate">{row.query}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.query}>{row.query}</td>
                       <td className="px-4 py-3">
                         <Badge variant={row.pageCount >= 3 ? "destructive" : "secondary"} className="text-[10px]">{row.pageCount} páginas</Badge>
                       </td>
@@ -150,7 +150,7 @@ export function CannibalizationTab({ projectId }: Props) {
                     {expandedQuery === row.query && row.pages.map((p: any, j: number) => (
                       <tr key={`sub-${i}-${j}`} className="bg-muted/20 border-b border-border">
                         <td className="px-4 py-2"></td>
-                        <td colSpan={2} className="px-4 py-2 text-xs font-mono text-muted-foreground max-w-[400px] truncate pl-8">{p.page}</td>
+                        <td colSpan={2} className="px-4 py-2 text-xs font-mono text-muted-foreground max-w-[400px] truncate pl-8" title={p.page}>{p.page}</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">{p.clicks} cliques · {p.ctr}% CTR</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">Pos. {p.position}</td>
                       </tr>
