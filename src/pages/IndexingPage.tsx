@@ -1096,6 +1096,72 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
     setManualDate("");
   };
 
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
+  const [editMaxUrls, setEditMaxUrls] = useState(200);
+  const [editActions, setEditActions] = useState<string[]>([]);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editEnabled, setEditEnabled] = useState(true);
+
+  const handleDeleteSchedule = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await supabase.from("indexing_schedules").delete().eq("id", id);
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+      toast.success("Agendamento excluído");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleToggleEnabled = async (schedule: any) => {
+    const newEnabled = !schedule.enabled;
+    await supabase.from("indexing_schedules").update({ enabled: newEnabled }).eq("id", schedule.id);
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+    toast.success(newEnabled ? "Agendamento ativado" : "Agendamento desativado");
+  };
+
+  const openEdit = (s: any) => {
+    setEditingSchedule(s);
+    setEditMaxUrls(s.max_urls || 200);
+    setEditActions(s.actions || []);
+    setEditEnabled(s.enabled);
+    if (s.schedule_type === "manual" && s.scheduled_at) {
+      const d = new Date(s.scheduled_at);
+      setEditDate(d.toISOString().slice(0, 10));
+      setEditTime(d.toISOString().slice(11, 16));
+    } else {
+      setEditDate("");
+      setEditTime(s.cron_time || "03:00");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSchedule) return;
+    const payload: any = { max_urls: editMaxUrls, actions: editActions, enabled: editEnabled };
+    if (editingSchedule.schedule_type === "cron") {
+      payload.cron_time = editTime;
+    } else if (editDate) {
+      payload.scheduled_at = `${editDate}T${editTime}:00`;
+    }
+    await supabase.from("indexing_schedules").update(payload).eq("id", editingSchedule.id);
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+    toast.success("Agendamento atualizado");
+    setEditingSchedule(null);
+  };
+
+  const getStatusInfo = (s: any) => {
+    if (s.status === "completed") return { label: "Concluído", class: "bg-success/10 text-success border-success/20" };
+    if (s.status === "failed") return { label: "Falhou", class: "bg-destructive/10 text-destructive border-destructive/20" };
+    if (s.status === "pending") return { label: "Pendente", class: "bg-warning/10 text-warning border-warning/20" };
+    if (s.enabled) return { label: "Ativo", class: "bg-success/10 text-success border-success/20" };
+    return { label: "Desativado", class: "bg-muted text-muted-foreground border-border" };
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* ── Auto Cron Config ── */}
@@ -1210,17 +1276,19 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
         </div>
       </Card>
 
-      {/* ── Schedule History ── */}
+      {/* ── Schedules List ── */}
       <Card className="p-5 lg:col-span-2">
-        <div className="flex items-center gap-2 mb-3">
-          <History className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Histórico de Agendamentos</h3>
-          <Badge variant="secondary" className="text-[10px]">{allSchedules.length}</Badge>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Agendamentos Criados</h3>
+            <Badge variant="secondary" className="text-[10px]">{allSchedules.length}</Badge>
+          </div>
         </div>
         {schedulesLoading ? (
           <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : allSchedules.length === 0 ? (
-          <EmptyState icon={CalendarClock} title="Nenhum agendamento" description="Configure o agendamento automático ou crie um manualmente." />
+          <EmptyState icon={CalendarClock} title="Nenhum agendamento" description="Configure o agendamento automático ou crie um manualmente acima." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1230,48 +1298,169 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Ações</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Máx URLs</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Horário</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Horário / Data</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Última Execução</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Criado em</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {allSchedules.map((s: any) => (
-                  <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-3 py-2.5">
-                      <Badge variant="secondary" className="text-[10px]">{s.schedule_type === "cron" ? "Automático" : "Manual"}</Badge>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex gap-1">
-                        {(s.actions || []).map((a: string) => (
-                          <Badge key={a} variant="outline" className="text-[9px]">
-                            {a === "indexing" ? "Indexação" : "Inspeção"}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground">{s.max_urls}</td>
-                    <td className="px-3 py-2.5">
-                      <Badge variant={s.enabled ? "secondary" : "outline"} className={`text-[10px] ${s.enabled ? "bg-success/10 text-success border-success/20" : ""}`}>
-                        {s.status === "completed" ? "Concluído" : s.enabled ? "Ativo" : "Desativado"}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {s.schedule_type === "cron" ? (s.cron_time || "—") : (s.scheduled_at ? format(new Date(s.scheduled_at), "dd/MM/yyyy HH:mm") : "—")}
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {s.last_run_at ? formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR }) : "Nunca"}
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {format(new Date(s.created_at), "dd/MM/yyyy HH:mm")}
-                    </td>
-                  </tr>
-                ))}
+                {allSchedules.map((s: any) => {
+                  const statusInfo = getStatusInfo(s);
+                  return (
+                    <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {s.schedule_type === "cron" ? "Automático" : "Manual"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1">
+                          {(s.actions || []).map((a: string) => (
+                            <Badge key={a} variant="outline" className="text-[9px]">
+                              {a === "indexing" ? "Indexação" : "Inspeção"}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground">{s.max_urls}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant="outline" className={`text-[10px] border ${statusInfo.class}`}>
+                          {statusInfo.label}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {s.schedule_type === "cron" ? (s.cron_time || "—") : (s.scheduled_at ? format(new Date(s.scheduled_at), "dd/MM/yyyy HH:mm") : "—")}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {s.last_run_at ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-default">{formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR })}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>{format(new Date(s.last_run_at), "dd/MM/yyyy HH:mm:ss")}</TooltipContent>
+                          </Tooltip>
+                        ) : "Nunca"}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {format(new Date(s.created_at), "dd/MM/yyyy HH:mm")}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Toggle active */}
+                          {s.status !== "completed" && s.status !== "failed" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleToggleEnabled(s)}>
+                                  {s.enabled ? <Eye className="h-3 w-3 text-success" /> : <Ban className="h-3 w-3 text-muted-foreground" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{s.enabled ? "Desativar" : "Ativar"}</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Edit */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(s)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar</TooltipContent>
+                          </Tooltip>
+                          {/* Delete */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDeleteSchedule(s.id)} disabled={deletingId === s.id}>
+                                {deletingId === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Excluir</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </Card>
+
+      {/* ── Edit Dialog ── */}
+      <Dialog open={!!editingSchedule} onOpenChange={(open) => { if (!open) setEditingSchedule(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" /> Editar Agendamento
+            </DialogTitle>
+          </DialogHeader>
+          {editingSchedule && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+                <Label className="text-xs">Ativo</Label>
+                <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Ações</Label>
+                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                  <Switch
+                    checked={editActions.includes("indexing")}
+                    onCheckedChange={(c) => setEditActions(prev => c ? [...prev, "indexing"] : prev.filter(a => a !== "indexing"))}
+                    id="edit-idx"
+                  />
+                  <Label htmlFor="edit-idx" className="text-xs cursor-pointer flex items-center gap-1.5">
+                    <Send className="h-3 w-3 text-primary" /> Indexação
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                  <Switch
+                    checked={editActions.includes("inspection")}
+                    onCheckedChange={(c) => setEditActions(prev => c ? [...prev, "inspection"] : prev.filter(a => a !== "inspection"))}
+                    id="edit-insp"
+                  />
+                  <Label htmlFor="edit-insp" className="text-xs cursor-pointer flex items-center gap-1.5">
+                    <ScanSearch className="h-3 w-3 text-primary" /> Inspeção
+                  </Label>
+                </div>
+              </div>
+
+              {editingSchedule.schedule_type === "manual" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Data</Label>
+                    <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Horário</Label>
+                    <Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                </div>
+              )}
+
+              {editingSchedule.schedule_type === "cron" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Horário</Label>
+                  <Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="w-32 h-8 text-xs" />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Máx. URLs</Label>
+                <Input type="number" min={1} max={500} value={editMaxUrls} onChange={e => setEditMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditingSchedule(null)}>Cancelar</Button>
+                <Button size="sm" className="text-xs gap-1.5" onClick={handleSaveEdit}>
+                  <CheckCircle2 className="h-3 w-3" /> Salvar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
