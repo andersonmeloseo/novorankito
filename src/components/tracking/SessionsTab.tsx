@@ -78,6 +78,10 @@ const EXIT_PAGE_OPTIONS = [
   { value: "all", label: "Todas" },
   ...Array.from(new Set(mockSessionsDetailed.map((s) => s.exit_page))).sort().map((p) => ({ value: p, label: p })),
 ];
+const REFERRER_OPTIONS = [
+  { value: "all", label: "Todos" },
+  ...Array.from(new Set(mockSessionsDetailed.map((s) => s.referrer))).sort().map((r) => ({ value: r, label: r.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || r })),
+];
 const CITY_OPTIONS = [
   { value: "all", label: "Todas" },
   ...Array.from(new Set(mockSessionsDetailed.map((s) => s.city))).sort().map((c) => ({ value: c, label: c })),
@@ -309,6 +313,7 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "pages_viewed", label: "Páginas" },
   { key: "landing_page", label: "Landing Page" },
   { key: "exit_page", label: "Saída" },
+  { key: "referrer", label: "Referrer" },
   { key: "source", label: "Source / Medium" },
   { key: "device", label: "Dispositivo" },
   { key: "browser", label: "Browser" },
@@ -346,6 +351,7 @@ export function SessionsTab() {
   const [landingPageFilter, setLandingPageFilter] = useState("all");
   const [exitPageFilter, setExitPageFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
+  const [referrerFilter, setReferrerFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("started_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -360,13 +366,14 @@ export function SessionsTab() {
     if (landingPageFilter !== "all") data = data.filter((s) => s.landing_page === landingPageFilter);
     if (exitPageFilter !== "all") data = data.filter((s) => s.exit_page === exitPageFilter);
     if (cityFilter !== "all") data = data.filter((s) => s.city === cityFilter);
+    if (referrerFilter !== "all") data = data.filter((s) => s.referrer === referrerFilter);
     if (statusFilter !== "all") data = data.filter((s) => getSessionStatus(s) === statusFilter);
     if (search) {
       const q = search.toLowerCase();
-      data = data.filter((s) => s.landing_page.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) || s.source.toLowerCase().includes(q));
+      data = data.filter((s) => s.landing_page.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) || s.source.toLowerCase().includes(q) || s.referrer.toLowerCase().includes(q));
     }
     return data;
-  }, [deviceFilter, sourceFilter, mediumFilter, browserFilter, landingPageFilter, exitPageFilter, cityFilter, statusFilter, search]);
+  }, [deviceFilter, sourceFilter, mediumFilter, browserFilter, landingPageFilter, exitPageFilter, cityFilter, referrerFilter, statusFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -779,6 +786,10 @@ export function SessionsTab() {
                 <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
                 <SelectContent>{CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
               </Select>
+              <Select value={referrerFilter} onValueChange={(v) => { setReferrerFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[160px] h-8 text-[11px]"><SelectValue placeholder="Referrer" /></SelectTrigger>
+                <SelectContent>{REFERRER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -806,6 +817,7 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] text-foreground text-center">{s.pages_viewed}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate">{s.landing_page}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate">{s.exit_page}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.referrer}>🔗 {s.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || s.referrer}</td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className="text-[9px] capitalize">{s.source} / {s.medium}</Badge>
                       </td>

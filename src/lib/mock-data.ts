@@ -197,12 +197,14 @@ export interface MockSession {
   is_bounce: boolean;
   converted: boolean;
   revenue: number;
+  referrer: string;
 }
 
 const SOURCES = ["google", "direct", "facebook", "instagram", "bing", "referral", "twitter"];
 const MEDIUMS = ["organic", "cpc", "social", "referral", "(none)"];
 const LANDING_PAGES = ["/", "/products/wireless-headphones", "/blog/best-noise-cancelling-2026", "/pricing", "/landing/promo-verao", "/contact", "/products/smart-speaker"];
 const EXIT_PAGES = ["/checkout/success", "/contact", "/pricing", "/products/wireless-headphones", "/blog/home-audio-guide", "/", "/products/smart-speaker"];
+const SESSION_REFERRERS = ["https://www.google.com", "https://www.facebook.com", "https://www.instagram.com", "https://www.bing.com", "https://t.co", "https://www.youtube.com", "(direct)", "https://www.linkedin.com", "https://www.tiktok.com", "https://news.ycombinator.com"];
 
 export const mockSessionsDetailed: MockSession[] = Array.from({ length: 80 }, (_, i) => {
   const d = new Date(2026, 1, 14 - Math.floor(i / 6));
@@ -225,6 +227,7 @@ export const mockSessionsDetailed: MockSession[] = Array.from({ length: 80 }, (_
     is_bounce: isBounce,
     converted,
     revenue: converted ? parseFloat((Math.random() * 400 + 50).toFixed(2)) : 0,
+    referrer: randomFrom(SESSION_REFERRERS),
   };
 });
 

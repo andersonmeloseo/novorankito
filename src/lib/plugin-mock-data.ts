@@ -57,6 +57,7 @@ const CAMPAIGNS = ["brand_search", "products_shopping", "remarketing", "lookalik
 const CTA_TEXTS = ["Chamar no WhatsApp", "Enviar Formulário", "Ligar Agora", "Ver Planos", "Comprar Agora", "Saiba Mais", "Adicionar ao Carrinho"];
 const SEARCH_TERMS = ["fone bluetooth", "caixa de som", "headphone gamer", "earbuds", "soundbar", "home theater"];
 const ELEMENT_SELECTORS = ["button.cta-buy", "a.whatsapp-cta", "button.add-to-cart", "a.phone-link", "form.contact", "button.checkout", "div.product-card", "span.promo-badge"];
+const REFERRERS = ["https://www.google.com", "https://www.facebook.com", "https://www.instagram.com", "https://www.bing.com", "https://t.co", "https://www.youtube.com", "(direct)", "https://www.linkedin.com", "https://www.tiktok.com", "https://news.ycombinator.com"];
 
 // ── Plugin Event Interface ──
 export interface PluginEvent {
@@ -99,6 +100,8 @@ export interface PluginEvent {
   utm_term: string | null;
   // Value
   value: number;
+  // Referrer
+  referrer: string;
 }
 
 let seqCounter = 0;
@@ -154,6 +157,7 @@ function generatePluginEvent(i: number): PluginEvent {
     utm_content: hasUtm && Math.random() > 0.5 ? `variant_${randomFrom(["a", "b", "c"])}` : null,
     utm_term: hasUtm && Math.random() > 0.6 ? randomFrom(SEARCH_TERMS) : null,
     value: isPurchase ? parseFloat((Math.random() * 800 + 99).toFixed(2)) : isConversion ? parseFloat((Math.random() * 50 + 5).toFixed(2)) : 0,
+    referrer: randomFrom(REFERRERS),
   };
 }
 
