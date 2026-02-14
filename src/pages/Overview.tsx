@@ -96,8 +96,12 @@ export default function Overview() {
                   <Sparkles className="h-4 w-4" />
                   <span className="text-xs font-medium uppercase tracking-wider opacity-80">Dashboard</span>
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold font-display tracking-tight">Bem-vindo ao Rankito</h2>
-                <p className="text-sm opacity-80 mt-1">Acompanhe a performance do seu projeto em tempo real.</p>
+                <h2 className="text-lg sm:text-xl font-bold font-display tracking-tight">
+                  {projects[0] ? `Projeto: ${projects[0].name}` : "Bem-vindo ao Rankito"}
+                </h2>
+                <p className="text-sm opacity-80 mt-1">
+                  {projects[0] ? "Acompanhe a performance do seu projeto em tempo real." : "Crie um projeto para começar."}
+                </p>
               </div>
               <TrendingUp className="h-12 w-12 opacity-20 hidden sm:block" />
             </div>
