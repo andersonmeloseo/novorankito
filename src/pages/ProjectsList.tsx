@@ -26,7 +26,7 @@ export default function ProjectsList() {
   const [deleting, setDeleting] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects-list"],
+    queryKey: ["projects-list", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
