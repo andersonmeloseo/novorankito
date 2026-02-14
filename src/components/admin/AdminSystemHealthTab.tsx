@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ChartHeader } from "@/components/analytics/ChartPrimitives";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 
 interface AdminSystemHealthTabProps {
   stats: any;
@@ -64,8 +65,8 @@ export function AdminSystemHealthTab({ stats }: AdminSystemHealthTabProps) {
                 <div className="min-w-0">
                   <div className="text-xs font-medium text-foreground">{service.name}</div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={service.status === "operational" ? "default" : "destructive"} className="text-[9px]">
-                      {service.status === "operational" ? "Operacional" : "Falha"}
+                    <Badge variant={getStatusVariant(service.status)} className="text-[9px]">
+                      {translateStatus(service.status)}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">{service.latency}</span>
                   </div>

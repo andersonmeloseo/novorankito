@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useAssignRole, useRemoveRole } from "@/hooks/use-admin";
 import { exportCSV } from "@/lib/export-utils";
+import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 
 interface AdminUsersTabProps {
   profiles: any[];
@@ -141,9 +142,9 @@ export function AdminUsersTab({ profiles, roles, projects, billing, isLoading }:
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{userProjects.length}</td>
                     <td className="px-4 py-3">
-                      {userBilling ? (
+                    {userBilling ? (
                         <Badge variant="outline" className="text-[10px]">{userBilling.plan}</Badge>
-                      ) : <span className="text-[10px] text-muted-foreground">free</span>}
+                      ) : <span className="text-[10px] text-muted-foreground">Gratuito</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd/MM/yyyy")}</td>
                     <td className="px-4 py-3">
@@ -213,7 +214,7 @@ export function AdminUsersTab({ profiles, roles, projects, billing, isLoading }:
                 </div>
                 <div className="p-3 rounded-lg bg-muted/30">
                   <div className="text-[10px] text-muted-foreground uppercase">Plano</div>
-                  <div className="text-sm font-medium text-foreground">{detailBilling?.plan || "free"}</div>
+                  <div className="text-sm font-medium text-foreground">{detailBilling?.plan || "Gratuito"}</div>
                 </div>
               </div>
               <div>
@@ -228,7 +229,7 @@ export function AdminUsersTab({ profiles, roles, projects, billing, isLoading }:
                           <div className="text-xs font-medium text-foreground">{p.name}</div>
                           <div className="text-[10px] text-muted-foreground">{p.domain}</div>
                         </div>
-                        <Badge variant={p.status === "active" ? "default" : "secondary"} className="text-[9px]">{p.status}</Badge>
+                        <Badge variant={getStatusVariant(p.status)} className="text-[9px]">{translateStatus(p.status)}</Badge>
                       </div>
                     ))}
                   </div>
@@ -247,7 +248,7 @@ export function AdminUsersTab({ profiles, roles, projects, billing, isLoading }:
                       <div className="text-[10px] text-muted-foreground">Eventos</div>
                     </div>
                     <div className="p-2 rounded-md bg-muted/20 text-center">
-                      <Badge variant={detailBilling.status === "active" ? "default" : "destructive"} className="text-[10px]">{detailBilling.status}</Badge>
+                      <Badge variant={getStatusVariant(detailBilling.status)} className="text-[10px]">{translateStatus(detailBilling.status)}</Badge>
                       <div className="text-[10px] text-muted-foreground mt-1">Status</div>
                     </div>
                   </div>
