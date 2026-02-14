@@ -26,7 +26,7 @@ import { format, subDays, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type SortDir = "asc" | "desc";
-type DateRange = "7" | "14" | "28" | "30" | "60" | "90" | "custom";
+type DateRange = "1" | "7" | "28" | "90" | "180" | "480" | "custom";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
@@ -278,12 +278,12 @@ export default function SeoPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="1">Últimas 24 horas</SelectItem>
                     <SelectItem value="7">Últimos 7 dias</SelectItem>
-                    <SelectItem value="14">Últimos 14 dias</SelectItem>
                     <SelectItem value="28">Últimos 28 dias</SelectItem>
-                    <SelectItem value="30">Últimos 30 dias</SelectItem>
-                    <SelectItem value="60">Últimos 60 dias</SelectItem>
-                    <SelectItem value="90">Últimos 90 dias</SelectItem>
+                    <SelectItem value="90">Últimos 3 meses</SelectItem>
+                    <SelectItem value="180">Últimos 6 meses</SelectItem>
+                    <SelectItem value="480">Últimos 16 meses</SelectItem>
                     <SelectItem value="custom">Personalizado</SelectItem>
                   </SelectContent>
                 </Select>
