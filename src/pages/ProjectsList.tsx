@@ -58,12 +58,22 @@ export default function ProjectsList() {
     queryKey: ["projects-urls-summary", projectIds],
     queryFn: async () => {
       if (projectIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from("site_urls")
-        .select("project_id, id")
-        .in("project_id", projectIds);
-      if (error) throw error;
-      return data || [];
+      const allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("site_urls")
+          .select("project_id, id")
+          .in("project_id", projectIds)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return allData;
     },
     enabled: projectIds.length > 0,
   });
@@ -154,7 +164,7 @@ export default function ProjectsList() {
             </Button>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {projects.map((project) => {
               const metrics = metricsMap.get(project.id);
               const urlCount = urlsMap.get(project.id) || 0;
