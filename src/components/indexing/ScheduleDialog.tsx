@@ -67,6 +67,17 @@ export function ScheduleDialog({
   const [manualTime, setManualTime] = useState("08:00");
   const [manualCount, setManualCount] = useState(50);
 
+  const handleSendNow = () => {
+    const now = new Date().toISOString();
+    onScheduleManual({
+      type: manualType,
+      scheduledAt: now,
+      urlCount: manualCount,
+    });
+    toast.success(`Enviando ${manualCount} URLs para ${manualType === "indexing" ? "indexação" : "inspeção"} agora!`);
+    setOpen(false);
+  };
+
   const toggleDay = (day: string) => {
     setSelectedDays(prev => {
       const next = new Set(prev);
@@ -247,18 +258,6 @@ export function ScheduleDialog({
               </Select>
             </div>
 
-            {/* Date & Time */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Data</Label>
-                <Input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Horário</Label>
-                <Input type="time" value={manualTime} onChange={e => setManualTime(e.target.value)} />
-              </div>
-            </div>
-
             {/* URL Count */}
             <div className="space-y-1.5">
               <Label className="text-xs">Quantidade de URLs</Label>
@@ -272,6 +271,31 @@ export function ScheduleDialog({
                   ? `${totalUrls.toLocaleString("pt-BR")} URLs disponíveis`
                   : `${unknownUrls.toLocaleString("pt-BR")} URLs sem inspeção`}
               </p>
+            </div>
+
+            {/* Send Now */}
+            <Button size="sm" className="w-full gap-1.5" variant="default" onClick={handleSendNow}>
+              <Zap className="h-3 w-3" />
+              Enviar Agora
+            </Button>
+
+            {/* Or schedule */}
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <div className="flex-1 h-px bg-border" />
+              <span>ou agendar para depois</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* Date & Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data</Label>
+                <Input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Horário</Label>
+                <Input type="time" step="60" value={manualTime} onChange={e => setManualTime(e.target.value)} />
+              </div>
             </div>
 
             <DialogFooter>
