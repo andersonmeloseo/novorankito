@@ -14,6 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agents: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          instructions: string | null
+          is_system: boolean
+          name: string
+          notification_destination: string | null
+          notification_triggers: string[] | null
+          owner_id: string
+          project_id: string
+          speciality: string
+          updated_at: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          instructions?: string | null
+          is_system?: boolean
+          name: string
+          notification_destination?: string | null
+          notification_triggers?: string[] | null
+          owner_id: string
+          project_id: string
+          speciality?: string
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          instructions?: string | null
+          is_system?: boolean
+          name?: string
+          notification_destination?: string | null
+          notification_triggers?: string[] | null
+          owner_id?: string
+          project_id?: string
+          speciality?: string
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_chat_messages: {
+        Row: {
+          agent_id: string | null
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_sessions: {
         Row: {
           bounce_rate: number | null
