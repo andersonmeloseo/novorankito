@@ -206,11 +206,11 @@ export function CohortHeatmap({ data, xLabels, yLabels, maxValue, hue = 210 }: {
       <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `90px repeat(${xLabels.length}, 1fr)` }}>
         <div />
         {xLabels.map((label, i) => (
-          <div key={i} className="text-[8px] text-muted-foreground text-center font-medium px-1 truncate">{label}</div>
+          <div key={i} className="text-[8px] text-center font-medium px-1 truncate" style={{ color: '#000' }}>{label}</div>
         ))}
         {yLabels.map((yLabel, row) => (
           <>
-            <div key={`y-${row}`} className="text-[9px] text-muted-foreground text-right pr-2 flex items-center justify-end">{yLabel}</div>
+            <div key={`y-${row}`} className="text-[9px] text-right pr-2 flex items-center justify-end font-medium" style={{ color: '#000' }}>{yLabel}</div>
             {(data[row] || []).map((val, col) => {
               const intensity = maxValue > 0 ? Math.min(val / maxValue, 1) : 0;
               return (
@@ -223,8 +223,8 @@ export function CohortHeatmap({ data, xLabels, yLabels, maxValue, hue = 210 }: {
                   }}
                   title={`${yLabel} × ${xLabels[col]}: ${val}`}
                 >
-                  <span className="text-[9px] font-medium" style={{
-                    color: intensity > 0.5 ? '#fff' : 'hsl(var(--foreground))',
+                  <span className="text-[9px] font-semibold" style={{
+                    color: '#000',
                   }}>
                     {val > 0 ? val.toLocaleString("pt-BR") : "–"}
                   </span>
