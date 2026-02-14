@@ -1,7 +1,6 @@
 import { TopBar } from "@/components/layout/TopBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { InsightCard } from "@/components/dashboard/InsightCard";
-import { mockTrendData, mockInsights } from "@/lib/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -12,14 +11,14 @@ import { useSeoMetrics, useAnalyticsSessions, useConversions } from "@/hooks/use
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BarChart3, TrendingUp, Sparkles } from "lucide-react";
+import { BarChart3, TrendingUp, Sparkles, Lightbulb } from "lucide-react";
 
 export default function Overview() {
   const { user } = useAuth();
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").limit(1);
+      const { data } = await supabase.from("projects").select("id, name").order("created_at", { ascending: false }).limit(1);
       return data || [];
     },
     enabled: !!user,
@@ -39,20 +38,36 @@ export default function Overview() {
 
   const hasRealData = seoMetrics.length > 0 || sessions.length > 0 || conversions.length > 0;
 
-  const kpiList = hasRealData
-    ? [
-        { value: totalClicks, change: 0, label: "Cliques" },
-        { value: totalImpressions, change: 0, label: "Impressões" },
-        { value: totalSessions, change: 0, label: "Sessões" },
-        { value: totalConversions, change: 0, label: "Conversões" },
-      ]
-    : [
-        { value: 24832, change: 12.4, label: "Cliques" },
-        { value: 1284920, change: 8.1, label: "Impressões" },
-        { value: 32100, change: 9.7, label: "Sessões" },
-        { value: 842, change: 22.3, label: "Conversões" },
-      ];
+  const kpiList = [
+    { value: totalClicks, change: 0, label: "Cliques" },
+    { value: totalImpressions, change: 0, label: "Impressões" },
+    { value: totalSessions, change: 0, label: "Sessões" },
+    { value: totalConversions, change: 0, label: "Conversões" },
+  ];
 
+  // Build trend data from real seo_metrics grouped by date
+  const byDate = new Map<string, { clicks: number; sessions: number }>();
+  seoMetrics.forEach((m: any) => {
+    const d = m.metric_date;
+    const existing = byDate.get(d) || { clicks: 0, sessions: 0 };
+    existing.clicks += m.clicks || 0;
+    byDate.set(d, existing);
+  });
+  sessions.forEach((s: any) => {
+    const d = s.session_date;
+    const existing = byDate.get(d) || { clicks: 0, sessions: 0 };
+    existing.sessions += s.sessions_count || 0;
+    byDate.set(d, existing);
+  });
+  const trendData = Array.from(byDate.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, d]) => ({
+      date: new Date(date).toLocaleDateString("pt-BR", { month: "short", day: "numeric" }),
+      clicks: d.clicks,
+      sessions: d.sessions,
+    }));
+
+  // Top pages from real data
   const byUrl = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
   seoMetrics.forEach((m: any) => {
     if (!m.url) return;
@@ -64,23 +79,15 @@ export default function Overview() {
     existing.count++;
     byUrl.set(m.url, existing);
   });
-  const topPages = hasRealData
-    ? Array.from(byUrl.entries())
-        .sort((a, b) => b[1].clicks - a[1].clicks)
-        .slice(0, 5)
-        .map(([url, d]) => ({
-          url,
-          clicks: d.clicks,
-          ctr: Number((d.ctr / d.count).toFixed(2)),
-          position: Number((d.position / d.count).toFixed(1)),
-        }))
-    : [
-        { url: "/products/wireless-headphones", clicks: 3842, ctr: 3.9, position: 4.2 },
-        { url: "/blog/best-noise-cancelling-2026", clicks: 2910, ctr: 2.04, position: 6.1 },
-        { url: "/products/smart-speaker", clicks: 2104, ctr: 3.08, position: 5.8 },
-        { url: "/blog/home-audio-guide", clicks: 1890, ctr: 1.68, position: 8.3 },
-        { url: "/category/headphones", clicks: 1542, ctr: 3.41, position: 3.9 },
-      ];
+  const topPages = Array.from(byUrl.entries())
+    .sort((a, b) => b[1].clicks - a[1].clicks)
+    .slice(0, 5)
+    .map(([url, d]) => ({
+      url,
+      clicks: d.clicks,
+      ctr: Number((d.ctr / d.count).toFixed(2)),
+      position: Number((d.position / d.count).toFixed(1)),
+    }));
 
   return (
     <>
@@ -100,7 +107,11 @@ export default function Overview() {
                   {projects[0] ? `Projeto: ${projects[0].name}` : "Bem-vindo ao Rankito"}
                 </h2>
                 <p className="text-sm opacity-80 mt-1">
-                  {projects[0] ? "Acompanhe a performance do seu projeto em tempo real." : "Crie um projeto para começar."}
+                  {projects[0]
+                    ? hasRealData
+                      ? "Acompanhe a performance do seu projeto em tempo real."
+                      : "Conecte suas integrações para começar a ver dados reais."
+                    : "Crie um projeto para começar."}
                 </p>
               </div>
               <TrendingUp className="h-12 w-12 opacity-20 hidden sm:block" />
@@ -122,6 +133,8 @@ export default function Overview() {
         {/* Trend Chart */}
         {isLoading ? (
           <ChartSkeleton />
+        ) : trendData.length === 0 ? (
+          <EmptyState icon={BarChart3} title="Sem dados de tendência" description="Os dados aparecerão aqui quando suas integrações começarem a sincronizar." />
         ) : (
           <AnimatedContainer delay={0.15}>
             <Card className="overflow-hidden">
@@ -131,7 +144,7 @@ export default function Overview() {
               <CardContent>
                 <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mockTrendData}>
+                    <LineChart data={trendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" tick={{ fontSize: 11, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 11, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
@@ -193,13 +206,15 @@ export default function Overview() {
             </AnimatedContainer>
           )}
 
-          {/* Recent Insights */}
+          {/* Insights - empty state when no data */}
           <AnimatedContainer delay={0.25}>
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-foreground tracking-tight font-display">Insights Recentes</h3>
-              {mockInsights.map((insight) => (
-                <InsightCard key={insight.id} {...insight} />
-              ))}
+              {hasRealData ? (
+                <EmptyState icon={Lightbulb} title="Insights em breve" description="O agente IA gerará insights assim que houver dados suficientes para análise." />
+              ) : (
+                <EmptyState icon={Lightbulb} title="Sem insights ainda" description="Conecte suas integrações e aguarde a coleta de dados para receber insights automáticos." />
+              )}
             </div>
           </AnimatedContainer>
         </div>
