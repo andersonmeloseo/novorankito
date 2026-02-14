@@ -162,16 +162,22 @@ export default function AnalyticsPage() {
     () => getComparisonRange(startDate, endDate), [startDate, endDate]
   );
 
-  // Load ALL data upfront (no tab gating)
+  // Load overview first, then stagger secondary reports to avoid GA4 429 quota errors
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useGA4Report(projectId, "overview", startDate, endDate);
+  const overviewReady = !!overviewData && !loadingOverview;
   const { data: compOverviewData } = useGA4Report(compareEnabled ? projectId : undefined, "overview", compStart, compEnd);
-  const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(projectId, "acquisition", startDate, endDate);
-  const { data: engagementData, isLoading: loadingEngagement } = useGA4Report(projectId, "engagement", startDate, endDate);
-  const { data: demographicsData, isLoading: loadingDemographics } = useGA4Report(projectId, "demographics", startDate, endDate);
-  const { data: technologyData, isLoading: loadingTechnology } = useGA4Report(projectId, "technology", startDate, endDate);
-  const { data: realtimeData, isLoading: loadingRealtime } = useGA4Report(projectId, "realtime");
-  const { data: retentionData, isLoading: loadingRetention } = useGA4Report(projectId, "retention", startDate, endDate);
-  const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(projectId, "ecommerce", startDate, endDate);
+  // Secondary reports only fire once overview is done (max 2-3 concurrent)
+  const { data: acquisitionData, isLoading: loadingAcquisition } = useGA4Report(overviewReady ? projectId : undefined, "acquisition", startDate, endDate);
+  const { data: engagementData, isLoading: loadingEngagement } = useGA4Report(overviewReady ? projectId : undefined, "engagement", startDate, endDate);
+  const { data: demographicsData, isLoading: loadingDemographics } = useGA4Report(overviewReady ? projectId : undefined, "demographics", startDate, endDate);
+  // Third wave: after acquisition loads
+  const acqReady = overviewReady && !!acquisitionData;
+  const { data: technologyData, isLoading: loadingTechnology } = useGA4Report(acqReady ? projectId : undefined, "technology", startDate, endDate);
+  const { data: retentionData, isLoading: loadingRetention } = useGA4Report(acqReady ? projectId : undefined, "retention", startDate, endDate);
+  const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(acqReady ? projectId : undefined, "ecommerce", startDate, endDate);
+  // Realtime last
+  const techReady = acqReady && !!technologyData;
+  const { data: realtimeData, isLoading: loadingRealtime } = useGA4Report(techReady ? projectId : undefined, "realtime");
 
   const [syncing, setSyncing] = useState(false);
   const handleRefresh = async () => { setSyncing(true); await refetchOverview(); setSyncing(false); };
