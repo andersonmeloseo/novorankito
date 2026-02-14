@@ -115,8 +115,8 @@ serve(async (req) => {
 
     switch (report_type) {
       case "overview": {
-        // Main KPIs + trend
-        const [overview, trend] = await Promise.all([
+        // Split overview into 2 batches (GA4 API limits to 10 metrics per request)
+        const [overviewA, overviewB, trend] = await Promise.all([
           runReport(accessToken, propId, {
             dimensions: [],
             metrics: [
@@ -124,8 +124,14 @@ serve(async (req) => {
               { name: "engagedSessions" }, { name: "engagementRate" },
               { name: "averageSessionDuration" }, { name: "screenPageViews" },
               { name: "screenPageViewsPerSession" }, { name: "bounceRate" },
-              { name: "eventCount" }, { name: "conversions" },
-              { name: "totalRevenue" }, { name: "ecommercePurchases" },
+              { name: "eventCount" },
+            ],
+            dateRanges,
+          }),
+          runReport(accessToken, propId, {
+            dimensions: [],
+            metrics: [
+              { name: "conversions" }, { name: "totalRevenue" }, { name: "ecommercePurchases" },
             ],
             dateRanges,
           }),
@@ -141,8 +147,10 @@ serve(async (req) => {
             limit: 500,
           }),
         ]);
+        const totalsA = parseRows(overviewA)[0] || {};
+        const totalsB = parseRows(overviewB)[0] || {};
         result = {
-          totals: parseRows(overview)[0] || {},
+          totals: { ...totalsA, ...totalsB },
           trend: parseRows(trend),
         };
         break;
