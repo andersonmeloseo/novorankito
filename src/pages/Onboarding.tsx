@@ -18,6 +18,9 @@ import {
   Bell, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 const STEPS = [
   { label: "Projeto", icon: Globe },
@@ -69,17 +72,52 @@ const pageVariants = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [project, setProject] = useState({
     name: "", domain: "", type: "", country: "", timezone: "",
   });
 
   const canAdvance =
     step === 0
-      ? project.name.trim() && project.domain.trim() && project.type && project.country
+      ? project.name.trim() && project.domain.trim() && project.type && project.country && !saving
       : true;
 
+  const saveProject = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("projects").insert({
+        name: project.name.trim(),
+        domain: project.domain.trim(),
+        site_type: project.type,
+        country: project.country,
+        timezone: project.timezone || null,
+        owner_id: user.id,
+      }).select("id").single();
+      if (error) throw error;
+      setProjectId(data.id);
+      // Also add user as project member with owner role
+      await supabase.from("project_members").insert({
+        project_id: data.id,
+        user_id: user.id,
+        role: "owner",
+      });
+      setStep(1);
+    } catch (err: any) {
+      toast({ title: "Erro ao criar projeto", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleNext = () => {
+    if (step === 0) {
+      saveProject();
+      return;
+    }
     if (step < STEPS.length - 1) setStep(step + 1);
     else navigate("/overview");
   };
@@ -159,6 +197,7 @@ export default function Onboarding() {
           </Button>
           <div className="text-xs text-muted-foreground">Etapa {step + 1} de {STEPS.length}</div>
           <Button size="sm" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {step === STEPS.length - 1 ? "Concluir" : "Continuar"} <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
