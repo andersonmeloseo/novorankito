@@ -1,6 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalyticsDataTable } from "./AnalyticsDataTable";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+
+const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 interface EngagementTabProps {
   data: any;
@@ -11,8 +14,74 @@ export function EngagementTab({ data }: EngagementTabProps) {
   const events = data?.events || [];
   const landingPages = data?.landingPages || [];
 
+  const topPagesChart = pages.slice(0, 8).map((p: any) => ({
+    name: (p.pagePath || "—").replace(/^\//, "").substring(0, 25) || "/",
+    views: p.screenPageViews || 0,
+  }));
+
+  const topEventsChart = events.slice(0, 8).map((e: any) => ({
+    name: (e.eventName || "—").substring(0, 20),
+    count: e.eventCount || 0,
+  }));
+
+  const landingChart = landingPages.slice(0, 6).map((l: any) => ({
+    name: (l.landingPage || "—").replace(/^\//, "").substring(0, 25) || "/",
+    value: l.sessions || 0,
+  }));
+
   return (
     <div className="space-y-4">
+      <div className="grid md:grid-cols-2 gap-4">
+        {topPagesChart.length > 0 && (
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas (Views)</h3>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topPagesChart} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={130} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="views" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+        {topEventsChart.length > 0 && (
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Top Eventos</h3>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topEventsChart} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={130} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {landingChart.length > 0 && (
+        <Card className="p-5">
+          <h3 className="text-sm font-medium text-foreground mb-4">Sessões por Página de Entrada</h3>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={landingChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  {landingChart.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
       <Tabs defaultValue="pages">
         <TabsList>
           <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
