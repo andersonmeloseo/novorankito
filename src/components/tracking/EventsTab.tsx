@@ -10,15 +10,13 @@ import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-conta
 import {
   mockTrackingEventsDetailed,
   mockConversionsByDay,
-  mockPageViewsByDay,
   generateConversionsHeatmap,
-  type MockTrackingEvent,
 } from "@/lib/mock-data";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell,
 } from "recharts";
-import { Download, Search, Eye, Flame } from "lucide-react";
+import { Download, Search, Flame, Activity, MousePointerClick, Smartphone, Globe } from "lucide-react";
 import { format } from "date-fns";
 
 const PERIOD_OPTIONS = [
@@ -66,7 +64,7 @@ export function EventsTab() {
   const [device, setDevice] = useState("all");
   const [conversionType, setConversionType] = useState("all");
   const [search, setSearch] = useState("");
-  const [subTab, setSubTab] = useState("conversions");
+  const [subTab, setSubTab] = useState("eventos");
 
   const filtered = useMemo(() => {
     let data = mockTrackingEventsDetailed;
@@ -80,16 +78,17 @@ export function EventsTab() {
     return data;
   }, [eventType, device, conversionType, search]);
 
-  // KPIs
-  const uniqueVisitors = new Set(filtered.map((e) => `${e.device}-${e.location_city}-${e.browser}`)).size;
+  // KPIs - event-focused
+  const totalEvents = filtered.length;
   const uniquePages = new Set(filtered.map((e) => e.page_url)).size;
-  const totalPageViews = filtered.filter((e) => e.event_type === "page_view").length;
-  const totalConversions = filtered.filter((e) => e.conversion_type === "conversion").length;
-  const conversionRate = filtered.length > 0 ? ((totalConversions / filtered.length) * 100).toFixed(1) : "0";
+  const mobileEvents = filtered.filter((e) => e.device === "mobile").length;
+  const mobilePercent = totalEvents > 0 ? ((mobileEvents / totalEvents) * 100).toFixed(1) : "0";
+  const uniqueCities = new Set(filtered.map((e) => e.location_city)).size;
+  const avgEventsPerPage = uniquePages > 0 ? Math.round(totalEvents / uniquePages) : 0;
 
-  // Top pages
+  // Top pages by events
   const pageMap = new Map<string, number>();
-  filtered.filter((e) => e.conversion_type === "conversion").forEach((e) => {
+  filtered.forEach((e) => {
     pageMap.set(e.page_url, (pageMap.get(e.page_url) || 0) + 1);
   });
   const topPages = Array.from(pageMap.entries())
@@ -136,27 +135,50 @@ export function EventsTab() {
         </div>
       </Card>
 
-      {/* KPIs */}
+      {/* KPIs - event-focused */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard label="Visitantes Únicos" value={uniqueVisitors} change={12.4} />
-        <KpiCard label="Páginas Únicas" value={uniquePages} change={3.2} />
-        <KpiCard label="Visualizações" value={totalPageViews} change={8.7} />
-        <KpiCard label="Conversões" value={totalConversions} change={22.3} />
-        <KpiCard label="Taxa Conversão" value={Number(conversionRate)} change={5.1} suffix="%" />
+        <KpiCard label="Total de Eventos" value={totalEvents} change={15.8} />
+        <KpiCard label="Páginas Ativas" value={uniquePages} change={3.2} />
+        <KpiCard label="Eventos/Página" value={avgEventsPerPage} change={7.4} />
+        <KpiCard label="Mobile" value={Number(mobilePercent)} change={4.1} suffix="%" />
+        <KpiCard label="Cidades Alcançadas" value={uniqueCities} change={11.2} />
       </StaggeredGrid>
 
       {/* Sub-tabs */}
       <Tabs value={subTab} onValueChange={setSubTab}>
         <TabsList>
-          <TabsTrigger value="overview" className="text-xs">Visão Geral</TabsTrigger>
-          <TabsTrigger value="conversions" className="text-xs">Conversões</TabsTrigger>
+          <TabsTrigger value="eventos" className="text-xs">Eventos</TabsTrigger>
+          <TabsTrigger value="conversoes" className="text-xs">Conversões</TabsTrigger>
           <TabsTrigger value="pageviews" className="text-xs">Page Views</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4 space-y-4">
+        {/* EVENTOS tab - shows all events with charts */}
+        <TabsContent value="eventos" className="mt-4 space-y-4">
+          {/* Line Chart */}
+          <AnimatedContainer>
+            <Card className="p-5">
+              <h3 className="text-sm font-medium text-foreground mb-4">Eventos ao Longo do Tempo</h3>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={mockConversionsByDay}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line type="monotone" dataKey="whatsapp_click" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="WhatsApp" />
+                    <Line type="monotone" dataKey="form_submit" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Formulário" />
+                    <Line type="monotone" dataKey="phone_call" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Ligação" />
+                    <Line type="monotone" dataKey="cta_click" stroke="hsl(var(--info))" strokeWidth={2} dot={false} name="CTA Click" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </AnimatedContainer>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Distribution Pie */}
-            <AnimatedContainer>
+            <AnimatedContainer delay={0.1}>
               <Card className="p-5">
                 <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo</h3>
                 <div className="h-[260px]">
@@ -174,9 +196,9 @@ export function EventsTab() {
             </AnimatedContainer>
 
             {/* Top Pages Bar */}
-            <AnimatedContainer delay={0.1}>
+            <AnimatedContainer delay={0.15}>
               <Card className="p-5">
-                <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas com Conversões</h3>
+                <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas por Eventos</h3>
                 <div className="h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topPages} layout="vertical" margin={{ left: 10 }}>
@@ -184,17 +206,52 @@ export function EventsTab() {
                       <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                       <YAxis dataKey="url" type="category" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                       <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Conversões" />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Eventos" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
             </AnimatedContainer>
           </div>
+
+          {/* Heatmap */}
+          <AnimatedContainer delay={0.2}>
+            <Card className="p-5">
+              <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Eventos (Dia × Hora)
+              </h3>
+              <div className="overflow-x-auto">
+                <div className="min-w-[600px]">
+                  <div className="flex gap-0.5 mb-1 ml-10">
+                    {Array.from({ length: 8 }, (_, i) => i * 3).map((h) => (
+                      <span key={h} className="text-[9px] text-muted-foreground" style={{ width: `${100 / 8}%` }}>{h}h</span>
+                    ))}
+                  </div>
+                  {heatmapData.map((row) => (
+                    <div key={row.day} className="flex items-center gap-0.5 mb-0.5">
+                      <span className="text-[10px] text-muted-foreground w-10 text-right pr-2">{row.day}</span>
+                      {row.hours.map((cell) => (
+                        <div
+                          key={cell.hour}
+                          className="flex-1 h-7 rounded-sm flex items-center justify-center"
+                          style={{ backgroundColor: `hsl(var(--primary) / ${Math.max(0.05, cell.value / 40)})` }}
+                          title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
+                        >
+                          <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                            {cell.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </AnimatedContainer>
         </TabsContent>
 
-        <TabsContent value="conversions" className="mt-4 space-y-4">
-          {/* Line Chart */}
+        {/* CONVERSÕES tab */}
+        <TabsContent value="conversoes" className="mt-4 space-y-4">
           <AnimatedContainer>
             <Card className="p-5">
               <h3 className="text-sm font-medium text-foreground mb-4">Conversões ao Longo do Tempo</h3>
@@ -216,7 +273,6 @@ export function EventsTab() {
             </Card>
           </AnimatedContainer>
 
-          {/* Heatmap */}
           <AnimatedContainer delay={0.1}>
             <Card className="p-5">
               <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
@@ -236,10 +292,10 @@ export function EventsTab() {
                         <div
                           key={cell.hour}
                           className="flex-1 h-7 rounded-sm flex items-center justify-center"
-                          style={{ backgroundColor: `hsl(var(--primary) / ${Math.max(0.05, cell.value / 40)})` }}
+                          style={{ backgroundColor: `hsl(var(--success) / ${Math.max(0.05, cell.value / 40)})` }}
                           title={`${row.day} ${cell.hour}:00 — ${cell.value} conversões`}
                         >
-                          <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                          <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-success-foreground" : "text-muted-foreground"}`}>
                             {cell.value}
                           </span>
                         </div>
@@ -252,21 +308,21 @@ export function EventsTab() {
           </AnimatedContainer>
         </TabsContent>
 
+        {/* PAGE VIEWS tab */}
         <TabsContent value="pageviews" className="mt-4 space-y-4">
-          {/* Page Views Line Chart */}
           <AnimatedContainer>
             <Card className="p-5">
               <h3 className="text-sm font-medium text-foreground mb-4">Page Views ao Longo do Tempo</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockPageViewsByDay}>
+                  <LineChart data={mockConversionsByDay}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="page_views" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Visualizações" />
-                    <Line type="monotone" dataKey="unique_views" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Únicas" />
+                    <Line type="monotone" dataKey="whatsapp_click" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Views" />
+                    <Line type="monotone" dataKey="form_submit" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Únicas" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -274,7 +330,6 @@ export function EventsTab() {
           </AnimatedContainer>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Top Pages by Views */}
             <AnimatedContainer delay={0.1}>
               <Card className="p-5">
                 <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas por Views</h3>
@@ -292,10 +347,9 @@ export function EventsTab() {
               </Card>
             </AnimatedContainer>
 
-            {/* Distribution Pie for Page Views */}
             <AnimatedContainer delay={0.15}>
               <Card className="p-5">
-                <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo de Evento</h3>
+                <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo</h3>
                 <div className="h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -311,7 +365,6 @@ export function EventsTab() {
             </AnimatedContainer>
           </div>
 
-          {/* Page Views Heatmap */}
           <AnimatedContainer delay={0.2}>
             <Card className="p-5">
               <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
@@ -353,7 +406,7 @@ export function EventsTab() {
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-medium text-foreground">Conversões Detalhadas</h3>
+              <h3 className="text-sm font-medium text-foreground">Eventos Detalhados</h3>
               <p className="text-[11px] text-muted-foreground">Mostrando {filtered.length} de {mockTrackingEventsDetailed.length} eventos</p>
             </div>
             <div className="flex items-center gap-2">
