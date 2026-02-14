@@ -42,6 +42,9 @@ export interface InventoryUrl {
   last_request_status: string | null;
   last_request_at: string | null;
   last_request_type: string | null;
+  // GSC metrics (28d)
+  clicks_28d: number;
+  impressions_28d: number;
 }
 
 export interface InventoryStats {

@@ -19,7 +19,7 @@ import {
 } from "@/hooks/use-indexing";
 import {
   Send, CheckCircle2, Clock, AlertTriangle, RotateCcw, Zap, Globe, Link2,
-  ArrowUpFromLine, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
+  ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
   ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, Layers, History, Package, ScanSearch,
   AlertCircle, Ban, Info
 } from "lucide-react";
@@ -36,8 +36,8 @@ const VERDICT_MAP: Record<string, { color: string; icon: React.ElementType; labe
   PASS: { color: "bg-success/10 text-success border-success/20", icon: ShieldCheck, label: "Indexada" },
   PARTIAL: { color: "bg-warning/10 text-warning border-warning/20", icon: AlertCircle, label: "Parcial" },
   FAIL: { color: "bg-destructive/10 text-destructive border-destructive/20", icon: ShieldOff, label: "Não Indexada" },
-  NEUTRAL: { color: "bg-muted text-muted-foreground border-border", icon: HelpCircle, label: "Neutro" },
-  VERDICT_UNSPECIFIED: { color: "bg-muted text-muted-foreground border-border", icon: HelpCircle, label: "Indefinido" },
+  NEUTRAL: { color: "bg-muted text-muted-foreground border-border", icon: HelpCircle, label: "Sem Inspeção" },
+  VERDICT_UNSPECIFIED: { color: "bg-muted text-muted-foreground border-border", icon: HelpCircle, label: "Sem Inspeção" },
 };
 
 const REQUEST_STATUS_MAP: Record<string, { color: string; icon: React.ElementType; label: string }> = {
@@ -71,7 +71,19 @@ export default function IndexingPage() {
   const [detailUrl, setDetailUrl] = useState<InventoryUrl | null>(null);
   const [invPage, setInvPage] = useState(0);
   const [histPage, setHistPage] = useState(0);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const INV_PAGE_SIZE = 50;
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+    setInvPage(0);
+  };
 
   // Get active project
   const { data: projects } = useQuery({
@@ -93,9 +105,9 @@ export default function IndexingPage() {
   const inventory = inventoryData?.inventory || [];
   const stats = inventoryData?.stats || { totalUrls: 0, indexed: 0, notIndexed: 0, unknown: 0, sentToday: 0, dailyLimit: 200 };
 
-  // ─── Filtered Inventory ───
+  // ─── Filtered & Sorted Inventory ───
   const filteredInventory = useMemo(() => {
-    return inventory.filter(u => {
+    let items = inventory.filter(u => {
       if (searchFilter && !u.url.toLowerCase().includes(searchFilter.toLowerCase()) && !(u.meta_title || "").toLowerCase().includes(searchFilter.toLowerCase())) return false;
       if (verdictFilter === "indexed" && u.verdict !== "PASS") return false;
       if (verdictFilter === "not_indexed" && (u.verdict === "PASS" || !u.verdict)) return false;
@@ -103,7 +115,25 @@ export default function IndexingPage() {
       if (verdictFilter === "never_sent" && u.last_request_status) return false;
       return true;
     });
-  }, [inventory, searchFilter, verdictFilter]);
+    if (sortCol) {
+      items = [...items].sort((a, b) => {
+        let aVal: any, bVal: any;
+        switch (sortCol) {
+          case "url": aVal = a.url; bVal = b.url; break;
+          case "verdict": aVal = a.verdict || ""; bVal = b.verdict || ""; break;
+          case "clicks_28d": aVal = a.clicks_28d; bVal = b.clicks_28d; break;
+          case "impressions_28d": aVal = a.impressions_28d; bVal = b.impressions_28d; break;
+          case "coverage_state": aVal = a.coverage_state || ""; bVal = b.coverage_state || ""; break;
+          case "last_crawl_time": aVal = a.last_crawl_time || ""; bVal = b.last_crawl_time || ""; break;
+          default: aVal = ""; bVal = "";
+        }
+        if (typeof aVal === "number" && typeof bVal === "number") return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+        const cmp = String(aVal).localeCompare(String(bVal), "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return items;
+  }, [inventory, searchFilter, verdictFilter, sortCol, sortDir]);
 
   const invTotalPages = Math.max(1, Math.ceil(filteredInventory.length / INV_PAGE_SIZE));
   const safeInvPage = Math.min(invPage, invTotalPages - 1);
@@ -339,10 +369,29 @@ export default function IndexingPage() {
                         <th className="px-3 py-3 w-10">
                           <Checkbox checked={selectedUrls.size === filteredInventory.length && filteredInventory.length > 0} onCheckedChange={toggleAll} />
                         </th>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">URL</th>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Indexação</th>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Cobertura</th>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Crawl</th>
+                        {[
+                          { key: "url", label: "URL" },
+                          { key: "verdict", label: "Indexação" },
+                          { key: "clicks_28d", label: "Cliques (28d)" },
+                          { key: "impressions_28d", label: "Impressões (28d)" },
+                          { key: "coverage_state", label: "Cobertura" },
+                          { key: "last_crawl_time", label: "Último Crawl" },
+                        ].map(col => (
+                          <th
+                            key={col.key}
+                            className="px-3 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors group"
+                            onClick={() => handleSort(col.key)}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {col.label}
+                              {sortCol === col.key ? (
+                                sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                              )}
+                            </span>
+                          </th>
+                        ))}
                         <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Envio</th>
                         <th className="px-3 py-3 w-10" />
                       </tr>
@@ -366,6 +415,12 @@ export default function IndexingPage() {
                           </td>
                           <td className="px-3 py-2.5">
                             <StatusBadge status={item.verdict} map={VERDICT_MAP} />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="text-xs tabular-nums text-muted-foreground">{item.clicks_28d.toLocaleString("pt-BR")}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="text-xs tabular-nums text-muted-foreground">{item.impressions_28d.toLocaleString("pt-BR")}</span>
                           </td>
                           <td className="px-3 py-2.5">
                             <span className="text-[10px] text-muted-foreground">{item.coverage_state || "—"}</span>
