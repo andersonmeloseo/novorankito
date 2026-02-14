@@ -137,8 +137,8 @@ export default function IndexingPage() {
     let items = inventory.filter(u => {
       if (searchFilter && !u.url.toLowerCase().includes(searchFilter.toLowerCase()) && !(u.meta_title || "").toLowerCase().includes(searchFilter.toLowerCase())) return false;
       if (verdictFilter === "indexed" && u.verdict !== "PASS") return false;
-      if (verdictFilter === "not_indexed" && (u.verdict === "PASS" || !u.verdict)) return false;
-      if (verdictFilter === "unknown" && u.verdict) return false;
+      if (verdictFilter === "not_indexed" && u.verdict !== "FAIL" && u.verdict !== "PARTIAL") return false;
+      if (verdictFilter === "unknown" && u.verdict && u.verdict !== "NEUTRAL" && u.verdict !== "VERDICT_UNSPECIFIED") return false;
       if (verdictFilter === "never_sent" && u.last_request_status) return false;
       return true;
     });
@@ -529,209 +529,220 @@ export default function IndexingPage() {
           <TabsContent value="sitemap" className="mt-4 space-y-4">
             {smLoading ? <TableSkeleton /> : !sitemaps || sitemaps.length === 0 ? (
               <EmptyState icon={Map} title="Nenhum sitemap encontrado" description="O Google Search Console não retornou sitemaps para esta propriedade." />
-            ) : (
-              <div className="space-y-4">
-                {/* Sitemap Actions Bar */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={selectedSmUrls.size === sitemaps.length ? "secondary" : "outline"}
-                    className="gap-1.5 text-xs"
-                    onClick={() => {
-                      if (selectedSmUrls.size === sitemaps.length) {
-                        setSelectedSmUrls(new Set());
-                      } else {
-                        setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
-                      }
-                    }}
-                  >
-                    <Checkbox
-                      checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
-                      onCheckedChange={() => {
+            ) : (() => {
+              // Local sort for sitemap tab
+              const smSortKey = sortCol;
+              const filteredSm = sitemaps.filter((sm: any) =>
+                !searchFilter || sm.path?.toLowerCase().includes(searchFilter.toLowerCase())
+              );
+              const sortedSm = [...filteredSm].sort((a: any, b: any) => {
+                if (!smSortKey) return 0;
+                let aVal: any, bVal: any;
+                switch (smSortKey) {
+                  case "sm_path": aVal = a.path || ""; bVal = b.path || ""; break;
+                  case "sm_type": aVal = a.type || ""; bVal = b.type || ""; break;
+                  case "sm_urls": aVal = a.urlCount || 0; bVal = b.urlCount || 0; break;
+                  case "sm_indexed": aVal = a.indexedCount || 0; bVal = b.indexedCount || 0; break;
+                  case "sm_percent": aVal = a.urlCount > 0 ? a.indexedCount / a.urlCount : 0; bVal = b.urlCount > 0 ? b.indexedCount / b.urlCount : 0; break;
+                  case "sm_submitted": aVal = a.lastSubmitted || ""; bVal = b.lastSubmitted || ""; break;
+                  case "sm_crawled": aVal = a.lastDownloaded || ""; bVal = b.lastDownloaded || ""; break;
+                  default: return 0;
+                }
+                if (typeof aVal === "number" && typeof bVal === "number") return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+                const cmp = String(aVal).localeCompare(String(bVal), "pt-BR", { sensitivity: "base" });
+                return sortDir === "asc" ? cmp : -cmp;
+              });
+
+              const smColumns = [
+                { key: "sm_path", label: "Sitemap" },
+                { key: "sm_type", label: "Tipo" },
+                { key: "sm_urls", label: "URLs Declaradas", align: "right" as const },
+                { key: "sm_indexed", label: "Indexadas", align: "right" as const },
+                { key: "sm_percent", label: "% Indexada", align: "right" as const },
+                { key: "sm_submitted", label: "Último Envio" },
+                { key: "sm_crawled", label: "Último Crawl" },
+              ];
+
+              return (
+                <div className="space-y-4">
+                  {/* Sitemap Actions Bar */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={selectedSmUrls.size === sitemaps.length ? "secondary" : "outline"}
+                      className="gap-1.5 text-xs"
+                      onClick={() => {
                         if (selectedSmUrls.size === sitemaps.length) {
                           setSelectedSmUrls(new Set());
                         } else {
                           setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
                         }
                       }}
-                      className="h-3.5 w-3.5"
-                    />
-                    {selectedSmUrls.size === sitemaps.length ? "Desmarcar Todos" : "Selecionar Todos"}
-                  </Button>
-
-                  {selectedSmUrls.size > 0 && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                         onClick={() => {
-                          const allUrls = inventory.map(u => u.url);
-                          if (allUrls.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
-                          submitMutation.mutate({ urls: allUrls, requestType: "URL_UPDATED" });
+                    >
+                      <Checkbox
+                        checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
+                        onCheckedChange={() => {
+                          if (selectedSmUrls.size === sitemaps.length) setSelectedSmUrls(new Set());
+                          else setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
                         }}
-                        disabled={submitMutation.isPending}
-                      >
-                        {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                        Enviar para Indexação ({inventory.length} URLs)
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs"
-                        onClick={() => {
-                          const unknowns = inventory.filter(u => !u.verdict).map(u => u.url);
-                          if (unknowns.length === 0) { toast.info("Todas já foram inspecionadas"); return; }
-                          inspectMutation.mutate(unknowns);
-                        }}
-                        disabled={inspectMutation.isPending}
-                      >
-                        {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
-                        Inspecionar Não Verificadas
-                      </Button>
-                    </>
-                  )}
+                        className="h-3.5 w-3.5"
+                      />
+                      {selectedSmUrls.size === sitemaps.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                    </Button>
 
-                  <span className="text-[10px] text-muted-foreground ml-auto">
-                    {selectedSmUrls.size > 0 ? `${selectedSmUrls.size} de ${sitemaps.length} selecionado(s)` : `${sitemaps.length} sitemap(s)`}
-                  </span>
-                </div>
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {selectedSmUrls.size > 0 ? `${selectedSmUrls.size} de ${sitemaps.length} selecionado(s)` : `${filteredSm.length} sitemap(s)`}
+                    </span>
+                  </div>
 
-                {/* Sitemaps Table */}
-                <Card className="overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/30">
-                          <th className="px-3 py-3 w-10">
-                            <Checkbox
-                              checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
-                              onCheckedChange={() => {
-                                if (selectedSmUrls.size === sitemaps.length) setSelectedSmUrls(new Set());
-                                else setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
-                              }}
-                            />
-                          </th>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">URL do Sitemap</th>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Tipo</th>
-                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">URLs Enviadas</th>
-                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">URLs Indexadas</th>
-                          <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground">% Indexada</th>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Envio</th>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Último Crawl</th>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-                          <th className="px-3 py-3 w-10" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sitemaps.map((sm: any, idx: number) => {
-                          const isExpanded = expandedSitemap === sm.path;
-                          const lastSubmitted = sm.lastSubmitted ? format(new Date(sm.lastSubmitted), "dd/MM/yyyy HH:mm") : "—";
-                          const lastDownloaded = sm.lastDownloaded ? format(new Date(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—";
-                          const isPending = sm.isPending;
-                          const hasErrors = (sm.errors || 0) > 0 || (sm.warnings || 0) > 0;
-                          const indexPercent = sm.urlCount > 0 ? Math.round((sm.indexedCount / sm.urlCount) * 100) : 0;
-
-                          return (
-                            <React.Fragment key={sm.path || idx}>
-                              <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                                <td className="px-3 py-2.5">
-                                  <Checkbox
-                                    checked={selectedSmUrls.has(sm.path)}
-                                    onCheckedChange={() => {
-                                      setSelectedSmUrls(prev => {
-                                        const next = new Set(prev);
-                                        if (next.has(sm.path)) next.delete(sm.path); else next.add(sm.path);
-                                        return next;
-                                      });
-                                    }}
-                                  />
-                                </td>
-                                <td className="px-3 py-2.5 max-w-[300px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="font-mono text-xs text-foreground truncate cursor-default">{sm.path}</span>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="max-w-md">
-                                        <p className="font-mono text-xs break-all">{sm.path}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <a href={sm.path} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={e => e.stopPropagation()}>
-                                      <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                    </a>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {sm.type === "sitemapIndex" ? "Índice" : sm.type || "Sitemap"}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2.5 text-right">
-                                  <span className="text-xs tabular-nums font-medium text-foreground">{(sm.urlCount || 0).toLocaleString("pt-BR")}</span>
-                                </td>
-                                <td className="px-3 py-2.5 text-right">
-                                  <span className="text-xs tabular-nums font-medium text-success">{(sm.indexedCount || 0).toLocaleString("pt-BR")}</span>
-                                </td>
-                                <td className="px-3 py-2.5 text-right">
-                                  <div className="flex items-center gap-2 justify-end">
-                                    <Progress value={indexPercent} className="h-1.5 w-12" />
-                                    <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{indexPercent}%</span>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <span className="text-xs text-muted-foreground">{lastSubmitted}</span>
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <span className="text-xs text-muted-foreground">{lastDownloaded}</span>
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  {hasErrors ? (
-                                    <Badge variant="destructive" className="text-[10px]">
-                                      {sm.errors > 0 ? `${sm.errors} erro(s)` : `${sm.warnings} aviso(s)`}
-                                    </Badge>
-                                  ) : isPending ? (
-                                    <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+                  {/* Sitemaps Table */}
+                  <Card className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/30">
+                            <th className="px-3 py-3 w-10">
+                              <Checkbox
+                                checked={selectedSmUrls.size === sitemaps.length && sitemaps.length > 0}
+                                onCheckedChange={() => {
+                                  if (selectedSmUrls.size === sitemaps.length) setSelectedSmUrls(new Set());
+                                  else setSelectedSmUrls(new Set(sitemaps.map((s: any) => s.path)));
+                                }}
+                              />
+                            </th>
+                            {smColumns.map(col => (
+                              <th
+                                key={col.key}
+                                className={`px-3 py-3 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors group ${col.align === "right" ? "text-right" : "text-left"}`}
+                                onClick={() => handleSort(col.key)}
+                              >
+                                <span className={`inline-flex items-center gap-1 ${col.align === "right" ? "justify-end" : ""}`}>
+                                  {col.label}
+                                  {sortCol === col.key ? (
+                                    sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
                                   ) : (
-                                    <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">OK</Badge>
+                                    <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
                                   )}
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <Button
-                                    variant="ghost" size="sm" className="h-6 w-6 p-0"
-                                    onClick={() => setExpandedSitemap(isExpanded ? null : sm.path)}
-                                  >
-                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
-                                  </Button>
-                                </td>
-                              </tr>
-                              {isExpanded && sm.contents && sm.contents.length > 0 && (
-                                <tr>
-                                  <td colSpan={10} className="bg-muted/10 px-6 py-3 border-b border-border">
-                                    <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tipos de Conteúdo</h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                      {sm.contents.map((c: any, ci: number) => (
-                                        <div key={ci} className="p-2 rounded-lg bg-background border border-border">
-                                          <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
-                                          <div className="flex items-baseline gap-2 mt-0.5">
-                                            <span className="text-sm font-bold text-foreground">{(parseInt(String(c.submitted), 10) || 0).toLocaleString("pt-BR")}</span>
-                                            <span className="text-[10px] text-success">{(parseInt(String(c.indexed), 10) || 0).toLocaleString("pt-BR")} idx</span>
-                                          </div>
-                                        </div>
-                                      ))}
+                                </span>
+                              </th>
+                            ))}
+                            <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
+                            <th className="px-3 py-3 w-10" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedSm.length === 0 ? (
+                            <tr><td colSpan={smColumns.length + 3} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum sitemap encontrado</td></tr>
+                          ) : sortedSm.map((sm: any, idx: number) => {
+                            const isExpanded = expandedSitemap === sm.path;
+                            const lastSubmitted = sm.lastSubmitted ? format(new Date(sm.lastSubmitted), "dd/MM/yyyy HH:mm") : "—";
+                            const lastDownloaded = sm.lastDownloaded ? format(new Date(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—";
+                            const isPending = sm.isPending;
+                            const hasErrors = (sm.errors || 0) > 0 || (sm.warnings || 0) > 0;
+                            const indexPercent = sm.urlCount > 0 ? Math.round((sm.indexedCount / sm.urlCount) * 100) : 0;
+
+                            return (
+                              <React.Fragment key={sm.path || idx}>
+                                <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                                  <td className="px-3 py-2.5">
+                                    <Checkbox
+                                      checked={selectedSmUrls.has(sm.path)}
+                                      onCheckedChange={() => {
+                                        setSelectedSmUrls(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(sm.path)) next.delete(sm.path); else next.add(sm.path);
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2.5 max-w-[300px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="font-mono text-xs text-foreground truncate cursor-default">{sm.path}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-md">
+                                          <p className="font-mono text-xs break-all">{sm.path}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <a href={sm.path} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={e => e.stopPropagation()}>
+                                        <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                      </a>
                                     </div>
                                   </td>
+                                  <td className="px-3 py-2.5">
+                                    <Badge variant="secondary" className="text-[10px]">
+                                      {sm.type === "sitemapIndex" ? "Índice" : sm.type || "Sitemap"}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <span className="text-xs tabular-nums font-medium text-foreground">{(sm.urlCount || 0).toLocaleString("pt-BR")}</span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <span className="text-xs tabular-nums font-medium text-success">{(sm.indexedCount || 0).toLocaleString("pt-BR")}</span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <div className="flex items-center gap-2 justify-end">
+                                      <Progress value={indexPercent} className="h-1.5 w-12" />
+                                      <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{indexPercent}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="text-xs text-muted-foreground">{lastSubmitted}</span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="text-xs text-muted-foreground">{lastDownloaded}</span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    {hasErrors ? (
+                                      <Badge variant="destructive" className="text-[10px]">
+                                        {sm.errors > 0 ? `${sm.errors} erro(s)` : `${sm.warnings} aviso(s)`}
+                                      </Badge>
+                                    ) : isPending ? (
+                                      <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">OK</Badge>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <Button
+                                      variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                      onClick={() => setExpandedSitemap(isExpanded ? null : sm.path)}
+                                    >
+                                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                                    </Button>
+                                  </td>
                                 </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              </div>
-            )}
+                                {isExpanded && sm.contents && sm.contents.length > 0 && (
+                                  <tr>
+                                    <td colSpan={smColumns.length + 3} className="bg-muted/10 px-6 py-3 border-b border-border">
+                                      <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tipos de Conteúdo</h4>
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {sm.contents.map((c: any, ci: number) => (
+                                          <div key={ci} className="p-2 rounded-lg bg-background border border-border">
+                                            <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
+                                            <div className="flex items-baseline gap-2 mt-0.5">
+                                              <span className="text-sm font-bold text-foreground">{(parseInt(String(c.submitted), 10) || 0).toLocaleString("pt-BR")}</span>
+                                              <span className="text-[10px] text-success">{(parseInt(String(c.indexed), 10) || 0).toLocaleString("pt-BR")} idx</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* ─── HISTORY TAB ─── */}
