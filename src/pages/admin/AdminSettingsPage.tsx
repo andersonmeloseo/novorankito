@@ -24,10 +24,10 @@ export default function AdminSettingsPage() {
               <Input defaultValue="app.rankito.com" className="text-sm" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Email de Suporte</Label>
+              <Label className="text-xs">E-mail de Suporte</Label>
               <Input defaultValue="suporte@rankito.com" className="text-sm" />
             </div>
-            <Button size="sm">Salvar</Button>
+            <Button size="sm">Salvar Alterações</Button>
           </CardContent>
         </Card>
 
@@ -36,8 +36,8 @@ export default function AdminSettingsPage() {
           <CardContent className="space-y-4">
             {[
               { label: "Modo Manutenção", desc: "Bloqueia acesso de usuários não-admin", checked: false },
-              { label: "Cadastro Aberto", desc: "Permite novos registros", checked: true },
-              { label: "Emails Transacionais", desc: "Envio automático de notificações", checked: true },
+              { label: "Cadastro Aberto", desc: "Permite novos registros na plataforma", checked: true },
+              { label: "E-mails Transacionais", desc: "Envio automático de notificações", checked: true },
               { label: "White-label", desc: "Permite customização de marca por tenant", checked: false },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">

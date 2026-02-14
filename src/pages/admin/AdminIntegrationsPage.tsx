@@ -35,7 +35,7 @@ export default function AdminIntegrationsPage() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <Badge variant={int.status === "connected" ? "default" : "secondary"}>
-                  {int.status === "connected" ? "Conectado" : "Disponível"}
+                {int.status === "connected" ? "Conectado" : "Disponível"}
                 </Badge>
                 <span className="text-xs text-muted-foreground">{int.connections} conexões</span>
               </div>
