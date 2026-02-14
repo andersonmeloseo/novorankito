@@ -14,17 +14,20 @@ import {
 } from "@/lib/mock-data";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
-import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet } from "lucide-react";
+import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const PERIOD_OPTIONS = [
+  { value: "1", label: "Hoje" },
   { value: "7", label: "7 dias" },
+  { value: "14", label: "14 dias" },
   { value: "30", label: "30 dias" },
+  { value: "60", label: "60 dias" },
   { value: "90", label: "90 dias" },
 ];
 
@@ -59,7 +62,6 @@ const BROWSER_OPTIONS = [
   { value: "Edge", label: "Edge" },
 ];
 
-// ── Derive unique values for additional filters ──
 const PAGE_OPTIONS = [
   { value: "all", label: "Todas" },
   ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.page_url))).sort().map((p) => ({ value: p, label: p })),
@@ -81,7 +83,6 @@ const STATE_OPTIONS = [
   ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.location_state))).sort().map((s) => ({ value: s, label: s })),
 ];
 
-// Color map for event types
 const EVENT_TYPE_COLORS: Record<string, string> = {
   whatsapp_click: "hsl(var(--success))",
   form_submit: "hsl(var(--primary))",
@@ -104,6 +105,80 @@ const PIE_COLORS = Object.values(EVENT_TYPE_COLORS);
 
 const heatmapData = generateConversionsHeatmap();
 
+// ── Derived quality-focused chart data ──
+const eventQualityByDay = (() => {
+  const map = new Map<string, { total: number; conversions: number; microConversions: number; totalValue: number }>();
+  mockTrackingEventsDetailed.forEach((e) => {
+    const day = format(new Date(e.timestamp), "dd/MMM");
+    const entry = map.get(day) || { total: 0, conversions: 0, microConversions: 0, totalValue: 0 };
+    entry.total++;
+    if (e.conversion_type === "conversion") entry.conversions++;
+    else entry.microConversions++;
+    entry.totalValue += e.value;
+    map.set(day, entry);
+  });
+  return Array.from(map.entries()).map(([date, v]) => ({
+    date,
+    ...v,
+    conversionRate: v.total > 0 ? Math.round((v.conversions / v.total) * 100) : 0,
+    avgValue: v.conversions > 0 ? Number((v.totalValue / v.conversions).toFixed(2)) : 0,
+  }));
+})();
+
+// Quality by device
+const eventQualityByDevice = (() => {
+  const map = new Map<string, { total: number; conversions: number; totalValue: number }>();
+  mockTrackingEventsDetailed.forEach((e) => {
+    const entry = map.get(e.device) || { total: 0, conversions: 0, totalValue: 0 };
+    entry.total++;
+    if (e.conversion_type === "conversion") entry.conversions++;
+    entry.totalValue += e.value;
+    map.set(e.device, entry);
+  });
+  return Array.from(map.entries()).map(([device, v]) => ({
+    device: device.charAt(0).toUpperCase() + device.slice(1),
+    conversionRate: Math.round((v.conversions / v.total) * 100),
+    avgValue: v.conversions > 0 ? Number((v.totalValue / v.conversions).toFixed(2)) : 0,
+    total: v.total,
+  }));
+})();
+
+// Goal completion funnel
+const goalCompletion = (() => {
+  const map = new Map<string, { total: number; conversions: number }>();
+  mockTrackingEventsDetailed.forEach((e) => {
+    const entry = map.get(e.goal) || { total: 0, conversions: 0 };
+    entry.total++;
+    if (e.conversion_type === "conversion") entry.conversions++;
+    map.set(e.goal, entry);
+  });
+  return Array.from(map.entries())
+    .map(([goal, v]) => ({
+      goal,
+      total: v.total,
+      conversions: v.conversions,
+      completionRate: Math.round((v.conversions / v.total) * 100),
+    }))
+    .sort((a, b) => b.total - a.total);
+})();
+
+// Events by browser quality
+const eventsByBrowser = (() => {
+  const map = new Map<string, { total: number; conversions: number; totalValue: number }>();
+  mockTrackingEventsDetailed.forEach((e) => {
+    const entry = map.get(e.browser) || { total: 0, conversions: 0, totalValue: 0 };
+    entry.total++;
+    if (e.conversion_type === "conversion") entry.conversions++;
+    entry.totalValue += e.value;
+    map.set(e.browser, entry);
+  });
+  return Array.from(map.entries()).map(([browser, v]) => ({
+    browser,
+    total: v.total,
+    conversionRate: Math.round((v.conversions / v.total) * 100),
+  }));
+})();
+
 const PAGE_SIZE = 20;
 
 type SortKey = keyof MockTrackingEvent;
@@ -121,6 +196,8 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "browser", label: "Browser" },
   { key: "location_city", label: "Cidade/Estado" },
 ];
+
+const tooltipStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 };
 
 export function EventsTab() {
   const [period, setPeriod] = useState("30");
@@ -164,9 +241,7 @@ export function EventsTab() {
       if (typeof aVal === "number" && typeof bVal === "number") {
         return sortDir === "asc" ? aVal - bVal : bVal - aVal;
       }
-      const aStr = String(aVal);
-      const bStr = String(bVal);
-      return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      return sortDir === "asc" ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
     });
     return arr;
   }, [filtered, sortKey, sortDir]);
@@ -184,19 +259,30 @@ export function EventsTab() {
     setPage(1);
   }, [sortKey]);
 
-  // KPIs
+  // ── Quality-focused KPIs ──
   const totalEvents = filtered.length;
+  const conversions = filtered.filter((e) => e.conversion_type === "conversion").length;
+  const conversionRate = totalEvents > 0 ? Number(((conversions / totalEvents) * 100).toFixed(1)) : 0;
+  const totalValue = filtered.reduce((s, e) => s + e.value, 0);
+  const avgValue = conversions > 0 ? Number((totalValue / conversions).toFixed(2)) : 0;
   const uniquePages = new Set(filtered.map((e) => e.page_url)).size;
-  const mobileEvents = filtered.filter((e) => e.device === "mobile").length;
-  const mobilePercent = totalEvents > 0 ? ((mobileEvents / totalEvents) * 100).toFixed(1) : "0";
-  const uniqueCities = new Set(filtered.map((e) => e.location_city)).size;
   const avgEventsPerPage = uniquePages > 0 ? Math.round(totalEvents / uniquePages) : 0;
+  const mobileEvents = filtered.filter((e) => e.device === "mobile").length;
+  const mobilePercent = totalEvents > 0 ? Number(((mobileEvents / totalEvents) * 100).toFixed(1)) : 0;
+  const uniqueGoals = new Set(filtered.map((e) => e.goal)).size;
+  const goalCompletionRate = totalEvents > 0 ? Number(((conversions / totalEvents) * 100).toFixed(1)) : 0;
+  const uniqueCities = new Set(filtered.map((e) => e.location_city)).size;
 
   // Top pages
-  const pageMap = new Map<string, number>();
-  filtered.forEach((e) => { pageMap.set(e.page_url, (pageMap.get(e.page_url) || 0) + 1); });
+  const pageMap = new Map<string, { count: number; conversions: number }>();
+  filtered.forEach((e) => {
+    const entry = pageMap.get(e.page_url) || { count: 0, conversions: 0 };
+    entry.count++;
+    if (e.conversion_type === "conversion") entry.conversions++;
+    pageMap.set(e.page_url, entry);
+  });
   const topPages = Array.from(pageMap.entries())
-    .map(([url, count]) => ({ url, count }))
+    .map(([url, v]) => ({ url, count: v.count, conversions: v.conversions, conversionRate: Math.round((v.conversions / v.count) * 100) }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
@@ -292,26 +378,67 @@ export function EventsTab() {
         </div>
       </Card>
 
-      {/* KPIs */}
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard label="Total de Eventos" value={totalEvents} change={15.8} />
-        <KpiCard label="Páginas Ativas" value={uniquePages} change={3.2} />
+      {/* Period comparison badge */}
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-[10px] gap-1">
+          <TrendingUp className="h-3 w-3 text-success" /> Comparando com período anterior ({period}d)
+        </Badge>
+      </div>
+
+      {/* Quality-focused KPIs */}
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <KpiCard label="Total Eventos" value={totalEvents} change={15.8} />
+        <KpiCard label="Taxa Conversão" value={conversionRate} change={8.4} suffix="%" />
+        <KpiCard label="Valor Médio" value={avgValue} change={12.1} prefix="R$" />
         <KpiCard label="Eventos/Página" value={avgEventsPerPage} change={7.4} />
-        <KpiCard label="Mobile" value={Number(mobilePercent)} change={4.1} suffix="%" />
-        <KpiCard label="Cidades Alcançadas" value={uniqueCities} change={11.2} />
+        <KpiCard label="Páginas Ativas" value={uniquePages} change={3.2} />
+        <KpiCard label="Conclusão Metas" value={goalCompletionRate} change={5.6} suffix="%" />
+        <KpiCard label="Mobile" value={mobilePercent} change={4.1} suffix="%" />
+        <KpiCard label="Cidades" value={uniqueCities} change={11.2} />
       </StaggeredGrid>
 
-      {/* Charts */}
+      {/* Quality Trend - Conversion Rate + Avg Value over time */}
       <AnimatedContainer>
         <Card className="p-5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Eventos ao Longo do Tempo</h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Qualidade dos Eventos ao Longo do Tempo</h3>
           <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={eventQualityByDay}>
+                <defs>
+                  <linearGradient id="convGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="microGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--info))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--info))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="conversions" stroke="hsl(var(--success))" fill="url(#convGrad)" strokeWidth={2} name="Conversões" />
+                <Area type="monotone" dataKey="microConversions" stroke="hsl(var(--info))" fill="url(#microGrad)" strokeWidth={2} name="Micro Conversões" />
+                <Line type="monotone" dataKey="conversionRate" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} name="Taxa Conversão %" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* Events by type line chart */}
+      <AnimatedContainer delay={0.05}>
+        <Card className="p-5">
+          <h3 className="text-sm font-medium text-foreground mb-4">Eventos por Tipo ao Longo do Tempo</h3>
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mockConversionsByDay}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="whatsapp_click" stroke={EVENT_TYPE_COLORS.whatsapp_click} strokeWidth={2} dot={false} name="WhatsApp" />
                 <Line type="monotone" dataKey="form_submit" stroke={EVENT_TYPE_COLORS.form_submit} strokeWidth={2} dot={false} name="Formulário" />
@@ -323,8 +450,50 @@ export function EventsTab() {
         </Card>
       </AnimatedContainer>
 
+      {/* Row: Quality by Device + Goal Completion */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Dispositivo</h3>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={eventQualityByDevice}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="device" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Total Eventos" />
+                  <Bar dataKey="conversionRate" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Conversão %" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={0.15}>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium text-foreground mb-4">Conclusão de Metas</h3>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={goalCompletion} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis dataKey="goal" type="category" width={120} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="total" fill="hsl(var(--muted-foreground) / 0.3)" radius={[0, 4, 4, 0]} name="Total" />
+                  <Bar dataKey="conversions" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} name="Concluídas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </AnimatedContainer>
+      </div>
+
+      {/* Row: Event Type Pie + Top Pages with conversion quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AnimatedContainer delay={0.2}>
           <Card className="p-5">
             <h3 className="text-sm font-medium text-foreground mb-4">Distribuição por Tipo</h3>
             <div className="h-[260px]">
@@ -336,7 +505,7 @@ export function EventsTab() {
                       return <Cell key={i} fill={color} />;
                     })}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -344,17 +513,19 @@ export function EventsTab() {
           </Card>
         </AnimatedContainer>
 
-        <AnimatedContainer delay={0.15}>
+        <AnimatedContainer delay={0.25}>
           <Card className="p-5">
-            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas por Eventos</h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Top Páginas (Eventos × Conversão %)</h3>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topPages} layout="vertical" margin={{ left: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis dataKey="url" type="category" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Eventos" />
+                  <Bar dataKey="conversionRate" fill="hsl(var(--success) / 0.7)" radius={[0, 4, 4, 0]} name="Conversão %" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -362,8 +533,28 @@ export function EventsTab() {
         </AnimatedContainer>
       </div>
 
+      {/* Quality by Browser */}
+      <AnimatedContainer delay={0.3}>
+        <Card className="p-5">
+          <h3 className="text-sm font-medium text-foreground mb-4">Qualidade por Browser</h3>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={eventsByBrowser}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="browser" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="total" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} name="Eventos" />
+                <Bar dataKey="conversionRate" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} name="Conversão %" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
       {/* Heatmap */}
-      <AnimatedContainer delay={0.2}>
+      <AnimatedContainer delay={0.35}>
         <Card className="p-5">
           <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
             <Flame className="h-4 w-4 text-warning" /> Mapa de Calor de Eventos (Dia × Hora)
@@ -398,7 +589,7 @@ export function EventsTab() {
       </AnimatedContainer>
 
       {/* Detailed Table */}
-      <AnimatedContainer delay={0.25}>
+      <AnimatedContainer delay={0.4}>
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -491,13 +682,7 @@ export function EventsTab() {
                 Página {page} de {totalPages}
               </p>
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -505,24 +690,12 @@ export function EventsTab() {
                   const p = start + i;
                   if (p > totalPages) return null;
                   return (
-                    <Button
-                      key={p}
-                      variant={p === page ? "default" : "outline"}
-                      size="sm"
-                      className="h-7 w-7 p-0 text-[11px]"
-                      onClick={() => setPage(p)}
-                    >
+                    <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-7 w-7 p-0 text-[11px]" onClick={() => setPage(p)}>
                       {p}
                     </Button>
                   );
                 })}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
