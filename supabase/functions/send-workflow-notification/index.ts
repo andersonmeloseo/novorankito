@@ -17,25 +17,49 @@ serve(async (req) => {
     const WHATSAPP_API_URL = Deno.env.get("WHATSAPP_API_URL");
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { schedule_id, report, workflow_name } = await req.json();
+    const body = await req.json();
+    const { schedule_id, report, workflow_name, direct_send } = body;
 
-    if (!schedule_id || !report) {
-      return new Response(JSON.stringify({ error: "schedule_id and report are required" }), {
+    if (!report) {
+      return new Response(JSON.stringify({ error: "report is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch schedule config
-    const { data: schedule, error: schedErr } = await sb
-      .from("workflow_schedules")
-      .select("*")
-      .eq("id", schedule_id)
-      .single();
+    // Direct send mode: no schedule needed, just recipients inline
+    let schedule: any = null;
+    if (direct_send) {
+      // Build a virtual schedule from direct_send params
+      schedule = {
+        id: null,
+        project_id: direct_send.project_id || null,
+        workflow_id: direct_send.workflow_id || "direct",
+        notify_email: !!(direct_send.emails && direct_send.emails.length > 0),
+        notify_whatsapp: !!(direct_send.phones && direct_send.phones.length > 0),
+        email_recipients: direct_send.emails || [],
+        whatsapp_recipients: direct_send.phones || [],
+        send_summary: true,
+        send_pdf: false,
+      };
+    } else {
+      if (!schedule_id) {
+        return new Response(JSON.stringify({ error: "schedule_id or direct_send is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Fetch schedule config
+      const { data: schedData, error: schedErr } = await sb
+        .from("workflow_schedules")
+        .select("*")
+        .eq("id", schedule_id)
+        .single();
 
-    if (schedErr || !schedule) {
-      return new Response(JSON.stringify({ error: "Schedule not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (schedErr || !schedData) {
+        return new Response(JSON.stringify({ error: "Schedule not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      schedule = schedData;
     }
 
     // Generate summary (first 500 chars of the report)
@@ -127,8 +151,8 @@ serve(async (req) => {
       }
     }
 
-    // Save delivery records
-    if (results.length > 0) {
+    // Save delivery records (only if we have a real schedule)
+    if (results.length > 0 && schedule.id) {
       const deliveries = results.map((r) => ({
         schedule_id: schedule.id,
         project_id: schedule.project_id,
@@ -143,16 +167,16 @@ serve(async (req) => {
       }));
 
       await sb.from("workflow_deliveries").insert(deliveries);
-    }
 
-    // Update schedule tracking
-    await sb
-      .from("workflow_schedules")
-      .update({
-        last_run_at: new Date().toISOString(),
-        last_run_status: results.every((r) => r.status === "sent") ? "success" : "partial",
-      })
-      .eq("id", schedule.id);
+      // Update schedule tracking
+      await sb
+        .from("workflow_schedules")
+        .update({
+          last_run_at: new Date().toISOString(),
+          last_run_status: results.every((r) => r.status === "sent") ? "success" : "partial",
+        })
+        .eq("id", schedule.id);
+    }
 
     console.log(`Notification sent for workflow ${workflow_name}:`, results);
 

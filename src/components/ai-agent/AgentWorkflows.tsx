@@ -3,10 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   GitBranch, Play, ArrowRight, ArrowDown, Loader2, CheckCircle2,
-  Download, Copy, Bell, Send,
+  Download, Copy, Bell, Send, Mail, MessageCircle, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -109,6 +111,11 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
   const [isRunning, setIsRunning] = useState(false);
   const abortRef = useRef(false);
   const [notifyWorkflowId, setNotifyWorkflowId] = useState<string | null>(null);
+  const [showSendForm, setShowSendForm] = useState(false);
+  const [sendEmail, setSendEmail] = useState("");
+  const [sendPhone, setSendPhone] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
 
   // Fetch schedule configs to show indicators
   const { data: schedules = [] } = useQuery({
@@ -261,6 +268,10 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
     setStepResults({});
     setStepStreaming("");
     setIsRunning(false);
+    setShowSendForm(false);
+    setSendSuccess(false);
+    setSendEmail("");
+    setSendPhone("");
   };
 
   const copyAllResults = () => {
@@ -465,36 +476,76 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
             })}
           </div>
 
-          <div className="border-t border-border px-6 py-3 flex items-center justify-between bg-muted/20">
-            <div className="text-[11px] text-muted-foreground">
-              {Object.keys(stepResults).length} de {executingWorkflow?.steps.length} passos concluídos
+          {/* Success overlay */}
+          {sendSuccess && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/90 backdrop-blur-sm">
+              <div className="text-center space-y-3 animate-in fade-in zoom-in duration-300">
+                <div className="h-16 w-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Relatório enviado com sucesso! 📩</h3>
+                <p className="text-sm text-muted-foreground">As notificações foram disparadas.</p>
+                <Button size="sm" variant="outline" className="mt-4" onClick={closeCanvas}>
+                  Fechar
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap justify-end">
-              {!isRunning && Object.keys(stepResults).length === executingWorkflow?.steps.length && (
-                <>
-                  <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
-                    <Copy className="h-3 w-3" /> Copiar
+          )}
+
+          <div className="border-t border-border px-6 py-3 bg-muted/20 space-y-3">
+            {/* Inline send form */}
+            {showSendForm && !isRunning && !sendSuccess && (
+              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5 animate-in slide-in-from-bottom-2 duration-200">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                  <Send className="h-3.5 w-3.5 text-primary" />
+                  Enviar relatório agora
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3" /> WhatsApp (com DDI)
+                    </Label>
+                    <Input
+                      value={sendPhone}
+                      onChange={(e) => setSendPhone(e.target.value)}
+                      placeholder="+5511999999999"
+                      className="text-xs h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> Email
+                    </Label>
+                    <Input
+                      value={sendEmail}
+                      onChange={(e) => setSendEmail(e.target.value)}
+                      placeholder="email@exemplo.com"
+                      className="text-xs h-8"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowSendForm(false)}>
+                    Cancelar
                   </Button>
                   <Button
                     size="sm"
                     variant="default"
                     className="text-xs gap-1.5"
+                    disabled={isSending || (!sendPhone.trim() && !sendEmail.trim())}
                     onClick={async () => {
                       if (!executingWorkflow || !projectId) return;
+                      const phones = sendPhone.split(",").map(p => p.trim()).filter(Boolean);
+                      const emails = sendEmail.split(",").map(e => e.trim()).filter(Boolean);
+                      if (phones.length === 0 && emails.length === 0) {
+                        toast.warning("Informe pelo menos um telefone ou email");
+                        return;
+                      }
+                      setIsSending(true);
                       const fullReport = Object.entries(stepResults)
                         .map(([idx, r]) => `## ${executingWorkflow.steps[Number(idx)].agent}\n${r}`)
                         .join("\n\n---\n\n");
                       try {
-                        const { data: sched } = await supabase
-                          .from("workflow_schedules")
-                          .select("id, notify_email, notify_whatsapp")
-                          .eq("workflow_id", executingWorkflow.id)
-                          .eq("project_id", projectId)
-                          .maybeSingle();
-                        if (!sched) {
-                          toast.warning("Configure as notificações primeiro (clique no 🔔)");
-                          return;
-                        }
                         const res = await fetch(
                           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-workflow-notification`,
                           {
@@ -504,51 +555,85 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                             },
                             body: JSON.stringify({
-                              schedule_id: sched.id,
                               report: fullReport,
                               workflow_name: executingWorkflow.name,
+                              direct_send: {
+                                project_id: projectId,
+                                workflow_id: executingWorkflow.id,
+                                phones,
+                                emails,
+                              },
                             }),
                           }
                         );
                         if (res.ok) {
-                          toast.success("Relatório enviado agora! 📩");
+                          setSendSuccess(true);
+                          setShowSendForm(false);
                         } else {
                           const err = await res.json();
                           toast.error(`Erro: ${err.error || "Falha ao enviar"}`);
                         }
                       } catch (e: any) {
                         toast.error(`Erro: ${e.message}`);
+                      } finally {
+                        setIsSending(false);
                       }
                     }}
                   >
-                    <Send className="h-3 w-3" /> Enviar Agora
+                    {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                    {isSending ? "Enviando..." : "Enviar"}
                   </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-muted-foreground">
+                {Object.keys(stepResults).length} de {executingWorkflow?.steps.length} passos concluídos
+              </div>
+              <div className="flex gap-2 flex-wrap justify-end">
+                {!isRunning && Object.keys(stepResults).length === executingWorkflow?.steps.length && !showSendForm && !sendSuccess && (
+                  <>
+                    <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
+                      <Copy className="h-3 w-3" /> Copiar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="text-xs gap-1.5"
+                      onClick={() => setShowSendForm(true)}
+                    >
+                      <Send className="h-3 w-3" /> Enviar Agora
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1.5"
+                      onClick={() => {
+                        if (!executingWorkflow) return;
+                        setNotifyWorkflowId(executingWorkflow.id);
+                      }}
+                    >
+                      <Bell className="h-3 w-3" /> Agendar
+                    </Button>
+                  </>
+                )}
+                {!isRunning && Object.keys(stepResults).length > 0 && Object.keys(stepResults).length < (executingWorkflow?.steps.length || 0) && (
+                  <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
+                    <Copy className="h-3 w-3" /> Copiar Relatório
+                  </Button>
+                )}
+                {!sendSuccess && (
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="text-xs gap-1.5"
-                    onClick={() => {
-                      if (!executingWorkflow) return;
-                      setNotifyWorkflowId(executingWorkflow.id);
-                    }}
+                    variant={isRunning ? "destructive" : "outline"}
+                    className="text-xs"
+                    onClick={closeCanvas}
                   >
-                    <Bell className="h-3 w-3" /> Agendar
+                    {isRunning ? "Cancelar" : "Fechar"}
                   </Button>
-                </>
-              )}
-              {!isRunning && Object.keys(stepResults).length > 0 && Object.keys(stepResults).length < (executingWorkflow?.steps.length || 0) && (
-                <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
-                  <Copy className="h-3 w-3" /> Copiar Relatório
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant={isRunning ? "destructive" : "outline"}
-                className="text-xs"
-                onClick={closeCanvas}
-              >
-                {isRunning ? "Cancelar" : "Fechar"}
-              </Button>
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>
