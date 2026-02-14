@@ -204,7 +204,7 @@ export function SitemapsTab({ projectId }: Props) {
                   ) : (
                     sitemaps.map((sm: any, i: number) => (
                       <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                        <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={sm.path}>{sm.path}</td>
+                        <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={sm.path}><a href={sm.path} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{sm.path}</a></td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{sm.type}</td>
                         <td className="px-4 py-3">{statusBadge(sm.status)}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{sm.urls}</td>

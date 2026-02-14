@@ -993,11 +993,15 @@ function SortableTable({
                   className={`border-b border-border last:border-0 table-row-hover ${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}`}
                   onClick={() => onRowClick?.(row)}
                 >
-                  {columns.map(col => (
-                    <td key={col.key} className={`px-4 py-3 text-xs ${col.key === "name" ? "font-mono text-foreground max-w-[300px] truncate" : "text-muted-foreground"}`}>
-                      {formatCell(row, col.key)}
-                    </td>
-                  ))}
+                   {columns.map(col => (
+                     <td key={col.key} title={col.key === "name" ? row[col.key] : undefined} className={`px-4 py-3 text-xs ${col.key === "name" ? "font-mono text-foreground max-w-[300px] truncate" : "text-muted-foreground"}`}>
+                       {col.key === "name" && typeof row[col.key] === "string" && row[col.key].startsWith("http") ? (
+                         <a href={row[col.key]} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                           {formatCell(row, col.key)}
+                         </a>
+                       ) : formatCell(row, col.key)}
+                     </td>
+                   ))}
                 </tr>
               ))
             )}
