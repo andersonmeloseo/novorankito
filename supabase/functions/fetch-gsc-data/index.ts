@@ -165,6 +165,7 @@ serve(async (req) => {
       { type: "device", dims: ["device"] },
       { type: "date_device", dims: ["date", "device"] },
       { type: "date_country", dims: ["date", "country"] },
+      { type: "query_page", dims: ["query", "page"] },
     ];
 
     // Delete existing metrics for this project
@@ -210,6 +211,9 @@ serve(async (req) => {
         } else if (group.type === "date_country") {
           base.metric_date = row.keys[0] || base.metric_date;
           base.country = row.keys[1] || null;
+        } else if (group.type === "query_page") {
+          base.query = row.keys[0] || null;
+          base.url = row.keys[1] || null;
         }
 
         return base;
