@@ -8,15 +8,19 @@ interface KpiCardProps {
   change: number;
   prefix?: string;
   suffix?: string;
+  prevValue?: number;
+  showComparison?: boolean;
 }
 
-export function KpiCard({ label, value, change, prefix, suffix }: KpiCardProps) {
+function formatValue(value: number, suffix?: string) {
+  if (suffix === "%" || suffix === "x") return value.toFixed(2);
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return value.toString();
+}
+
+export function KpiCard({ label, value, change, prefix, suffix, prevValue, showComparison }: KpiCardProps) {
   const isPositive = change >= 0;
-  const formatted = suffix === "%" || suffix === "x"
-    ? value.toFixed(2)
-    : value >= 1000
-      ? (value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M` : `${(value / 1_000).toFixed(1)}K`)
-      : value.toString();
 
   return (
     <Card className="p-4 card-hover group relative overflow-hidden">
@@ -24,16 +28,25 @@ export function KpiCard({ label, value, change, prefix, suffix }: KpiCardProps) 
       <div className="relative">
         <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">{label}</p>
         <div className="flex items-end justify-between gap-2">
-          <span className="text-2xl font-bold text-foreground font-display tracking-tight">
-            {prefix}{formatted}{suffix}
-          </span>
-          <span className={cn(
-            "inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full",
-            isPositive ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
-          )}>
-            {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-            {Math.abs(change)}%
-          </span>
+          <div className="flex flex-col">
+            <span className="text-2xl font-bold text-foreground font-display tracking-tight">
+              {prefix}{formatValue(value, suffix)}{suffix}
+            </span>
+            {showComparison && prevValue !== undefined && (
+              <span className="text-[10px] text-muted-foreground mt-0.5">
+                vs {prefix}{formatValue(prevValue, suffix)}{suffix}
+              </span>
+            )}
+          </div>
+          {change !== 0 && (
+            <span className={cn(
+              "inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full",
+              isPositive ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
+            )}>
+              {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {Math.abs(change)}%
+            </span>
+          )}
         </div>
       </div>
     </Card>

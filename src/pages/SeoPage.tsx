@@ -228,17 +228,28 @@ export default function SeoPage() {
 
   // Trend data - each row from "date" dimension is already one day
   const trendData = useMemo(() => {
-    return [...metrics]
-      .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""))
-      .map((m: any) => ({
+    const currentSorted = [...metrics]
+      .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""));
+    
+    const prevSorted = [...prevFiltered]
+      .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""));
+
+    return currentSorted.map((m: any, i: number) => {
+      const prev = prevSorted[i];
+      return {
         date: format(parseISO(m.metric_date), "dd MMM", { locale: ptBR }),
         rawDate: m.metric_date,
         clicks: m.clicks || 0,
         impressions: m.impressions || 0,
         ctr: (m.impressions || 0) > 0 ? parseFloat((((m.clicks || 0) / (m.impressions || 0)) * 100).toFixed(2)) : 0,
         position: m.position || 0,
-      }));
-  }, [metrics]);
+        prevClicks: prev ? (prev.clicks || 0) : undefined,
+        prevImpressions: prev ? (prev.impressions || 0) : undefined,
+        prevCtr: prev && (prev.impressions || 0) > 0 ? parseFloat((((prev.clicks || 0) / (prev.impressions || 0)) * 100).toFixed(2)) : undefined,
+        prevPosition: prev ? (prev.position || 0) : undefined,
+      };
+    });
+  }, [metrics, prevFiltered]);
 
   // Device distribution for pie chart (from dedicated device data)
   const deviceDistribution = useMemo(() => {
@@ -385,10 +396,10 @@ export default function SeoPage() {
           <>
             {/* KPI Cards with period comparison */}
             <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} />
-              <KpiCard label="Impressões" value={totalImpressions} change={pctChange(totalImpressions, prevImpressions)} />
-              <KpiCard label="CTR Médio" value={Number(avgCtr.toFixed(2))} change={pctChange(avgCtr, prevAvgCtr)} suffix="%" />
-              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} />
+              <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} prevValue={prevClicks} showComparison={compareMode !== "none" && prevClicks > 0} />
+              <KpiCard label="Impressões" value={totalImpressions} change={pctChange(totalImpressions, prevImpressions)} prevValue={prevImpressions} showComparison={compareMode !== "none" && prevImpressions > 0} />
+              <KpiCard label="CTR Médio" value={Number(avgCtr.toFixed(2))} change={pctChange(avgCtr, prevAvgCtr)} suffix="%" prevValue={Number(prevAvgCtr.toFixed(2))} showComparison={compareMode !== "none" && prevImpressions > 0} />
+              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} prevValue={Number(prevAvgPosition.toFixed(1))} showComparison={compareMode !== "none" && prevImpressions > 0} />
             </StaggeredGrid>
 
             {/* Charts Section */}
@@ -453,14 +464,26 @@ export default function SeoPage() {
                           {activeMetrics.includes("clicks") && (
                             <Area type="monotone" dataKey="clicks" name="Cliques" stroke="hsl(var(--chart-1))" fill="url(#clicksGradSeo)" strokeWidth={2} />
                           )}
+                          {activeMetrics.includes("clicks") && compareMode !== "none" && (
+                            <Area type="monotone" dataKey="prevClicks" name="Cliques (anterior)" stroke="hsl(var(--chart-1))" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.4} dot={false} />
+                          )}
                           {activeMetrics.includes("impressions") && (
                             <Area type="monotone" dataKey="impressions" name="Impressões" stroke="hsl(var(--chart-2))" fill="url(#impressionsGradSeo)" strokeWidth={2} />
+                          )}
+                          {activeMetrics.includes("impressions") && compareMode !== "none" && (
+                            <Area type="monotone" dataKey="prevImpressions" name="Impressões (anterior)" stroke="hsl(var(--chart-2))" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.4} dot={false} />
                           )}
                           {activeMetrics.includes("ctr") && (
                             <Area type="monotone" dataKey="ctr" name="CTR %" stroke="hsl(var(--chart-3))" fill="url(#ctrGradSeo)" strokeWidth={2} />
                           )}
+                          {activeMetrics.includes("ctr") && compareMode !== "none" && (
+                            <Area type="monotone" dataKey="prevCtr" name="CTR % (anterior)" stroke="hsl(var(--chart-3))" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.4} dot={false} />
+                          )}
                           {activeMetrics.includes("position") && (
                             <Area type="monotone" dataKey="position" name="Posição" stroke="hsl(var(--chart-4))" fill="none" strokeWidth={2} strokeDasharray="5 5" />
+                          )}
+                          {activeMetrics.includes("position") && compareMode !== "none" && (
+                            <Area type="monotone" dataKey="prevPosition" name="Posição (anterior)" stroke="hsl(var(--chart-4))" fill="none" strokeWidth={1.5} strokeDasharray="2 3" strokeOpacity={0.4} dot={false} />
                           )}
                         </AreaChart>
                       </ResponsiveContainer>
