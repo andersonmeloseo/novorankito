@@ -202,8 +202,8 @@ export function CohortHeatmap({ data, xLabels, yLabels, maxValue, hue = 210 }: {
   data: number[][]; xLabels: string[]; yLabels: string[]; maxValue: number; hue?: number;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `80px repeat(${xLabels.length}, 1fr)` }}>
+    <div className="w-full overflow-x-auto">
+      <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `90px repeat(${xLabels.length}, 1fr)` }}>
         <div />
         {xLabels.map((label, i) => (
           <div key={i} className="text-[8px] text-muted-foreground text-center font-medium px-1 truncate">{label}</div>
