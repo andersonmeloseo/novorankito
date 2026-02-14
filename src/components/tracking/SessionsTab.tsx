@@ -815,9 +815,9 @@ export function SessionsTab() {
                       <td className="px-3 py-2">
                         <Badge variant="outline" className="text-[9px] capitalize">{s.source} / {s.medium}</Badge>
                       </td>
-                      <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device}</td>
-                      <td className="px-3 py-2 text-[11px] text-foreground">{s.browser}</td>
-                      <td className="px-3 py-2 text-[11px] text-foreground">{s.city}</td>
+                      <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device === "mobile" ? "📱" : s.device === "desktop" ? "🖥️" : "📟"} {s.device}</td>
+                      <td className="px-3 py-2 text-[11px] text-foreground">{s.browser === "Chrome" ? "🌐" : s.browser === "Firefox" ? "🦊" : s.browser === "Safari" ? "🧭" : s.browser === "Edge" ? "🔷" : "🌐"} {s.browser}</td>
+                      <td className="px-3 py-2 text-[11px] text-foreground">📍 {s.city}</td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className={`text-[9px] ${STATUS_BADGE[status] || ""}`}>
                           {statusLabel[status]}
