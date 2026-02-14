@@ -20,8 +20,8 @@ import {
 import {
   Send, CheckCircle2, Clock, AlertTriangle, RotateCcw, Zap, Globe, Link2,
   ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
-  ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, Layers, History, Package, ScanSearch,
-  AlertCircle, Ban, Info
+  ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, ChevronDown, Layers, History, Package, ScanSearch,
+  AlertCircle, Ban, Info, Map, FileText
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -71,8 +71,11 @@ export default function IndexingPage() {
   const [detailUrl, setDetailUrl] = useState<InventoryUrl | null>(null);
   const [invPage, setInvPage] = useState(0);
   const [histPage, setHistPage] = useState(0);
+  const [smPage, setSmPage] = useState(0);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [expandedSitemap, setExpandedSitemap] = useState<string | null>(null);
+  const [selectedSmUrls, setSelectedSmUrls] = useState<Set<string>>(new Set());
   const INV_PAGE_SIZE = 50;
 
   const handleSort = (col: string) => {
@@ -104,6 +107,30 @@ export default function IndexingPage() {
 
   const inventory = inventoryData?.inventory || [];
   const stats = inventoryData?.stats || { totalUrls: 0, indexed: 0, notIndexed: 0, unknown: 0, sentToday: 0, dailyLimit: 200 };
+
+  // ─── Sitemaps from GSC ───
+  const { data: sitemapsData, isLoading: smLoading } = useQuery({
+    queryKey: ["gsc-sitemaps-list", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("gsc-sitemaps", {
+        body: { project_id: projectId, action: "list" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    enabled: !!projectId,
+    staleTime: 120_000,
+  });
+
+  const sitemaps = useMemo(() => {
+    const rawSitemaps = sitemapsData?.sitemap || [];
+    return rawSitemaps.map((sm: any) => ({
+      ...sm,
+      urlCount: sm.contents?.reduce((acc: number, c: any) => acc + (c.submitted || 0), 0) || 0,
+      indexedCount: sm.contents?.reduce((acc: number, c: any) => acc + (c.indexed || 0), 0) || 0,
+    }));
+  }, [sitemapsData]);
 
   // ─── Filtered & Sorted Inventory ───
   const filteredInventory = useMemo(() => {
@@ -240,6 +267,9 @@ export default function IndexingPage() {
             <TabsList>
               <TabsTrigger value="inventory" className="gap-1.5 text-xs">
                 <Layers className="h-3 w-3" /> Inventário
+              </TabsTrigger>
+              <TabsTrigger value="sitemap" className="gap-1.5 text-xs">
+                <Map className="h-3 w-3" /> Sitemap
               </TabsTrigger>
               <TabsTrigger value="history" className="gap-1.5 text-xs">
                 <History className="h-3 w-3" /> Histórico
@@ -492,6 +522,120 @@ export default function IndexingPage() {
                   </div>
                 )}
               </Card>
+            )}
+          </TabsContent>
+
+          {/* ─── SITEMAP TAB ─── */}
+          <TabsContent value="sitemap" className="mt-4 space-y-4">
+            {smLoading ? <TableSkeleton /> : !sitemaps || sitemaps.length === 0 ? (
+              <EmptyState icon={Map} title="Nenhum sitemap encontrado" description="O Google Search Console não retornou sitemaps para esta propriedade." />
+            ) : (
+              <div className="space-y-3">
+                {sitemaps.map((sm: any, idx: number) => {
+                  const isExpanded = expandedSitemap === sm.path;
+                  const lastSubmitted = sm.lastSubmitted ? format(new Date(sm.lastSubmitted), "dd/MM/yyyy HH:mm") : "—";
+                  const lastDownloaded = sm.lastDownloaded ? format(new Date(sm.lastDownloaded), "dd/MM/yyyy HH:mm") : "—";
+                  const isPending = sm.isPending;
+                  const hasErrors = sm.errors > 0 || sm.warnings > 0;
+
+                  return (
+                    <Card key={sm.path || idx} className="overflow-hidden">
+                      {/* Sitemap Header */}
+                      <div
+                        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                        onClick={() => setExpandedSitemap(isExpanded ? null : sm.path)}
+                      >
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                        <FileText className="h-4 w-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-foreground truncate">{sm.path}</span>
+                            <a href={sm.path} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={e => e.stopPropagation()}>
+                              <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-[10px] text-muted-foreground">
+                              {sm.urlCount} URLs enviadas • {sm.indexedCount} indexadas
+                            </span>
+                            {hasErrors && (
+                              <span className="text-[10px] text-destructive">
+                                {sm.errors > 0 && `${sm.errors} erro(s)`} {sm.warnings > 0 && `${sm.warnings} aviso(s)`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                          <div className="text-right">
+                            <div className="text-[10px] text-muted-foreground">Último Envio</div>
+                            <div className="text-xs text-foreground">{lastSubmitted}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] text-muted-foreground">Último Crawl</div>
+                            <div className="text-xs text-foreground">{lastDownloaded}</div>
+                          </div>
+                          <Badge variant={isPending ? "outline" : "secondary"} className="text-[10px]">
+                            {isPending ? "Pendente" : sm.type === "sitemap" ? "Sitemap" : sm.type === "sitemapIndex" ? "Índice" : sm.type || "Sitemap"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Expanded: Content types breakdown */}
+                      {isExpanded && (
+                        <div className="border-t border-border">
+                          {/* Content types */}
+                          {sm.contents && sm.contents.length > 0 && (
+                            <div className="px-4 py-3 bg-muted/10">
+                              <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tipos de Conteúdo</h4>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {sm.contents.map((c: any, ci: number) => (
+                                  <div key={ci} className="p-2 rounded-lg bg-background border border-border">
+                                    <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
+                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                      <span className="text-sm font-bold text-foreground">{(c.submitted || 0).toLocaleString()}</span>
+                                      <span className="text-[10px] text-success">{(c.indexed || 0).toLocaleString()} idx</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="px-4 py-3 border-t border-border flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm" className="gap-1.5 text-xs"
+                              onClick={() => {
+                                // Send all inventory URLs for indexing (first 50)
+                                const batch = inventory.map(u => u.url).slice(0, 50);
+                                if (batch.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
+                                submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
+                                if (inventory.length > 50) toast.info(`Enviando as primeiras 50 de ${inventory.length} URLs.`);
+                              }}
+                              disabled={submitMutation.isPending}
+                            >
+                              {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                              Enviar em Lote (até 50)
+                            </Button>
+                            <Button
+                              size="sm" variant="outline" className="gap-1.5 text-xs"
+                              onClick={() => {
+                                const unknowns = inventory.filter(u => !u.verdict).map(u => u.url).slice(0, 20);
+                                if (unknowns.length === 0) { toast.info("Todas já foram inspecionadas"); return; }
+                                inspectMutation.mutate(unknowns);
+                              }}
+                              disabled={inspectMutation.isPending}
+                            >
+                              {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                              Inspecionar Não Verificadas (até 20)
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
             )}
           </TabsContent>
 
