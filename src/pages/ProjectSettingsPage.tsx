@@ -297,14 +297,15 @@ export default function ProjectSettingsPage() {
   );
 }
 
-/* ─── GSC Integration Card ─── */
+/* ─── GSC Integration Card (Multiple Connections) ─── */
 function GscIntegrationCard({ projectId }: { projectId: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
   const [connectionName, setConnectionName] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -312,20 +313,28 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
   const [selectedSite, setSelectedSite] = useState("");
   const [step, setStep] = useState<"form" | "validating" | "select">("form");
 
-  const { data: conn, isLoading } = useQuery({
-    queryKey: ["gsc-connection", projectId],
+  const { data: connections = [], isLoading } = useQuery({
+    queryKey: ["gsc-connections", projectId],
     queryFn: async () => {
-      const { data } = await supabase.from("gsc_connections").select("*").eq("project_id", projectId).maybeSingle();
-      return data;
+      const { data } = await supabase.from("gsc_connections").select("*").eq("project_id", projectId).order("created_at", { ascending: true });
+      return data || [];
     },
     enabled: !!projectId,
   });
 
-  const isConnected = !!conn;
+  const resetForm = () => {
+    setAdding(false);
+    setEditingId(null);
+    setStep("form");
+    setJsonInput("");
+    setConnectionName("");
+    setJsonError("");
+    setSites([]);
+    setSelectedSite("");
+  };
 
-  const handleTest = async () => {
-    if (!conn) return;
-    setTesting(true);
+  const handleTest = async (conn: any) => {
+    setTestingId(conn.id);
     try {
       const { data, error } = await supabase.functions.invoke("verify-gsc", {
         body: { credentials: { client_email: conn.client_email, private_key: conn.private_key } },
@@ -336,45 +345,44 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
     } catch (e: any) {
       shadToast({ title: "Falha na conexão", description: e.message, variant: "destructive" });
     } finally {
-      setTesting(false);
+      setTestingId(null);
     }
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
+  const handleSync = async (conn: any) => {
+    setSyncingId(conn.id);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-gsc-data", {
-        body: { project_id: projectId },
+        body: { project_id: projectId, connection_id: conn.id },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
       shadToast({ title: "Sincronização concluída!", description: `${data?.inserted?.toLocaleString() || 0} métricas importadas.` });
     } catch (e: any) {
       shadToast({ title: "Erro ao sincronizar", description: e.message, variant: "destructive" });
     } finally {
-      setSyncing(false);
+      setSyncingId(null);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!conn) return;
-    setDeleting(true);
+  const handleDisconnect = async (connId: string) => {
+    setDeletingId(connId);
     try {
-      const { error } = await supabase.from("gsc_connections").delete().eq("id", conn.id);
+      const { error } = await supabase.from("gsc_connections").delete().eq("id", connId);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
-      shadToast({ title: "GSC desconectado." });
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
+      shadToast({ title: "Conexão GSC removida." });
     } catch (e: any) {
       shadToast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
-      setDeleting(false);
+      setDeletingId(null);
     }
   };
 
-  const handleConnect = async () => {
-    if (!connectionName.trim()) { setJsonError("Informe um nome."); return; }
+  const handleValidate = async () => {
+    if (!connectionName.trim()) { setJsonError("Informe um nome para a conexão."); return; }
     let parsed: any;
     try {
       parsed = JSON.parse(jsonInput.trim());
@@ -413,20 +421,28 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
     let parsed: any;
     try { parsed = JSON.parse(jsonInput.trim()); } catch { return; }
     try {
-      const { error } = await supabase.from("gsc_connections").upsert({
-        project_id: projectId,
-        owner_id: user.id,
-        connection_name: connectionName,
-        client_email: parsed.client_email,
-        private_key: parsed.private_key,
-        site_url: selectedSite,
-      }, { onConflict: "project_id" });
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
-      setEditing(false);
-      setStep("form");
-      setJsonInput("");
-      shadToast({ title: "Conexão GSC salva!" });
+      if (editingId) {
+        const { error } = await supabase.from("gsc_connections").update({
+          connection_name: connectionName,
+          client_email: parsed.client_email,
+          private_key: parsed.private_key,
+          site_url: selectedSite,
+        }).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("gsc_connections").insert({
+          project_id: projectId,
+          owner_id: user.id,
+          connection_name: connectionName,
+          client_email: parsed.client_email,
+          private_key: parsed.private_key,
+          site_url: selectedSite,
+        });
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ["gsc-connections"] });
+      resetForm();
+      shadToast({ title: editingId ? "Conexão atualizada!" : "Nova conexão GSC adicionada!" });
     } catch (e: any) {
       shadToast({ title: "Erro", description: e.message, variant: "destructive" });
     }
@@ -434,133 +450,161 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
 
   if (isLoading) return <Card className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></Card>;
 
-  // Show connected state
-  if (isConnected && !editing) {
-    return (
-      <Card className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-              <Wifi className="h-4 w-4 text-success" />
-            </div>
-            <div>
-              <span className="text-sm font-medium text-foreground">Google Search Console</span>
-              <p className="text-[10px] text-muted-foreground">{conn.connection_name} · {conn.site_url}</p>
-            </div>
-          </div>
-          <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Conectado</Badge>
-        </div>
-        {conn.last_sync_at && (
-          <p className="text-[10px] text-muted-foreground">
-            Último sync: {format(parseISO(conn.last_sync_at), "dd/MM/yyyy HH:mm")}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleTest} disabled={testing}>
-            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
-            Testar
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleSync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-            Sincronizar
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => { setEditing(true); setConnectionName(conn.connection_name); }}>
-            <Pencil className="h-3 w-3" /> Editar
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={deleting}>
-            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            Desconectar
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  // Show connect/edit form
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-            {editing ? <Pencil className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${connections.length > 0 ? "bg-success/10" : "bg-muted"}`}>
+            {connections.length > 0 ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
           </div>
           <div>
             <span className="text-sm font-medium text-foreground">Google Search Console</span>
-            <p className="text-[10px] text-muted-foreground">{editing ? "Editar conexão" : "Não conectado"}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {connections.length === 0 ? "Nenhuma conta conectada" : `${connections.length} conta(s) conectada(s)`}
+            </p>
           </div>
         </div>
-        {editing && (
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setEditing(false); setStep("form"); setJsonError(""); }}>
-            Cancelar
+        {!adding && !editingId && (
+          <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setAdding(true)}>
+            <Search className="h-3 w-3" /> Adicionar Conta
           </Button>
         )}
       </div>
 
-      {step === "form" && (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Nome da conexão</Label>
-            <Input placeholder="Ex: GSC Principal" value={connectionName} onChange={e => { setConnectionName(e.target.value); setJsonError(""); }} className="h-8 text-xs" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Credenciais JSON (Service Account)</Label>
-            <label className="cursor-pointer">
-              <input type="file" accept=".json" className="hidden" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (evt) => { setJsonInput(evt.target?.result as string); setJsonError(""); };
-                reader.readAsText(file);
-                e.target.value = "";
-              }} />
-              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2 text-xs text-muted-foreground">
-                <Upload className="h-3.5 w-3.5" />
-                <span>Upload arquivo .json</span>
+      {/* Existing connections list */}
+      {connections.length > 0 && !adding && !editingId && (
+        <div className="space-y-2">
+          {connections.map((conn: any) => (
+            <div key={conn.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-7 w-7 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{conn.connection_name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{conn.site_url} · {conn.client_email}</p>
+                  {conn.last_sync_at && (
+                    <p className="text-[9px] text-muted-foreground">Sync: {format(parseISO(conn.last_sync_at), "dd/MM/yyyy HH:mm")}</p>
+                  )}
+                </div>
               </div>
-            </label>
-            <textarea
-              className="w-full min-h-[100px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-              placeholder='{"type": "service_account", ...}'
-              value={jsonInput}
-              onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
-            />
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleTest(conn)} disabled={testingId === conn.id}>
+                  {testingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleSync(conn)} disabled={syncingId === conn.id}>
+                  {syncingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                  setEditingId(conn.id);
+                  setConnectionName(conn.connection_name);
+                  setJsonInput("");
+                  setStep("form");
+                }}>
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleDisconnect(conn.id)} disabled={deletingId === conn.id}>
+                  {deletingId === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Info about multiple accounts */}
+      {connections.length > 0 && !adding && !editingId && (
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+          <Settings2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Adicione múltiplas Service Accounts para <strong className="text-foreground">aumentar o limite de quota</strong> da API do Search Console. 
+            Cada conta possui ~200 notificações/dia e ~2.000 inspeções/dia independentes.
+          </p>
+        </div>
+      )}
+
+      {/* Add / Edit form */}
+      {(adding || editingId) && (
+        <div className="space-y-3 border border-border rounded-lg p-3 bg-muted/10">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-foreground">{editingId ? "Editar Conexão" : "Nova Conexão GSC"}</span>
+            <Button variant="ghost" size="sm" className="text-xs h-6" onClick={resetForm}>Cancelar</Button>
           </div>
-          {jsonError && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-destructive text-xs">
-              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {jsonError}
+
+          {step === "form" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome da conexão</Label>
+                <Input placeholder="Ex: GSC Conta 2" value={connectionName} onChange={e => { setConnectionName(e.target.value); setJsonError(""); }} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Credenciais JSON (Service Account)</Label>
+                <label className="cursor-pointer">
+                  <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => { setJsonInput(evt.target?.result as string); setJsonError(""); };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2 text-xs text-muted-foreground">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>Upload arquivo .json</span>
+                  </div>
+                </label>
+                <textarea
+                  className="w-full min-h-[100px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  placeholder='{"type": "service_account", ...}'
+                  value={jsonInput}
+                  onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
+                />
+              </div>
+              {jsonError && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-destructive text-xs">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {jsonError}
+                </div>
+              )}
+              <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleValidate} disabled={!jsonInput.trim() || !connectionName.trim()}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
+              </Button>
             </div>
           )}
-          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleConnect} disabled={!jsonInput.trim() || !connectionName.trim()}>
-            <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
-          </Button>
+
+          {step === "validating" && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">Verificando credenciais...</span>
+            </div>
+          )}
+
+          {step === "select" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 text-success text-xs">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Conexão verificada! Selecione a propriedade.
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Propriedade</Label>
+                <Select value={selectedSite} onValueChange={setSelectedSite}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {sites.map(s => <SelectItem key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleSaveConnection} disabled={!selectedSite}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> {editingId ? "Atualizar conexão" : "Salvar conexão"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {step === "validating" && (
-        <div className="flex items-center justify-center gap-2 py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-xs text-muted-foreground">Verificando credenciais...</span>
-        </div>
-      )}
-
-      {step === "select" && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 text-success text-xs">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Conexão verificada! Selecione a propriedade.
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Propriedade</Label>
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {sites.map(s => <SelectItem key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleSaveConnection} disabled={!selectedSite}>
-            <CheckCircle2 className="h-3.5 w-3.5" /> Salvar conexão
-          </Button>
-        </div>
+      {/* Empty state: show form directly */}
+      {connections.length === 0 && !adding && (
+        <Button size="sm" className="w-full text-xs gap-1.5" onClick={() => setAdding(true)}>
+          <Search className="h-3 w-3" /> Conectar Google Search Console
+        </Button>
       )}
     </Card>
   );
