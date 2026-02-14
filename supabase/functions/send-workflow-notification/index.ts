@@ -113,34 +113,63 @@ serve(async (req) => {
 
     // Send WhatsApp notifications
     if (schedule.notify_whatsapp && WHATSAPP_API_KEY && WHATSAPP_API_URL) {
-      const whatsappMessage = schedule.send_summary
-        ? `📊 *${workflow_name}*\n📅 ${new Date().toLocaleDateString("pt-BR")}\n\n${summary}`
+      // Build full message - send the complete report, not just summary
+      const fullWhatsappMessage = schedule.send_summary
+        ? `📊 *${workflow_name}*\n📅 ${new Date().toLocaleDateString("pt-BR")}\n\n${report}`
         : `📊 *${workflow_name}* — Relatório disponível.`;
+
+      // Split into chunks of ~4000 chars to avoid WhatsApp limits
+      const MAX_CHUNK = 4000;
+      const chunks: string[] = [];
+      if (fullWhatsappMessage.length <= MAX_CHUNK) {
+        chunks.push(fullWhatsappMessage);
+      } else {
+        // Split by double newlines (paragraph boundaries) to keep readability
+        const paragraphs = fullWhatsappMessage.split(/\n{2,}/);
+        let current = "";
+        for (const para of paragraphs) {
+          if (current.length + para.length + 2 > MAX_CHUNK && current.length > 0) {
+            chunks.push(current.trim());
+            current = para;
+          } else {
+            current += (current ? "\n\n" : "") + para;
+          }
+        }
+        if (current.trim()) chunks.push(current.trim());
+      }
 
       for (const phone of (schedule.whatsapp_recipients || [])) {
         try {
           const cleanPhone = phone.replace(/\D/g, "");
-          // Evolution API v2 format: /message/sendText/{instanceName}
           const baseUrl = WHATSAPP_API_URL.replace(/\/+$/, "");
-          const body = {
-            number: cleanPhone,
-            text: whatsappMessage,
-          };
-          console.log(`[WhatsApp] Sending to ${cleanPhone} via ${baseUrl}/message/sendText/rankito`);
-          const res = await fetch(`${baseUrl}/message/sendText/rankito`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: WHATSAPP_API_KEY,
-            },
-            body: JSON.stringify(body),
-          });
+          
+          console.log(`[WhatsApp] Sending ${chunks.length} chunk(s) to ${cleanPhone}`);
+          
+          for (let ci = 0; ci < chunks.length; ci++) {
+            const chunkText = chunks.length > 1
+              ? `${ci === 0 ? "" : `(${ci + 1}/${chunks.length})\n\n`}${chunks[ci]}`
+              : chunks[ci];
+            
+            const res = await fetch(`${baseUrl}/message/sendText/rankito`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: WHATSAPP_API_KEY,
+              },
+              body: JSON.stringify({ number: cleanPhone, text: chunkText }),
+            });
 
-          const resText = await res.text();
-          console.log(`[WhatsApp] Response ${res.status}: ${resText}`);
+            const resText = await res.text();
+            console.log(`[WhatsApp] Chunk ${ci + 1}/${chunks.length} - Response ${res.status}: ${resText.substring(0, 200)}`);
 
-          if (!res.ok) {
-            throw new Error(`WhatsApp API error ${res.status}: ${resText}`);
+            if (!res.ok) {
+              throw new Error(`WhatsApp API error ${res.status}: ${resText}`);
+            }
+            
+            // Small delay between chunks to maintain order
+            if (ci < chunks.length - 1) {
+              await new Promise(r => setTimeout(r, 1000));
+            }
           }
 
           results.push({ channel: "whatsapp", recipient: phone, status: "sent" });
