@@ -193,7 +193,7 @@ export default function Onboarding() {
               {step === 0 && <StepCreateProject project={project} setProject={setProject} />}
               {step === 1 && <StepSitemap projectId={projectId} />}
               {step === 2 && <StepGSC projectId={projectId} />}
-              {step === 3 && <StepGA4 />}
+              {step === 3 && <StepGA4 projectId={projectId} />}
               {step === 4 && <StepTracking />}
               {step === 5 && <StepAds />}
               {step === 6 && <StepAIAgent />}
@@ -850,8 +850,9 @@ function StepGSC({ projectId }: { projectId: string | null }) {
 }
 
 /* ─── Step 4: GA4 ─── */
-function StepGA4() {
-  const [ga4Step, setGa4Step] = useState<"credentials" | "validating" | "connected" | "error">("credentials");
+function StepGA4({ projectId }: { projectId: string | null }) {
+  const { user } = useAuth();
+  const [ga4Step, setGa4Step] = useState<"credentials" | "validating" | "connected" | "error" | "saved">("credentials");
   const [connectionName, setConnectionName] = useState("");
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -859,6 +860,50 @@ function StepGA4() {
   const [properties, setProperties] = useState<{ propertyId: string; displayName: string; account: string }[]>([]);
   const [selectedProperty, setSelectedProperty] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [parsedCreds, setParsedCreds] = useState<{ client_email: string; private_key: string } | null>(null);
+  const [savingConnection, setSavingConnection] = useState(false);
+
+  // Restore saved connection
+  useEffect(() => {
+    if (!projectId || !user) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from("ga4_connections")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (data) {
+        setConnectionName(data.connection_name);
+        setSelectedProperty(data.property_id || "");
+        setGa4Step("saved");
+      }
+    };
+    check();
+  }, [projectId, user]);
+
+  const saveConnection = async () => {
+    if (!projectId || !user || !parsedCreds || !selectedProperty) return;
+    setSavingConnection(true);
+    try {
+      const selectedProp = properties.find(p => p.propertyId === selectedProperty);
+      const { error } = await supabase.from("ga4_connections").upsert({
+        project_id: projectId,
+        owner_id: user.id,
+        connection_name: connectionName,
+        client_email: parsedCreds.client_email,
+        private_key: parsedCreds.private_key,
+        property_id: selectedProperty,
+        property_name: selectedProp?.displayName || "",
+      }, { onConflict: "project_id" });
+      if (error) throw error;
+      setGa4Step("saved");
+      toast({ title: "Conexão GA4 salva!", description: "Propriedade vinculada com sucesso." });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar conexão", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingConnection(false);
+    }
+  };
 
   const validateAndConnect = async () => {
     if (!connectionName.trim()) { setJsonError("Informe um nome para a conexão."); return; }
@@ -893,6 +938,7 @@ function StepGA4() {
       }
       setProperties(fetched);
       setSelectedProperty(fetched[0]?.propertyId || "");
+      setParsedCreds({ client_email: parsed.client_email, private_key: parsed.private_key });
       setGa4Step("connected");
     } catch (err: any) {
       console.error("GA4 verification failed:", err);
@@ -1025,7 +1071,33 @@ function StepGA4() {
                 </div>
               ))}
             </div>
+            <Button onClick={saveConnection} disabled={savingConnection || !selectedProperty} className="w-full gap-2 text-sm">
+              {savingConnection ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              {savingConnection ? "Salvando..." : "Salvar conexão GA4"}
+            </Button>
           </motion.div>
+        </Card>
+      )}
+
+      {ga4Step === "saved" && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <span className="text-sm font-medium text-success">Conexão GA4 salva com sucesso!</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
+              <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
+              <div><span className="text-muted-foreground">Conexão:</span> <span className="font-medium text-foreground">{connectionName}</span></div>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-xs">
+              <CheckCircle2 className="h-3 w-3 text-success flex-shrink-0" />
+              <div><span className="text-muted-foreground">Propriedade:</span> <span className="font-medium text-foreground">{selectedProperty}</span></div>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => { setGa4Step("credentials"); setJsonInput(""); setParsedCreds(null); }} className="w-full gap-2 text-xs">
+            Reconectar com novas credenciais
+          </Button>
         </Card>
       )}
 
