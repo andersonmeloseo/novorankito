@@ -153,13 +153,15 @@ export default function SeoPage() {
   // KPIs with period comparison
   const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
-  const avgCtr = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / metrics.length : 0;
-  const avgPosition = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / metrics.length : 0;
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+  const weightedPositionSum = metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
+  const avgPosition = totalImpressions > 0 ? weightedPositionSum / totalImpressions : 0;
 
   const prevClicks = prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const prevImpressions = prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
-  const prevAvgCtr = prevFiltered.length ? prevFiltered.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / prevFiltered.length : 0;
-  const prevAvgPosition = prevFiltered.length ? prevFiltered.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / prevFiltered.length : 0;
+  const prevAvgCtr = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
+  const prevWeightedPos = prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
+  const prevAvgPosition = prevImpressions > 0 ? prevWeightedPos / prevImpressions : 0;
 
   const pctChange = (curr: number, prev: number) => prev === 0 ? 0 : parseFloat((((curr - prev) / prev) * 100).toFixed(1));
 
@@ -169,25 +171,23 @@ export default function SeoPage() {
 
   // Aggregate by dimension
   function aggregateBy(key: string) {
-    const map = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+    const map = new Map<string, { clicks: number; impressions: number; positionWeighted: number }>();
     metrics.forEach((m: any) => {
       const val = m[key];
       if (!val) return;
       if (searchTerm && !val.toLowerCase().includes(searchTerm.toLowerCase())) return;
-      const existing = map.get(val) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+      const existing = map.get(val) || { clicks: 0, impressions: 0, positionWeighted: 0 };
       existing.clicks += m.clicks || 0;
       existing.impressions += m.impressions || 0;
-      existing.ctr += Number(m.ctr || 0);
-      existing.position += Number(m.position || 0);
-      existing.count++;
+      existing.positionWeighted += Number(m.position || 0) * (m.impressions || 0);
       map.set(val, existing);
     });
     return Array.from(map.entries()).map(([name, d]) => ({
       name,
       clicks: d.clicks,
       impressions: d.impressions,
-      ctr: d.count ? d.ctr / d.count : 0,
-      position: d.count ? d.position / d.count : 0,
+      ctr: d.impressions > 0 ? parseFloat(((d.clicks / d.impressions) * 100).toFixed(2)) : 0,
+      position: d.impressions > 0 ? parseFloat((d.positionWeighted / d.impressions).toFixed(1)) : 0,
     }));
   }
 
@@ -210,15 +210,13 @@ export default function SeoPage() {
 
   // Trend data by date
   const trendData = useMemo(() => {
-    const byDate = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+    const byDate = new Map<string, { clicks: number; impressions: number; positionWeighted: number }>();
     metrics.forEach((m: any) => {
       const d = m.metric_date;
-      const existing = byDate.get(d) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+      const existing = byDate.get(d) || { clicks: 0, impressions: 0, positionWeighted: 0 };
       existing.clicks += m.clicks || 0;
       existing.impressions += m.impressions || 0;
-      existing.ctr += Number(m.ctr || 0);
-      existing.position += Number(m.position || 0);
-      existing.count++;
+      existing.positionWeighted += Number(m.position || 0) * (m.impressions || 0);
       byDate.set(d, existing);
     });
     return Array.from(byDate.entries())
@@ -228,8 +226,8 @@ export default function SeoPage() {
         rawDate: date,
         clicks: d.clicks,
         impressions: d.impressions,
-        ctr: d.count ? parseFloat((d.ctr / d.count).toFixed(2)) : 0,
-        position: d.count ? parseFloat((d.position / d.count).toFixed(1)) : 0,
+        ctr: d.impressions > 0 ? parseFloat(((d.clicks / d.impressions) * 100).toFixed(2)) : 0,
+        position: d.impressions > 0 ? parseFloat((d.positionWeighted / d.impressions).toFixed(1)) : 0,
       }));
   }, [metrics]);
 
