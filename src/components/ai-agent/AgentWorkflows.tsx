@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   GitBranch, Play, ArrowRight, ArrowDown, Loader2, CheckCircle2,
@@ -263,6 +264,13 @@ interface AgentWorkflowsProps {
   projectId?: string;
 }
 
+const PERIOD_OPTIONS = [
+  { value: "7", label: "Últimos 7 dias" },
+  { value: "14", label: "Últimos 14 dias" },
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "90", label: "Últimos 90 dias" },
+];
+
 export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsProps) {
   const [activeWorkflows, setActiveWorkflows] = useState<Set<string>>(() => {
     try {
@@ -283,6 +291,7 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
   const [sendPhone, setSendPhone] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [analysisPeriod, setAnalysisPeriod] = useState("30");
 
   // Fetch schedule configs to show indicators
   const { data: schedules = [] } = useQuery({
@@ -332,9 +341,11 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
         .map(([idx, result]) => `=== RESULTADO DO PASSO ${Number(idx) + 1} (${workflow.steps[Number(idx)].agent}) ===\n${result}`)
         .join("\n\n");
 
+      const periodInstruction = `PERÍODO DE ANÁLISE: Use dados dos últimos ${analysisPeriod} dias para todas as comparações e métricas.\n\n`;
+
       const fullPrompt = previousContext
-        ? `CONTEXTO ACUMULADO DOS PASSOS ANTERIORES:\n${previousContext}\n\n---\n\nAGORA EXECUTE O PASSO ${i + 1} (${step.agent}):\n${step.prompt}`
-        : step.prompt;
+        ? `${periodInstruction}CONTEXTO ACUMULADO DOS PASSOS ANTERIORES:\n${previousContext}\n\n---\n\nAGORA EXECUTE O PASSO ${i + 1} (${step.agent}):\n${step.prompt}`
+        : `${periodInstruction}${step.prompt}`;
 
       try {
         console.log(`[Workflow] Step ${i + 1}/${workflow.steps.length}: ${step.agent}, projectId: ${projectId}`);
@@ -452,7 +463,7 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-primary" />
@@ -461,6 +472,19 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
           <p className="text-xs text-muted-foreground mt-0.5">
             Fluxos automatizados que encadeiam agentes — ative e execute
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] text-muted-foreground whitespace-nowrap">Período de análise:</Label>
+          <Select value={analysisPeriod} onValueChange={setAnalysisPeriod}>
+            <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map(p => (
+                <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
