@@ -18,9 +18,7 @@ async function createGoogleJWT(credentials: { client_email: string; private_key:
   };
 
   const encode = (obj: unknown) => btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  const headerB64 = encode(header);
-  const payloadB64 = encode(payload);
-  const unsignedToken = `${headerB64}.${payloadB64}`;
+  const unsignedToken = `${encode(header)}.${encode(payload)}`;
 
   const pemContents = credentials.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
@@ -29,18 +27,14 @@ async function createGoogleJWT(credentials: { client_email: string; private_key:
   const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
 
   const key = await crypto.subtle.importKey(
-    "pkcs8",
-    binaryDer,
+    "pkcs8", binaryDer,
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
+    false, ["sign"]
   );
 
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsignedToken));
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
   return `${unsignedToken}.${signatureB64}`;
 }
@@ -63,6 +57,50 @@ async function getAccessToken(credentials: { client_email: string; private_key: 
   return tokenData.access_token;
 }
 
+// Fetch all paginated rows from GSC for given dimensions
+async function fetchGscDimension(
+  apiUrl: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string,
+  dimensions: string[],
+): Promise<any[]> {
+  let allRows: any[] = [];
+  let startRow = 0;
+  const rowLimit = 25000;
+
+  while (true) {
+    const body = { startDate, endDate, dimensions, rowLimit, startRow };
+    console.log(`Fetching GSC [${dimensions.join(",")}]: startRow=${startRow}`);
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`GSC API error [${res.status}]: ${errText}`);
+    }
+
+    const data = await res.json();
+    const rows = data.rows || [];
+    allRows.push(...rows);
+
+    console.log(`Got ${rows.length} rows (total: ${allRows.length})`);
+
+    if (rows.length < rowLimit) break;
+    startRow += rowLimit;
+    if (startRow >= 50000) break;
+  }
+
+  return allRows;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -80,7 +118,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get GSC connection for this project
     const { data: conn, error: connErr } = await supabase
       .from("gsc_connections")
       .select("*")
@@ -105,105 +142,92 @@ serve(async (req) => {
       });
     }
 
-    // Fetch last 90 days of data from GSC Search Analytics API
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 90);
-
-    const formatDate = (d: Date) => d.toISOString().split("T")[0];
-
-    // We'll fetch data with all dimensions: query, page, country, device, date
-    const dimensions = ["query", "page", "country", "device", "date"];
+    const fmtDate = (d: Date) => d.toISOString().split("T")[0];
+    const startStr = fmtDate(startDate);
+    const endStr = fmtDate(endDate);
 
     const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`;
 
-    let allRows: any[] = [];
-    let startRow = 0;
-    const rowLimit = 5000;
+    // Fetch data with separate dimension groups for accuracy
+    // 1. "date" only → accurate daily totals for KPIs and trend chart
+    // 2. "query" only → query rankings (aggregated across dates)
+    // 3. "page" only → page rankings
+    // 4. "country" only → country breakdown
+    // 5. "device" only → device breakdown
+    const dimensionGroups = [
+      { type: "date", dims: ["date"] },
+      { type: "query", dims: ["query"] },
+      { type: "page", dims: ["page"] },
+      { type: "country", dims: ["country"] },
+      { type: "device", dims: ["device"] },
+    ];
 
-    // Paginate through GSC API results
-    while (true) {
-      const body = {
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
-        dimensions,
-        rowLimit,
-        startRow,
-      };
-
-      console.log(`Fetching GSC data: startRow=${startRow}`);
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`GSC API error [${res.status}]: ${errText}`);
-      }
-
-      const data = await res.json();
-      const rows = data.rows || [];
-      allRows.push(...rows);
-
-      console.log(`Got ${rows.length} rows (total: ${allRows.length})`);
-
-      if (rows.length < rowLimit) break;
-      startRow += rowLimit;
-
-      // Safety limit: max 50k rows
-      if (startRow >= 50000) break;
-    }
-
-    if (allRows.length === 0) {
-      // Update last_sync_at even with no data
-      await supabase.from("gsc_connections").update({ last_sync_at: new Date().toISOString() }).eq("id", conn.id);
-      return new Response(JSON.stringify({ success: true, inserted: 0, message: "Nenhum dado disponível no período." }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Delete existing metrics for this project to avoid duplicates
+    // Delete existing metrics for this project
     await supabase.from("seo_metrics").delete().eq("project_id", project_id).eq("owner_id", conn.owner_id);
 
-    // Transform and insert
-    const metricsToInsert = allRows.map((row: any) => ({
-      project_id,
-      owner_id: conn.owner_id,
-      query: row.keys[0] || null,
-      url: row.keys[1] || null,
-      country: row.keys[2] || null,
-      device: row.keys[3] || null,
-      metric_date: row.keys[4] || formatDate(new Date()),
-      clicks: row.clicks || 0,
-      impressions: row.impressions || 0,
-      ctr: row.ctr ? parseFloat((row.ctr * 100).toFixed(2)) : 0,
-      position: row.position ? parseFloat(row.position.toFixed(1)) : 0,
-    }));
+    let totalInserted = 0;
 
-    // Insert in batches of 500
-    let inserted = 0;
-    for (let i = 0; i < metricsToInsert.length; i += 500) {
-      const batch = metricsToInsert.slice(i, i + 500);
-      const { error: insertErr } = await supabase.from("seo_metrics").insert(batch);
-      if (insertErr) {
-        console.error(`Insert error at batch ${i}:`, insertErr);
-        continue;
+    for (const group of dimensionGroups) {
+      console.log(`\n--- Fetching dimension: ${group.type} ---`);
+      const rows = await fetchGscDimension(apiUrl, accessToken, startStr, endStr, group.dims);
+
+      if (rows.length === 0) continue;
+
+      const metricsToInsert = rows.map((row: any) => {
+        const key = row.keys[0] || null;
+        const base = {
+          project_id,
+          owner_id: conn.owner_id,
+          dimension_type: group.type,
+          clicks: row.clicks || 0,
+          impressions: row.impressions || 0,
+          ctr: row.ctr ? parseFloat((row.ctr * 100).toFixed(2)) : 0,
+          position: row.position ? parseFloat(row.position.toFixed(1)) : 0,
+          query: null as string | null,
+          url: null as string | null,
+          country: null as string | null,
+          device: null as string | null,
+          metric_date: fmtDate(new Date()),
+        };
+
+        if (group.type === "date") {
+          base.metric_date = key || base.metric_date;
+        } else if (group.type === "query") {
+          base.query = key;
+        } else if (group.type === "page") {
+          base.url = key;
+        } else if (group.type === "country") {
+          base.country = key;
+        } else if (group.type === "device") {
+          base.device = key;
+        }
+
+        return base;
+      });
+
+      // Insert in batches
+      for (let i = 0; i < metricsToInsert.length; i += 500) {
+        const batch = metricsToInsert.slice(i, i + 500);
+        const { error: insertErr } = await supabase.from("seo_metrics").insert(batch);
+        if (insertErr) {
+          console.error(`Insert error [${group.type}] batch ${i}:`, insertErr);
+          continue;
+        }
+        totalInserted += batch.length;
       }
-      inserted += batch.length;
+
+      console.log(`Inserted ${metricsToInsert.length} rows for ${group.type}`);
     }
 
     // Update last_sync_at
     await supabase.from("gsc_connections").update({ last_sync_at: new Date().toISOString() }).eq("id", conn.id);
 
-    console.log(`GSC sync complete: ${inserted} rows inserted`);
+    console.log(`GSC sync complete: ${totalInserted} total rows inserted`);
 
-    return new Response(JSON.stringify({ success: true, inserted }), {
+    return new Response(JSON.stringify({ success: true, inserted: totalInserted }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {

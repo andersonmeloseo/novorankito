@@ -689,6 +689,7 @@ export type Database = {
           created_at: string
           ctr: number
           device: string | null
+          dimension_type: string
           id: string
           impressions: number
           metric_date: string
@@ -704,6 +705,7 @@ export type Database = {
           created_at?: string
           ctr?: number
           device?: string | null
+          dimension_type?: string
           id?: string
           impressions?: number
           metric_date?: string
@@ -719,6 +721,7 @@ export type Database = {
           created_at?: string
           ctr?: number
           device?: string | null
+          dimension_type?: string
           id?: string
           impressions?: number
           metric_date?: string
