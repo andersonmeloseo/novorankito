@@ -406,7 +406,15 @@ export function SessionsTab() {
   const engagedCount = filtered.filter((s) => !s.is_bounce).length;
   const engagementRate = totalSessions > 0 ? Number(((engagedCount / totalSessions) * 100).toFixed(1)) : 0;
   const avgPages = totalSessions > 0 ? Number((filtered.reduce((s, r) => s + r.pages_viewed, 0) / totalSessions).toFixed(1)) : 0;
-  const newUsersPercent = 62.4;
+  const peakInfo = (() => {
+    let maxVal = 0, peakDay = "", peakHour = 0;
+    heatmapData.forEach(row => {
+      row.hours.forEach(cell => {
+        if (cell.value > maxVal) { maxVal = cell.value; peakDay = row.day; peakHour = cell.hour; }
+      });
+    });
+    return { label: `${peakDay} ${peakHour}h`, count: maxVal };
+  })();
   const uniqueCities = new Set(filtered.map((s) => s.city)).size;
   const lastSession = filtered.length > 0 ? filtered.reduce((a, b) => new Date(a.started_at) > new Date(b.started_at) ? a : b) : null;
   const lastSourceMedium = lastSession ? `${lastSession.source} / ${lastSession.medium}` : "—";
@@ -453,7 +461,7 @@ export function SessionsTab() {
         <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} change={5.3} sparkData={generateSparkline(12, 120, 40)} color="hsl(var(--info))" icon={Clock} />
         <SparkKpi label="Páginas/Sessão" value={avgPages} change={3.8} sparkData={generateSparkline(12, 4, 2)} color="hsl(var(--warning))" icon={Layers} />
         <SparkKpi label="Taxa Rejeição" value={bounceRate} change={-2.1} suffix="%" sparkData={generateSparkline(12, 30, 8)} color="hsl(var(--warning))" />
-        <SparkKpi label="Novos Usuários" value={newUsersPercent} change={-1.3} suffix="%" sparkData={generateSparkline(12, 62, 8)} color="hsl(var(--chart-5))" />
+        <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} change={0} sparkData={[]} color="hsl(var(--warning))" icon={Flame} hideSparkline hideBadge smallValue />
         <SparkKpi label="Cidade" value={lastSession ? lastSession.city : "—"} change={0} sparkData={[]} color="hsl(var(--info))" icon={Globe} hideSparkline hideBadge smallValue />
         <SparkKpi label="Source/Medium" value={lastSourceMedium} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
       </StaggeredGrid>
