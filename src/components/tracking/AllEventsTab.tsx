@@ -17,6 +17,7 @@ import {
   FunnelStep, TreemapContent, PipelineVisual, CohortHeatmap, DonutCenterLabel,
 } from "@/components/analytics/ChartPrimitives";
 import { generateConversionsHeatmap } from "@/lib/mock-data";
+import { AnalyticsDataTable } from "@/components/analytics/AnalyticsDataTable";
 
 function generateSparkline(length = 12, base = 50, variance = 20): number[] {
   return Array.from({ length }, () => Math.max(0, base + Math.floor((Math.random() - 0.3) * variance)));
@@ -278,8 +279,28 @@ export function AllEventsTab() {
         </Card>
       </AnimatedContainer>
 
-      {/* Heatmap Day × Hour */}
+      {/* Detailed Events Table */}
       <AnimatedContainer delay={0.4}>
+        <Card className="p-5">
+          <ChartHeader title="Eventos Detalhados" subtitle="Últimos eventos capturados com URLs, dispositivo e tipo" />
+          <AnalyticsDataTable
+            columns={["Evento", "URL", "Dispositivo", "Browser", "Cidade", "Plataforma", "Data/Hora"]}
+            rows={pluginEvents.slice(0, 100).map(e => [
+              EVENT_LABELS[e.event_type],
+              e.page_url,
+              e.device.charAt(0).toUpperCase() + e.device.slice(1),
+              e.browser,
+              `${e.city}/${e.state}`,
+              e.platform,
+              new Date(e.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+            ])}
+            pageSize={15}
+          />
+        </Card>
+      </AnimatedContainer>
+
+      {/* Heatmap Day × Hour */}
+      <AnimatedContainer delay={0.45}>
         <Card className="p-5">
           <ChartHeader title="Mapa de Calor de Eventos (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
           <div className="overflow-x-auto">
