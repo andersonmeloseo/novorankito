@@ -74,10 +74,30 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      spacing: {
+        'xs': '4px',
+        'sm': '8px',
+        'md': '16px',
+        'lg': '24px',
+        'xl': '32px',
+        '2xl': '40px',
+        '3xl': '48px',
+      },
+      fontSize: {
+        'xs': ['0.75rem', { lineHeight: '1rem' }],
+        'sm': ['0.8125rem', { lineHeight: '1.25rem' }],
+        'base': ['0.875rem', { lineHeight: '1.5rem' }],
+        'lg': ['1rem', { lineHeight: '1.5rem' }],
+        'sl': ['1.125rem', { lineHeight: '1.75rem' }],
+        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        '3xl': ['2rem', { lineHeight: '2.25rem' }],
+      },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        xs: "calc(var(--radius) - 12px)",
       },
       keyframes: {
         "accordion-down": {
