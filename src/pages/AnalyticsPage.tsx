@@ -15,6 +15,7 @@ import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-conta
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AcquisitionTab } from "@/components/analytics/AcquisitionTab";
+import { AiTrafficTab } from "@/components/analytics/AiTrafficTab";
 import { EngagementTab } from "@/components/analytics/EngagementTab";
 import { DemographicsTab } from "@/components/analytics/DemographicsTab";
 import { TechnologyTab } from "@/components/analytics/TechnologyTab";
@@ -28,7 +29,7 @@ import {
 import {
   Activity, Calendar, RefreshCw, Loader2, TrendingUp, Users, MousePointerClick,
   Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck, ArrowLeftRight,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Bot,
 } from "lucide-react";
 import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -403,6 +404,13 @@ export default function AnalyticsPage() {
             {/* ═══ LINHA 3 — Aquisição ═══ */}
             <DashboardSection title="Aquisição de Tráfego" icon={MousePointerClick}>
               {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : <AcquisitionTab data={acquisitionData} />}
+            </DashboardSection>
+
+            {/* ═══ TRÁFEGO DE IA ═══ */}
+            <DashboardSection title="Tráfego de IA — LLMs & Assistentes" icon={Bot}>
+              {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : (
+                <AiTrafficTab sources={acquisitionData?.sources || []} pages={engagementData?.pages || []} />
+              )}
             </DashboardSection>
 
             {/* ═══ LINHA 4 — Performance ═══ */}
