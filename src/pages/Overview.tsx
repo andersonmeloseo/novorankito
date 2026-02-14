@@ -104,13 +104,18 @@ export default function Overview() {
                   <span className="text-xs font-medium uppercase tracking-wider opacity-80">Dashboard</span>
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold font-display tracking-tight">
-                  {projects[0] ? `Projeto: ${projects[0].name}` : "Bem-vindo ao Rankito"}
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const greet = hour >= 5 && hour < 12 ? "Bom dia" : hour >= 12 && hour < 18 ? "Boa tarde" : "Boa noite";
+                    const name = user?.user_metadata?.display_name || user?.user_metadata?.name || "";
+                    return name ? `${greet}, ${name}! 👋` : `${greet}!`;
+                  })()}
                 </h2>
                 <p className="text-sm opacity-80 mt-1">
                   {projects[0]
                     ? hasRealData
-                      ? "Acompanhe a performance do seu projeto em tempo real."
-                      : "Conecte suas integrações para começar a ver dados reais."
+                      ? `Projeto: ${projects[0].name} — Acompanhe a performance em tempo real.`
+                      : `Projeto: ${projects[0].name} — Conecte suas integrações para ver dados reais.`
                     : "Crie um projeto para começar."}
                 </p>
               </div>

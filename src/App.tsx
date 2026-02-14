@@ -61,7 +61,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/overview" replace />} />
+            <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/overview" element={<Overview />} />
               <Route path="/projects" element={<ProjectsList />} />
