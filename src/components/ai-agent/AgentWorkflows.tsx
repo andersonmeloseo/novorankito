@@ -77,6 +77,173 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
       { agent: "Notificador", emoji: "📱", action: "Reporta resultado", prompt: "Resumo completo do pipeline: URLs identificadas, priorizadas, prontas para submissão, e próximos passos concretos." },
     ],
   },
+  // ── NEW WORKFLOWS ──
+  {
+    id: "competitor-spy",
+    name: "Espionagem de Concorrentes",
+    description: "Keywords concorrentes → Gaps → Oportunidades → Plano",
+    steps: [
+      { agent: "Agente SEO", emoji: "🕵️", action: "Mapeia keywords dos concorrentes", prompt: "Analise as keywords do projeto e identifique queries onde os concorrentes estão ranqueando e nós não. Liste as top 20 oportunidades de keywords com volume e dificuldade." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Estima potencial de tráfego", prompt: "Para cada keyword-gap identificada, estime o tráfego potencial caso consigamos rankear no top 3. Calcule o valor estimado desse tráfego." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Plano de ataque", prompt: "Crie um plano de conteúdo para conquistar as keywords dos concorrentes: tipo de conteúdo, word count estimado, internal links necessários e timeline." },
+      { agent: "Notificador", emoji: "📱", action: "Resume oportunidades", prompt: "Gere um resumo executivo: Top 10 keywords para atacar, potencial de tráfego total e plano de ação resumido." },
+    ],
+  },
+  {
+    id: "ctr-optimization",
+    name: "Otimização de CTR",
+    description: "Identifica baixo CTR → Analisa títulos → Sugere melhorias",
+    steps: [
+      { agent: "Agente SEO", emoji: "🔍", action: "Detecta CTR abaixo do benchmark", prompt: "Identifique todas as páginas com CTR abaixo do esperado para sua posição (ex: posição 1-3 com CTR <5%). Liste URL, keyword, posição, CTR atual e impressões." },
+      { agent: "Agente Growth", emoji: "✍️", action: "Sugere novos títulos e metas", prompt: "Para cada página com CTR baixo, sugira 3 variações de title tag e meta description otimizadas para clique. Use gatilhos emocionais, números e power words." },
+      { agent: "Notificador", emoji: "📱", action: "Lista de otimizações", prompt: "Compile uma lista prática de ação: URL, título atual vs sugerido, meta description sugerida. Formato fácil de copiar e implementar." },
+    ],
+  },
+  {
+    id: "traffic-drop-diagnostic",
+    name: "Diagnóstico de Queda de Tráfego",
+    description: "Detecta queda → Identifica causa → Plano de recuperação",
+    steps: [
+      { agent: "Agente Analytics", emoji: "📉", action: "Detecta quedas de tráfego", prompt: "Compare o tráfego dos últimos 7 dias com os 7 dias anteriores. Identifique quedas significativas por canal, landing page, device e localização." },
+      { agent: "Agente SEO", emoji: "🔍", action: "Investiga causas SEO", prompt: "Para as páginas com queda de tráfego, verifique: perdas de posição, problemas de indexação, mudanças no SERP, cannibalization. Identifique a causa raiz." },
+      { agent: "Agente Growth", emoji: "🚑", action: "Plano de recuperação urgente", prompt: "Crie um plano de emergência priorizado: ações imediatas (24h), curto prazo (1 semana) e médio prazo (30 dias) para recuperar o tráfego perdido." },
+      { agent: "Notificador", emoji: "🚨", action: "Alerta de queda", prompt: "Gere um alerta conciso: páginas afetadas, impacto estimado em sessões/receita, causa provável e ações urgentes. Formato de alerta." },
+    ],
+  },
+  {
+    id: "conversion-funnel",
+    name: "Análise de Funil de Conversão",
+    description: "Mapeia funil → Identifica gargalos → Otimizações",
+    steps: [
+      { agent: "Agente Analytics", emoji: "📊", action: "Mapeia funil de conversão", prompt: "Analise o funil completo: landing pages → engajamento → conversão. Identifique taxa de conversão por canal, device e landing page. Destaque os gargalos." },
+      { agent: "Agente SEO", emoji: "🔍", action: "Qualidade do tráfego orgânico", prompt: "Avalie a qualidade do tráfego orgânico: quais keywords trazem tráfego que converte vs tráfego que bounça? Identifique mismatch de intenção de busca." },
+      { agent: "Agente Growth", emoji: "🎯", action: "Otimizações de conversão", prompt: "Sugira otimizações: melhorias em landing pages, ajuste de keywords-alvo, CTAs mais eficazes, e estimativa de impacto na conversão." },
+      { agent: "Notificador", emoji: "📱", action: "Resumo do funil", prompt: "Resumo executivo do funil: taxas atuais, gargalos identificados, top 5 ações para melhorar conversão com impacto estimado." },
+    ],
+  },
+  {
+    id: "monthly-executive",
+    name: "Relatório Mensal Executivo",
+    description: "Dados → Comparação → ROI → Apresentação",
+    steps: [
+      { agent: "Agente Analytics", emoji: "📊", action: "Coleta métricas do mês", prompt: "Relatório mensal completo: sessões, usuários, receita, conversões, bounce rate, tempo no site. Compare com mês anterior E mesmo mês do ano passado. Destaque tendências." },
+      { agent: "Agente SEO", emoji: "🔍", action: "Performance SEO mensal", prompt: "Evolução mensal SEO: total de keywords no top 10, top 100, novos rankings, rankings perdidos, cliques e impressões totais. Compare MoM e YoY." },
+      { agent: "Agente Growth", emoji: "💰", action: "Calcula ROI e projeções", prompt: "Calcule o ROI do investimento em SEO: valor do tráfego orgânico, crescimento acumulado, projeção para próximos 3 meses baseado na tendência atual." },
+      { agent: "Relatório", emoji: "📄", action: "Relatório executivo formatado", prompt: "Compile um relatório executivo profissional com: Dashboard de KPIs, Destaques do Mês, Comparação MoM, Top 10 Wins, Desafios, Plano para Próximo Mês." },
+    ],
+  },
+  {
+    id: "technical-seo-audit",
+    name: "Auditoria Técnica SEO",
+    description: "Crawl → Problemas técnicos → Priorização → Fixes",
+    steps: [
+      { agent: "Agente SEO", emoji: "🔧", action: "Identifica problemas técnicos", prompt: "Faça uma auditoria técnica: páginas com erro de indexação, canonical incorreto, robots.txt bloqueando, sitemap desatualizado, páginas lentas. Use dados do projeto." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Impacto dos problemas", prompt: "Para cada problema técnico identificado, calcule o impacto: quantas sessões/cliques estão sendo perdidos? Qual o potencial de recuperação?" },
+      { agent: "Agente Growth", emoji: "⚡", action: "Prioriza correções", prompt: "Crie um backlog priorizado de correções técnicas usando ICE Score. Inclua complexidade de implementação e impacto esperado para cada fix." },
+      { agent: "Notificador", emoji: "📱", action: "Lista de fixes", prompt: "Gere uma lista de ação prática: problema, URL afetada, fix necessário, prioridade. Formato checklist." },
+    ],
+  },
+  {
+    id: "keyword-cannibalization",
+    name: "Detecção de Canibalização",
+    description: "Detecta → Analisa impacto → Resolve → Monitora",
+    steps: [
+      { agent: "Agente SEO", emoji: "🔍", action: "Detecta canibalização", prompt: "Identifique todas as keywords onde múltiplas URLs do projeto competem entre si. Liste keyword, URLs envolvidas, posição de cada uma e volume." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Analisa impacto", prompt: "Para cada caso de canibalização, analise: qual URL tem melhor performance? Qual deveria ser a canônica? Quanto tráfego está sendo desperdiçado?" },
+      { agent: "Agente Growth", emoji: "🎯", action: "Plano de resolução", prompt: "Para cada caso, recomende: consolidar conteúdo, redirecionar, ou diferenciar. Inclua template de canonical e redirect map." },
+    ],
+  },
+  {
+    id: "local-seo-check",
+    name: "Checkup SEO Local",
+    description: "NAP → Keywords locais → Google Business → Ações",
+    steps: [
+      { agent: "Agente SEO", emoji: "📍", action: "Analisa presença local", prompt: "Analise a performance em keywords locais: posições para termos com localização, presença em 'perto de mim', destaque URLs com foco local do projeto." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Tráfego por região", prompt: "Analise o tráfego por cidade/estado: de onde vêm os visitantes? Há concentração? Compare com keywords locais que estamos ranqueando." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Estratégia local", prompt: "Crie plano de SEO local: otimizações de páginas existentes, novas páginas de localidade sugeridas, schema markup recomendado, e ações de link building local." },
+    ],
+  },
+  {
+    id: "link-profile-analysis",
+    name: "Análise de Perfil de Links",
+    description: "Links → Qualidade → Oportunidades → Estratégia",
+    steps: [
+      { agent: "Agente SEO", emoji: "🔗", action: "Mapeia perfil de links", prompt: "Analise o perfil de links do projeto: total de links internos e externos, distribuição por página, páginas órfãs (sem links internos), anchor texts mais usados." },
+      { agent: "Agente Growth", emoji: "🎯", action: "Identifica oportunidades", prompt: "Identifique: páginas importantes sem links suficientes, oportunidades de internal linking, páginas com link juice desperdiçado. Sugira uma estratégia de siloing." },
+      { agent: "Notificador", emoji: "📱", action: "Plano de links", prompt: "Resumo: estado atual do perfil de links, top 10 ações de internal linking para implementar imediatamente, e estratégia de longo prazo." },
+    ],
+  },
+  {
+    id: "content-gap-finder",
+    name: "Descoberta de Gaps de Conteúdo",
+    description: "Analisa cobertura → Identifica gaps → Plano editorial",
+    steps: [
+      { agent: "Agente SEO", emoji: "🔍", action: "Analisa cobertura de tópicos", prompt: "Analise as keywords atuais e identifique clusters temáticos não cobertos pelo site. Quais tópicos relacionados ao nicho não têm conteúdo? Liste com volume e dificuldade." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Valida com dados de busca", prompt: "Para os gaps identificados, valide: há demanda real? Qual o volume combinado? Qual o potencial de tráfego se ranquearmos? Compare com tópicos já cobertos." },
+      { agent: "Agente Growth", emoji: "📝", action: "Cria calendário editorial", prompt: "Monte um calendário editorial de 30 dias: qual conteúdo criar, keyword-alvo, tipo de conteúdo (artigo/landing/FAQ), word count sugerido e prioridade." },
+      { agent: "Notificador", emoji: "📱", action: "Resumo do plano", prompt: "Resumo: total de gaps encontrados, potencial de tráfego, calendário das próximas 4 semanas com um conteúdo prioritário por semana." },
+    ],
+  },
+  {
+    id: "mobile-performance",
+    name: "Auditoria Mobile",
+    description: "Performance mobile → Comparação desktop → Otimizações",
+    steps: [
+      { agent: "Agente Analytics", emoji: "📱", action: "Analisa métricas mobile", prompt: "Compare a performance mobile vs desktop: sessões, bounce rate, tempo no site, conversões. Identifique páginas com pior experiência mobile (alto bounce, baixo tempo)." },
+      { agent: "Agente SEO", emoji: "🔍", action: "Rankings mobile", prompt: "Compare posições mobile vs desktop para as top keywords. Identifique discrepâncias significativas. Verifique se o site tem problemas de mobile-first indexing." },
+      { agent: "Agente Growth", emoji: "⚡", action: "Otimizações mobile", prompt: "Crie um plano de otimização mobile: melhorias de UX, velocidade, layout responsivo. Priorize as páginas com maior impacto potencial. Estime ganho de conversão." },
+    ],
+  },
+  {
+    id: "seasonal-planner",
+    name: "Planejamento Sazonal",
+    description: "Tendências → Sazonalidade → Calendário → Preparação",
+    steps: [
+      { agent: "Agente SEO", emoji: "📅", action: "Identifica padrões sazonais", prompt: "Analise os dados históricos de keywords e identifique padrões sazonais: quais keywords têm picos em quais meses? Liste as oportunidades sazonais dos próximos 90 dias." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Histórico de tráfego sazonal", prompt: "Analise o tráfego histórico por mês: identifique meses de pico e vale. Correlacione com eventos, feriados e sazonalidade do nicho." },
+      { agent: "Agente Growth", emoji: "🗓️", action: "Calendário de preparação", prompt: "Crie um calendário de preparação: que conteúdo criar/atualizar antes de cada pico sazonal, com antecedência de quanto tempo, e impacto esperado." },
+    ],
+  },
+  {
+    id: "roi-calculator",
+    name: "Calculadora de ROI SEO",
+    description: "Investimento → Valor do tráfego → ROI → Projeção",
+    steps: [
+      { agent: "Agente Analytics", emoji: "💰", action: "Valor do tráfego orgânico", prompt: "Calcule o valor do tráfego orgânico atual: use o CPC médio das keywords ranqueadas × cliques para estimar quanto custaria este tráfego via ads. Total mensal e acumulado." },
+      { agent: "Agente SEO", emoji: "📈", action: "Crescimento e potencial", prompt: "Analise a curva de crescimento: taxa de crescimento mensal de tráfego orgânico, projeção linear para 6 e 12 meses, e potencial não explorado (keywords 4-20)." },
+      { agent: "Agente Growth", emoji: "🏦", action: "Relatório de ROI", prompt: "Compile relatório de ROI: valor atual do tráfego, crescimento MoM, projeção de valor para próximos 12 meses, comparação com custo de ads equivalente." },
+    ],
+  },
+  {
+    id: "quick-wins",
+    name: "Quick Wins Semanais",
+    description: "Detecta → Prioriza → Ações rápidas → Notifica",
+    steps: [
+      { agent: "Agente SEO", emoji: "⚡", action: "Encontra quick wins", prompt: "Identifique quick wins: keywords em posição 4-10 (quase top 3), páginas com alto impressões mas baixo clique, keywords com alta intenção comercial perto do top 3." },
+      { agent: "Agente Growth", emoji: "🎯", action: "Prioriza por facilidade", prompt: "Dos quick wins identificados, priorize os 5 mais fáceis de implementar: otimização de title, adição de FAQ, melhoria de conteúdo. Tempo estimado de implementação." },
+      { agent: "Notificador", emoji: "📱", action: "To-do semanal", prompt: "Gere um to-do list semanal: 5 ações rápidas com URL, o que fazer e impacto estimado. Formato prático e direto." },
+    ],
+  },
+  {
+    id: "brand-monitoring",
+    name: "Monitoramento de Marca",
+    description: "Keywords de marca → Reputação → Alertas",
+    steps: [
+      { agent: "Agente SEO", emoji: "🏷️", action: "Analisa buscas de marca", prompt: "Analise todas as keywords de marca: variações do nome, marca + produto, marca + reclamação. Verifique posições e se há resultados negativos aparecendo." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Tráfego de marca", prompt: "Analise o tráfego de marca vs não-marca: proporção, tendência de crescimento, landing pages de entrada para buscas de marca. A marca está crescendo?" },
+      { agent: "Notificador", emoji: "📱", action: "Status da marca", prompt: "Resumo: saúde da marca na busca, alertas de resultados negativos, tendência de buscas de marca, e ações recomendadas." },
+    ],
+  },
+  {
+    id: "pagespeed-report",
+    name: "Relatório de Velocidade",
+    description: "Performance → Core Web Vitals → Impacto → Fixes",
+    steps: [
+      { agent: "Agente SEO", emoji: "🏎️", action: "Analisa velocidade", prompt: "Liste as top 20 landing pages do projeto e avalie: tempo de carregamento estimado baseado nos dados de crawl, problemas de indexação que podem indicar lentidão, páginas com alto bounce rate que podem ter problemas de velocidade." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Correlação velocidade x métricas", prompt: "Correlacione as métricas de engajamento (bounce rate, tempo no site, conversão) com as landing pages. Identifique páginas com pior experiência do usuário." },
+      { agent: "Agente Growth", emoji: "⚡", action: "Plano de otimização", prompt: "Crie um plano de otimização de velocidade priorizado: quais páginas otimizar primeiro baseado no impacto em tráfego e conversões. Sugira melhorias genéricas (compressão, cache, lazy loading)." },
+    ],
+  },
 ];
 
 const STEP_COLORS: Record<string, { border: string; bg: string; text: string; glow: string }> = {

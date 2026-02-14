@@ -113,9 +113,41 @@ serve(async (req) => {
 
     // Send WhatsApp notifications
     if (schedule.notify_whatsapp && WHATSAPP_API_KEY && WHATSAPP_API_URL) {
-      // Build full message - send the complete report, not just summary
+      // Convert markdown to WhatsApp-friendly plain text
+      function mdToWhatsApp(text: string): string {
+        return text
+          // Convert markdown headers to WhatsApp bold
+          .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
+          // Convert markdown bold **text** to WhatsApp bold *text*
+          .replace(/\*\*(.+?)\*\*/g, "*$1*")
+          // Convert markdown italic _text_ (keep as is, WhatsApp uses same)
+          // Convert markdown tables to aligned text
+          .replace(/\|([^\n]+)\|/g, (match) => {
+            const cells = match.split("|").filter(c => c.trim());
+            return cells.map(c => c.trim()).join("  |  ");
+          })
+          // Remove table separator lines (---|---|---)
+          .replace(/^[\s|:-]+$/gm, "")
+          // Remove markdown links [text](url) -> text (url)
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+          // Remove markdown images
+          .replace(/!\[([^\]]*)\]\([^)]+\)/g, "")
+          // Convert markdown lists
+          .replace(/^[\s]*[-*]\s+/gm, "• ")
+          // Remove code blocks ```
+          .replace(/```[\s\S]*?```/g, (match) => match.replace(/```\w*\n?/g, "").trim())
+          // Remove inline code backticks
+          .replace(/`([^`]+)`/g, "$1")
+          // Remove horizontal rules
+          .replace(/^---+$/gm, "────────────")
+          // Clean up excessive blank lines
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      }
+
+      const plainReport = mdToWhatsApp(report);
       const fullWhatsappMessage = schedule.send_summary
-        ? `📊 *${workflow_name}*\n📅 ${new Date().toLocaleDateString("pt-BR")}\n\n${report}`
+        ? `📊 *${workflow_name}*\n📅 ${new Date().toLocaleDateString("pt-BR")}\n\n${plainReport}`
         : `📊 *${workflow_name}* — Relatório disponível.`;
 
       // Split into chunks of ~4000 chars to avoid WhatsApp limits
