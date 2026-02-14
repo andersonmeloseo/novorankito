@@ -396,10 +396,14 @@ export default function SeoPage() {
           <>
             {/* KPI Cards with period comparison */}
             <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} prevValue={prevClicks} showComparison={compareMode !== "none" && prevClicks > 0} />
-              <KpiCard label="Impressões" value={totalImpressions} change={pctChange(totalImpressions, prevImpressions)} prevValue={prevImpressions} showComparison={compareMode !== "none" && prevImpressions > 0} />
-              <KpiCard label="CTR Médio" value={Number(avgCtr.toFixed(2))} change={pctChange(avgCtr, prevAvgCtr)} suffix="%" prevValue={Number(prevAvgCtr.toFixed(2))} showComparison={compareMode !== "none" && prevImpressions > 0} />
-              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} prevValue={Number(prevAvgPosition.toFixed(1))} showComparison={compareMode !== "none" && prevImpressions > 0} />
+              <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} prevValue={prevClicks} showComparison={compareMode !== "none" && prevClicks > 0}
+                sparklineData={trendData.map(d => d.clicks)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevClicks ?? 0) : undefined} sparklineColor="hsl(var(--chart-1))" />
+              <KpiCard label="Impressões" value={totalImpressions} change={pctChange(totalImpressions, prevImpressions)} prevValue={prevImpressions} showComparison={compareMode !== "none" && prevImpressions > 0}
+                sparklineData={trendData.map(d => d.impressions)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevImpressions ?? 0) : undefined} sparklineColor="hsl(var(--chart-2))" />
+              <KpiCard label="CTR Médio" value={Number(avgCtr.toFixed(2))} change={pctChange(avgCtr, prevAvgCtr)} suffix="%" prevValue={Number(prevAvgCtr.toFixed(2))} showComparison={compareMode !== "none" && prevImpressions > 0}
+                sparklineData={trendData.map(d => d.ctr)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevCtr ?? 0) : undefined} sparklineColor="hsl(var(--chart-3))" />
+              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} prevValue={Number(prevAvgPosition.toFixed(1))} showComparison={compareMode !== "none" && prevImpressions > 0}
+                sparklineData={trendData.map(d => d.position)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevPosition ?? 0) : undefined} sparklineColor="hsl(var(--chart-4))" />
             </StaggeredGrid>
 
             {/* Charts Section */}
