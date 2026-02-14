@@ -127,8 +127,8 @@ export default function IndexingPage() {
     const rawSitemaps = sitemapsData?.sitemap || [];
     return rawSitemaps.map((sm: any) => ({
       ...sm,
-      urlCount: sm.contents?.reduce((acc: number, c: any) => acc + (c.submitted || 0), 0) || 0,
-      indexedCount: sm.contents?.reduce((acc: number, c: any) => acc + (c.indexed || 0), 0) || 0,
+      urlCount: sm.contents?.reduce((acc: number, c: any) => acc + (parseInt(String(c.submitted), 10) || 0), 0) || 0,
+      indexedCount: sm.contents?.reduce((acc: number, c: any) => acc + (parseInt(String(c.indexed), 10) || 0), 0) || 0,
     }));
   }, [sitemapsData]);
 
@@ -564,30 +564,29 @@ export default function IndexingPage() {
                       <Button
                         size="sm"
                         className="gap-1.5 text-xs"
-                        onClick={() => {
-                          const batch = inventory.map(u => u.url).slice(0, 50);
-                          if (batch.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
-                          submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
-                          if (inventory.length > 50) toast.info(`Enviando as primeiras 50 de ${inventory.length} URLs.`);
+                         onClick={() => {
+                          const allUrls = inventory.map(u => u.url);
+                          if (allUrls.length === 0) { toast.warning("Nenhuma URL no inventário"); return; }
+                          submitMutation.mutate({ urls: allUrls, requestType: "URL_UPDATED" });
                         }}
                         disabled={submitMutation.isPending}
                       >
                         {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                        Enviar em Lote ({Math.min(inventory.length, 50)} URLs)
+                        Enviar para Indexação ({inventory.length} URLs)
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="gap-1.5 text-xs"
                         onClick={() => {
-                          const unknowns = inventory.filter(u => !u.verdict).map(u => u.url).slice(0, 20);
+                          const unknowns = inventory.filter(u => !u.verdict).map(u => u.url);
                           if (unknowns.length === 0) { toast.info("Todas já foram inspecionadas"); return; }
                           inspectMutation.mutate(unknowns);
                         }}
                         disabled={inspectMutation.isPending}
                       >
                         {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
-                        Inspecionar Não Verificadas (até 20)
+                        Inspecionar Não Verificadas
                       </Button>
                     </>
                   )}
@@ -715,8 +714,8 @@ export default function IndexingPage() {
                                         <div key={ci} className="p-2 rounded-lg bg-background border border-border">
                                           <div className="text-[10px] text-muted-foreground capitalize">{c.type || "web"}</div>
                                           <div className="flex items-baseline gap-2 mt-0.5">
-                                            <span className="text-sm font-bold text-foreground">{(c.submitted || 0).toLocaleString("pt-BR")}</span>
-                                            <span className="text-[10px] text-success">{(c.indexed || 0).toLocaleString("pt-BR")} idx</span>
+                                            <span className="text-sm font-bold text-foreground">{(parseInt(String(c.submitted), 10) || 0).toLocaleString("pt-BR")}</span>
+                                            <span className="text-[10px] text-success">{(parseInt(String(c.indexed), 10) || 0).toLocaleString("pt-BR")} idx</span>
                                           </div>
                                         </div>
                                       ))}
