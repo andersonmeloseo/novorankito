@@ -54,14 +54,31 @@ export function AppSidebar() {
   const { data: isAdmin } = useIsAdmin();
 
   const { data: projects = [] } = useQuery({
-    queryKey: ["sidebar-projects"],
+    queryKey: ["sidebar-projects", user?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      // Fetch owned projects
+      const { data: owned } = await supabase
         .from("projects")
         .select("id, name, domain, status")
         .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
-      return data || [];
+      // Fetch projects where user is a member
+      const { data: memberships } = await supabase
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", user!.id);
+      const memberProjectIds = (memberships || []).map(m => m.project_id);
+      const ownedIds = new Set((owned || []).map(p => p.id));
+      const extraIds = memberProjectIds.filter(id => !ownedIds.has(id));
+      let memberProjects: any[] = [];
+      if (extraIds.length > 0) {
+        const { data } = await supabase
+          .from("projects")
+          .select("id, name, domain, status")
+          .in("id", extraIds);
+        memberProjects = data || [];
+      }
+      return [...(owned || []), ...memberProjects];
     },
     enabled: !!user,
   });
