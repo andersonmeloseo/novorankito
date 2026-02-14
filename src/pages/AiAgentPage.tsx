@@ -73,7 +73,10 @@ export default function AiAgentPage() {
         is_system: true,
         enabled: true,
       }));
-      supabase.from("ai_agents").insert(seedAgents).then(() => {
+      supabase.from("ai_agents").insert(seedAgents).then(({ error }) => {
+        if (error) {
+          console.error("Failed to seed agents:", error);
+        }
         queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
       });
     }
