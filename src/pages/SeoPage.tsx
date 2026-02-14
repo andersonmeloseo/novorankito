@@ -1,7 +1,11 @@
+import { useState, useMemo } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSeoMetrics } from "@/hooks/use-data-modules";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,9 +14,25 @@ import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-conta
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
 } from "recharts";
-import { Search } from "lucide-react";
+import {
+  Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
+  Calendar, Filter, TrendingUp, Globe, Monitor, FileText,
+} from "lucide-react";
+import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type SortDir = "asc" | "desc";
+type DateRange = "7" | "14" | "28" | "30" | "60" | "90" | "custom";
+
+const CHART_COLORS = [
+  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))", "hsl(var(--chart-5))",
+];
+
+const PAGE_SIZE = 20;
 
 export default function SeoPage() {
   const { user } = useAuth();
@@ -25,96 +45,267 @@ export default function SeoPage() {
     enabled: !!user,
   });
   const projectId = projects[0]?.id;
-  const { data: metrics = [], isLoading } = useSeoMetrics(projectId);
 
-  // Aggregate KPIs
+  // Date range state
+  const [dateRange, setDateRange] = useState<DateRange>("28");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  // Search / filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deviceFilter, setDeviceFilter] = useState("all");
+  const [countryFilter, setCountryFilter] = useState("all");
+
+  // Active KPI for chart overlay
+  const [activeMetrics, setActiveMetrics] = useState<string[]>(["clicks", "impressions"]);
+
+  // Pagination per tab
+  const [pagesPage, setPagesPage] = useState(1);
+  const [queriesPage, setQueriesPage] = useState(1);
+  const [countriesPage, setCountriesPage] = useState(1);
+  const [devicesPage, setDevicesPage] = useState(1);
+
+  // Sort state per tab
+  const [pagesSort, setPagesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
+  const [queriesSort, setQueriesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
+  const [countriesSort, setCountriesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
+
+  const { data: allMetrics = [], isLoading } = useSeoMetrics(projectId);
+
+  // Date filtering
+  const { filteredMetrics, prevMetrics } = useMemo(() => {
+    const now = new Date();
+    let from: Date, to: Date;
+
+    if (dateRange === "custom" && customFrom && customTo) {
+      from = parseISO(customFrom);
+      to = parseISO(customTo);
+    } else {
+      const days = parseInt(dateRange);
+      to = now;
+      from = subDays(now, days);
+    }
+
+    const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+    const prevFrom = subDays(from, periodLength);
+    const prevTo = subDays(from, 1);
+
+    const filtered = allMetrics.filter((m: any) => {
+      const d = parseISO(m.metric_date);
+      return isWithinInterval(d, { start: from, end: to });
+    });
+
+    const prev = allMetrics.filter((m: any) => {
+      const d = parseISO(m.metric_date);
+      return isWithinInterval(d, { start: prevFrom, end: prevTo });
+    });
+
+    return { filteredMetrics: filtered, prevMetrics: prev };
+  }, [allMetrics, dateRange, customFrom, customTo]);
+
+  // Apply device & country filters
+  const metrics = useMemo(() => {
+    let m = filteredMetrics;
+    if (deviceFilter !== "all") m = m.filter((x: any) => x.device === deviceFilter);
+    if (countryFilter !== "all") m = m.filter((x: any) => x.country === countryFilter);
+    return m;
+  }, [filteredMetrics, deviceFilter, countryFilter]);
+
+  const prevFiltered = useMemo(() => {
+    let m = prevMetrics;
+    if (deviceFilter !== "all") m = m.filter((x: any) => x.device === deviceFilter);
+    if (countryFilter !== "all") m = m.filter((x: any) => x.country === countryFilter);
+    return m;
+  }, [prevMetrics, deviceFilter, countryFilter]);
+
+  // KPIs with period comparison
   const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const avgCtr = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / metrics.length : 0;
   const avgPosition = metrics.length ? metrics.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / metrics.length : 0;
 
-  const byUrl = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
-  metrics.forEach((m: any) => {
-    if (!m.url) return;
-    const existing = byUrl.get(m.url) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
-    existing.clicks += m.clicks || 0;
-    existing.impressions += m.impressions || 0;
-    existing.ctr += Number(m.ctr || 0);
-    existing.position += Number(m.position || 0);
-    existing.count++;
-    byUrl.set(m.url, existing);
-  });
-  const urlRows = Array.from(byUrl.entries()).map(([url, d]) => [
-    url, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
-    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
-  ]).slice(0, 20);
+  const prevClicks = prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
+  const prevImpressions = prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
+  const prevAvgCtr = prevFiltered.length ? prevFiltered.reduce((s: number, m: any) => s + Number(m.ctr || 0), 0) / prevFiltered.length : 0;
+  const prevAvgPosition = prevFiltered.length ? prevFiltered.reduce((s: number, m: any) => s + Number(m.position || 0), 0) / prevFiltered.length : 0;
 
-  const byQuery = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
-  metrics.forEach((m: any) => {
-    if (!m.query) return;
-    const existing = byQuery.get(m.query) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
-    existing.clicks += m.clicks || 0;
-    existing.impressions += m.impressions || 0;
-    existing.ctr += Number(m.ctr || 0);
-    existing.position += Number(m.position || 0);
-    existing.count++;
-    byQuery.set(m.query, existing);
-  });
-  const queryRows = Array.from(byQuery.entries()).map(([q, d]) => [
-    q, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
-    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
-  ]).slice(0, 20);
+  const pctChange = (curr: number, prev: number) => prev === 0 ? 0 : parseFloat((((curr - prev) / prev) * 100).toFixed(1));
 
-  const byCountry = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
-  metrics.forEach((m: any) => {
-    if (!m.country) return;
-    const existing = byCountry.get(m.country) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
-    existing.clicks += m.clicks || 0;
-    existing.impressions += m.impressions || 0;
-    existing.ctr += Number(m.ctr || 0);
-    existing.position += Number(m.position || 0);
-    existing.count++;
-    byCountry.set(m.country, existing);
-  });
-  const countryRows = Array.from(byCountry.entries()).map(([c, d]) => [
-    c, d.clicks.toLocaleString(), d.impressions.toLocaleString(),
-    (d.ctr / d.count).toFixed(2) + "%", (d.position / d.count).toFixed(1),
-  ]);
+  // Unique values for filters
+  const uniqueDevices = useMemo(() => [...new Set(allMetrics.map((m: any) => m.device).filter(Boolean))], [allMetrics]);
+  const uniqueCountries = useMemo(() => [...new Set(allMetrics.map((m: any) => m.country).filter(Boolean))], [allMetrics]);
 
-  const byDevice = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
-  metrics.forEach((m: any) => {
-    if (!m.device) return;
-    const existing = byDevice.get(m.device) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
-    existing.clicks += m.clicks || 0;
-    existing.impressions += m.impressions || 0;
-    existing.ctr += Number(m.ctr || 0);
-    existing.position += Number(m.position || 0);
-    existing.count++;
-    byDevice.set(m.device, existing);
-  });
-  const deviceRows = Array.from(byDevice.entries()).map(([d, data]) => [
-    d, data.clicks.toLocaleString(), data.impressions.toLocaleString(),
-    (data.ctr / data.count).toFixed(2) + "%", (data.position / data.count).toFixed(1),
-  ]);
+  // Aggregate by dimension
+  function aggregateBy(key: string) {
+    const map = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+    metrics.forEach((m: any) => {
+      const val = m[key];
+      if (!val) return;
+      if (searchTerm && !val.toLowerCase().includes(searchTerm.toLowerCase())) return;
+      const existing = map.get(val) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+      existing.clicks += m.clicks || 0;
+      existing.impressions += m.impressions || 0;
+      existing.ctr += Number(m.ctr || 0);
+      existing.position += Number(m.position || 0);
+      existing.count++;
+      map.set(val, existing);
+    });
+    return Array.from(map.entries()).map(([name, d]) => ({
+      name,
+      clicks: d.clicks,
+      impressions: d.impressions,
+      ctr: d.count ? d.ctr / d.count : 0,
+      position: d.count ? d.position / d.count : 0,
+    }));
+  }
 
-  const byDate = new Map<string, { clicks: number; impressions: number }>();
-  metrics.forEach((m: any) => {
-    const d = m.metric_date;
-    const existing = byDate.get(d) || { clicks: 0, impressions: 0 };
-    existing.clicks += m.clicks || 0;
-    existing.impressions += m.impressions || 0;
-    byDate.set(d, existing);
-  });
-  const trendData = Array.from(byDate.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, d]) => ({ date, clicks: d.clicks, impressions: d.impressions }));
+  const pageRows = useMemo(() => {
+    const data = aggregateBy("url");
+    return sortData(data, pagesSort.key, pagesSort.dir);
+  }, [metrics, searchTerm, pagesSort]);
+
+  const queryRows = useMemo(() => {
+    const data = aggregateBy("query");
+    return sortData(data, queriesSort.key, queriesSort.dir);
+  }, [metrics, searchTerm, queriesSort]);
+
+  const countryRows = useMemo(() => {
+    const data = aggregateBy("country");
+    return sortData(data, countriesSort.key, countriesSort.dir);
+  }, [metrics, searchTerm, countriesSort]);
+
+  const deviceRows = useMemo(() => aggregateBy("device"), [metrics, searchTerm]);
+
+  // Trend data by date
+  const trendData = useMemo(() => {
+    const byDate = new Map<string, { clicks: number; impressions: number; ctr: number; position: number; count: number }>();
+    metrics.forEach((m: any) => {
+      const d = m.metric_date;
+      const existing = byDate.get(d) || { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
+      existing.clicks += m.clicks || 0;
+      existing.impressions += m.impressions || 0;
+      existing.ctr += Number(m.ctr || 0);
+      existing.position += Number(m.position || 0);
+      existing.count++;
+      byDate.set(d, existing);
+    });
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, d]) => ({
+        date: format(parseISO(date), "dd MMM", { locale: ptBR }),
+        rawDate: date,
+        clicks: d.clicks,
+        impressions: d.impressions,
+        ctr: d.count ? parseFloat((d.ctr / d.count).toFixed(2)) : 0,
+        position: d.count ? parseFloat((d.position / d.count).toFixed(1)) : 0,
+      }));
+  }, [metrics]);
+
+  // Device distribution for pie chart
+  const deviceDistribution = useMemo(() => {
+    const map = new Map<string, number>();
+    metrics.forEach((m: any) => {
+      if (!m.device) return;
+      map.set(m.device, (map.get(m.device) || 0) + (m.clicks || 0));
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [metrics]);
 
   const hasData = metrics.length > 0;
 
+  // Export
+  function exportCSV(rows: any[], filename: string) {
+    if (rows.length === 0) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${filename}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function toggleMetric(metric: string) {
+    setActiveMetrics(prev =>
+      prev.includes(metric) ? prev.filter(m => m !== metric) : [...prev, metric]
+    );
+  }
+
   return (
     <>
-      <TopBar title="SEO" subtitle="Monitore cliques, impressões e posições via Google Search Console" />
+      <TopBar title="SEO" subtitle="Performance completa via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Filters bar */}
+        <AnimatedContainer>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Select value={dateRange} onValueChange={(v) => { setDateRange(v as DateRange); setPagesPage(1); setQueriesPage(1); }}>
+                  <SelectTrigger className="w-[140px] h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">Últimos 7 dias</SelectItem>
+                    <SelectItem value="14">Últimos 14 dias</SelectItem>
+                    <SelectItem value="28">Últimos 28 dias</SelectItem>
+                    <SelectItem value="30">Últimos 30 dias</SelectItem>
+                    <SelectItem value="60">Últimos 60 dias</SelectItem>
+                    <SelectItem value="90">Últimos 90 dias</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {dateRange === "custom" && (
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-9 text-xs w-[140px]" />
+                  <span className="text-xs text-muted-foreground">até</span>
+                  <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-9 text-xs w-[140px]" />
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+                  <SelectTrigger className="w-[130px] h-9 text-xs">
+                    <SelectValue placeholder="Dispositivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos dispositivos</SelectItem>
+                    {uniqueDevices.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Select value={countryFilter} onValueChange={setCountryFilter}>
+                  <SelectTrigger className="w-[130px] h-9 text-xs">
+                    <SelectValue placeholder="País" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos países</SelectItem>
+                    {uniqueCountries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex-1 min-w-[180px]">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar páginas, queries..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-8 h-9 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </AnimatedContainer>
+
         {isLoading ? (
           <>
             <KpiSkeleton />
@@ -123,32 +314,163 @@ export default function SeoPage() {
           </>
         ) : (
           <>
+            {/* KPI Cards with period comparison */}
             <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <KpiCard label="Cliques" value={totalClicks} change={0} />
-              <KpiCard label="Impressões" value={totalImpressions} change={0} />
-              <KpiCard label="CTR" value={Number(avgCtr.toFixed(2))} change={0} suffix="%" />
-              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={0} />
+              <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} />
+              <KpiCard label="Impressões" value={totalImpressions} change={pctChange(totalImpressions, prevImpressions)} />
+              <KpiCard label="CTR Médio" value={Number(avgCtr.toFixed(2))} change={pctChange(avgCtr, prevAvgCtr)} suffix="%" />
+              <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} />
             </StaggeredGrid>
 
+            {/* Charts Section */}
             {hasData && trendData.length > 1 && (
-              <AnimatedContainer delay={0.15}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Main trend chart */}
+                <AnimatedContainer delay={0.1} className="lg:col-span-2">
+                  <Card className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        Tendência de Performance
+                      </h3>
+                      <div className="flex gap-1">
+                        {[
+                          { key: "clicks", label: "Cliques", color: "hsl(var(--chart-1))" },
+                          { key: "impressions", label: "Impressões", color: "hsl(var(--chart-2))" },
+                          { key: "ctr", label: "CTR", color: "hsl(var(--chart-3))" },
+                          { key: "position", label: "Posição", color: "hsl(var(--chart-4))" },
+                        ].map(item => (
+                          <Button
+                            key={item.key}
+                            variant={activeMetrics.includes(item.key) ? "default" : "outline"}
+                            size="sm"
+                            className="text-[10px] h-7 px-2"
+                            onClick={() => toggleMetric(item.key)}
+                          >
+                            <span className="w-2 h-2 rounded-full mr-1" style={{ background: item.color }} />
+                            {item.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData}>
+                          <defs>
+                            <linearGradient id="clicksGradSeo" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.15} />
+                              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="impressionsGradSeo" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
+                              <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="ctrGradSeo" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.15} />
+                              <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                          <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip
+                            contentStyle={{
+                              background: "hsl(var(--card))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                              fontSize: 12,
+                            }}
+                          />
+                          {activeMetrics.includes("clicks") && (
+                            <Area type="monotone" dataKey="clicks" name="Cliques" stroke="hsl(var(--chart-1))" fill="url(#clicksGradSeo)" strokeWidth={2} />
+                          )}
+                          {activeMetrics.includes("impressions") && (
+                            <Area type="monotone" dataKey="impressions" name="Impressões" stroke="hsl(var(--chart-2))" fill="url(#impressionsGradSeo)" strokeWidth={2} />
+                          )}
+                          {activeMetrics.includes("ctr") && (
+                            <Area type="monotone" dataKey="ctr" name="CTR %" stroke="hsl(var(--chart-3))" fill="url(#ctrGradSeo)" strokeWidth={2} />
+                          )}
+                          {activeMetrics.includes("position") && (
+                            <Area type="monotone" dataKey="position" name="Posição" stroke="hsl(var(--chart-4))" fill="none" strokeWidth={2} strokeDasharray="5 5" />
+                          )}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </AnimatedContainer>
+
+                {/* Device distribution pie */}
+                <AnimatedContainer delay={0.15}>
+                  <Card className="p-5 h-full">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
+                      <Monitor className="h-4 w-4 text-primary" />
+                      Cliques por Dispositivo
+                    </h3>
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={deviceDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={90}
+                            paddingAngle={3}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {deviceDistribution.map((_, i) => (
+                              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              background: "hsl(var(--card))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                              fontSize: 12,
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </AnimatedContainer>
+              </div>
+            )}
+
+            {/* Top queries bar chart */}
+            {hasData && queryRows.length > 0 && (
+              <AnimatedContainer delay={0.2}>
                 <Card className="p-5">
-                  <h3 className="text-sm font-medium text-foreground mb-4">Tendência de Performance</h3>
+                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-4">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Top 10 Consultas por Cliques
+                  </h3>
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendData}>
-                        <defs>
-                          <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
+                      <BarChart data={queryRows.slice(0, 10)} layout="vertical" margin={{ left: 120 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
-                        <Area type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" fill="url(#clicksGrad)" strokeWidth={2} />
-                      </AreaChart>
+                        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fontSize: 10 }}
+                          stroke="hsl(var(--muted-foreground))"
+                          width={110}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: 12,
+                          }}
+                        />
+                        <Bar dataKey="clicks" name="Cliques" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="impressions" name="Impressões" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </Card>
@@ -159,30 +481,93 @@ export default function SeoPage() {
               <EmptyState
                 icon={Search}
                 title="Nenhuma métrica SEO"
-                description="Conecte o Google Search Console ou adicione dados manualmente para visualizar performance."
+                description="Conecte o Google Search Console ou adicione dados para visualizar performance."
               />
             )}
 
+            {/* Data tables with tabs */}
             {hasData && (
-              <AnimatedContainer delay={0.2}>
+              <AnimatedContainer delay={0.25}>
                 <Tabs defaultValue="pages">
-                  <TabsList>
-                    <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
-                    <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
-                    <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
-                    <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="pages" className="mt-4">
-                    <DataTable columns={["URL", "Cliques", "Impressões", "CTR", "Posição"]} rows={urlRows} />
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+                    <TabsList>
+                      <TabsTrigger value="pages" className="text-xs">Páginas</TabsTrigger>
+                      <TabsTrigger value="queries" className="text-xs">Consultas</TabsTrigger>
+                      <TabsTrigger value="countries" className="text-xs">Países</TabsTrigger>
+                      <TabsTrigger value="devices" className="text-xs">Dispositivos</TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <TabsContent value="pages" className="mt-0">
+                    <SortableTable
+                      columns={[
+                        { key: "name", label: "Página" },
+                        { key: "clicks", label: "Cliques" },
+                        { key: "impressions", label: "Impressões" },
+                        { key: "ctr", label: "CTR" },
+                        { key: "position", label: "Posição" },
+                      ]}
+                      rows={pageRows}
+                      sort={pagesSort}
+                      onSort={(key) => setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                      page={pagesPage}
+                      onPageChange={setPagesPage}
+                      onExport={() => exportCSV(pageRows, "seo-paginas")}
+                    />
                   </TabsContent>
-                  <TabsContent value="queries" className="mt-4">
-                    <DataTable columns={["Consulta", "Cliques", "Impressões", "CTR", "Posição"]} rows={queryRows} />
+
+                  <TabsContent value="queries" className="mt-0">
+                    <SortableTable
+                      columns={[
+                        { key: "name", label: "Consulta" },
+                        { key: "clicks", label: "Cliques" },
+                        { key: "impressions", label: "Impressões" },
+                        { key: "ctr", label: "CTR" },
+                        { key: "position", label: "Posição" },
+                      ]}
+                      rows={queryRows}
+                      sort={queriesSort}
+                      onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                      page={queriesPage}
+                      onPageChange={setQueriesPage}
+                      onExport={() => exportCSV(queryRows, "seo-consultas")}
+                    />
                   </TabsContent>
-                  <TabsContent value="countries" className="mt-4">
-                    <DataTable columns={["País", "Cliques", "Impressões", "CTR", "Posição"]} rows={countryRows} />
+
+                  <TabsContent value="countries" className="mt-0">
+                    <SortableTable
+                      columns={[
+                        { key: "name", label: "País" },
+                        { key: "clicks", label: "Cliques" },
+                        { key: "impressions", label: "Impressões" },
+                        { key: "ctr", label: "CTR" },
+                        { key: "position", label: "Posição" },
+                      ]}
+                      rows={countryRows}
+                      sort={countriesSort}
+                      onSort={(key) => setCountriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
+                      page={countriesPage}
+                      onPageChange={setCountriesPage}
+                      onExport={() => exportCSV(countryRows, "seo-paises")}
+                    />
                   </TabsContent>
-                  <TabsContent value="devices" className="mt-4">
-                    <DataTable columns={["Dispositivo", "Cliques", "Impressões", "CTR", "Posição"]} rows={deviceRows} />
+
+                  <TabsContent value="devices" className="mt-0">
+                    <SortableTable
+                      columns={[
+                        { key: "name", label: "Dispositivo" },
+                        { key: "clicks", label: "Cliques" },
+                        { key: "impressions", label: "Impressões" },
+                        { key: "ctr", label: "CTR" },
+                        { key: "position", label: "Posição" },
+                      ]}
+                      rows={deviceRows}
+                      sort={{ key: "clicks", dir: "desc" }}
+                      onSort={() => {}}
+                      page={devicesPage}
+                      onPageChange={setDevicesPage}
+                      onExport={() => exportCSV(deviceRows, "seo-dispositivos")}
+                    />
                   </TabsContent>
                 </Tabs>
               </AnimatedContainer>
@@ -194,26 +579,75 @@ export default function SeoPage() {
   );
 }
 
-function DataTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
+// Helpers
+function sortData(data: any[], key: string, dir: SortDir) {
+  return [...data].sort((a, b) => {
+    const av = a[key], bv = b[key];
+    if (typeof av === "number" && typeof bv === "number") return dir === "desc" ? bv - av : av - bv;
+    return dir === "desc" ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv));
+  });
+}
+
+interface Column { key: string; label: string }
+
+function SortableTable({
+  columns, rows, sort, onSort, page, onPageChange, onExport,
+}: {
+  columns: Column[];
+  rows: any[];
+  sort: { key: string; dir: SortDir };
+  onSort: (key: string) => void;
+  page: number;
+  onPageChange: (p: number) => void;
+  onExport: () => void;
+}) {
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+  const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const formatCell = (row: any, key: string) => {
+    const v = row[key];
+    if (key === "ctr") return `${Number(v).toFixed(2)}%`;
+    if (key === "position") return Number(v).toFixed(1);
+    if (key === "clicks" || key === "impressions") return Number(v).toLocaleString();
+    return v;
+  };
+
   return (
     <Card className="overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+        <span className="text-xs text-muted-foreground">{rows.length} resultados</span>
+        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={onExport}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+        </Button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              {columns.map((col) => (
-                <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
+              {columns.map(col => (
+                <th
+                  key={col.key}
+                  className="px-4 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => onSort(col.key)}
+                >
+                  <span className="flex items-center gap-1">
+                    {col.label}
+                    <ArrowUpDown className={`h-3 w-3 ${sort.key === col.key ? "text-primary" : "opacity-40"}`} />
+                  </span>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {paginated.length === 0 ? (
               <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
             ) : (
-              rows.map((row, i) => (
+              paginated.map((row, i) => (
                 <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                  {row.map((cell, j) => (
-                    <td key={j} className={`px-4 py-3 text-xs ${j === 0 ? "font-mono text-foreground" : "text-muted-foreground"}`}>{cell}</td>
+                  {columns.map(col => (
+                    <td key={col.key} className={`px-4 py-3 text-xs ${col.key === "name" ? "font-mono text-foreground max-w-[300px] truncate" : "text-muted-foreground"}`}>
+                      {formatCell(row, col.key)}
+                    </td>
                   ))}
                 </tr>
               ))
@@ -221,6 +655,33 @@ function DataTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border">
+          <span className="text-xs text-muted-foreground">Página {page} de {totalPages}</span>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const p = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
+              return (
+                <Button
+                  key={p}
+                  variant={p === page ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 w-7 p-0 text-xs"
+                  onClick={() => onPageChange(p)}
+                >
+                  {p}
+                </Button>
+              );
+            })}
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
