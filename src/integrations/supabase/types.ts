@@ -390,6 +390,65 @@ export type Database = {
           },
         ]
       }
+      indexing_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          fail_reason: string | null
+          id: string
+          owner_id: string
+          project_id: string
+          request_type: string
+          response_code: number | null
+          response_message: string | null
+          retries: number
+          status: string
+          submitted_at: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          fail_reason?: string | null
+          id?: string
+          owner_id: string
+          project_id: string
+          request_type?: string
+          response_code?: number | null
+          response_message?: string | null
+          retries?: number
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          fail_reason?: string | null
+          id?: string
+          owner_id?: string
+          project_id?: string
+          request_type?: string
+          response_code?: number | null
+          response_message?: string | null
+          retries?: number
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indexing_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

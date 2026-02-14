@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.fetch-ga4-data]
 verify_jwt = false
+
+[functions.gsc-indexing]
+verify_jwt = false
+
+[functions.gsc-index-coverage]
+verify_jwt = false
