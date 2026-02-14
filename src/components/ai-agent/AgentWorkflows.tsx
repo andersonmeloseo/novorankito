@@ -1,16 +1,17 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  GitBranch, Play, Plus, ArrowRight, ArrowDown, Loader2, CheckCircle2,
-  X, Sparkles, Bot,
+  GitBranch, Play, ArrowRight, ArrowDown, Loader2, CheckCircle2,
+  Download, Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAiChat } from "@/hooks/use-ai-chat";
+import { streamChatToCompletion } from "@/lib/stream-chat";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WorkflowStep {
   agent: string;
@@ -33,9 +34,9 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
     description: "SEO → Analytics → Growth → Relatório",
     steps: [
       { agent: "Agente SEO", emoji: "🔍", action: "Analisa posições e keywords", prompt: "Analise todas as posições de keywords do projeto. Identifique top 10 oportunidades de crescimento (keywords em posição 4-20 com alto volume). Liste problemas de CTR abaixo do benchmark. Use os dados REAIS do projeto." },
-      { agent: "Agente Analytics", emoji: "📊", action: "Cruza com dados de tráfego", prompt: "Com base na análise SEO, cruze os dados de tráfego orgânico com as landing pages. Identifique quais páginas têm melhor conversão e quais têm bounce rate alto. Use dados REAIS." },
-      { agent: "Agente Growth", emoji: "🚀", action: "Gera estratégia priorizada", prompt: "Com base nas análises anteriores, crie um plano de ação priorizado pelo framework ICE (Impacto × Confiança × Facilidade). Top 5 ações com ROI estimado." },
-      { agent: "Relatório", emoji: "📄", action: "Compila relatório executivo", prompt: "Compile tudo em um relatório executivo: Resumo (3 bullets), Métricas-chave, Top 5 Ações Prioritárias, Previsão de Impacto 30 dias." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Cruza com dados de tráfego", prompt: "Com base na análise SEO do passo anterior, cruze os dados de tráfego orgânico com as landing pages. Identifique quais páginas têm melhor conversão e quais têm bounce rate alto. Use dados REAIS." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Gera estratégia priorizada", prompt: "Com base nas análises de SEO e Analytics dos passos anteriores, crie um plano de ação priorizado pelo framework ICE (Impacto × Confiança × Facilidade). Top 5 ações com ROI estimado." },
+      { agent: "Relatório", emoji: "📄", action: "Compila relatório executivo", prompt: "Compile TUDO dos passos anteriores em um relatório executivo completo: Resumo Executivo (3 bullets), Métricas-chave, Top 5 Ações Prioritárias com responsável e deadline, Previsão de Impacto para 30 dias." },
     ],
   },
   {
@@ -44,9 +45,9 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
     description: "Detecta quedas → Analisa causa → Correções → Notifica",
     steps: [
       { agent: "Agente SEO", emoji: "🔍", action: "Monitora quedas de posição", prompt: "Identifique todas as páginas que perderam posições significativas (3+ posições). Liste URL, keyword, posição anterior vs atual e volume de busca." },
-      { agent: "Agente Analytics", emoji: "📊", action: "Analisa impacto no tráfego", prompt: "Calcule o impacto em tráfego orgânico das quedas identificadas. Identifique correlação com mudanças no bounce rate." },
-      { agent: "Agente Growth", emoji: "🚀", action: "Plano de recuperação", prompt: "Crie um plano urgente de recuperação para cada página em decay: atualização de conteúdo, otimização de title/meta, internal linking e timeline." },
-      { agent: "Notificador", emoji: "📱", action: "Resume para notificação", prompt: "Gere resumo compacto do alerta de content decay: páginas afetadas, impacto estimado e ações prioritárias." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Analisa impacto no tráfego", prompt: "Calcule o impacto em tráfego orgânico das quedas identificadas no passo anterior. Identifique correlação com mudanças no bounce rate." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Plano de recuperação", prompt: "Crie um plano urgente de recuperação para cada página em decay identificada: atualização de conteúdo, otimização de title/meta, internal linking e timeline." },
+      { agent: "Notificador", emoji: "📱", action: "Resume para notificação", prompt: "Gere resumo compacto de todo o workflow para envio via notificação: páginas afetadas, impacto estimado e ações prioritárias em formato bullet point." },
     ],
   },
   {
@@ -56,8 +57,8 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
     steps: [
       { agent: "Agente Analytics", emoji: "📊", action: "Coleta métricas da semana", prompt: "Relatório semanal: sessões, usuários, bounce rate, top sources, top landing pages. Compare com semana anterior, destaque variações >10%." },
       { agent: "Agente SEO", emoji: "🔍", action: "Evolução de keywords", prompt: "Relatório semanal SEO: evolução top 20 keywords, novas no top 10, saíram do top 10, evolução de cliques orgânicos." },
-      { agent: "Agente Growth", emoji: "🚀", action: "Identifica tendências", prompt: "Identifique 3 tendências positivas e 3 riscos com base nos dados semanais. Sugira 3 ações para próxima semana." },
-      { agent: "Notificador", emoji: "📱", action: "Newsletter semanal", prompt: "Compile em formato newsletter: Destaque da Semana, Métricas-chave (↑↓), Top 3 Wins, Top 3 Ações Próxima Semana." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Identifica tendências", prompt: "Com base nos dados dos passos anteriores, identifique 3 tendências positivas e 3 riscos. Sugira 3 ações para próxima semana com impacto estimado." },
+      { agent: "Notificador", emoji: "📱", action: "Newsletter semanal", prompt: "Compile tudo em formato newsletter profissional: Destaque da Semana, Métricas-chave (↑↓), Top 3 Wins, Top 3 Ações Próxima Semana." },
     ],
   },
   {
@@ -66,9 +67,9 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
     description: "Descobre → Prioriza → Indexa → Reporta",
     steps: [
       { agent: "Agente SEO", emoji: "🔍", action: "Descobre URLs não indexadas", prompt: "Liste todas as URLs não indexadas ou com problemas de cobertura. Classifique por prioridade baseado no potencial de tráfego." },
-      { agent: "Agente Analytics", emoji: "📊", action: "Prioriza por potencial", prompt: "Estime o potencial de tráfego de cada URL não indexada: keywords-alvo, volume, concorrência. Crie ranking de prioridade." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Prioriza por potencial", prompt: "Estime o potencial de tráfego de cada URL não indexada do passo anterior: keywords-alvo, volume, concorrência. Crie ranking de prioridade." },
       { agent: "Agente SEO", emoji: "⚡", action: "Prepara indexação", prompt: "Para as URLs priorizadas, verifique: robots.txt permite? Canonical correto? Conteúdo pronto? Liste as prontas para submissão." },
-      { agent: "Notificador", emoji: "📱", action: "Reporta resultado", prompt: "Resumo do pipeline: URLs identificadas, priorizadas, prontas para submissão, próximos passos." },
+      { agent: "Notificador", emoji: "📱", action: "Reporta resultado", prompt: "Resumo completo do pipeline: URLs identificadas, priorizadas, prontas para submissão, e próximos passos concretos." },
     ],
   },
 ];
@@ -98,12 +99,12 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
     } catch { return new Set<string>(); }
   });
 
-  // Execution canvas state
   const [executingWorkflow, setExecutingWorkflow] = useState<PresetWorkflow | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [stepResults, setStepResults] = useState<Record<number, string>>({});
-  const [isStepLoading, setIsStepLoading] = useState(false);
-  const { messages, isLoading, sendMessage, clearMessages } = useAiChat();
+  const [stepStreaming, setStepStreaming] = useState<string>("");
+  const [isRunning, setIsRunning] = useState(false);
+  const abortRef = useRef(false);
 
   const toggleWorkflow = (id: string) => {
     setActiveWorkflows(prev => {
@@ -115,58 +116,100 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
     });
   };
 
-  // Execute workflow step by step
-  const startWorkflow = (workflow: PresetWorkflow) => {
+  // Auto-execute ALL steps sequentially
+  const executeWorkflow = useCallback(async (workflow: PresetWorkflow) => {
+    if (isRunning) return;
     setExecutingWorkflow(workflow);
     setCurrentStepIndex(-1);
     setStepResults({});
-    clearMessages();
-  };
+    setStepStreaming("");
+    setIsRunning(true);
+    abortRef.current = false;
 
-  const executeNextStep = useCallback(async () => {
-    if (!executingWorkflow || isStepLoading || isLoading) return;
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex >= executingWorkflow.steps.length) {
-      toast.success(`Workflow "${executingWorkflow.name}" concluído!`);
-      return;
+    const results: Record<number, string> = {};
+
+    for (let i = 0; i < workflow.steps.length; i++) {
+      if (abortRef.current) break;
+
+      const step = workflow.steps[i];
+      setCurrentStepIndex(i);
+      setStepStreaming("");
+
+      // Build context from ALL previous steps
+      const previousContext = Object.entries(results)
+        .map(([idx, result]) => `=== RESULTADO DO PASSO ${Number(idx) + 1} (${workflow.steps[Number(idx)].agent}) ===\n${result}`)
+        .join("\n\n");
+
+      const fullPrompt = previousContext
+        ? `CONTEXTO ACUMULADO DOS PASSOS ANTERIORES:\n${previousContext}\n\n---\n\nAGORA EXECUTE O PASSO ${i + 1} (${step.agent}):\n${step.prompt}`
+        : step.prompt;
+
+      try {
+        const result = await streamChatToCompletion({
+          prompt: fullPrompt,
+          agentName: step.agent,
+          agentInstructions: `Você é o ${step.agent}. Execute EXATAMENTE o que é pedido usando dados REAIS do projeto. Seja específico, acionável e detalhado. Cite dados concretos.`,
+          projectId,
+          onDelta: (text) => setStepStreaming(text),
+        });
+
+        results[i] = result;
+        setStepResults(prev => ({ ...prev, [i]: result }));
+        setStepStreaming("");
+      } catch (err: any) {
+        results[i] = `❌ Erro: ${err.message}`;
+        setStepResults(prev => ({ ...prev, [i]: `❌ Erro: ${err.message}` }));
+        setStepStreaming("");
+        toast.error(`Erro no passo ${i + 1}: ${err.message}`);
+        break;
+      }
     }
 
-    const step = executingWorkflow.steps[nextIndex];
-    setCurrentStepIndex(nextIndex);
-    setIsStepLoading(true);
+    setIsRunning(false);
+    if (!abortRef.current) {
+      toast.success(`Workflow "${workflow.name}" concluído! ✅`);
 
-    // Build context from previous steps
-    const previousContext = Object.entries(stepResults)
-      .map(([i, result]) => `[Passo ${Number(i) + 1} - ${executingWorkflow.steps[Number(i)].agent}]:\n${result}`)
-      .join("\n\n---\n\n");
+      // Save to agent_action_history if we have results
+      const fullReport = Object.entries(results)
+        .map(([idx, result]) => `## Passo ${Number(idx) + 1}: ${workflow.steps[Number(idx)].agent}\n${result}`)
+        .join("\n\n---\n\n");
 
-    const fullPrompt = previousContext
-      ? `CONTEXTO DOS PASSOS ANTERIORES:\n${previousContext}\n\n---\n\nAGORA EXECUTE O PASSO ${nextIndex + 1}:\n${step.prompt}`
-      : step.prompt;
+      // Try to save - won't fail if no agents exist
+      try {
+        const { data: agents } = await supabase
+          .from("ai_agents")
+          .select("id")
+          .eq("project_id", projectId || "")
+          .limit(1);
 
-    await sendMessage(fullPrompt, {
-      agentName: step.agent,
-      agentInstructions: `Você é o ${step.agent}. Execute EXATAMENTE o que é pedido usando dados REAIS do projeto. Seja específico e acionável.`,
-      projectId,
-    });
-
-    setIsStepLoading(false);
-  }, [executingWorkflow, currentStepIndex, stepResults, isStepLoading, isLoading, sendMessage, projectId]);
-
-  // Capture step result from messages
-  useEffect(() => {
-    if (!executingWorkflow || currentStepIndex < 0) return;
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.role === "assistant" && !isLoading && lastMsg.content.length > 50) {
-      setStepResults(prev => ({ ...prev, [currentStepIndex]: lastMsg.content }));
+        if (agents?.[0] && projectId) {
+          await supabase.from("agent_action_history").insert({
+            agent_id: agents[0].id,
+            project_id: projectId,
+            action_type: `Workflow: ${workflow.name}`,
+            action_detail: fullReport.substring(0, 5000),
+          });
+        }
+      } catch { /* silent */ }
     }
-  }, [messages, isLoading, currentStepIndex, executingWorkflow]);
+  }, [isRunning, projectId]);
 
   const closeCanvas = () => {
+    abortRef.current = true;
     setExecutingWorkflow(null);
     setCurrentStepIndex(-1);
     setStepResults({});
-    clearMessages();
+    setStepStreaming("");
+    setIsRunning(false);
+  };
+
+  const copyAllResults = () => {
+    if (!executingWorkflow) return;
+    const full = Object.entries(stepResults)
+      .map(([idx, r]) => `## ${executingWorkflow.steps[Number(idx)].agent}\n${r}`)
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(full);
+    toast.success("Relatório copiado!");
   };
 
   return (
@@ -204,7 +247,6 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
                 <Switch checked={isActive} onCheckedChange={() => toggleWorkflow(workflow.id)} />
               </div>
 
-              {/* Compact flow */}
               <div className="flex items-center gap-1 overflow-x-auto pb-1">
                 {workflow.steps.map((step, i) => {
                   const c = getStepColor(step.agent);
@@ -227,9 +269,13 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
                   size="sm"
                   variant="default"
                   className="w-full text-xs gap-1.5"
-                  onClick={() => startWorkflow(workflow)}
+                  onClick={() => executeWorkflow(workflow)}
+                  disabled={isRunning}
                 >
-                  <Play className="h-3 w-3" /> Executar Agora
+                  {isRunning && executingWorkflow?.id === workflow.id
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Executando...</>
+                    : <><Play className="h-3 w-3" /> Executar Agora</>
+                  }
                 </Button>
               )}
             </Card>
@@ -237,73 +283,66 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
         })}
       </div>
 
-      {/* ===== EXECUTION CANVAS (Full-screen modal) ===== */}
-      <Dialog open={!!executingWorkflow} onOpenChange={(o) => !o && closeCanvas()}>
+      {/* EXECUTION CANVAS */}
+      <Dialog open={!!executingWorkflow} onOpenChange={(o) => { if (!o && !isRunning) closeCanvas(); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
             <DialogTitle className="flex items-center gap-2 text-base">
               <GitBranch className="h-5 w-5 text-primary" />
               {executingWorkflow?.name}
-              <Badge variant="outline" className="text-[10px] ml-2">
-                {currentStepIndex < 0 ? "Pronto para iniciar" :
-                 currentStepIndex < (executingWorkflow?.steps.length || 0) - 1 ? `Passo ${currentStepIndex + 1}/${executingWorkflow?.steps.length}` :
-                 stepResults[currentStepIndex] ? "Concluído ✓" : `Passo ${currentStepIndex + 1}/${executingWorkflow?.steps.length}`}
+              <Badge variant={isRunning ? "default" : "outline"} className="text-[10px] ml-2">
+                {isRunning
+                  ? `Executando passo ${currentStepIndex + 1}/${executingWorkflow?.steps.length}`
+                  : Object.keys(stepResults).length === executingWorkflow?.steps.length
+                    ? "Concluído ✅"
+                    : "Preparando..."}
               </Badge>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Flow visualization - vertical canvas */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-2">
             {executingWorkflow?.steps.map((step, i) => {
               const c = getStepColor(step.agent);
               const isDone = !!stepResults[i];
               const isCurrent = i === currentStepIndex && !isDone;
               const isWaiting = i > currentStepIndex;
-              const isNext = i === currentStepIndex + 1 && !isLoading;
 
               return (
                 <div key={i}>
                   <div className={cn(
                     "rounded-xl border-2 p-4 transition-all duration-500",
                     isDone ? "border-green-500/40 bg-green-500/5" :
-                    isCurrent ? cn("animate-pulse", c.border, c.bg, "shadow-lg", c.glow) :
-                    cn(c.border, c.bg, isWaiting && "opacity-50")
+                    isCurrent ? cn(c.border, c.bg, "shadow-lg", c.glow) :
+                    cn("border-border bg-muted/20", isWaiting && "opacity-40")
                   )}>
-                    {/* Step header */}
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3">
                       <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center text-xl",
+                        "h-10 w-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0",
                         isDone ? "bg-green-500/20" : c.bg
                       )}>
                         {isDone ? <CheckCircle2 className="h-5 w-5 text-green-500" /> :
-                         isCurrent && isLoading ? <Loader2 className="h-5 w-5 text-primary animate-spin" /> :
+                         isCurrent ? <Loader2 className="h-5 w-5 text-primary animate-spin" /> :
                          <span>{step.emoji}</span>}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-foreground">{step.agent}</span>
-                          <Badge variant="outline" className={cn("text-[9px]", c.text)}>
+                          <Badge variant="outline" className={cn("text-[9px]", isDone ? "text-green-500" : c.text)}>
                             Passo {i + 1}
                           </Badge>
                         </div>
                         <p className="text-[11px] text-muted-foreground">{step.action}</p>
                       </div>
-                      {isWaiting && isNext && !isLoading && (
-                        <Button size="sm" variant="outline" className="text-xs gap-1" onClick={executeNextStep}>
-                          <Play className="h-3 w-3" /> Executar
-                        </Button>
-                      )}
                     </div>
 
-                    {/* Step result */}
-                    {isDone && stepResults[i] && (
-                      <div className="mt-3 p-3 rounded-lg bg-card border border-border max-h-[200px] overflow-y-auto scrollbar-thin">
-                        <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{stepResults[i]}</p>
+                    {/* Live streaming text */}
+                    {isCurrent && stepStreaming && (
+                      <div className="mt-3 p-3 rounded-lg bg-card border border-border max-h-[250px] overflow-y-auto scrollbar-thin">
+                        <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{stepStreaming}</p>
                       </div>
                     )}
 
-                    {/* Current step loading */}
-                    {isCurrent && isLoading && (
+                    {isCurrent && !stepStreaming && (
                       <div className="mt-3 p-3 rounded-lg bg-card border border-border">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin text-primary" />
@@ -311,14 +350,20 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
                         </div>
                       </div>
                     )}
+
+                    {/* Completed result */}
+                    {isDone && stepResults[i] && (
+                      <div className="mt-3 p-3 rounded-lg bg-card border border-border max-h-[250px] overflow-y-auto scrollbar-thin">
+                        <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{stepResults[i]}</p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Connector arrow */}
                   {i < executingWorkflow.steps.length - 1 && (
                     <div className="flex justify-center py-1">
                       <ArrowDown className={cn(
-                        "h-5 w-5",
-                        isDone ? "text-green-500" : "text-muted-foreground/30"
+                        "h-4 w-4",
+                        isDone ? "text-green-500" : "text-muted-foreground/20"
                       )} />
                     </div>
                   )}
@@ -327,24 +372,23 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
             })}
           </div>
 
-          {/* Bottom actions */}
           <div className="border-t border-border px-6 py-3 flex items-center justify-between bg-muted/20">
             <div className="text-[11px] text-muted-foreground">
               {Object.keys(stepResults).length} de {executingWorkflow?.steps.length} passos concluídos
             </div>
             <div className="flex gap-2">
-              {currentStepIndex < 0 && (
-                <Button size="sm" className="text-xs gap-1.5" onClick={executeNextStep}>
-                  <Play className="h-3 w-3" /> Iniciar Workflow
+              {!isRunning && Object.keys(stepResults).length > 0 && (
+                <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={copyAllResults}>
+                  <Copy className="h-3 w-3" /> Copiar Relatório
                 </Button>
               )}
-              {currentStepIndex >= 0 && !isLoading && currentStepIndex < (executingWorkflow?.steps.length || 0) - 1 && stepResults[currentStepIndex] && (
-                <Button size="sm" className="text-xs gap-1.5" onClick={executeNextStep}>
-                  <ArrowRight className="h-3 w-3" /> Próximo Passo
-                </Button>
-              )}
-              <Button size="sm" variant="outline" className="text-xs" onClick={closeCanvas}>
-                Fechar
+              <Button
+                size="sm"
+                variant={isRunning ? "destructive" : "outline"}
+                className="text-xs"
+                onClick={closeCanvas}
+              >
+                {isRunning ? "Cancelar" : "Fechar"}
               </Button>
             </div>
           </div>
