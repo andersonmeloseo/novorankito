@@ -23,7 +23,21 @@ import ReportsPage from "@/pages/ReportsPage";
 import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import UsersPage from "@/pages/UsersPage";
 import BillingPage from "@/pages/BillingPage";
-import AdminPage from "@/pages/AdminPage";
+// Admin sub-pages
+import AdminOverviewPage from "@/pages/admin/AdminOverviewPage";
+import AdminClientsPage from "@/pages/admin/AdminClientsPage";
+import AdminUsersPageAdmin from "@/pages/admin/AdminUsersPage";
+import AdminBillingPageAdmin from "@/pages/admin/AdminBillingPage";
+import AdminProjectsPageAdmin from "@/pages/admin/AdminProjectsPage";
+import AdminUsagePage from "@/pages/admin/AdminUsagePage";
+import AdminIntegrationsPage from "@/pages/admin/AdminIntegrationsPage";
+import AdminSecurityPageAdmin from "@/pages/admin/AdminSecurityPage";
+import AdminLogsPageAdmin from "@/pages/admin/AdminLogsPage";
+import AdminHealthPage from "@/pages/admin/AdminHealthPage";
+import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
+import AdminNotificationsPage from "@/pages/admin/AdminNotificationsPage";
+import AdminFlagsPage from "@/pages/admin/AdminFlagsPage";
+import AdminAnnouncementsPage from "@/pages/admin/AdminAnnouncementsPage";
 import NotFound from "./pages/NotFound";
 // Rank & Rent
 import RROverviewPage from "@/pages/rank-rent/RROverviewPage";
@@ -65,7 +79,20 @@ const App = () => (
             </Route>
             {/* Admin separado — sem sidebar */}
             <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin" element={<AdminOverviewPage />} />
+              <Route path="/admin/clients" element={<AdminClientsPage />} />
+              <Route path="/admin/users" element={<AdminUsersPageAdmin />} />
+              <Route path="/admin/billing" element={<AdminBillingPageAdmin />} />
+              <Route path="/admin/projects" element={<AdminProjectsPageAdmin />} />
+              <Route path="/admin/usage" element={<AdminUsagePage />} />
+              <Route path="/admin/integrations" element={<AdminIntegrationsPage />} />
+              <Route path="/admin/security" element={<AdminSecurityPageAdmin />} />
+              <Route path="/admin/logs" element={<AdminLogsPageAdmin />} />
+              <Route path="/admin/health" element={<AdminHealthPage />} />
+              <Route path="/admin/settings" element={<AdminSettingsPage />} />
+              <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
+              <Route path="/admin/flags" element={<AdminFlagsPage />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
               <Route path="/onboarding" element={<Onboarding />} />
               {/* Rank & Rent */}
               <Route path="/rank-rent" element={<RROverviewPage />} />
