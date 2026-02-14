@@ -182,7 +182,7 @@ export function AllEventsTab() {
                         style={{ background: `hsl(var(--info) / ${intensity})`, border: `1px solid hsl(var(--info) / ${intensity * 0.4})` }}
                         title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
                       >
-                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>{cell.value}</span>
+                        <span className="text-[8px] font-semibold" style={{ color: `rgba(0,0,0,${Math.max(0.25, Math.min(intensity * 1.5 + 0.2, 1))})`, fontWeight: intensity > 0.5 ? 800 : 600 }}>{cell.value}</span>
                       </div>
                     );
                   })}
