@@ -22,6 +22,7 @@ import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
   Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy, Shield,
+  History, FolderTree,
 } from "lucide-react";
 import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
 import { SitemapsTab } from "@/components/seo/SitemapsTab";
@@ -32,6 +33,10 @@ import { OpportunitiesTab } from "@/components/seo/OpportunitiesTab";
 import { ContentDecayTab } from "@/components/seo/ContentDecayTab";
 import { CannibalizationTab } from "@/components/seo/CannibalizationTab";
 import { IndexCoverageTab } from "@/components/seo/IndexCoverageTab";
+import { PositionHistoryTab } from "@/components/seo/PositionHistoryTab";
+import { UrlGroupingTab } from "@/components/seo/UrlGroupingTab";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -414,14 +419,10 @@ export default function SeoPage() {
 
   // Export
   function exportCSV(rows: any[], filename: string) {
-    if (rows.length === 0) return;
-    const headers = Object.keys(rows[0]);
-    const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${filename}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    exportCSVUtil(rows, filename);
+  }
+  function exportXMLData(rows: any[], filename: string) {
+    exportXML(rows, filename, "seoData", "row");
   }
 
   function toggleMetric(metric: string) {
@@ -760,7 +761,9 @@ export default function SeoPage() {
                        <TabsTrigger value="coverage" className="text-xs gap-1"><Shield className="h-3 w-3" />Cobertura</TabsTrigger>
                       <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
                       <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
-                      <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
+                       <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
+                       <TabsTrigger value="history" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
+                       <TabsTrigger value="grouping" className="text-xs gap-1"><FolderTree className="h-3 w-3" />Agrupamento</TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -787,7 +790,8 @@ export default function SeoPage() {
                           onSort={(key) => { setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setPagesPage(1); }}
                           page={pagesPage}
                           onPageChange={setPagesPage}
-                          onExport={() => exportCSV(drillPagesForQuery, `seo-paginas-${selectedQuery}`)}
+                           onExport={() => exportCSV(drillPagesForQuery, `seo-paginas-${selectedQuery}`)}
+                           onExportXML={() => exportXMLData(drillPagesForQuery, `seo-paginas-${selectedQuery}`)}
                         />
                       </div>
                     ) : (
@@ -798,7 +802,8 @@ export default function SeoPage() {
                         onSort={(key) => { setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setQueriesPage(1); }}
                         page={queriesPage}
                         onPageChange={setQueriesPage}
-                        onExport={() => exportCSV(compQueryRows || queryRows, "seo-consultas")}
+                         onExport={() => exportCSV(compQueryRows || queryRows, "seo-consultas")}
+                         onExportXML={() => exportXMLData(compQueryRows || queryRows, "seo-consultas")}
                         onRowClick={(row) => { setSelectedQuery(row.name); setPagesPage(1); }}
                       />
                     )}
@@ -827,7 +832,8 @@ export default function SeoPage() {
                           onSort={(key) => setQueriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" }))}
                           page={queriesPage}
                           onPageChange={setQueriesPage}
-                          onExport={() => exportCSV(drillQueriesForPage, `seo-consultas-${selectedPage}`)}
+                           onExport={() => exportCSV(drillQueriesForPage, `seo-consultas-${selectedPage}`)}
+                           onExportXML={() => exportXMLData(drillQueriesForPage, `seo-consultas-${selectedPage}`)}
                         />
                       </div>
                     ) : (
@@ -838,7 +844,8 @@ export default function SeoPage() {
                         onSort={(key) => { setPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setPagesPage(1); }}
                         page={pagesPage}
                         onPageChange={setPagesPage}
-                        onExport={() => exportCSV(compPageRows || pageRows, "seo-paginas")}
+                         onExport={() => exportCSV(compPageRows || pageRows, "seo-paginas")}
+                         onExportXML={() => exportXMLData(compPageRows || pageRows, "seo-paginas")}
                         onRowClick={(row) => { setSelectedPage(row.name); setQueriesPage(1); }}
                       />
                     )}
@@ -852,7 +859,8 @@ export default function SeoPage() {
                       onSort={(key) => { setCountriesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setCountriesPage(1); }}
                       page={countriesPage}
                       onPageChange={setCountriesPage}
-                      onExport={() => exportCSV(compCountryRows || countryRows, "seo-paises")}
+                       onExport={() => exportCSV(compCountryRows || countryRows, "seo-paises")}
+                       onExportXML={() => exportXMLData(compCountryRows || countryRows, "seo-paises")}
                     />
                   </TabsContent>
 
@@ -864,7 +872,8 @@ export default function SeoPage() {
                       onSort={() => {}}
                       page={devicesPage}
                       onPageChange={setDevicesPage}
-                      onExport={() => exportCSV(compDeviceRows || deviceRows, "seo-dispositivos")}
+                       onExport={() => exportCSV(compDeviceRows || deviceRows, "seo-dispositivos")}
+                       onExportXML={() => exportXMLData(compDeviceRows || deviceRows, "seo-dispositivos")}
                     />
                   </TabsContent>
 
@@ -903,6 +912,14 @@ export default function SeoPage() {
                   <TabsContent value="discover" className="mt-0">
                     <DiscoverNewsTab projectId={projectId} />
                   </TabsContent>
+
+                  <TabsContent value="history" className="mt-0">
+                    <PositionHistoryTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="grouping" className="mt-0">
+                    <UrlGroupingTab projectId={projectId} />
+                  </TabsContent>
                 </Tabs>
               </AnimatedContainer>
             )}
@@ -925,7 +942,7 @@ function sortData(data: any[], key: string, dir: SortDir) {
 interface Column { key: string; label: string }
 
 function SortableTable({
-  columns, rows, sort, onSort, page, onPageChange, onExport, onRowClick,
+  columns, rows, sort, onSort, page, onPageChange, onExport, onExportXML, onRowClick,
 }: {
   columns: Column[];
   rows: any[];
@@ -934,6 +951,7 @@ function SortableTable({
   page: number;
   onPageChange: (p: number) => void;
   onExport: () => void;
+  onExportXML?: () => void;
   onRowClick?: (row: any) => void;
 }) {
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
@@ -967,9 +985,13 @@ function SortableTable({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
         <span className="text-xs text-muted-foreground">{rows.length} resultados</span>
-        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={onExport}>
-          <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
-        </Button>
+        {onExportXML ? (
+          <ExportMenu onExportCSV={onExport} onExportXML={onExportXML} />
+        ) : (
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={onExport}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+          </Button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

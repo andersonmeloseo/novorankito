@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Target, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight, Search, TrendingUp } from "lucide-react";
+import { Target, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Search, TrendingUp } from "lucide-react";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV, exportXML } from "@/lib/export-utils";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -49,16 +51,8 @@ export function OpportunitiesTab({ projectId }: Props) {
     return sortData(items, sort.key, sort.dir);
   }, [data, searchTerm, sort]);
 
-  const exportCSV = () => {
-    if (rows.length === 0) return;
-    const headers = Object.keys(rows[0]);
-    const csv = [headers.join(","), ...rows.map((r: any) => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "keyword-opportunities.csv"; a.click();
-    URL.revokeObjectURL(url);
-  };
+  const doExportCSV = () => exportCSV(rows, "oportunidades-keywords");
+  const doExportXML = () => exportXML(rows, "oportunidades-keywords", "opportunities", "keyword");
 
   const positionBadge = (pos: number) => {
     if (pos <= 3) return <Badge variant="default" className="text-[10px] bg-success">Top 3</Badge>;
@@ -112,10 +106,8 @@ export function OpportunitiesTab({ projectId }: Props) {
       <AnimatedContainer delay={0.05}>
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-            <span className="text-xs text-muted-foreground">{rows.length} oportunidades</span>
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={exportCSV}>
-              <Download className="h-3.5 w-3.5 mr-1" /> CSV
-            </Button>
+             <span className="text-xs text-muted-foreground">{rows.length} oportunidades</span>
+             <ExportMenu onExportCSV={doExportCSV} onExportXML={doExportXML} />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Copy, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV, exportXML } from "@/lib/export-utils";
+import { Copy, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -50,22 +52,18 @@ export function CannibalizationTab({ projectId }: Props) {
     return sortData(items, sort.key, sort.dir);
   }, [data, searchTerm, sort]);
 
-  const exportCSV = () => {
-    if (rows.length === 0) return;
+  const flatRows = useMemo(() => {
     const flat: any[] = [];
     for (const row of rows) {
       for (const p of row.pages) {
         flat.push({ query: row.query, page: p.page, clicks: p.clicks, impressions: p.impressions, ctr: p.ctr, position: p.position });
       }
     }
-    const headers = Object.keys(flat[0]);
-    const csv = [headers.join(","), ...flat.map(r => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "cannibalization.csv"; a.click();
-    URL.revokeObjectURL(url);
-  };
+    return flat;
+  }, [rows]);
+
+  const doExportCSV = () => exportCSV(flatRows, "canibalizacao");
+  const doExportXML = () => exportXML(flatRows, "canibalizacao", "cannibalization", "entry");
 
   const columns = [
     { key: "query", label: "Keyword" },
@@ -111,10 +109,8 @@ export function CannibalizationTab({ projectId }: Props) {
       <AnimatedContainer delay={0.05}>
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-            <span className="text-xs text-muted-foreground">{rows.length} keywords canibalizadas</span>
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={exportCSV}>
-              <Download className="h-3.5 w-3.5 mr-1" /> CSV
-            </Button>
+             <span className="text-xs text-muted-foreground">{rows.length} keywords canibalizadas</span>
+             <ExportMenu onExportCSV={doExportCSV} onExportXML={doExportXML} />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

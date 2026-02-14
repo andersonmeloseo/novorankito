@@ -9,6 +9,8 @@ import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid } from "@/components/ui/animated-container";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
 import { toast } from "@/hooks/use-toast";
 import {
   Shield, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight,
@@ -105,15 +107,23 @@ export function IndexCoverageTab({ projectId }: Props) {
     }
   };
 
-  const exportCSV = () => {
-    if (rows.length === 0) return;
+  const doExportCSV = () => {
     const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
-    const csv = [headers.join(","), ...rows.map((r: any) => headers.map(h => `"${r[h] || ""}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "index-coverage.csv"; a.click();
-    URL.revokeObjectURL(url);
+    const exportRows = rows.map((r: any) => {
+      const obj: any = {};
+      headers.forEach(h => obj[h] = r[h] || "");
+      return obj;
+    });
+    exportCSVUtil(exportRows, "cobertura-indexacao");
+  };
+  const doExportXML = () => {
+    const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
+    const exportRows = rows.map((r: any) => {
+      const obj: any = {};
+      headers.forEach(h => obj[h] = r[h] || "");
+      return obj;
+    });
+    exportXML(exportRows, "cobertura-indexacao", "indexCoverage", "url");
   };
 
   const renderVerdict = (verdict: string) => {
@@ -215,9 +225,7 @@ export function IndexCoverageTab({ projectId }: Props) {
                   <RefreshCw className="h-3.5 w-3.5" />
                   Atualizar
                 </Button>
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={exportCSV}>
-                  <Download className="h-3.5 w-3.5 mr-1" /> CSV
-                </Button>
+                <ExportMenu onExportCSV={doExportCSV} onExportXML={doExportXML} />
               </div>
             </div>
             <div className="overflow-x-auto">
