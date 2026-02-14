@@ -97,14 +97,43 @@ export function EcommerceTrackingTab() {
         <SparkKpi label="Checkout→Compra" value={checkoutToPurchase} suffix="%" change={7.9} sparkData={generateSparkline(12, 45, 10)} color="hsl(var(--success))" />
       </StaggeredGrid>
 
-      {/* Funnel Step */}
+      {/* Visual Funnel */}
       <AnimatedContainer>
         <Card className="p-5">
-          <ChartHeader title="Funil E-commerce WooCommerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
-          <div className="space-y-2">
-            {ecommerceFunnelTotals.map((step, i) => (
-              <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={ecommerceFunnelTotals[0].value} color={step.color} index={i} />
-            ))}
+          <ChartHeader title="Funil de E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
+          <div className="flex flex-col items-center py-4 gap-0">
+            {ecommerceFunnelTotals.map((step, i) => {
+              const maxVal = ecommerceFunnelTotals[0].value;
+              const widthPct = maxVal > 0 ? Math.max((step.value / maxVal) * 100, 20) : 20;
+              const prevVal = i > 0 ? ecommerceFunnelTotals[i - 1].value : null;
+              const dropRate = prevVal && prevVal > 0 ? (((prevVal - step.value) / prevVal) * 100).toFixed(1) : null;
+              return (
+                <div key={step.label} className="flex flex-col items-center w-full">
+                  {dropRate && (
+                    <div className="text-[10px] text-muted-foreground py-1">
+                      ▼ {dropRate}% drop
+                    </div>
+                  )}
+                  <div
+                    className="relative flex items-center justify-center py-3 transition-all duration-500"
+                    style={{
+                      width: `${widthPct}%`,
+                      background: `linear-gradient(135deg, ${step.color}cc, ${step.color})`,
+                      clipPath: i < ecommerceFunnelTotals.length - 1
+                        ? "polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)"
+                        : "polygon(4% 0%, 96% 0%, 92% 100%, 8% 100%)",
+                      borderRadius: i === 0 ? "8px 8px 0 0" : i === ecommerceFunnelTotals.length - 1 ? "0 0 8px 8px" : "0",
+                      boxShadow: `0 2px 16px ${step.color}44`,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 z-10">
+                      <span className="text-xs font-bold text-white drop-shadow-sm">{step.label}</span>
+                      <span className="text-white/80 text-[10px] font-semibold">{step.value.toLocaleString("pt-BR")}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </AnimatedContainer>
