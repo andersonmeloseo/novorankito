@@ -404,7 +404,7 @@ function StepSitemap({ projectId }: { projectId: string | null }) {
       // Insert in batches of 100
       for (let i = 0; i < batch.length; i += 100) {
         const chunk = batch.slice(i, i + 100);
-        const { error } = await supabase.from("site_urls").insert(chunk);
+        const { error } = await supabase.from("site_urls").upsert(chunk, { onConflict: "project_id,url", ignoreDuplicates: true });
         if (error) throw error;
       }
       setSaved(true);
