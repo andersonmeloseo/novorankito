@@ -224,7 +224,8 @@ export function CohortHeatmap({ data, xLabels, yLabels, maxValue, hue = 210 }: {
                   title={`${yLabel} × ${xLabels[col]}: ${val}`}
                 >
                   <span className="text-[9px] font-semibold" style={{
-                    color: '#000',
+                    color: `rgba(0, 0, 0, ${val > 0 ? Math.max(0.3, Math.min(intensity * 1.5 + 0.3, 1)) : 0.25})`,
+                    fontWeight: intensity > 0.5 ? 800 : 600,
                   }}>
                     {val > 0 ? val.toLocaleString("pt-BR") : "–"}
                   </span>
