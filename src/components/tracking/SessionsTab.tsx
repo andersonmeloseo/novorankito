@@ -454,7 +454,7 @@ export function SessionsTab() {
         <SparkKpi label="Páginas/Sessão" value={avgPages} change={3.8} sparkData={generateSparkline(12, 4, 2)} color="hsl(var(--warning))" icon={Layers} />
         <SparkKpi label="Taxa Rejeição" value={bounceRate} change={-2.1} suffix="%" sparkData={generateSparkline(12, 30, 8)} color="hsl(var(--warning))" />
         <SparkKpi label="Novos Usuários" value={newUsersPercent} change={-1.3} suffix="%" sparkData={generateSparkline(12, 62, 8)} color="hsl(var(--chart-5))" />
-        <SparkKpi label="Cidades" value={uniqueCities} change={11.2} sparkData={generateSparkline(12, 6, 3)} color="hsl(var(--info))" icon={Globe} />
+        <SparkKpi label="Cidade" value={lastSession ? lastSession.city : "—"} change={0} sparkData={[]} color="hsl(var(--info))" icon={Globe} hideSparkline hideBadge smallValue />
         <SparkKpi label="Source/Medium" value={lastSourceMedium} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
       </StaggeredGrid>
 
