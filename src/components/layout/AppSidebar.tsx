@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
-  Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
+  ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -44,7 +44,6 @@ const rankRentNav = [
 const accountNav = [
   { title: "Usuários & Permissões", url: "/account/users", icon: Users },
   { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
-  { title: "Admin", url: "/admin", icon: Shield },
 ];
 
 export function AppSidebar() {
