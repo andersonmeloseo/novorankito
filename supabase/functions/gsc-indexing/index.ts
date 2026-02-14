@@ -20,8 +20,8 @@ async function createGoogleJWT(credentials: { client_email: string; private_key:
   return `${unsignedToken}.${signatureB64}`;
 }
 
-async function getAccessToken(credentials: { client_email: string; private_key: string }): Promise<string> {
-  const jwt = await createGoogleJWT(credentials, "https://www.googleapis.com/auth/indexing");
+async function getAccessToken(credentials: { client_email: string; private_key: string }, scope: string): Promise<string> {
+  const jwt = await createGoogleJWT(credentials, scope);
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -52,21 +52,89 @@ serve(async (req) => {
       });
     }
 
-    // Action: "list" — return stored indexing requests
+    // ─── Action: "inventory" — site_urls + index_coverage + last indexing request ───
+    if (action === "inventory") {
+      // Get all site_urls
+      const { data: siteUrls, error: urlErr } = await supabase
+        .from("site_urls")
+        .select("id, url, meta_title, status, url_type, url_group, priority, discovered_at, last_crawl")
+        .eq("project_id", project_id)
+        .order("url", { ascending: true })
+        .limit(1000);
+      if (urlErr) throw urlErr;
+
+      // Get index_coverage for this project
+      const { data: coverage } = await supabase
+        .from("index_coverage")
+        .select("url, verdict, coverage_state, indexing_state, last_crawl_time, crawled_as, page_fetch_state, robotstxt_state, inspected_at")
+        .eq("project_id", project_id);
+
+      // Get latest indexing request per URL
+      const { data: indexingReqs } = await supabase
+        .from("indexing_requests")
+        .select("url, status, submitted_at, request_type")
+        .eq("project_id", project_id)
+        .order("submitted_at", { ascending: false });
+
+      // Build maps
+      const coverageMap = new Map((coverage || []).map((c: any) => [c.url, c]));
+      // Keep only latest request per URL
+      const reqMap = new Map<string, any>();
+      for (const r of (indexingReqs || [])) {
+        if (!reqMap.has(r.url)) reqMap.set(r.url, r);
+      }
+
+      const inventory = (siteUrls || []).map((u: any) => {
+        const cov = coverageMap.get(u.url);
+        const lastReq = reqMap.get(u.url);
+        return {
+          ...u,
+          // Coverage data
+          verdict: cov?.verdict || null,
+          coverage_state: cov?.coverage_state || null,
+          indexing_state: cov?.indexing_state || null,
+          last_crawl_time: cov?.last_crawl_time || null,
+          crawled_as: cov?.crawled_as || null,
+          page_fetch_state: cov?.page_fetch_state || null,
+          robotstxt_state: cov?.robotstxt_state || null,
+          inspected_at: cov?.inspected_at || null,
+          // Last indexing request
+          last_request_status: lastReq?.status || null,
+          last_request_at: lastReq?.submitted_at || null,
+          last_request_type: lastReq?.request_type || null,
+        };
+      });
+
+      // Summary stats
+      const totalUrls = inventory.length;
+      const indexed = inventory.filter((u: any) => u.verdict === "PASS").length;
+      const notIndexed = inventory.filter((u: any) => u.verdict && u.verdict !== "PASS").length;
+      const unknown = inventory.filter((u: any) => !u.verdict).length;
+      const sentToday = (indexingReqs || []).filter((r: any) => r.submitted_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
+
+      return new Response(JSON.stringify({
+        inventory,
+        stats: { totalUrls, indexed, notIndexed, unknown, sentToday, dailyLimit: 200 },
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: "list" — return stored indexing requests ───
     if (action === "list") {
       const { data, error } = await supabase
         .from("indexing_requests")
         .select("*")
         .eq("project_id", project_id)
         .order("submitted_at", { ascending: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return new Response(JSON.stringify({ rows: data || [] }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Action: "submit" — submit URLs to Google Indexing API
+    // ─── Action: "submit" — submit URLs to Google Indexing API ───
     if (action === "submit") {
       if (!urls || !Array.isArray(urls) || urls.length === 0) {
         return new Response(JSON.stringify({ error: "urls array is required" }), {
@@ -75,14 +143,10 @@ serve(async (req) => {
       }
 
       const type = request_type || "URL_UPDATED";
-      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key });
-
-      // Get owner_id from the connection
+      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key }, "https://www.googleapis.com/auth/indexing");
       const ownerId = conn.owner_id;
 
       const results: { url: string; status: string; response_code?: number; response_message?: string; fail_reason?: string }[] = [];
-
-      // Google Indexing API limit: ~200/day. Process in batch.
       const batch = urls.slice(0, 50);
 
       for (const url of batch) {
@@ -103,14 +167,13 @@ serve(async (req) => {
             results.push({ url, status: "failed", response_code: res.status, fail_reason: body.error?.message || `HTTP ${res.status}` });
           }
 
-          // Small delay to avoid rate limiting
           await new Promise(r => setTimeout(r, 150));
         } catch (e) {
           results.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown error" });
         }
       }
 
-      // Save all results to indexing_requests table
+      // Save results
       const rows = results.map(r => ({
         project_id,
         owner_id: ownerId,
@@ -138,7 +201,7 @@ serve(async (req) => {
       });
     }
 
-    // Action: "retry" — retry a specific failed request
+    // ─── Action: "retry" — retry a specific failed request ───
     if (action === "retry") {
       if (!request_id) {
         return new Response(JSON.stringify({ error: "request_id is required" }), {
@@ -157,7 +220,7 @@ serve(async (req) => {
         });
       }
 
-      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key });
+      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key }, "https://www.googleapis.com/auth/indexing");
 
       const res = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
         method: "POST",
@@ -185,36 +248,74 @@ serve(async (req) => {
       });
     }
 
-    // Action: "status" — get notification status for a URL
-    if (action === "status") {
-      if (!urls || urls.length === 0) {
-        return new Response(JSON.stringify({ error: "urls array required" }), {
+    // ─── Action: "inspect" — batch URL inspection via URL Inspection API ───
+    if (action === "inspect") {
+      if (!urls || !Array.isArray(urls) || urls.length === 0) {
+        return new Response(JSON.stringify({ error: "urls array is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key });
+      const accessToken = await getAccessToken(
+        { client_email: conn.client_email, private_key: conn.private_key },
+        "https://www.googleapis.com/auth/webmasters.readonly"
+      );
 
-      const statuses: any[] = [];
-      for (const url of urls.slice(0, 20)) {
+      const results: any[] = [];
+      let errors = 0;
+      const batch = urls.slice(0, 20);
+
+      for (const url of batch) {
         try {
-          const res = await fetch(`https://indexing.googleapis.com/v3/urlNotifications/metadata?url=${encodeURIComponent(url)}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
+          const inspectRes = await fetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ inspectionUrl: url, siteUrl: conn.site_url }),
           });
-          const data = await res.json();
-          statuses.push({ url, ...data });
-          await new Promise(r => setTimeout(r, 100));
-        } catch {
-          statuses.push({ url, error: "Failed to fetch status" });
-        }
+
+          if (!inspectRes.ok) { errors++; continue; }
+
+          const result = await inspectRes.json();
+          const inspection = result.inspectionResult?.indexStatusResult || {};
+
+          results.push({
+            project_id,
+            owner_id: conn.owner_id,
+            url,
+            verdict: inspection.verdict || "VERDICT_UNSPECIFIED",
+            coverage_state: inspection.coverageState || null,
+            robotstxt_state: inspection.robotsTxtState || null,
+            indexing_state: inspection.indexingState || null,
+            page_fetch_state: inspection.pageFetchState || null,
+            crawled_as: inspection.crawledAs || null,
+            last_crawl_time: inspection.lastCrawlTime || null,
+            referring_urls: inspection.referringUrls || [],
+            sitemap: inspection.sitemap?.[0] || null,
+            inspected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+          await new Promise(r => setTimeout(r, 200));
+        } catch { errors++; }
       }
 
-      return new Response(JSON.stringify({ statuses }), {
+      if (results.length > 0) {
+        const { error: upsertErr } = await supabase
+          .from("index_coverage")
+          .upsert(results, { onConflict: "project_id,url" });
+        if (upsertErr) throw upsertErr;
+      }
+
+      return new Response(JSON.stringify({
+        inspected: results.length,
+        errors,
+        remaining: urls.length - batch.length,
+      }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action. Use: list, submit, retry, status" }), {
+    return new Response(JSON.stringify({ error: "Invalid action. Use: inventory, list, submit, retry, inspect" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
