@@ -7,7 +7,7 @@ import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-conta
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useSeoMetrics, useAnalyticsSessions, useConversions } from "@/hooks/use-data-modules";
-import { useGA4Report } from "@/hooks/use-ga4-reports";
+// GA4 data fetched inline with graceful error handling
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -103,23 +103,43 @@ export default function Overview() {
   const { data: sessions = [], isLoading: sessionsLoading } = useAnalyticsSessions(projectId);
   const { data: conversions = [], isLoading: conversionsLoading } = useConversions(projectId);
 
-  // Live GSC data via edge function
+  // Live GSC data via edge function (graceful fallback)
   const { data: gscLiveData, isLoading: gscLiveLoading } = useQuery({
     queryKey: ["gsc-live-overview", projectId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("query-gsc-live", {
-        body: { project_id: projectId, start_date: "28daysAgo", end_date: "today", dimensions: ["date"], row_limit: 60 },
-      });
-      if (error) return null;
-      return data;
+      try {
+        const { data, error } = await supabase.functions.invoke("query-gsc-live", {
+          body: { project_id: projectId, start_date: "28daysAgo", end_date: "today", dimensions: ["date"], row_limit: 60 },
+        });
+        if (error || data?.error) return null;
+        return data;
+      } catch {
+        return null;
+      }
     },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: false,
   });
 
-  // Live GA4 overview data
-  const { data: ga4Overview, isLoading: ga4Loading } = useGA4Report(projectId, "overview", "28daysAgo", "yesterday");
+  // Live GA4 overview data (graceful fallback)
+  const { data: ga4Overview } = useQuery({
+    queryKey: ["ga4-overview-safe", projectId],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("fetch-ga4-data", {
+          body: { project_id: projectId, report_type: "overview", start_date: "28daysAgo", end_date: "yesterday" },
+        });
+        if (error || data?.error) return null;
+        return data?.data || null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   const isLoading = seoLoading || sessionsLoading || conversionsLoading;
 
