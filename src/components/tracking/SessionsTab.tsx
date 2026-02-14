@@ -449,7 +449,7 @@ export function SessionsTab() {
       {/* ═══ Heatmap Dia × Hora — Featured ═══ */}
       <AnimatedContainer delay={0.03}>
         <Card className="p-5">
-          <ChartHeader title="🔥 Mapa de Calor de Sessões (Dia × Hora)" subtitle="Heatmap calendário com intensidade dinâmica" />
+          <ChartHeader title="🔥 Mapa de Calor de Sessões (Dia × Hora)" subtitle="Identifique os horários de maior tráfego para agendar publicações e campanhas nos momentos certos" />
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <div className="flex gap-0.5 mb-1 ml-10">
@@ -481,7 +481,7 @@ export function SessionsTab() {
       {/* ═══ Multi-line com hover emphasis — Qualidade do Acesso ═══ */}
       <AnimatedContainer>
         <Card className="p-5">
-          <ChartHeader title="Qualidade do Acesso ao Longo do Tempo" subtitle="Area chart com transparência e glow" />
+          <ChartHeader title="Qualidade do Acesso ao Longo do Tempo" subtitle="Monitore a evolução do engajamento vs rejeição para avaliar a eficácia das melhorias no site" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sessionsByDay}>
@@ -505,7 +505,7 @@ export function SessionsTab() {
       {/* ═══ Line Chart com gradiente — Sessões e Engajamento ═══ */}
       <AnimatedContainer delay={0.05}>
         <Card className="p-5">
-          <ChartHeader title="Sessões e Engajamento" subtitle="Multi-line com destaque dinâmico (hover emphasis)" />
+          <ChartHeader title="Sessões e Engajamento" subtitle="Compare o volume total de sessões com as engajadas e bounces para identificar problemas de retenção" />
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sessionsByDay}>
@@ -526,7 +526,7 @@ export function SessionsTab() {
       {/* ═══ Step Funnel — Pipeline de Sessão ═══ */}
       <AnimatedContainer delay={0.08}>
         <Card className="p-5">
-          <ChartHeader title="Funil de Qualidade de Sessão" subtitle="Step funnel — queda entre etapas" />
+          <ChartHeader title="Funil de Qualidade de Sessão" subtitle="Visualize a queda entre etapas do engajamento — do total até sessões profundamente engajadas" />
           <div className="space-y-2">
             {sessionFunnel.map((step, i) => (
               <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={sessionFunnel[0].value} color={step.color} index={i} />
@@ -539,7 +539,7 @@ export function SessionsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.1}>
           <Card className="p-5">
-            <ChartHeader title="Distribuição de Duração" subtitle="Funnel horizontal minimal" />
+            <ChartHeader title="Distribuição de Duração" subtitle="Entenda quanto tempo os visitantes permanecem no site para calibrar o conteúdo" />
             <div className="space-y-1.5">
               {durationDistribution.map((bucket, i) => (
                 <FunnelStep key={bucket.label} label={bucket.label} value={bucket.count} maxValue={Math.max(...durationDistribution.map(d => d.count))} color={VIVID_COLORS[i % VIVID_COLORS.length]} index={i} />
@@ -550,7 +550,7 @@ export function SessionsTab() {
 
         <AnimatedContainer delay={0.15}>
           <Card className="p-5">
-            <ChartHeader title="Engajamento por Dispositivo" subtitle="Radar chart multi-dimensional" />
+            <ChartHeader title="Engajamento por Dispositivo" subtitle="Compare métricas de engajamento entre mobile, desktop e tablet para priorizar otimizações" />
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={qualityByDevice}>
@@ -571,7 +571,7 @@ export function SessionsTab() {
       {/* ═══ Duração × Páginas por Source ═══ */}
       <AnimatedContainer delay={0.18}>
         <Card className="p-5">
-          <ChartHeader title="Duração × Páginas por Source" subtitle="Barras agrupadas — duração média e páginas/sessão" />
+          <ChartHeader title="Duração × Páginas por Source" subtitle="Descubra quais fontes de tráfego geram sessões mais longas e com mais páginas visitadas" />
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={scatterBySource} layout="vertical" margin={{ left: 10, right: 20 }}>
@@ -597,7 +597,7 @@ export function SessionsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.2}>
           <Card className="p-5">
-            <ChartHeader title="Qualidade por Source" subtitle="Barras com gradiente horizontal" />
+            <ChartHeader title="Qualidade por Source" subtitle="Avalie qual canal de aquisição gera os visitantes mais engajados" />
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={qualityBySource} layout="vertical" margin={{ left: 10 }}>
@@ -623,7 +623,7 @@ export function SessionsTab() {
 
         <AnimatedContainer delay={0.25}>
           <Card className="p-5">
-            <ChartHeader title="Distribuição por Source" subtitle="Donut chart com label central" />
+            <ChartHeader title="Distribuição por Source" subtitle="Veja a proporção de cada canal de tráfego no total de sessões" />
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -645,7 +645,7 @@ export function SessionsTab() {
       {/* ═══ Cohort Heatmap — Source × Device ═══ */}
       <AnimatedContainer delay={0.28}>
         <Card className="p-5">
-          <ChartHeader title="Heatmap: Source × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
+          <ChartHeader title="Heatmap: Source × Dispositivo" subtitle="Identifique combinações de canal e dispositivo com maior volume para segmentar campanhas" />
           <CohortHeatmap
             data={cohortData.data}
             xLabels={cohortData.xLabels}
@@ -660,14 +660,14 @@ export function SessionsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.3}>
           <Card className="p-5">
-            <ChartHeader title="Pipeline Visual de Sessões" subtitle="Barras verticais proporcionais" />
+            <ChartHeader title="Pipeline Visual de Sessões" subtitle="Acompanhe o funil de retenção desde a primeira visita até o engajamento profundo" />
             <PipelineVisual steps={sessionFunnel} />
           </Card>
         </AnimatedContainer>
 
         <AnimatedContainer delay={0.32}>
           <Card className="p-5">
-            <ChartHeader title="Top Landing Pages" subtitle="Barras com gradiente" />
+            <ChartHeader title="Top Landing Pages" subtitle="Descubra quais páginas de entrada atraem mais sessões e onde focar SEO" />
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topLandingPages} layout="vertical" margin={{ left: 10 }}>
@@ -695,7 +695,7 @@ export function SessionsTab() {
       {/* ═══ City proximity bar with gradient ═══ */}
       <AnimatedContainer delay={0.35}>
         <Card className="p-5">
-          <ChartHeader title="Proximidade por Cidade" subtitle="Barras verticais com gradiente" />
+          <ChartHeader title="Proximidade por Cidade" subtitle="Veja de quais cidades vem seu público para direcionar campanhas locais" />
           <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sessionsByCity}>
