@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AllEventsTab } from "@/components/tracking/AllEventsTab";
 import { EcommerceTrackingTab } from "@/components/tracking/EcommerceTrackingTab";
-import { ConversionsTrackingTab } from "@/components/tracking/ConversionsTrackingTab";
+
 import { AdsUtmTrackingTab } from "@/components/tracking/AdsUtmTrackingTab";
 import { SessionsTab } from "@/components/tracking/SessionsTab";
 import { Activity, ShoppingCart, Zap, Target, Users } from "lucide-react";
@@ -31,9 +31,6 @@ export default function TrackingPage() {
             <TabsTrigger value="ecommerce" className="text-xs gap-1.5">
               <ShoppingCart className="h-3.5 w-3.5" /> E-commerce
             </TabsTrigger>
-            <TabsTrigger value="conversions" className="text-xs gap-1.5">
-              <Zap className="h-3.5 w-3.5" /> Conversões
-            </TabsTrigger>
             <TabsTrigger value="ads-utm" className="text-xs gap-1.5">
               <Target className="h-3.5 w-3.5" /> Ads & UTM
             </TabsTrigger>
@@ -50,9 +47,6 @@ export default function TrackingPage() {
             <EcommerceTrackingTab />
           </TabsContent>
 
-          <TabsContent value="conversions" className="mt-4">
-            <ConversionsTrackingTab />
-          </TabsContent>
 
           <TabsContent value="ads-utm" className="mt-4">
             <AdsUtmTrackingTab />
