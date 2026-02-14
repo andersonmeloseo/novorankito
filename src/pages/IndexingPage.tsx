@@ -20,7 +20,7 @@ import {
 import {
   Send, CheckCircle2, Clock, AlertTriangle, RotateCcw, Zap, Globe, Link2,
   ArrowUpFromLine, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
-  ShieldCheck, HelpCircle, ChevronRight, Layers, History, Package, ScanSearch,
+  ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, Layers, History, Package, ScanSearch,
   AlertCircle, Ban, Info
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
@@ -69,6 +69,9 @@ export default function IndexingPage() {
   const [urlsText, setUrlsText] = useState("");
   const [requestType, setRequestType] = useState("URL_UPDATED");
   const [detailUrl, setDetailUrl] = useState<InventoryUrl | null>(null);
+  const [invPage, setInvPage] = useState(0);
+  const [histPage, setHistPage] = useState(0);
+  const INV_PAGE_SIZE = 50;
 
   // Get active project
   const { data: projects } = useQuery({
@@ -92,6 +95,7 @@ export default function IndexingPage() {
 
   // ─── Filtered Inventory ───
   const filteredInventory = useMemo(() => {
+    setInvPage(0);
     return inventory.filter(u => {
       if (searchFilter && !u.url.toLowerCase().includes(searchFilter.toLowerCase()) && !(u.meta_title || "").toLowerCase().includes(searchFilter.toLowerCase())) return false;
       if (verdictFilter === "indexed" && u.verdict !== "PASS") return false;
@@ -102,8 +106,13 @@ export default function IndexingPage() {
     });
   }, [inventory, searchFilter, verdictFilter]);
 
+  const invTotalPages = Math.max(1, Math.ceil(filteredInventory.length / INV_PAGE_SIZE));
+  const safeInvPage = Math.min(invPage, invTotalPages - 1);
+  const paginatedInventory = filteredInventory.slice(safeInvPage * INV_PAGE_SIZE, (safeInvPage + 1) * INV_PAGE_SIZE);
+
   // ─── Filtered History ───
   const filteredHistory = useMemo(() => {
+    setHistPage(0);
     if (!requests) return [];
     return requests.filter(r => {
       if (historyStatusFilter !== "all" && r.status !== historyStatusFilter) return false;
@@ -111,6 +120,10 @@ export default function IndexingPage() {
       return true;
     });
   }, [requests, historyStatusFilter, searchFilter]);
+
+  const histTotalPages = Math.max(1, Math.ceil(filteredHistory.length / INV_PAGE_SIZE));
+  const safeHistPage = Math.min(histPage, histTotalPages - 1);
+  const paginatedHistory = filteredHistory.slice(safeHistPage * INV_PAGE_SIZE, (safeHistPage + 1) * INV_PAGE_SIZE);
 
   // ─── Selection ───
   const toggleUrl = (url: string) => {
@@ -337,7 +350,7 @@ export default function IndexingPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredInventory.map(item => (
+                      {paginatedInventory.map(item => (
                         <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-3 py-2.5">
                             <Checkbox checked={selectedUrls.has(item.url)} onCheckedChange={() => toggleUrl(item.url)} />
@@ -391,6 +404,22 @@ export default function IndexingPage() {
                     </tbody>
                   </table>
                 </div>
+                {invTotalPages > 1 && (
+                  <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
+                      {safeInvPage * INV_PAGE_SIZE + 1}–{Math.min((safeInvPage + 1) * INV_PAGE_SIZE, filteredInventory.length)} de {filteredInventory.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safeInvPage === 0} onClick={() => setInvPage(p => p - 1)}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-[10px] text-muted-foreground px-1">{safeInvPage + 1} / {invTotalPages}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safeInvPage >= invTotalPages - 1} onClick={() => setInvPage(p => p + 1)}>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             )}
           </TabsContent>
@@ -421,7 +450,7 @@ export default function IndexingPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredHistory.map(item => (
+                      {paginatedHistory.map(item => (
                         <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 max-w-[300px]">
                             <div className="flex items-center gap-1.5">
@@ -468,6 +497,22 @@ export default function IndexingPage() {
                     </tbody>
                   </table>
                 </div>
+                {histTotalPages > 1 && (
+                  <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
+                      {safeHistPage * INV_PAGE_SIZE + 1}–{Math.min((safeHistPage + 1) * INV_PAGE_SIZE, filteredHistory.length)} de {filteredHistory.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safeHistPage === 0} onClick={() => setHistPage(p => p - 1)}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-[10px] text-muted-foreground px-1">{safeHistPage + 1} / {histTotalPages}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safeHistPage >= histTotalPages - 1} onClick={() => setHistPage(p => p + 1)}>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             )}
           </TabsContent>
