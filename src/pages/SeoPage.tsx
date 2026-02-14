@@ -21,7 +21,7 @@ import {
 import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
-  Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy,
+  Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy, Shield,
 } from "lucide-react";
 import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
 import { SitemapsTab } from "@/components/seo/SitemapsTab";
@@ -31,6 +31,7 @@ import { SearchAppearanceTab } from "@/components/seo/SearchAppearanceTab";
 import { OpportunitiesTab } from "@/components/seo/OpportunitiesTab";
 import { ContentDecayTab } from "@/components/seo/ContentDecayTab";
 import { CannibalizationTab } from "@/components/seo/CannibalizationTab";
+import { IndexCoverageTab } from "@/components/seo/IndexCoverageTab";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -755,7 +756,8 @@ export default function SeoPage() {
                       <TabsTrigger value="opportunities" className="text-xs gap-1"><Target className="h-3 w-3" />Oportunidades</TabsTrigger>
                       <TabsTrigger value="decay" className="text-xs gap-1"><TrendingDown className="h-3 w-3" />Declínio de Conteúdo</TabsTrigger>
                       <TabsTrigger value="cannibalization" className="text-xs gap-1"><Copy className="h-3 w-3" />Canibalização</TabsTrigger>
-                      <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
+                       <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
+                       <TabsTrigger value="coverage" className="text-xs gap-1"><Shield className="h-3 w-3" />Cobertura</TabsTrigger>
                       <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
                       <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
                       <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
@@ -884,6 +886,10 @@ export default function SeoPage() {
 
                   <TabsContent value="inspection" className="mt-0">
                     <UrlInspectionTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="coverage" className="mt-0">
+                    <IndexCoverageTab projectId={projectId} />
                   </TabsContent>
 
                   <TabsContent value="sitemaps" className="mt-0">

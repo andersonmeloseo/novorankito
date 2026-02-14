@@ -325,6 +325,71 @@ export type Database = {
           },
         ]
       }
+      index_coverage: {
+        Row: {
+          coverage_state: string | null
+          crawled_as: string | null
+          created_at: string
+          id: string
+          indexing_state: string | null
+          inspected_at: string
+          last_crawl_time: string | null
+          owner_id: string
+          page_fetch_state: string | null
+          project_id: string
+          referring_urls: string[] | null
+          robotstxt_state: string | null
+          sitemap: string | null
+          updated_at: string
+          url: string
+          verdict: string | null
+        }
+        Insert: {
+          coverage_state?: string | null
+          crawled_as?: string | null
+          created_at?: string
+          id?: string
+          indexing_state?: string | null
+          inspected_at?: string
+          last_crawl_time?: string | null
+          owner_id: string
+          page_fetch_state?: string | null
+          project_id: string
+          referring_urls?: string[] | null
+          robotstxt_state?: string | null
+          sitemap?: string | null
+          updated_at?: string
+          url: string
+          verdict?: string | null
+        }
+        Update: {
+          coverage_state?: string | null
+          crawled_as?: string | null
+          created_at?: string
+          id?: string
+          indexing_state?: string | null
+          inspected_at?: string
+          last_crawl_time?: string | null
+          owner_id?: string
+          page_fetch_state?: string | null
+          project_id?: string
+          referring_urls?: string[] | null
+          robotstxt_state?: string | null
+          sitemap?: string | null
+          updated_at?: string
+          url?: string
+          verdict?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "index_coverage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
