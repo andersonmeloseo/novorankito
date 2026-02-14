@@ -200,7 +200,7 @@ export default function ProjectSettingsPage() {
 
           <TabsContent value="integrations" className="mt-4 space-y-4">
             <GscIntegrationCard projectId={project.id} />
-            <Ga4IntegrationCard />
+            <Ga4IntegrationCard projectId={project.id} />
             <AdsIntegrationCard name="Google Ads" />
             <AdsIntegrationCard name="Meta Ads" />
           </TabsContent>
@@ -566,10 +566,169 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
   );
 }
 
-/* ─── GA4 Integration Card (placeholder) ─── */
-function Ga4IntegrationCard() {
+/* ─── GA4 Integration Card ─── */
+function Ga4IntegrationCard({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [connectionName, setConnectionName] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [properties, setProperties] = useState<{ propertyId: string; displayName: string; account: string }[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  const [step, setStep] = useState<"form" | "validating" | "select">("form");
+
+  const { data: conn, isLoading } = useQuery({
+    queryKey: ["ga4-connection", projectId],
+    queryFn: async () => {
+      const { data } = await supabase.from("ga4_connections").select("*").eq("project_id", projectId).maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  const isConnected = !!conn;
+
+  const handleTest = async () => {
+    if (!conn) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-ga4", {
+        body: { credentials: { client_email: conn.client_email, private_key: conn.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      shadToast({ title: "Conexão GA4 OK!", description: `${data.properties?.length || 0} propriedade(s) encontrada(s).` });
+    } catch (e: any) {
+      shadToast({ title: "Falha na conexão GA4", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!conn) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("ga4_connections").delete().eq("id", conn.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["ga4-connection"] });
+      shadToast({ title: "GA4 desconectado." });
+    } catch (e: any) {
+      shadToast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    if (!connectionName.trim()) { setJsonError("Informe um nome."); return; }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonInput.trim());
+      if (!parsed.client_email || !parsed.private_key) {
+        setJsonError("JSON inválido: client_email e private_key são obrigatórios.");
+        return;
+      }
+    } catch { setJsonError("JSON inválido."); return; }
+
+    setStep("validating");
+    setJsonError("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-ga4", {
+        body: { credentials: { client_email: parsed.client_email, private_key: parsed.private_key } },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error);
+      const fetched = data.properties || [];
+      if (fetched.length === 0) {
+        setJsonError("Nenhuma propriedade GA4 encontrada. Verifique se a Service Account tem acesso.");
+        setStep("form");
+        return;
+      }
+      setProperties(fetched);
+      setSelectedProperty(fetched[0]?.propertyId || "");
+      setStep("select");
+    } catch (e: any) {
+      setJsonError(e.message);
+      setStep("form");
+    }
+  };
+
+  const handleSaveConnection = async () => {
+    if (!user || !selectedProperty) return;
+    let parsed: any;
+    try { parsed = JSON.parse(jsonInput.trim()); } catch { return; }
+    const selectedProp = properties.find(p => p.propertyId === selectedProperty);
+    try {
+      const { error } = await supabase.from("ga4_connections").upsert({
+        project_id: projectId,
+        owner_id: user.id,
+        connection_name: connectionName,
+        client_email: parsed.client_email,
+        private_key: parsed.private_key,
+        property_id: selectedProperty,
+        property_name: selectedProp?.displayName || "",
+      }, { onConflict: "project_id" });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["ga4-connection"] });
+      setEditing(false);
+      setJsonInput("");
+      setStep("form");
+      shadToast({ title: "Conexão GA4 salva!" });
+    } catch (e: any) {
+      shadToast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Carregando GA4...</span>
+        </div>
+      </Card>
+    );
+  }
+
+  if (isConnected && !editing) {
+    return (
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <Wifi className="h-4 w-4 text-success" />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-foreground">Google Analytics 4</span>
+              <p className="text-[10px] text-muted-foreground">
+                {conn.connection_name} · Propriedade: {conn.property_id || "—"}
+              </p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Conectado</Badge>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />} Testar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setEditing(true)}>
+            <Pencil className="h-3 w-3" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={deleting}>
+            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />} Desconectar
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="p-4">
+    <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
@@ -577,11 +736,81 @@ function Ga4IntegrationCard() {
           </div>
           <div>
             <span className="text-sm font-medium text-foreground">Google Analytics 4</span>
-            <p className="text-[10px] text-muted-foreground">Não conectado</p>
+            <p className="text-[10px] text-muted-foreground">{editing ? "Editando credenciais" : "Não conectado"}</p>
           </div>
         </div>
-        <Button size="sm" className="text-xs h-7">Conectar</Button>
+        {editing && (
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setEditing(false); setStep("form"); setJsonError(""); }}>
+            Cancelar
+          </Button>
+        )}
       </div>
+
+      {step === "form" && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Nome da conexão</Label>
+            <Input className="h-8 text-xs" placeholder="Ex: GA4 - Meu Site" value={connectionName} onChange={e => { setConnectionName(e.target.value); setJsonError(""); }} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Credenciais JSON</Label>
+            <label className="cursor-pointer">
+              <input type="file" accept=".json,application/json" className="hidden" onChange={e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = evt => { setJsonInput(evt.target?.result as string); setJsonError(""); };
+                reader.readAsText(file);
+                e.target.value = "";
+              }} />
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2 text-xs text-muted-foreground">
+                <Upload className="h-3.5 w-3.5" /> Upload do arquivo .json
+              </div>
+            </label>
+            <textarea
+              className="w-full min-h-[100px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              placeholder='{"type": "service_account", ...}'
+              value={jsonInput}
+              onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
+            />
+          </div>
+          {jsonError && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-destructive text-xs">
+              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {jsonError}
+            </div>
+          )}
+          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleConnect} disabled={!jsonInput.trim() || !connectionName.trim()}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Validar e conectar
+          </Button>
+        </div>
+      )}
+
+      {step === "validating" && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-xs text-muted-foreground">Verificando credenciais GA4...</span>
+        </div>
+      )}
+
+      {step === "select" && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 text-success text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Conexão verificada! Selecione a propriedade.
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Propriedade GA4</Label>
+            <Select value={selectedProperty} onValueChange={setSelectedProperty}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {properties.map(p => <SelectItem key={p.propertyId} value={p.propertyId}>{p.displayName} ({p.account})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" className="w-full text-xs h-8 gap-1" onClick={handleSaveConnection} disabled={!selectedProperty}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Salvar conexão
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
