@@ -59,7 +59,29 @@ const BROWSER_OPTIONS = [
   { value: "Edge", label: "Edge" },
 ];
 
-// Color map for event types - matches pie chart colors
+// ── Derive unique values for additional filters ──
+const PAGE_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.page_url))).sort().map((p) => ({ value: p, label: p })),
+];
+const GOAL_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.goal))).sort().map((g) => ({ value: g, label: g })),
+];
+const CTA_OPTIONS = [
+  { value: "all", label: "Todos" },
+  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.cta_text))).sort().map((c) => ({ value: c, label: c })),
+];
+const CITY_OPTIONS = [
+  { value: "all", label: "Todas" },
+  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.location_city))).sort().map((c) => ({ value: c, label: c })),
+];
+const STATE_OPTIONS = [
+  { value: "all", label: "Todos" },
+  ...Array.from(new Set(mockTrackingEventsDetailed.map((e) => e.location_state))).sort().map((s) => ({ value: s, label: s })),
+];
+
+// Color map for event types
 const EVENT_TYPE_COLORS: Record<string, string> = {
   whatsapp_click: "hsl(var(--success))",
   form_submit: "hsl(var(--primary))",
@@ -106,6 +128,11 @@ export function EventsTab() {
   const [device, setDevice] = useState("all");
   const [conversionType, setConversionType] = useState("all");
   const [browser, setBrowser] = useState("all");
+  const [pageFilter, setPageFilter] = useState("all");
+  const [goalFilter, setGoalFilter] = useState("all");
+  const [ctaFilter, setCtaFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("timestamp");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -117,12 +144,17 @@ export function EventsTab() {
     if (device !== "all") data = data.filter((e) => e.device === device);
     if (conversionType !== "all") data = data.filter((e) => e.conversion_type === conversionType);
     if (browser !== "all") data = data.filter((e) => e.browser === browser);
+    if (pageFilter !== "all") data = data.filter((e) => e.page_url === pageFilter);
+    if (goalFilter !== "all") data = data.filter((e) => e.goal === goalFilter);
+    if (ctaFilter !== "all") data = data.filter((e) => e.cta_text === ctaFilter);
+    if (cityFilter !== "all") data = data.filter((e) => e.location_city === cityFilter);
+    if (stateFilter !== "all") data = data.filter((e) => e.location_state === stateFilter);
     if (search) {
       const q = search.toLowerCase();
       data = data.filter((e) => e.page_url.includes(q) || e.location_city.toLowerCase().includes(q) || e.cta_text.toLowerCase().includes(q) || e.goal.toLowerCase().includes(q));
     }
     return data;
-  }, [eventType, device, conversionType, browser, search]);
+  }, [eventType, device, conversionType, browser, pageFilter, goalFilter, ctaFilter, cityFilter, stateFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -225,6 +257,36 @@ export function EventsTab() {
             <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Browser" /></SelectTrigger>
             <SelectContent>
               {BROWSER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={pageFilter} onValueChange={(v) => { setPageFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Página" /></SelectTrigger>
+            <SelectContent>
+              {PAGE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={goalFilter} onValueChange={(v) => { setGoalFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue placeholder="Meta" /></SelectTrigger>
+            <SelectContent>
+              {GOAL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={ctaFilter} onValueChange={(v) => { setCtaFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="CTA" /></SelectTrigger>
+            <SelectContent>
+              {CTA_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={cityFilter} onValueChange={(v) => { setCityFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Cidade" /></SelectTrigger>
+            <SelectContent>
+              {CITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[100px] h-9 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+            <SelectContent>
+              {STATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -342,7 +404,7 @@ export function EventsTab() {
             <div>
               <h3 className="text-sm font-medium text-foreground">Eventos Detalhados</h3>
               <p className="text-[11px] text-muted-foreground">
-                Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} eventos
+                Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} eventos
               </p>
             </div>
             <div className="flex items-center gap-2">
