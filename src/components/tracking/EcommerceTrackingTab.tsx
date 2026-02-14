@@ -118,7 +118,7 @@ export function EcommerceTrackingTab() {
                     className="relative flex items-center justify-center py-3 transition-all duration-500"
                     style={{
                       width: `${widthPct}%`,
-                      background: `linear-gradient(135deg, ${step.color}cc, ${step.color})`,
+                      background: step.color,
                       clipPath: i < ecommerceFunnelTotals.length - 1
                         ? "polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)"
                         : "polygon(4% 0%, 96% 0%, 92% 100%, 8% 100%)",

@@ -178,10 +178,10 @@ export const ecommerceFunnelByDay = (() => {
 // ── Derived: E-commerce funnel totals ──
 export const ecommerceFunnelTotals = (() => {
   const steps: { type: PluginEventType; label: string; color: string }[] = [
-    { type: "product_view", label: "Visualização", color: "hsl(var(--info))" },
-    { type: "add_to_cart", label: "Add Carrinho", color: "hsl(var(--primary))" },
-    { type: "begin_checkout", label: "Checkout", color: "hsl(var(--warning))" },
-    { type: "purchase", label: "Compra", color: "hsl(var(--success))" },
+    { type: "product_view", label: "Visualização", color: "#3b82f6" },
+    { type: "add_to_cart", label: "Add Carrinho", color: "#8b5cf6" },
+    { type: "begin_checkout", label: "Checkout", color: "#f59e0b" },
+    { type: "purchase", label: "Compra", color: "#22c55e" },
   ];
   return steps.map(s => ({
     ...s,
