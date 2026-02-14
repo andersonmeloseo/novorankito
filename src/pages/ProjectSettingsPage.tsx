@@ -572,6 +572,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [connectionName, setConnectionName] = useState("");
@@ -695,6 +696,24 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
     );
   }
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-ga4-data", {
+        body: { project_id: projectId, report_type: "overview" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["ga4-report"] });
+      queryClient.invalidateQueries({ queryKey: ["ga4-connection"] });
+      shadToast({ title: "Sincronização GA4 concluída!", description: "Dados atualizados com sucesso." });
+    } catch (e: any) {
+      shadToast({ title: "Erro ao sincronizar GA4", description: e.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (isConnected && !editing) {
     return (
       <Card className="p-4 space-y-3">
@@ -706,13 +725,21 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
             <div>
               <span className="text-sm font-medium text-foreground">Google Analytics 4</span>
               <p className="text-[10px] text-muted-foreground">
-                {conn.connection_name} · Propriedade: {conn.property_id || "—"}
+                {conn.connection_name} · Propriedade: {conn.property_name || conn.property_id || "—"}
               </p>
+              {conn.last_sync_at && (
+                <p className="text-[10px] text-muted-foreground">
+                  Último sync: {format(parseISO(conn.last_sync_at), "dd/MM/yyyy HH:mm")}
+                </p>
+              )}
             </div>
           </div>
           <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Conectado</Badge>
         </div>
         <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Sincronizar Dados
+          </Button>
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleTest} disabled={testing}>
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />} Testar
           </Button>
