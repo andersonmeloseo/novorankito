@@ -21,12 +21,16 @@ import {
 import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
-  Link2, MapPin, Compass, ScanSearch,
+  Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy,
 } from "lucide-react";
 import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
 import { SitemapsTab } from "@/components/seo/SitemapsTab";
 import { LinksTab } from "@/components/seo/LinksTab";
 import { DiscoverNewsTab } from "@/components/seo/DiscoverNewsTab";
+import { SearchAppearanceTab } from "@/components/seo/SearchAppearanceTab";
+import { OpportunitiesTab } from "@/components/seo/OpportunitiesTab";
+import { ContentDecayTab } from "@/components/seo/ContentDecayTab";
+import { CannibalizationTab } from "@/components/seo/CannibalizationTab";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -742,11 +746,15 @@ export default function SeoPage() {
                 )}
                 <Tabs defaultValue="queries">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                     <TabsList>
+                     <TabsList className="flex-wrap h-auto gap-1">
                       <TabsTrigger value="queries" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><Search className="h-3 w-3" />Consultas</TabsTrigger>
                       <TabsTrigger value="pages" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><FileText className="h-3 w-3" />Páginas</TabsTrigger>
                       <TabsTrigger value="countries" className="text-xs gap-1"><Globe className="h-3 w-3" />Países</TabsTrigger>
                       <TabsTrigger value="devices" className="text-xs gap-1"><Monitor className="h-3 w-3" />Dispositivos</TabsTrigger>
+                      <TabsTrigger value="appearance" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Aparência</TabsTrigger>
+                      <TabsTrigger value="opportunities" className="text-xs gap-1"><Target className="h-3 w-3" />Oportunidades</TabsTrigger>
+                      <TabsTrigger value="decay" className="text-xs gap-1"><TrendingDown className="h-3 w-3" />Content Decay</TabsTrigger>
+                      <TabsTrigger value="cannibalization" className="text-xs gap-1"><Copy className="h-3 w-3" />Canibalização</TabsTrigger>
                       <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
                       <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
                       <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
@@ -856,6 +864,22 @@ export default function SeoPage() {
                       onPageChange={setDevicesPage}
                       onExport={() => exportCSV(compDeviceRows || deviceRows, "seo-dispositivos")}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="appearance" className="mt-0">
+                    <SearchAppearanceTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="opportunities" className="mt-0">
+                    <OpportunitiesTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="decay" className="mt-0">
+                    <ContentDecayTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="cannibalization" className="mt-0">
+                    <CannibalizationTab projectId={projectId} />
                   </TabsContent>
 
                   <TabsContent value="inspection" className="mt-0">
