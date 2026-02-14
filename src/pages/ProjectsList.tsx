@@ -97,7 +97,10 @@ export default function ProjectsList() {
                 <div className="flex items-start justify-between mb-3">
                   <div
                     className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
-                    onClick={() => navigate("/overview")}
+                    onClick={() => {
+                      localStorage.setItem("rankito_current_project", project.id);
+                      navigate("/overview");
+                    }}
                   >
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <Globe className="h-4 w-4 text-primary" />

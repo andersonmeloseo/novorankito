@@ -3,7 +3,8 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -106,7 +107,37 @@ export default function AiAgentPage() {
   const [editingAgent, setEditingAgent] = useState<any>(null);
   const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string } | null>(null);
 
-  const projectId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
+  // Project selection with localStorage persistence
+  const [projectId, setProjectId] = useState<string | null>(() => {
+    return typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects-list-agent"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, domain")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Auto-select first project if none selected
+  useEffect(() => {
+    if (!projectId && projects.length > 0) {
+      const firstId = projects[0].id;
+      setProjectId(firstId);
+      localStorage.setItem("rankito_current_project", firstId);
+    }
+  }, [projects, projectId]);
+
+  const handleProjectChange = (id: string) => {
+    setProjectId(id);
+    localStorage.setItem("rankito_current_project", id);
+  };
 
   const { data: agents = [] } = useQuery({
     queryKey: ["ai-agents", projectId],
@@ -226,6 +257,32 @@ export default function AiAgentPage() {
     <>
       <TopBar title="Agentes IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
+        {/* Project Selector */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground font-medium">Projeto:</span>
+          </div>
+          <Select value={projectId || ""} onValueChange={handleProjectChange}>
+            <SelectTrigger className="w-[280px] h-8 text-xs">
+              <SelectValue placeholder="Selecione um projeto..." />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-muted-foreground ml-2">({p.domain})</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!projectId && projects.length === 0 && (
+            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+              Nenhum projeto encontrado
+            </Badge>
+          )}
+        </div>
+
         <Tabs value={tab} onValueChange={setTab}>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <TabsList>
