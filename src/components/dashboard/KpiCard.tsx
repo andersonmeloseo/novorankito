@@ -54,11 +54,11 @@ export function KpiCard({ label, value, change, prefix, suffix, description, pre
         </div>
         <div className="flex items-end justify-between gap-1.5 mt-auto">
           <div className="flex flex-col min-w-0">
-            <span className="text-xl font-bold text-foreground font-display tracking-tight truncate">
+            <span className="text-2xl font-bold text-foreground font-display tracking-tight truncate">
               {prefix}{formatValue(value, suffix)}{suffix}
             </span>
-            {showComparison && prevValue !== undefined && change !== 0 && (
-              <span className="text-[9px] text-muted-foreground mt-0.5 truncate">
+            {showComparison && prevValue !== undefined && (
+              <span className="text-[10px] text-muted-foreground mt-0.5 truncate">
                 ant: {prefix}{formatValue(prevValue, suffix)}{suffix}
               </span>
             )}
