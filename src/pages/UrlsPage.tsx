@@ -36,7 +36,7 @@ const STATUS_LABELS: Record<string, string> = { active: "Ativo", noindex: "Noind
 const PRIORITY_COLORS: Record<string, string> = { high: "bg-destructive/10 text-destructive", medium: "bg-warning/10 text-warning", low: "bg-muted text-muted-foreground" };
 const PRIORITY_LABELS: Record<string, string> = { high: "Alta", medium: "Média", low: "Baixa" };
 
-type SortKey = "url" | "url_type" | "url_group" | "status" | "priority" | "discovered_at" | "meta_title";
+type SortKey = "url" | "url_type" | "url_group" | "status" | "discovered_at" | "meta_title" | "meta_description";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
@@ -275,10 +275,10 @@ export default function UrlsPage() {
                   {([
                     { key: "url", label: "URL" },
                     { key: "meta_title", label: "Meta Title" },
+                    { key: "meta_description", label: "Meta Description" },
                     { key: "url_type", label: "Tipo" },
                     { key: "url_group", label: "Grupo" },
                     { key: "status", label: "Status" },
-                    { key: "priority", label: "Prioridade" },
                     { key: "discovered_at", label: "Descoberta" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
@@ -309,21 +309,14 @@ export default function UrlsPage() {
                       </td>
                       <td className="px-3 py-2.5 max-w-[250px]">
                         <div className="font-mono text-xs text-foreground truncate">{item.url}</div>
-                        {item.meta_description && (
-                          <div className="text-[10px] text-muted-foreground truncate mt-0.5 max-w-[250px]">{item.meta_description}</div>
-                        )}
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[180px] truncate">{item.meta_title || "—"}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate">{item.meta_title || "—"}</td>
+                      <td className="px-3 py-2.5 text-[11px] text-muted-foreground max-w-[220px] truncate">{item.meta_description || "—"}</td>
                       <td className="px-3 py-2.5"><Badge variant="secondary" className="text-[10px] font-normal">{item.url_type}</Badge></td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{item.url_group || "—"}</td>
                       <td className="px-3 py-2.5">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${STATUS_COLORS[item.status] || ""}`}>
                           {STATUS_LABELS[item.status] || item.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${PRIORITY_COLORS[item.priority] || ""}`}>
-                          {PRIORITY_LABELS[item.priority] || item.priority}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
