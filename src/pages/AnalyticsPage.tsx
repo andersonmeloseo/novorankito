@@ -22,14 +22,15 @@ import { TechnologyTab } from "@/components/analytics/TechnologyTab";
 import { RealtimeTab } from "@/components/analytics/RealtimeTab";
 import { RetentionTab } from "@/components/analytics/RetentionTab";
 import { EcommerceTab } from "@/components/analytics/EcommerceTab";
-import { HealthScore } from "@/components/analytics/HealthScore";
+
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
 } from "recharts";
+import { Tooltip as RadixTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Activity, Calendar, RefreshCw, Loader2, TrendingUp, Users, MousePointerClick,
   Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck, ArrowLeftRight,
-  ChevronDown, ChevronUp, Bot,
+  ChevronDown, ChevronUp, Bot, Info,
 } from "lucide-react";
 import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -340,65 +341,81 @@ export default function AnalyticsPage() {
               <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
             </DashboardSection>
 
-            {/* ═══ LINHA 2 — Tendência + Score ═══ */}
-            <DashboardSection title="Tendência" icon={BarChart3}>
-              <div className="grid lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-3">
-                  {!loadingOverview && trendData.length > 1 ? (
-                    <Card className="p-5">
-                      <h3 className="text-sm font-medium text-foreground mb-1">Tendência Diária</h3>
-                      <p className="text-[10px] text-muted-foreground mb-4">Evolução de usuários, sessões e pageviews ao longo do período</p>
-                      <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="sessionsGradA" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="pvGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
-                            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" }} />
-                            <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-                            <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
-                            <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
-                            <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
-                            {compareEnabled && (
-                              <>
-                                <Area type="monotone" dataKey="prevUsers" name="Usuários (ant.)" stroke="hsl(var(--chart-1))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
-                                <Area type="monotone" dataKey="prevSessions" name="Sessões (ant.)" stroke="hsl(var(--chart-2))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
-                              </>
-                            )}
-                          </AreaChart>
-                        </ResponsiveContainer>
+            {/* ═══ LINHA 2 — Tendências ═══ */}
+            <DashboardSection title="Visão Geral de Tendências" icon={BarChart3}>
+              {/* Summary mini-cards */}
+              {!loadingOverview && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Pico de Usuários", value: Math.max(...(trend.map((t: any) => t.totalUsers || 0)), 0), desc: "Maior número de usuários em um único dia" },
+                    { label: "Média Diária", value: trend.length > 0 ? Math.round(trend.reduce((s: number, t: any) => s + (t.totalUsers || 0), 0) / trend.length) : 0, desc: "Média de usuários por dia no período" },
+                    { label: "Total Sessões", value: sessions, desc: "Soma de todas as sessões no período" },
+                    { label: "Pags/Sessão", value: sessions > 0 ? (pageViews / sessions).toFixed(1) : "0", suffix: "", desc: "Média de páginas vistas por sessão" },
+                  ].map(item => (
+                    <Card key={item.label} className="p-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{item.label}</span>
+                        <TooltipProvider delayDuration={200}>
+                          <RadixTooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground cursor-help shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px] text-xs">{item.desc}</TooltipContent>
+                          </RadixTooltip>
+                        </TooltipProvider>
                       </div>
+                      <span className="text-lg font-bold text-foreground">{typeof item.value === 'number' ? item.value.toLocaleString("pt-BR") : item.value}{item.suffix}</span>
                     </Card>
-                  ) : loadingOverview ? <ChartSkeleton /> : null}
+                  ))}
                 </div>
-                <div className="lg:col-span-1">
-                  {!loadingOverview ? (
-                    <HealthScore
-                      engagementRate={totals.engagementRate || 0}
-                      bounceRate={totals.bounceRate || 0}
-                      conversions={conversions}
-                      totalUsers={totalUsers}
-                      newUsers={newUsers}
-                      sessions={sessions}
-                      showComparison={compareEnabled}
-                    />
-                  ) : <ChartSkeleton />}
-                </div>
-              </div>
+              )}
+
+              {/* Main trend chart — full width */}
+              {!loadingOverview && trendData.length > 1 ? (
+                <Card className="p-5">
+                  <h3 className="text-sm font-medium text-foreground mb-1">Tendência Diária</h3>
+                  <p className="text-[10px] text-muted-foreground mb-4">Evolução de usuários, sessões, pageviews e eventos ao longo do período. Dados reais do GA4.</p>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="sessionsGradA" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="pvGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="eventsGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.15} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
+                        <RechartsTooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, boxShadow: "0 4px 12px -4px rgba(0,0,0,0.12)" }} />
+                        <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                        <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
+                        <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
+                        <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
+                        <Area type="monotone" dataKey="events" name="Eventos" stroke="hsl(var(--chart-4))" fill="url(#eventsGrad)" strokeWidth={1.5} dot={false} />
+                        {compareEnabled && (
+                          <>
+                            <Area type="monotone" dataKey="prevUsers" name="Usuários (ant.)" stroke="hsl(var(--chart-1))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                            <Area type="monotone" dataKey="prevSessions" name="Sessões (ant.)" stroke="hsl(var(--chart-2))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                          </>
+                        )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              ) : loadingOverview ? <ChartSkeleton /> : null}
             </DashboardSection>
 
             {/* ═══ LINHA 3 — Aquisição ═══ */}
