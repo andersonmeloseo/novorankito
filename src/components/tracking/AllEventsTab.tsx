@@ -231,8 +231,8 @@ export function AllEventsTab() {
       </div>
 
       {/* Treemap + Cohort Heatmap side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AnimatedContainer delay={0.25}>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <AnimatedContainer delay={0.25} className="lg:col-span-3">
           <Card className="p-5 h-full">
             <ChartHeader title="Treemap de Páginas" subtitle="Área proporcional ao volume de eventos" />
             <div className="h-[280px]">
@@ -248,16 +248,18 @@ export function AllEventsTab() {
           </Card>
         </AnimatedContainer>
 
-        <AnimatedContainer delay={0.3}>
-          <Card className="p-5 h-full">
-            <ChartHeader title="Heatmap: Tipo de Evento × Dispositivo" subtitle="Cohort heatmap com intensidade de cor" />
-            <CohortHeatmap
-              data={cohortData.data}
-              xLabels={cohortData.xLabels}
-              yLabels={cohortData.yLabels}
-              maxValue={Math.max(...cohortData.data.flat())}
-              hue={210}
-            />
+        <AnimatedContainer delay={0.3} className="lg:col-span-2">
+          <Card className="p-4 h-full flex flex-col">
+            <ChartHeader title="Evento × Dispositivo" subtitle="Heatmap de intensidade" />
+            <div className="flex-1 flex items-center">
+              <CohortHeatmap
+                data={cohortData.data}
+                xLabels={cohortData.xLabels}
+                yLabels={cohortData.yLabels}
+                maxValue={Math.max(...cohortData.data.flat())}
+                hue={210}
+              />
+            </div>
           </Card>
         </AnimatedContainer>
       </div>
