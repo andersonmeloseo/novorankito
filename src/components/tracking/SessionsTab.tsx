@@ -122,9 +122,10 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon: Icon }: {
+function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon: Icon, hideSparkline, hideBadge, smallValue }: {
   label: string; value: string | number; change: number; suffix?: string; prefix?: string;
   sparkData: number[]; color: string; icon?: React.ElementType;
+  hideSparkline?: boolean; hideBadge?: boolean; smallValue?: boolean;
 }) {
   const isPositive = change >= 0;
   return (
@@ -136,15 +137,17 @@ function SparkKpi({ label, value, change, suffix, prefix, sparkData, color, icon
             {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
           </div>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
-            {isPositive ? "+" : ""}{change}%
-          </span>
+          {!hideBadge && (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isPositive ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
+              {isPositive ? "+" : ""}{change}%
+            </span>
+          )}
         </div>
         <div className="flex items-end justify-between gap-2">
-          <span className="text-xl font-bold text-foreground font-display tracking-tight">
+          <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-xs" : "text-xl"}`}>
             {prefix}{value}{suffix}
           </span>
-          <Sparkline data={sparkData} color={color} />
+          {!hideSparkline && <Sparkline data={sparkData} color={color} />}
         </div>
       </div>
     </Card>
@@ -405,6 +408,8 @@ export function SessionsTab() {
   const avgPages = totalSessions > 0 ? Number((filtered.reduce((s, r) => s + r.pages_viewed, 0) / totalSessions).toFixed(1)) : 0;
   const newUsersPercent = 62.4;
   const uniqueCities = new Set(filtered.map((s) => s.city)).size;
+  const lastSession = filtered.length > 0 ? filtered.reduce((a, b) => new Date(a.started_at) > new Date(b.started_at) ? a : b) : null;
+  const lastSourceMedium = lastSession ? `${lastSession.source} / ${lastSession.medium}` : "—";
 
   const exportData = useCallback((fmt: "csv" | "json" | "xlsx") => {
     const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status"];
@@ -450,7 +455,7 @@ export function SessionsTab() {
         <SparkKpi label="Taxa Rejeição" value={bounceRate} change={-2.1} suffix="%" sparkData={generateSparkline(12, 30, 8)} color="hsl(var(--warning))" />
         <SparkKpi label="Novos Usuários" value={newUsersPercent} change={-1.3} suffix="%" sparkData={generateSparkline(12, 62, 8)} color="hsl(var(--chart-5))" />
         <SparkKpi label="Cidades" value={uniqueCities} change={11.2} sparkData={generateSparkline(12, 6, 3)} color="hsl(var(--info))" icon={Globe} />
-        <SparkKpi label="Mobile" value={totalSessions > 0 ? Math.round((filtered.filter((s) => s.device === "mobile").length / totalSessions) * 100) : 0} change={3.5} suffix="%" sparkData={generateSparkline(12, 55, 10)} color="hsl(var(--success))" icon={Smartphone} />
+        <SparkKpi label="Source/Medium" value={lastSourceMedium} change={0} sparkData={[]} color="hsl(var(--success))" icon={Globe} hideSparkline hideBadge smallValue />
       </StaggeredGrid>
 
       {/* ═══ Heatmap Dia × Hora — Featured ═══ */}
