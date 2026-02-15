@@ -159,30 +159,47 @@ export default function Onboarding() {
       </header>
 
       <div className="border-b border-border px-4 sm:px-6 py-3 overflow-x-auto">
-        <div className="max-w-3xl mx-auto flex items-center gap-1">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            const done = i < step;
-            const active = i === step;
-            return (
-              <div key={s.label} className="flex items-center flex-1 last:flex-initial">
-                <button onClick={() => i <= step && setStep(i)}
-                  className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-                    active && "bg-primary/10 text-primary", done && "text-primary cursor-pointer",
-                    !active && !done && "text-muted-foreground")}>
-                  {done ? (
-                    <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
-                    </div>
-                  ) : (<Icon className="h-3.5 w-3.5" />)}
-                  <span className="hidden sm:inline">{s.label}</span>
-                </button>
-                {i < STEPS.length - 1 && (
-                  <div className={cn("flex-1 h-px mx-1", done ? "bg-primary" : "bg-border")} />
-                )}
-              </div>
-            );
-          })}
+        <div className="max-w-3xl mx-auto">
+          {/* Progress bar */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Progresso do Onboarding</span>
+              <span className="text-[10px] font-medium text-primary">{Math.round((step / (STEPS.length - 1)) * 100)}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / (STEPS.length - 1)) * 100}%` }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              const done = i < step;
+              const active = i === step;
+              return (
+                <div key={s.label} className="flex items-center flex-1 last:flex-initial">
+                  <button onClick={() => i <= step && setStep(i)}
+                    className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                      active && "bg-primary/10 text-primary", done && "text-primary cursor-pointer",
+                      !active && !done && "text-muted-foreground")}>
+                    {done ? (
+                      <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                      </div>
+                    ) : (<Icon className="h-3.5 w-3.5" />)}
+                    <span className="hidden sm:inline">{s.label}</span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <div className={cn("flex-1 h-px mx-1", done ? "bg-primary" : "bg-border")} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

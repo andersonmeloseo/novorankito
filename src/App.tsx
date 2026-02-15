@@ -86,6 +86,9 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/onboarding" element={<Onboarding />} />
+                </Route>
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/overview" element={<Overview />} />
                   <Route path="/projects" element={<ProjectsList />} />
@@ -128,7 +131,6 @@ const App = () => (
                   <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                   <Route path="/admin/flags" element={<AdminFlagsPage />} />
                   <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
