@@ -13,23 +13,27 @@ function useProjectId() {
   const [projectName, setProjectName] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("rankito_current_project");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setProjectId(parsed?.id || null);
-        setProjectName(parsed?.name || parsed?.domain || null);
-      } catch { /* ignore */ }
+    async function loadProject() {
+      const stored = localStorage.getItem("rankito_current_project");
+      if (stored) {
+        setProjectId(stored);
+        // Fetch project name from database
+        const { data } = await supabase
+          .from("projects")
+          .select("name, domain")
+          .eq("id", stored)
+          .maybeSingle();
+        if (data) {
+          setProjectName(data.name || data.domain || null);
+        }
+      }
     }
+    loadProject();
 
     const handleStorage = () => {
       const s = localStorage.getItem("rankito_current_project");
       if (s) {
-        try {
-          const p = JSON.parse(s);
-          setProjectId(p?.id || null);
-          setProjectName(p?.name || p?.domain || null);
-        } catch { /* ignore */ }
+        setProjectId(s);
       }
     };
     window.addEventListener("storage", handleStorage);
