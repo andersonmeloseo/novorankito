@@ -216,11 +216,16 @@ const TRAIL_COLORS = [
 ];
 
 /* ── Page Card for listing view ── */
-function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, onClick }: {
-  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; onClick: () => void;
+function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, onClick }: {
+  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; onClick: () => void;
 }) {
   let pathname = url;
   try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
+
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
     <Card className="card-hover cursor-pointer group transition-all hover:border-primary/40" onClick={onClick}>
@@ -234,6 +239,18 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, o
             <p className="text-[10px] text-muted-foreground truncate" title={url}>{url}</p>
           </div>
           <ArrowLeft className="h-4 w-4 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        </div>
+
+        {/* Date info */}
+        <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>Primeiro: <strong className="text-foreground">{fmtDate(firstEvent)}</strong></span>
+          </div>
+          <span className="text-muted-foreground/40">•</span>
+          <div className="flex items-center gap-1">
+            <span>Último: <strong className="text-foreground">{fmtDate(lastEvent)}</strong></span>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -298,11 +315,11 @@ export function HeatmapTab() {
 
   // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number }>();
+    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string }>();
     allEvents.forEach((e) => {
       const url = e.page_url;
       if (!url) return;
-      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0 };
+      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at };
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
         entry.exits++;
@@ -312,6 +329,8 @@ export function HeatmapTab() {
       }
       if (e.event_type === "page_view") entry.views++;
       if (e.visitor_id) entry.visitors.add(e.visitor_id);
+      if (e.created_at < entry.firstEvent) entry.firstEvent = e.created_at;
+      if (e.created_at > entry.lastEvent) entry.lastEvent = e.created_at;
       map.set(url, entry);
     });
     return Array.from(map.entries())
@@ -320,6 +339,8 @@ export function HeatmapTab() {
         visitors: s.visitors.size,
         avgScroll: s.scrollCount > 0 ? Math.round(s.scrollSum / s.scrollCount) : 0,
         moveCount: s.moveSessions,
+        firstEvent: s.firstEvent,
+        lastEvent: s.lastEvent,
       }))
       .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
   }, [allEvents]);
@@ -554,6 +575,8 @@ export function HeatmapTab() {
                     <SelectItem value="views" className="text-xs">Mais Views</SelectItem>
                     <SelectItem value="visitors" className="text-xs">Mais Visitantes</SelectItem>
                     <SelectItem value="scroll" className="text-xs">Maior Scroll</SelectItem>
+                    <SelectItem value="recent" className="text-xs">Mais Recente</SelectItem>
+                    <SelectItem value="oldest" className="text-xs">Mais Antigo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -575,6 +598,8 @@ export function HeatmapTab() {
           else if (listSortBy === "views") filtered.sort((a, b) => b.views - a.views);
           else if (listSortBy === "visitors") filtered.sort((a, b) => b.visitors - a.visitors);
           else if (listSortBy === "scroll") filtered.sort((a, b) => b.avgScroll - a.avgScroll);
+          else if (listSortBy === "recent") filtered.sort((a, b) => b.lastEvent.localeCompare(a.lastEvent));
+          else if (listSortBy === "oldest") filtered.sort((a, b) => a.firstEvent.localeCompare(b.firstEvent));
 
           return filtered.length > 0 ? (
             <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -588,6 +613,8 @@ export function HeatmapTab() {
                   visitors={opt.visitors}
                   avgScroll={opt.avgScroll}
                   moveCount={opt.moveCount}
+                  firstEvent={opt.firstEvent}
+                  lastEvent={opt.lastEvent}
                   onClick={() => setSelectedUrl(opt.url)}
                 />
               ))}
