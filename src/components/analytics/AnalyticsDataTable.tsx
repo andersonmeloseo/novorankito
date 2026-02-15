@@ -118,7 +118,7 @@ export function AnalyticsDataTable({ columns, rows, tooltips, pageSize = 10 }: A
                       <td
                         key={j}
                         className={cn("px-4 py-3 text-xs max-w-[200px] truncate", j === 0 ? "font-medium text-foreground" : "text-muted-foreground")}
-                        title={rowTooltips?.[j] || undefined}
+                        title={rowTooltips?.[j] || cell}
                       >
                         {cell}
                       </td>
