@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchAllPaginated } from "@/lib/supabase-helpers";
+import type { Tables } from "@/integrations/supabase/types";
 
 // ─── Site URLs ───
 export function useSiteUrls(projectId?: string) {
@@ -8,20 +10,11 @@ export function useSiteUrls(projectId?: string) {
   return useQuery({
     queryKey: ["site-urls", projectId],
     queryFn: async () => {
-      const allData: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      while (true) {
-        let q = supabase.from("site_urls").select("*").order("created_at", { ascending: false }).range(from, from + pageSize - 1);
-        if (projectId) q = q.eq("project_id", projectId);
-        const { data, error } = await q;
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        allData.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return allData;
+      return fetchAllPaginated("site_urls", {
+        filters: projectId ? { project_id: projectId } : {},
+        orderBy: { column: "created_at", ascending: false },
+        maxRows: 20000,
+      });
     },
     enabled: !!user,
   });
@@ -67,21 +60,15 @@ export function useSeoMetrics(projectId?: string, dimensionType?: string) {
   return useQuery({
     queryKey: ["seo-metrics", projectId, dimensionType],
     queryFn: async () => {
-      const allData: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      while (true) {
-        let q = supabase.from("seo_metrics").select("*").order("metric_date", { ascending: false }).range(from, from + pageSize - 1);
-        if (projectId) q = q.eq("project_id", projectId);
-        if (dimensionType) q = q.eq("dimension_type", dimensionType);
-        const { data, error } = await q;
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        allData.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return allData;
+      const filters: Record<string, string> = {};
+      if (projectId) filters.project_id = projectId;
+      if (dimensionType) filters.dimension_type = dimensionType;
+
+      return fetchAllPaginated("seo_metrics", {
+        filters,
+        orderBy: { column: "metric_date", ascending: false },
+        maxRows: 30000,
+      });
     },
     enabled: !!user,
   });

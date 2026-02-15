@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { useSeoMetrics, useAnalyticsSessions, useConversions } from "@/hooks/use
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getExactCount } from "@/lib/supabase-helpers";
 import {
   BarChart3, TrendingUp, Sparkles, Lightbulb, MousePointerClick,
   Eye, Users, Target, Globe, ArrowUp, ArrowDown, Activity,
@@ -202,27 +203,10 @@ export default function Overview() {
     enabled: !!projectId,
   });
 
-  // Site URLs count (real page count)
+  // Site URLs count (exact count with head:true — single request)
   const { data: siteUrlsCount = 0 } = useQuery({
     queryKey: ["site-urls-count", projectId],
-    queryFn: async () => {
-      let total = 0;
-      let from = 0;
-      const pageSize = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("site_urls")
-          .select("id", { count: "exact", head: false })
-          .eq("project_id", projectId!)
-          .range(from, from + pageSize - 1);
-        if (error) break;
-        if (!data || data.length === 0) break;
-        total += data.length;
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return total;
-    },
+    queryFn: () => getExactCount("site_urls", { project_id: projectId! }),
     enabled: !!projectId,
   });
 
