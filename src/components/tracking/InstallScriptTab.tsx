@@ -194,6 +194,16 @@ function VerifyConnection({ projectId }: { projectId: string | null }) {
     }
   }, [projectId]);
 
+  const debugSnippet = `// Cole no Console do navegador (F12) no site onde instalou o script:
+window.__RANKITO_DEBUG = true;
+if(window._rkStatus) {
+  console.log('✅ Script Rankito detectado!', window._rkStatus());
+  window.rankitoTrack('page_view', { page_url: location.href, page_title: document.title });
+  console.log('📤 Evento de teste enviado!');
+} else {
+  console.log('❌ Script Rankito NÃO encontrado. Verifique a instalação.');
+}`;
+
   return (
     <Card className="p-5 border-border">
       <div className="flex items-center gap-2 mb-3">
@@ -222,7 +232,7 @@ function VerifyConnection({ projectId }: { projectId: string | null }) {
           className="gap-1.5 text-xs"
         >
           {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-          Enviar Evento de Teste
+          Enviar Evento de Teste (direto)
         </Button>
       </div>
 
@@ -257,6 +267,21 @@ function VerifyConnection({ projectId }: { projectId: string | null }) {
           </div>
         </div>
       )}
+
+      {/* Debug snippet */}
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+          <p className="text-xs font-medium text-foreground">Não funciona? Diagnóstico rápido:</p>
+        </div>
+        <div className="text-[11px] text-muted-foreground space-y-1.5">
+          <p>1. Abra o site onde instalou o script</p>
+          <p>2. Adicione <code className="bg-muted px-1 rounded">?rankito_debug=1</code> na URL e recarregue</p>
+          <p>3. Abra o Console (F12) e veja os logs <code className="bg-muted px-1 rounded text-success">[Rankito]</code></p>
+          <p>4. Ou cole este código no Console:</p>
+        </div>
+        <CopyBlock code={debugSnippet} label="Snippet de diagnóstico (Console do navegador)" />
+      </div>
     </Card>
   );
 }
@@ -268,16 +293,18 @@ export function InstallScriptTab() {
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
   const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const mainScript = `<!-- Rankito Analytics v3.1.0 -->
+  const mainScript = `<!-- Rankito Analytics v3.2.0 -->
 <script>
-(function(w,d,r){
+(function(w,d){
   var P="${projectId || 'SEU_PROJECT_ID'}";
   var E="${ENDPOINT}";
   var K="${ANON_KEY}";
+  var DBG=location.search.indexOf('rankito_debug')>-1||w.__RANKITO_DEBUG;
   var Q=[];var S=Date.now();
   var VID=localStorage.getItem('_rk_vid');
   if(!VID){VID='rk_'+Math.random().toString(36).substr(2,12)+Date.now().toString(36);localStorage.setItem('_rk_vid',VID);}
   var SID='rs_'+Math.random().toString(36).substr(2,8)+Date.now().toString(36);
+  function log(msg,data){if(DBG)console.log('%c[Rankito]%c '+msg,'color:#00FF88;font-weight:bold','color:inherit',data||'');}
 
   function getDevice(){var w=screen.width;if(w<768)return'mobile';if(w<1024)return'tablet';return'desktop';}
   function getBrowser(){var u=navigator.userAgent;if(u.indexOf('Chrome')>-1&&u.indexOf('Edg')===-1)return'Chrome';if(u.indexOf('Safari')>-1&&u.indexOf('Chrome')===-1)return'Safari';if(u.indexOf('Firefox')>-1)return'Firefox';if(u.indexOf('Edg')>-1)return'Edge';if(u.indexOf('Opera')>-1||u.indexOf('OPR')>-1)return'Opera';return'Other';}
@@ -286,10 +313,12 @@ export function InstallScriptTab() {
 
   var base={device:getDevice(),browser:getBrowser(),os:getOS(),screen_width:screen.width,screen_height:screen.height,language:navigator.language,referrer:d.referrer||null,page_url:location.href,page_title:d.title};
   var utm=getUTM();Object.assign(base,utm);
+  log('Script carregado',{project_id:P,endpoint:E});
 
   function send(ev){
     ev.session_id=SID;ev.visitor_id=VID;
     Q.push(ev);
+    log('Evento capturado: '+ev.event_type,ev);
     if(Q.length>=10||ev.event_type==='page_exit'||ev.event_type==='page_view'){flush();}else{clearTimeout(w._rkTimer);w._rkTimer=setTimeout(flush,2000);}
   }
 
@@ -297,7 +326,15 @@ export function InstallScriptTab() {
     if(!Q.length)return;
     var batch=Q.splice(0,50);
     var body=JSON.stringify({project_id:P,events:batch});
-    fetch(E,{method:'POST',headers:{'Content-Type':'application/json','apikey':K,'Authorization':'Bearer '+K},body:body,keepalive:true}).catch(function(){});
+    log('Enviando '+batch.length+' evento(s)...');
+    fetch(E,{method:'POST',headers:{'Content-Type':'application/json','apikey':K,'Authorization':'Bearer '+K},body:body,keepalive:true})
+    .then(function(r){
+      log('Resposta: '+r.status);
+      if(!r.ok)r.text().then(function(t){log('Erro: '+t);});
+      return r.json();
+    })
+    .then(function(j){log('Resultado',j);})
+    .catch(function(e){log('Falha no envio',e);});
   }
 
   send(Object.assign({event_type:'page_view'},base));
@@ -333,6 +370,8 @@ export function InstallScriptTab() {
 
   w._rkTrack=function(eventType,data){send(Object.assign({event_type:eventType},base,data||{}));};
   w.rankitoTrack=w._rkTrack;
+  w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID};};
+  log('Pronto! Use ?rankito_debug=1 na URL para ver logs.');
 })(window,document);
 </script>`;
 
