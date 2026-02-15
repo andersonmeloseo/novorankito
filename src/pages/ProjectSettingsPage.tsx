@@ -865,10 +865,14 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setEditing(true)}>
             <Pencil className="h-3 w-3" /> Editar
           </Button>
+          <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+            <BookOpen className="h-3 w-3" /> Tutorial
+          </Button>
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={deleting}>
             {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />} Desconectar
           </Button>
         </div>
+        <GA4TutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
       </Card>
     );
   }
