@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
@@ -111,6 +112,11 @@ export function EcommerceTrackingTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner
+        icon={ShoppingCart}
+        title="E-commerce Tracking"
+        description={<>Acompanhe o <strong>funil de e-commerce completo</strong>: visualizações de produto, adições ao carrinho, checkouts e compras. O Pixel Rankito captura automaticamente receita, taxas de conversão e drop-offs entre cada etapa.</>}
+      />
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <SparkKpi label="Visualizações" value={totalViews} color="hsl(var(--info))" icon={Package} />
         <SparkKpi label="Add Carrinho" value={totalAddToCart} color="hsl(var(--primary))" icon={ShoppingCart} />

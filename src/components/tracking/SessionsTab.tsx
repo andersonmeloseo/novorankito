@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -285,6 +286,11 @@ export function SessionsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner
+        icon={Users}
+        title="Sessões de Visitantes"
+        description={<>Analise <strong>sessões individuais</strong> dos visitantes com duração, páginas visitadas, landing/exit pages, referrers e geolocalização. Identifique bounces, sessões engajadas e padrões de navegação por dispositivo, horário e origem.</>}
+      />
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Sessões" value={totalSessions} color="hsl(var(--primary))" icon={Users} />

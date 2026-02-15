@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
@@ -143,6 +144,11 @@ export function AllEventsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner
+        icon={Activity}
+        title="Todos os Eventos"
+        description={<>Visualize <strong>todos os eventos</strong> capturados pelo Pixel Rankito em tempo real: page views, cliques, formulários, e-commerce e mais. O heatmap mostra os horários de pico e a distribuição por tipo ajuda a entender o comportamento dos visitantes.</>}
+      />
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Eventos" value={totalEvents} color="hsl(var(--primary))" icon={Activity} hideBadge />

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -501,6 +502,11 @@ export function OfflineConversionsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner
+        icon={PhoneCall}
+        title="Conversões Offline"
+        description={<>Gerencie <strong>conversões offline</strong> (ligações, WhatsApp, e-mails) e envie de volta para Google Ads e Meta Ads. Avalie a qualidade de cada lead, vincule com sessões do Pixel e sincronize com plataformas de anúncios para otimizar campanhas.</>}
+      />
       {/* Filters */}
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-end gap-2 sm:gap-3">
