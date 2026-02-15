@@ -114,6 +114,25 @@ export function useCustomEvents(projectId: string | null | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  const updateEvent = useMutation({
+    mutationFn: async ({ id, ...fields }: { id: string; [key: string]: any }) => {
+      const { error } = await supabase
+        .from("custom_event_configs")
+        .update({
+          name: fields.name,
+          display_name: fields.display_name,
+          trigger_type: fields.trigger_type,
+          selector: fields.selector,
+          conditions: fields.conditions,
+          metadata: fields.metadata,
+          enabled: fields.enabled,
+        } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
   const seedPresets = useMutation({
     mutationFn: async ({ projectId: pid, ownerId }: { projectId: string; ownerId: string }) => {
       const rows = PRESET_EVENTS.map(e => ({ ...e, project_id: pid, owner_id: ownerId }));
@@ -125,5 +144,5 @@ export function useCustomEvents(projectId: string | null | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  return { ...query, createEvent, toggleEvent, deleteEvent, seedPresets };
+  return { ...query, createEvent, toggleEvent, deleteEvent, updateEvent, seedPresets };
 }

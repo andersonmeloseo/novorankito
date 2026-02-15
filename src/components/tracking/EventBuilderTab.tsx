@@ -8,13 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import {
   Plus, Trash2, MousePointerClick, FormInput, Eye, Scroll,
-  Timer, Play, Pause, Zap, Settings, Hash, Loader2, Sparkles, AlertTriangle
+  Timer, Play, Pause, Zap, Settings, Hash, Loader2, Sparkles, AlertTriangle,
+  ChevronRight, ChevronLeft, Pencil, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCustomEvents, TRIGGER_OPTIONS, CustomEventConfig } from "@/hooks/use-custom-events";
 import { supabase } from "@/integrations/supabase/client";
 
-const TRIGGER_ICONS = {
+const TRIGGER_ICONS: Record<string, any> = {
   click: MousePointerClick,
   submit: FormInput,
   visible: Eye,
@@ -43,10 +44,12 @@ function useProjectAndUser() {
   return { projectId, userId };
 }
 
-function EventCard({ event, onToggle, onDelete, loading }: {
+/* ─── Event Card ─── */
+function EventCard({ event, onToggle, onDelete, onEdit, loading }: {
   event: CustomEventConfig;
   onToggle: () => void;
   onDelete: () => void;
+  onEdit: () => void;
   loading: boolean;
 }) {
   const TriggerIcon = TRIGGER_ICONS[event.trigger_type] || Zap;
@@ -86,6 +89,9 @@ function EventCard({ event, onToggle, onDelete, loading }: {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} disabled={loading}>
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
           <Switch checked={event.enabled} onCheckedChange={onToggle} disabled={loading} />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete} disabled={loading}>
             <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -96,58 +102,167 @@ function EventCard({ event, onToggle, onDelete, loading }: {
   );
 }
 
+/* ─── Wizard Steps ─── */
+type WizardData = {
+  name: string;
+  displayName: string;
+  trigger: CustomEventConfig["trigger_type"];
+  selector: string;
+  metaKey: string;
+  metaValue: string;
+};
+
+const EMPTY_WIZARD: WizardData = { name: "", displayName: "", trigger: "click", selector: "", metaKey: "", metaValue: "" };
+
+function WizardStep1({ data, onChange }: { data: WizardData; onChange: (d: Partial<WizardData>) => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="text-center mb-2">
+        <h4 className="text-sm font-bold font-display">Passo 1 — Tipo de Evento</h4>
+        <p className="text-xs text-muted-foreground mt-1">Escolha como o evento será disparado.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {TRIGGER_OPTIONS.map(t => {
+          const Icon = TRIGGER_ICONS[t.value] || Zap;
+          const selected = data.trigger === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => onChange({ trigger: t.value })}
+              className={`p-3 rounded-lg border text-left transition-all ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-muted-foreground/30"}`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 ${selected ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="text-xs font-semibold">{t.label}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">{t.desc}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WizardStep2({ data, onChange }: { data: WizardData; onChange: (d: Partial<WizardData>) => void }) {
+  const selectorLabel = data.trigger === "scroll" ? "Profundidade (%)" : data.trigger === "timer" ? "Segundos" : "Seletor CSS";
+  const selectorPlaceholder = data.trigger === "scroll" ? "75" : data.trigger === "timer" ? "30" : "#meu-botao, .minha-classe";
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center mb-2">
+        <h4 className="text-sm font-bold font-display">Passo 2 — O que Rastrear</h4>
+        <p className="text-xs text-muted-foreground mt-1">Defina o alvo e identifique o evento.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Nome do Evento</label>
+          <Input value={data.name} onChange={e => onChange({ name: e.target.value })} className="h-9 text-xs" placeholder="ex: cta_footer_click" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Label (exibição)</label>
+          <Input value={data.displayName} onChange={e => onChange({ displayName: e.target.value })} className="h-9 text-xs" placeholder="ex: Clique CTA Footer" />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{selectorLabel}</label>
+          <Input
+            value={data.selector}
+            onChange={e => onChange({ selector: e.target.value })}
+            className="h-9 text-xs font-mono"
+            placeholder={selectorPlaceholder}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Metadata Key (opcional)</label>
+          <Input value={data.metaKey} onChange={e => onChange({ metaKey: e.target.value })} className="h-9 text-xs" placeholder="ex: section" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Metadata Value (opcional)</label>
+          <Input value={data.metaValue} onChange={e => onChange({ metaValue: e.target.value })} className="h-9 text-xs" placeholder="ex: footer" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Component ─── */
 export function EventBuilderTab() {
   const { projectId, userId } = useProjectAndUser();
-  const { data: events = [], isLoading, createEvent, toggleEvent, deleteEvent, seedPresets } = useCustomEvents(projectId);
+  const { data: events = [], isLoading, createEvent, toggleEvent, deleteEvent, seedPresets, updateEvent } = useCustomEvents(projectId);
 
-  const [creating, setCreating] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    name: "", displayName: "", trigger: "click" as CustomEventConfig["trigger_type"],
-    selector: "", metaKey: "", metaValue: "",
-  });
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState<WizardData>(EMPTY_WIZARD);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const activeCount = events.filter(e => e.enabled).length;
   const totalFires = events.reduce((s, e) => s + e.fires_count, 0);
 
-  const handleSeedPresets = async () => {
-    if (!projectId || !userId) {
-      toast.error("Projeto ou usuário não encontrado.");
-      return;
-    }
-    try {
-      await seedPresets.mutateAsync({ projectId, ownerId: userId });
-      toast.success("Eventos pré-configurados adicionados! Ative os que desejar.");
-    } catch (err: any) {
-      toast.error("Erro ao adicionar presets: " + (err.message || ""));
-    }
+  const openCreate = () => {
+    setEditingId(null);
+    setWizardData(EMPTY_WIZARD);
+    setWizardStep(1);
+    setWizardOpen(true);
   };
 
-  const handleCreate = async () => {
-    if (!newEvent.name.trim() || !newEvent.selector.trim()) {
-      toast.error("Preencha o nome e o seletor.");
-      return;
-    }
-    if (!projectId || !userId) {
-      toast.error("Projeto ou usuário não encontrado.");
-      return;
-    }
+  const openEdit = (ev: CustomEventConfig) => {
+    setEditingId(ev.id);
+    setWizardData({
+      name: ev.name,
+      displayName: ev.display_name,
+      trigger: ev.trigger_type,
+      selector: ev.selector,
+      metaKey: ev.metadata?.[0]?.key || "",
+      metaValue: ev.metadata?.[0]?.value || "",
+    });
+    setWizardStep(1);
+    setWizardOpen(true);
+  };
+
+  const closeWizard = () => {
+    setWizardOpen(false);
+    setEditingId(null);
+  };
+
+  const handleSeedPresets = async () => {
+    if (!projectId || !userId) { toast.error("Projeto ou usuário não encontrado."); return; }
     try {
-      await createEvent.mutateAsync({
-        project_id: projectId,
-        owner_id: userId,
-        name: newEvent.name.replace(/\s+/g, "_").toLowerCase(),
-        display_name: newEvent.displayName || newEvent.name,
-        trigger_type: newEvent.trigger,
-        selector: newEvent.selector,
-        conditions: [],
-        metadata: newEvent.metaKey ? [{ key: newEvent.metaKey, value: newEvent.metaValue }] : [],
-        enabled: true,
-      });
-      setCreating(false);
-      setNewEvent({ name: "", displayName: "", trigger: "click", selector: "", metaKey: "", metaValue: "" });
-      toast.success("Evento criado!");
+      await seedPresets.mutateAsync({ projectId, ownerId: userId });
+      toast.success("Eventos pré-configurados adicionados!");
+    } catch (err: any) { toast.error("Erro ao adicionar presets: " + (err.message || "")); }
+  };
+
+  const handleSave = async () => {
+    if (!wizardData.name.trim() || !wizardData.selector.trim()) {
+      toast.error("Preencha o nome e o seletor/valor.");
+      return;
+    }
+    if (!projectId || !userId) { toast.error("Projeto ou usuário não encontrado."); return; }
+
+    const payload = {
+      project_id: projectId,
+      owner_id: userId,
+      name: wizardData.name.replace(/\s+/g, "_").toLowerCase(),
+      display_name: wizardData.displayName || wizardData.name,
+      trigger_type: wizardData.trigger,
+      selector: wizardData.selector,
+      conditions: [] as any[],
+      metadata: wizardData.metaKey ? [{ key: wizardData.metaKey, value: wizardData.metaValue }] : [],
+      enabled: true,
+    };
+
+    try {
+      if (editingId) {
+        await updateEvent.mutateAsync({ id: editingId, ...payload });
+        toast.success("Evento atualizado!");
+      } else {
+        await createEvent.mutateAsync(payload);
+        toast.success("Evento criado!");
+      }
+      closeWizard();
     } catch (err: any) {
-      toast.error("Erro ao criar evento: " + (err.message || ""));
+      toast.error("Erro: " + (err.message || ""));
     }
   };
 
@@ -157,7 +272,7 @@ export function EventBuilderTab() {
         <Card className="p-8 text-center">
           <AlertTriangle className="h-8 w-8 text-warning mx-auto mb-3" />
           <h3 className="text-sm font-bold font-display">Selecione um Projeto</h3>
-          <p className="text-xs text-muted-foreground mt-1">Escolha um projeto na sidebar para gerenciar eventos customizados.</p>
+          <p className="text-xs text-muted-foreground mt-1">Escolha um projeto na sidebar para gerenciar eventos personalizados.</p>
         </Card>
       </AnimatedContainer>
     );
@@ -173,7 +288,7 @@ export function EventBuilderTab() {
               <MousePointerClick className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold font-display">Event Builder</h3>
+              <h3 className="text-base font-bold font-display">Eventos Personalizados</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Ative eventos pré-configurados ou crie os seus. O <strong>Pixel Rankito já inclui todos os listeners</strong> — basta ativar aqui, sem código adicional.
               </p>
@@ -200,7 +315,7 @@ export function EventBuilderTab() {
         ))}
       </StaggeredGrid>
 
-      {/* Seed presets or create */}
+      {/* Actions */}
       <AnimatedContainer delay={0.04}>
         <div className="flex flex-wrap gap-2">
           {events.length === 0 && (
@@ -209,70 +324,79 @@ export function EventBuilderTab() {
               Carregar Eventos Pré-configurados
             </Button>
           )}
-          {!creating && (
-            <Button onClick={() => setCreating(true)} className="gap-1.5 text-xs">
-              <Plus className="h-3.5 w-3.5" /> Criar Evento Customizado
+          {!wizardOpen && (
+            <Button onClick={openCreate} className="gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" /> Criar Evento
             </Button>
           )}
         </div>
       </AnimatedContainer>
 
-      {/* Create form */}
-      {creating && (
+      {/* Wizard */}
+      {wizardOpen && (
         <AnimatedContainer delay={0.04}>
           <Card className="p-5 border-primary/20 space-y-4">
-            <h4 className="text-sm font-bold font-display">Novo Evento</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Nome do Evento</label>
-                <Input value={newEvent.name} onChange={e => setNewEvent(p => ({ ...p, name: e.target.value }))} className="h-9 text-xs" placeholder="ex: cta_footer_click" />
+            {/* Step indicator */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {[1, 2].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setWizardStep(s)}
+                    className={`h-7 w-7 rounded-full text-xs font-bold transition-all ${
+                      wizardStep === s
+                        ? "bg-primary text-primary-foreground"
+                        : wizardStep > s
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                <span className="text-xs text-muted-foreground ml-1">
+                  {editingId ? "Editando evento" : "Novo evento"}
+                </span>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Label (exibição)</label>
-                <Input value={newEvent.displayName} onChange={e => setNewEvent(p => ({ ...p, displayName: e.target.value }))} className="h-9 text-xs" placeholder="ex: Clique CTA Footer" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Trigger</label>
-                <Select value={newEvent.trigger} onValueChange={(v: any) => setNewEvent(p => ({ ...p, trigger: v }))}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TRIGGER_OPTIONS.map(t => (
-                      <SelectItem key={t.value} value={t.value} className="text-xs">{t.label} — {t.desc}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  {newEvent.trigger === "scroll" ? "Profundidade (%)" : newEvent.trigger === "timer" ? "Segundos" : "Seletor CSS"}
-                </label>
-                <Input
-                  value={newEvent.selector}
-                  onChange={e => setNewEvent(p => ({ ...p, selector: e.target.value }))}
-                  className="h-9 text-xs font-mono"
-                  placeholder={newEvent.trigger === "scroll" ? "75" : newEvent.trigger === "timer" ? "30" : "#meu-botao, .minha-classe"}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Metadata Key (opcional)</label>
-                <Input value={newEvent.metaKey} onChange={e => setNewEvent(p => ({ ...p, metaKey: e.target.value }))} className="h-9 text-xs" placeholder="ex: section" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Metadata Value (opcional)</label>
-                <Input value={newEvent.metaValue} onChange={e => setNewEvent(p => ({ ...p, metaValue: e.target.value }))} className="h-9 text-xs" placeholder="ex: footer" />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleCreate} className="gap-1.5 text-xs" disabled={createEvent.isPending}>
-                {createEvent.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Criar
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closeWizard}>
+                <X className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setCreating(false)} className="text-xs">Cancelar</Button>
+            </div>
+
+            {/* Step content */}
+            {wizardStep === 1 && (
+              <WizardStep1 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} />
+            )}
+            {wizardStep === 2 && (
+              <WizardStep2 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} />
+            )}
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-2">
+              {wizardStep > 1 ? (
+                <Button size="sm" variant="outline" onClick={() => setWizardStep(s => s - 1)} className="gap-1 text-xs">
+                  <ChevronLeft className="h-3.5 w-3.5" /> Voltar
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={closeWizard} className="text-xs">Cancelar</Button>
+              )}
+              {wizardStep < 2 ? (
+                <Button size="sm" onClick={() => setWizardStep(s => s + 1)} className="gap-1 text-xs">
+                  Próximo <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handleSave} className="gap-1.5 text-xs" disabled={createEvent.isPending || updateEvent.isPending}>
+                  {(createEvent.isPending || updateEvent.isPending) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  {editingId ? "Salvar Alterações" : "Criar Evento"}
+                </Button>
+              )}
             </div>
           </Card>
         </AnimatedContainer>
       )}
 
-      {/* Loading state */}
+      {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -288,6 +412,7 @@ export function EventBuilderTab() {
                 key={ev.id}
                 event={ev}
                 loading={toggleEvent.isPending || deleteEvent.isPending}
+                onEdit={() => openEdit(ev)}
                 onToggle={async () => {
                   try {
                     await toggleEvent.mutateAsync({ id: ev.id, enabled: !ev.enabled });
@@ -313,18 +438,10 @@ export function EventBuilderTab() {
             <Zap className="h-4 w-4 text-primary" /> Como Funciona
           </h4>
           <div className="text-xs text-muted-foreground space-y-2">
-            <p>
-              <strong>1.</strong> O Pixel Rankito (já instalado no site) busca automaticamente a lista de eventos ativos deste projeto.
-            </p>
-            <p>
-              <strong>2.</strong> Para cada evento ativo, o pixel registra o listener correspondente (clique, scroll, visibilidade, etc.).
-            </p>
-            <p>
-              <strong>3.</strong> Quando o trigger dispara, o evento é enviado como <code className="bg-muted px-1 rounded">tracking_event</code> e aparece nas abas Eventos, Sessões e Jornada.
-            </p>
-            <p>
-              <strong>4.</strong> Basta ativar/desativar aqui — <strong>sem alterar nada no site</strong>.
-            </p>
+            <p><strong>1.</strong> O Pixel Rankito (já instalado no site) busca automaticamente a lista de eventos ativos deste projeto.</p>
+            <p><strong>2.</strong> Para cada evento ativo, o pixel registra o listener correspondente (clique, scroll, visibilidade, etc.).</p>
+            <p><strong>3.</strong> Quando o trigger dispara, o evento é enviado como <code className="bg-muted px-1 rounded">tracking_event</code> e aparece nas abas Eventos, Sessões e Jornada.</p>
+            <p><strong>4.</strong> Basta ativar/desativar aqui — <strong>sem alterar nada no site</strong>.</p>
           </div>
         </Card>
       </AnimatedContainer>

@@ -49,7 +49,7 @@ export default function TrackingPage() {
               <PhoneCall className="h-3.5 w-3.5" /> Offline
             </TabsTrigger>
             <TabsTrigger value="event-builder" className="text-xs gap-1.5">
-              <MousePointerClick className="h-3.5 w-3.5" /> Event Builder
+              <MousePointerClick className="h-3.5 w-3.5" /> Eventos Personalizados
             </TabsTrigger>
             <TabsTrigger value="ab-test" className="text-xs gap-1.5">
               <FlaskConical className="h-3.5 w-3.5" /> A/B Tests
