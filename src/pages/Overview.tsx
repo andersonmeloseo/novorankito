@@ -15,8 +15,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   BarChart3, TrendingUp, Sparkles, Lightbulb, MousePointerClick,
   Eye, Users, Target, Globe, ArrowUp, ArrowDown, Activity,
-  Search, Monitor, Smartphone, Tablet, ExternalLink, MapPin, HelpCircle
+  Search, Monitor, Smartphone, Tablet, ExternalLink, MapPin, HelpCircle,
+  CheckCircle2, AlertTriangle, Clock, FileSearch
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 function formatCompact(value: number) {
@@ -281,6 +283,28 @@ export default function Overview() {
     retry: false,
   });
 
+  // Indexing data
+  const { data: indexingStats } = useQuery({
+    queryKey: ["indexing-stats-overview", projectId],
+    queryFn: async () => {
+      const [reqRes, coverageRes, urlsRes] = await Promise.all([
+        supabase.from("indexing_requests").select("status").eq("project_id", projectId!),
+        supabase.from("index_coverage").select("verdict, indexing_state").eq("project_id", projectId!),
+        supabase.from("site_urls").select("id", { count: "exact", head: true }).eq("project_id", projectId!),
+      ]);
+      const requests = reqRes.data || [];
+      const coverage = coverageRes.data || [];
+      const totalUrls = urlsRes.count || 0;
+      const submitted = requests.filter((r: any) => r.status === "success").length;
+      const pending = requests.filter((r: any) => r.status === "pending" || r.status === "processing").length;
+      const failed = requests.filter((r: any) => r.status === "quota_exceeded" || r.status === "failed").length;
+      const inspected = coverage.length;
+      const indexed = coverage.filter((c: any) => c.verdict === "PASS" || c.indexing_state === "INDEXING_ALLOWED").length;
+      return { totalUrls, submitted, pending, failed, inspected, indexed, totalRequests: requests.length };
+    },
+    enabled: !!projectId,
+  });
+
   const isLoading = seoLoading || sessionsLoading || conversionsLoading;
 
   // === KPIs from DB page dimension (most complete) ===
@@ -490,25 +514,86 @@ export default function Overview() {
           </StaggeredGrid>
         )}
 
-        {/* GA4 quick row */}
-        {(ga4Overview || ga4Users > 0) && (
+        {/* Indexing Summary */}
+        {indexingStats && indexingStats.totalUrls > 0 && (
           <AnimatedContainer delay={0.08}>
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileSearch className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm font-bold tracking-tight font-display">Indexação</CardTitle>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px]">{formatCompact(indexingStats.totalUrls)} URLs</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Enviadas</span>
+                    </div>
+                    <p className="text-xl font-bold font-display text-foreground">{formatCompact(indexingStats.submitted)}</p>
+                    <Progress value={indexingStats.totalUrls > 0 ? (indexingStats.submitted / indexingStats.totalUrls) * 100 : 0} className="h-1.5" />
+                    <p className="text-[10px] text-muted-foreground">{indexingStats.totalUrls > 0 ? ((indexingStats.submitted / indexingStats.totalUrls) * 100).toFixed(1) : 0}% do total</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <FileSearch className="h-3.5 w-3.5 text-info" />
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Inspecionadas</span>
+                    </div>
+                    <p className="text-xl font-bold font-display text-foreground">{formatCompact(indexingStats.inspected)}</p>
+                    <Progress value={indexingStats.totalUrls > 0 ? (indexingStats.inspected / indexingStats.totalUrls) * 100 : 0} className="h-1.5" />
+                    <p className="text-[10px] text-muted-foreground">{indexingStats.totalUrls > 0 ? ((indexingStats.inspected / indexingStats.totalUrls) * 100).toFixed(1) : 0}% do total</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Falhas / Quota</span>
+                    </div>
+                    <p className="text-xl font-bold font-display text-foreground">{formatCompact(indexingStats.failed)}</p>
+                    <Progress value={indexingStats.totalRequests > 0 ? (indexingStats.failed / indexingStats.totalRequests) * 100 : 0} className="h-1.5" />
+                    <p className="text-[10px] text-muted-foreground">{indexingStats.totalRequests > 0 ? ((indexingStats.failed / indexingStats.totalRequests) * 100).toFixed(1) : 0}% das requisições</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Pendentes</span>
+                    </div>
+                    <p className="text-xl font-bold font-display text-foreground">{formatCompact(indexingStats.totalUrls - indexingStats.submitted)}</p>
+                    <Progress value={indexingStats.totalUrls > 0 ? ((indexingStats.totalUrls - indexingStats.submitted) / indexingStats.totalUrls) * 100 : 0} className="h-1.5" />
+                    <p className="text-[10px] text-muted-foreground">Aguardando envio</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </AnimatedContainer>
+        )}
+
+        {/* GA4 quick row - only when real data exists */}
+        {ga4Overview && (ga4Users > 0 || ga4Sessions > 0) && (
+          <AnimatedContainer delay={0.1}>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="p-3.5 text-center card-hover">
-                <Users className="h-4 w-4 mx-auto mb-1.5 text-chart-5" />
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Usuários</p>
-                <p className="text-lg font-bold font-display text-foreground">{formatCompact(ga4Users)}</p>
-              </Card>
-              <Card className="p-3.5 text-center card-hover">
-                <Activity className="h-4 w-4 mx-auto mb-1.5 text-primary" />
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Sessões</p>
-                <p className="text-lg font-bold font-display text-foreground">{formatCompact(ga4Sessions)}</p>
-              </Card>
               {ga4Overview?.bounceRate != null && (
                 <Card className="p-3.5 text-center card-hover">
                   <ArrowDown className="h-4 w-4 mx-auto mb-1.5 text-destructive" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Bounce Rate</p>
                   <p className="text-lg font-bold font-display text-foreground">{(ga4Overview.bounceRate * 100).toFixed(1)}%</p>
+                </Card>
+              )}
+              {ga4Users > 0 && (
+                <Card className="p-3.5 text-center card-hover">
+                  <Users className="h-4 w-4 mx-auto mb-1.5 text-chart-5" />
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Usuários</p>
+                  <p className="text-lg font-bold font-display text-foreground">{formatCompact(ga4Users)}</p>
+                </Card>
+              )}
+              {ga4Sessions > 0 && (
+                <Card className="p-3.5 text-center card-hover">
+                  <Activity className="h-4 w-4 mx-auto mb-1.5 text-primary" />
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Sessões</p>
+                  <p className="text-lg font-bold font-display text-foreground">{formatCompact(ga4Sessions)}</p>
                 </Card>
               )}
               {ga4Overview?.avgSessionDuration != null && (
