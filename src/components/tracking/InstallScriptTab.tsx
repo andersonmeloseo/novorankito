@@ -295,7 +295,7 @@ export function InstallScriptTab() {
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
   const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const mainScript = `<!-- Rankito Analytics v3.4.0 -->
+  const mainScript = `<!-- Rankito Analytics v4.0.0 — Advanced Pixel -->
 <script>
 (function(w,d){
   var P="${projectId || 'SEU_PROJECT_ID'}";
@@ -317,7 +317,7 @@ export function InstallScriptTab() {
   var base={device:getDevice(),browser:getBrowser(),os:getOS(),screen_width:screen.width,screen_height:screen.height,language:navigator.language,referrer:d.referrer||null,page_url:location.href,page_title:d.title};
   var utm=getUTM();Object.assign(base,utm);
   var geo={country:null,city:null,state:null};
-  log('Script carregado v3.4.0',{project_id:P,endpoint:E});
+  log('Script carregado v4.0.0',{project_id:P,endpoint:E});
 
   // Fetch geolocation client-side (more accurate than server IP)
   fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(4000)})
@@ -356,6 +356,30 @@ export function InstallScriptTab() {
   // Delay first page_view slightly to allow geo fetch to complete
   setTimeout(function(){send(Object.assign({event_type:'page_view'},base));},500);
 
+  /* ── Rage Click Detection (3+ clicks in ~30px area within 1s) ── */
+  var rageClicks=[];var RAGE_THRESHOLD=3;var RAGE_WINDOW=1000;var RAGE_RADIUS=30;
+  function checkRageClick(x,y){
+    var now=Date.now();
+    rageClicks.push({x:x,y:y,t:now});
+    rageClicks=rageClicks.filter(function(c){return now-c.t<RAGE_WINDOW;});
+    var nearby=rageClicks.filter(function(c){return Math.abs(c.x-x)<RAGE_RADIUS&&Math.abs(c.y-y)<RAGE_RADIUS;});
+    if(nearby.length>=RAGE_THRESHOLD){
+      rageClicks=[];
+      return true;
+    }
+    return false;
+  }
+
+  /* ── Dead Click Detection (click on non-interactive element with no navigation) ── */
+  function isInteractive(el){
+    if(!el||!el.tagName)return false;
+    var tag=el.tagName.toLowerCase();
+    if(['a','button','input','select','textarea','video','audio','label','details','summary'].indexOf(tag)>-1)return true;
+    if(el.getAttribute('role')==='button'||el.getAttribute('tabindex')||el.getAttribute('onclick')||el.hasAttribute('data-rk-track'))return true;
+    if(el.closest('a,button,[role=button],[onclick]'))return true;
+    return false;
+  }
+
   d.addEventListener('click',function(e){
     var t=e.target.closest('a,button,[data-rk-track]');if(!t)return;
     var ev=Object.assign({event_type:'click',cta_text:(t.textContent||'').trim().substring(0,100),cta_selector:t.tagName.toLowerCase()+(t.id?'#'+t.id:'')+(t.className?'.'+String(t.className).split(' ')[0]:'')},base);
@@ -368,18 +392,44 @@ export function InstallScriptTab() {
     else if(href.indexOf('mailto:')===0)ev.event_type='email_click';
     else if(t.tagName==='BUTTON'||t.getAttribute('type')==='submit')ev.event_type='button_click';
     send(ev);
+
+    // Check for rage click
+    if(checkRageClick(Math.round(e.pageX),Math.round(e.pageY))){
+      send(Object.assign({event_type:'rage_click',metadata:{click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),vp_w:w.innerWidth,vp_h:w.innerHeight,tag:t.tagName.toLowerCase(),selector:ev.cta_selector}},base));
+      log('🔴 Rage click detectado!',{x:e.pageX,y:e.pageY});
+    }
   },true);
 
-  // Capture ALL clicks (not just interactive elements) for heatmap density
+  // Capture ALL clicks (not just interactive elements) for heatmap density + dead click
   d.addEventListener('click',function(e){
     if(e.target.closest('a,button,[data-rk-track]'))return; // already captured above
-    send(Object.assign({event_type:'heatmap_click',metadata:{click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight,tag:e.target.tagName.toLowerCase(),selector:e.target.tagName.toLowerCase()+(e.target.id?'#'+e.target.id:'')}},base));
+    var meta={click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight,tag:e.target.tagName.toLowerCase(),selector:e.target.tagName.toLowerCase()+(e.target.id?'#'+e.target.id:'')};
+    send(Object.assign({event_type:'heatmap_click',metadata:meta},base));
+
+    // Dead click: non-interactive element
+    if(!isInteractive(e.target)){
+      send(Object.assign({event_type:'dead_click',cta_text:(e.target.textContent||'').trim().substring(0,80),metadata:meta},base));
+      log('💀 Dead click detectado!',{tag:e.target.tagName,text:(e.target.textContent||'').trim().substring(0,30)});
+    }
+
+    // Rage click on non-interactive too
+    if(checkRageClick(Math.round(e.pageX),Math.round(e.pageY))){
+      send(Object.assign({event_type:'rage_click',metadata:meta},base));
+      log('🔴 Rage click detectado!',{x:e.pageX,y:e.pageY});
+    }
   },true);
 
   d.addEventListener('submit',function(e){
     var f=e.target;
     send(Object.assign({event_type:'form_submit',form_id:f.id||f.getAttribute('name')||f.action||null},base));
   },true);
+
+  /* ── Touch Events (mobile heatmap) ── */
+  d.addEventListener('touchend',function(e){
+    var touch=e.changedTouches&&e.changedTouches[0];
+    if(!touch)return;
+    recCapture('touch',{x:Math.round(touch.pageX),y:Math.round(touch.pageY)});
+  },{passive:true});
 
   var maxScroll=0;var scrollSamples=[];var moveSamples=[];var lastMoveT=0;
   w.addEventListener('scroll',function(){
@@ -401,17 +451,125 @@ export function InstallScriptTab() {
     }
   },{passive:true});
 
-  /* ── Session Recording (lightweight — captures interactions, not DOM) ── */
+  /* ── JS Error Tracking ── */
+  w.addEventListener('error',function(e){
+    send(Object.assign({event_type:'js_error',metadata:{message:String(e.message||'').substring(0,500),source:String(e.filename||'').substring(0,200),line:e.lineno||0,col:e.colno||0,stack:e.error&&e.error.stack?String(e.error.stack).substring(0,500):''}},base));
+    log('❌ JS Error capturado',e.message);
+  });
+  w.addEventListener('unhandledrejection',function(e){
+    var msg=e.reason?String(e.reason.message||e.reason).substring(0,500):'Unhandled Promise rejection';
+    send(Object.assign({event_type:'js_error',metadata:{message:msg,type:'unhandledrejection'}},base));
+    log('❌ Unhandled Promise rejection capturado',msg);
+  });
+
+  /* ── Web Vitals (LCP, CLS, FID/INP) ── */
+  var vitals={lcp:0,cls:0,fid:0,inp:0,ttfb:0};
+  try{
+    // LCP
+    var lcpObs=new PerformanceObserver(function(list){
+      var entries=list.getEntries();
+      if(entries.length){vitals.lcp=Math.round(entries[entries.length-1].startTime);log('📊 LCP: '+vitals.lcp+'ms');}
+    });
+    lcpObs.observe({type:'largest-contentful-paint',buffered:true});
+    // CLS
+    var clsVal=0;
+    var clsObs=new PerformanceObserver(function(list){
+      list.getEntries().forEach(function(e){if(!e.hadRecentInput)clsVal+=e.value;});
+      vitals.cls=Math.round(clsVal*1000)/1000;
+    });
+    clsObs.observe({type:'layout-shift',buffered:true});
+    // FID / INP
+    var inpObs=new PerformanceObserver(function(list){
+      list.getEntries().forEach(function(e){
+        var dur=Math.round(e.processingStart?e.processingStart-e.startTime:e.duration);
+        if(!vitals.fid)vitals.fid=dur;
+        if(dur>vitals.inp)vitals.inp=dur;
+      });
+    });
+    inpObs.observe({type:'first-input',buffered:true});
+    try{inpObs.observe({type:'event',buffered:true,durationThreshold:16});}catch(ex){}
+    // TTFB
+    var navEntries=performance.getEntriesByType('navigation');
+    if(navEntries.length)vitals.ttfb=Math.round(navEntries[0].responseStart);
+  }catch(ex){log('Web Vitals não suportado neste browser');}
+
+  /* ── Tab Visibility (track hidden/visible) ── */
+  var hiddenAt=0;
+  d.addEventListener('visibilitychange',function(){
+    if(d.hidden){
+      hiddenAt=Date.now();
+      recCapture('tab_hidden',{});
+    }else{
+      var away=hiddenAt?Math.round((Date.now()-hiddenAt)/1000):0;
+      recCapture('tab_visible',{away_sec:away});
+      log('👁️ Tab voltou visível após '+away+'s');
+    }
+  });
+
+  /* ── SPA Navigation (pushState/replaceState + popstate) ── */
+  var lastPath=location.pathname+location.search;
+  function onRouteChange(method){
+    var newPath=location.pathname+location.search;
+    if(newPath===lastPath)return;
+    log('🔄 SPA navigation ('+method+'): '+lastPath+' → '+newPath);
+    // Send page_exit for old page
+    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight,vp_w:w.innerWidth,nav_method:method}},base));
+    // Reset for new page
+    lastPath=newPath;maxScroll=0;S=Date.now();scrollSamples=[];moveSamples=[];
+    base.page_url=location.href;base.page_title=d.title;base.referrer=base.page_url;
+    // Send new page_view
+    setTimeout(function(){base.page_title=d.title;send(Object.assign({event_type:'page_view'},base));},100);
+  }
+  var origPush=history.pushState;
+  history.pushState=function(){origPush.apply(this,arguments);onRouteChange('pushState');};
+  var origReplace=history.replaceState;
+  history.replaceState=function(){origReplace.apply(this,arguments);onRouteChange('replaceState');};
+  w.addEventListener('popstate',function(){onRouteChange('popstate');});
+
+  /* ── Form Field Interactions (focus/blur, no values captured) ── */
+  d.addEventListener('focusin',function(e){
+    var t=e.target;if(!t||!t.tagName)return;
+    var tag=t.tagName.toLowerCase();
+    if(['input','textarea','select'].indexOf(tag)===-1)return;
+    recCapture('field_focus',{tag:tag,name:t.getAttribute('name')||t.id||'',type:t.getAttribute('type')||tag});
+  },true);
+  d.addEventListener('focusout',function(e){
+    var t=e.target;if(!t||!t.tagName)return;
+    var tag=t.tagName.toLowerCase();
+    if(['input','textarea','select'].indexOf(tag)===-1)return;
+    recCapture('field_blur',{tag:tag,name:t.getAttribute('name')||t.id||'',type:t.getAttribute('type')||tag,filled:!!t.value});
+  },true);
+
+  /* ── Copy/Selection Tracking ── */
+  d.addEventListener('copy',function(){
+    var sel=w.getSelection();
+    var text=sel?sel.toString().trim().substring(0,200):'';
+    if(text)send(Object.assign({event_type:'text_copy',cta_text:text,metadata:{length:text.length}},base));
+  });
+
+  /* ── Viewport Resize Tracking ── */
+  var resizeTimer;
+  w.addEventListener('resize',function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(function(){
+      recCapture('resize',{w:w.innerWidth,h:w.innerHeight});
+    },300);
+  });
+
+  /* ── Session Recording (enhanced — captures interactions + element context) ── */
   var recEvents=[];var lastRecT=0;
   function recCapture(type,data){
     var now=Date.now();
-    if(now-lastRecT<100&&type==='move')return; // throttle moves
+    if(now-lastRecT<80&&type==='move')return; // throttle moves
     lastRecT=now;
-    if(recEvents.length>=400)return; // cap per session
+    if(recEvents.length>=800)return; // increased cap per session
     recEvents.push(Object.assign({type:type,t:Math.round((now-S)/1000)},data));
   }
   d.addEventListener('click',function(e){
-    recCapture('click',{x:Math.round(e.pageX),y:Math.round(e.pageY),tag:e.target.tagName.toLowerCase(),text:(e.target.textContent||'').trim().substring(0,50)});
+    var el=e.target;
+    var path=[];var cur=el;
+    for(var i=0;i<3&&cur&&cur!==d;i++){path.push(cur.tagName.toLowerCase()+(cur.id?'#'+cur.id:''));cur=cur.parentElement;}
+    recCapture('click',{x:Math.round(e.pageX),y:Math.round(e.pageY),tag:el.tagName.toLowerCase(),text:(el.textContent||'').trim().substring(0,50),path:path.join(' > '),href:el.getAttribute('href')||el.closest('a')&&el.closest('a').getAttribute('href')||''});
   },true);
   d.addEventListener('mousemove',function(e){
     recCapture('move',{x:Math.round(e.pageX),y:Math.round(e.pageY)});
@@ -430,18 +588,23 @@ export function InstallScriptTab() {
   }
 
   w.addEventListener('beforeunload',function(){
-    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),move_samples:moveSamples.slice(-100),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight,vp_w:w.innerWidth}},base));
+    // Include Web Vitals in page_exit
+    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),move_samples:moveSamples.slice(-100),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight,vp_w:w.innerWidth,vitals:vitals}},base));
+    // Send Web Vitals as separate event
+    if(vitals.lcp||vitals.cls||vitals.fid){
+      send(Object.assign({event_type:'web_vitals',metadata:vitals},base));
+    }
     flush();
     flushRecording();
   });
 
-  // Also flush recording periodically (every 60s)
-  setInterval(function(){flushRecording();},60000);
-  setInterval(flush,30000);
+  // Also flush recording periodically (every 45s)
+  setInterval(function(){flushRecording();},45000);
+  setInterval(flush,25000);
 
   w._rkTrack=function(eventType,data){send(Object.assign({event_type:eventType},base,data||{}));};
   w.rankitoTrack=w._rkTrack;
-  w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID,recording_events:recEvents.length};};
+  w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID,recording_events:recEvents.length,vitals:vitals};};
 
   // --- Auto E-commerce: WooCommerce ---
   function initWoo(){
@@ -627,7 +790,7 @@ export function InstallScriptTab() {
   })
   .catch(function(e){log('Erro ao carregar custom events',e);});
 
-  log('Pronto! v3.3.0 com e-commerce automático. Use ?rankito_debug=1 para ver logs.');
+  log('Pronto! v4.0.0 — Pixel avançado com rage clicks, dead clicks, JS errors, Web Vitals, SPA nav. Use ?rankito_debug=1 para ver logs.');
 })(window,document);
 </script>`;
 
@@ -696,9 +859,9 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
             <h4 className="text-sm font-bold font-display">Script Principal</h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Script único que captura automaticamente: <strong>page views</strong>, <strong>cliques</strong>, <strong>formulários</strong>, 
-            <strong> scroll depth</strong>, <strong>tempo na página</strong>, <strong>UTMs/GCLID/FBCLID</strong> e 
-            <strong> e-commerce completo</strong> (WooCommerce, Shopify e sites genéricos via <code className="bg-muted px-1 rounded text-[10px]">data-rk-*</code>).
+            Pixel avançado v4.0 com <strong>rage clicks</strong>, <strong>dead clicks</strong>, <strong>JS errors</strong>, 
+            <strong> Web Vitals (LCP/CLS/INP)</strong>, <strong>SPA navigation</strong>, <strong>session recording</strong>, 
+            <strong> e-commerce completo</strong> e <strong>heatmap visual</strong>.
           </p>
           <CopyBlock code={mainScript} />
         </Card>
@@ -779,7 +942,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="WooCommerce — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v3.3.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>product_view</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>product_view</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -825,7 +988,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="Shopify — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v3.3.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>product_view</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>product_view</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -876,7 +1039,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
              {[
               { emoji: "👁️", name: "Page View", desc: "Visualização de página" },
-              { emoji: "🚪", name: "Page Exit", desc: "Saída + tempo + scroll" },
+              { emoji: "🚪", name: "Page Exit", desc: "Saída + tempo + scroll + vitals" },
               { emoji: "🖱️", name: "Button Click", desc: "Cliques em botões" },
               { emoji: "🔗", name: "Link Click", desc: "Cliques em links" },
               { emoji: "💬", name: "WhatsApp Click", desc: "Cliques em WhatsApp" },
@@ -884,6 +1047,12 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               { emoji: "✉️", name: "Email Click", desc: "Cliques em mailto" },
               { emoji: "📝", name: "Form Submit", desc: "Submissão de formulários" },
               { emoji: "📏", name: "Scroll Depth", desc: "Profundidade de rolagem" },
+              { emoji: "🔴", name: "Rage Click", desc: "3+ cliques em <1s na mesma área" },
+              { emoji: "💀", name: "Dead Click", desc: "Clique em elemento não-interativo" },
+              { emoji: "❌", name: "JS Error", desc: "Erros JavaScript automáticos" },
+              { emoji: "📊", name: "Web Vitals", desc: "LCP, CLS, FID, INP, TTFB" },
+              { emoji: "🔄", name: "SPA Navigation", desc: "Navegação SPA (pushState)" },
+              { emoji: "📋", name: "Text Copy", desc: "Cópia de texto selecionado" },
               { emoji: "🛍️", name: "Product View", desc: "Auto: Woo/Shopify/data-rk" },
               { emoji: "🛒", name: "Add to Cart", desc: "Auto: Woo/Shopify/data-rk" },
               { emoji: "🗑️", name: "Remove from Cart", desc: "Auto: WooCommerce" },
