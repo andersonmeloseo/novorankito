@@ -266,12 +266,14 @@ export function InstallScriptTab() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
+  const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   const mainScript = `<!-- Rankito Analytics v3.1.0 -->
 <script>
 (function(w,d,r){
   var P="${projectId || 'SEU_PROJECT_ID'}";
   var E="${ENDPOINT}";
+  var K="${ANON_KEY}";
   var Q=[];var S=Date.now();
   var VID=localStorage.getItem('_rk_vid');
   if(!VID){VID='rk_'+Math.random().toString(36).substr(2,12)+Date.now().toString(36);localStorage.setItem('_rk_vid',VID);}
@@ -295,8 +297,7 @@ export function InstallScriptTab() {
     if(!Q.length)return;
     var batch=Q.splice(0,50);
     var body=JSON.stringify({project_id:P,events:batch});
-    if(navigator.sendBeacon){navigator.sendBeacon(E,new Blob([body],{type:'application/json'}));}
-    else{fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true}).catch(function(){});}
+    fetch(E,{method:'POST',headers:{'Content-Type':'application/json','apikey':K,'Authorization':'Bearer '+K},body:body,keepalive:true}).catch(function(){});
   }
 
   send(Object.assign({event_type:'page_view'},base));
