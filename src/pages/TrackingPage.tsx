@@ -46,7 +46,7 @@ export default function TrackingPage() {
               <PhoneCall className="h-3.5 w-3.5" /> Offline
             </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
-              <Code className="h-3.5 w-3.5" /> Instalar
+              <Code className="h-3.5 w-3.5" /> Pixel Rankito
             </TabsTrigger>
           </TabsList>
 
