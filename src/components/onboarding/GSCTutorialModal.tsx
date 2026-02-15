@@ -136,7 +136,7 @@ export function GSCTutorialModal({ open, onOpenChange }: GSCTutorialModalProps) 
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">
-            Tutorial: Conectar Google Search Console
+            Veja como fazer a Configuração e conexão — Google Search Console
           </DialogTitle>
         </DialogHeader>
 
