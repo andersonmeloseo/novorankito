@@ -379,19 +379,28 @@ export function InstallScriptTab() {
     send(Object.assign({event_type:'form_submit',form_id:f.id||f.getAttribute('name')||f.action||null},base));
   },true);
 
-  var maxScroll=0;var scrollSamples=[];
+  var maxScroll=0;var scrollSamples=[];var moveSamples=[];var lastMoveT=0;
   w.addEventListener('scroll',function(){
     var h=d.documentElement;var pct=Math.round((w.scrollY/(h.scrollHeight-h.clientHeight))*100);
     if(pct>maxScroll)maxScroll=pct;
-    // Sample scroll depth for heatmap (throttled)
     var now=Date.now();
     if(!scrollSamples.length||now-scrollSamples[scrollSamples.length-1].t>3000){
       scrollSamples.push({t:now,pct:pct,y:Math.round(w.scrollY),doc_h:h.scrollHeight,vp_h:w.innerHeight});
     }
   },{passive:true});
 
+  // Mouse movement tracking (throttled — sample every 150ms, max 100 points per page)
+  d.addEventListener('mousemove',function(e){
+    var now=Date.now();
+    if(now-lastMoveT<150)return;
+    lastMoveT=now;
+    if(moveSamples.length<100){
+      moveSamples.push({x:Math.round(e.pageX),y:Math.round(e.pageY),t:Math.round((now-S)/1000)});
+    }
+  },{passive:true});
+
   w.addEventListener('beforeunload',function(){
-    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight}},base));
+    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),move_samples:moveSamples.slice(-100),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight,vp_w:w.innerWidth}},base));
     flush();
   });
 
