@@ -32,6 +32,7 @@ import {
   Eye, Timer, BarChart3, Globe, Monitor, Zap, ShoppingCart, UserCheck, ArrowLeftRight,
   ChevronDown, ChevronUp, Bot, Info, Filter, X,
 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -268,6 +269,7 @@ export default function AnalyticsPage() {
     <>
       <TopBar title="GA4" subtitle="Dashboard GA4 — Análise Avançada" />
       <div className="p-4 sm:p-6 space-y-6">
+        <FeatureBanner icon={Activity} title="Google Analytics 4" description={<>Dashboard avançado com <strong>aquisição</strong>, <strong>engajamento</strong>, <strong>demografia</strong>, <strong>retenção</strong>, <strong>e-commerce</strong> e dados em <strong>tempo real</strong> do GA4.</>} />
         {/* Connection bar */}
         {ga4Connection && (
           <AnimatedContainer>

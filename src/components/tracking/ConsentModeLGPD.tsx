@@ -12,6 +12,7 @@ import {
   FileText, Download, Globe, Cookie, Lock, ToggleLeft, Code, Palette
 } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 
 function CopyBlock({ code, label }: { code: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -124,22 +125,11 @@ export function ConsentModeLGPD() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <AnimatedContainer>
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold font-display">Consent Mode & LGPD</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Configure consentimento de cookies conforme a <strong>Lei Geral de Proteção de Dados</strong>. 
-                Gere o banner, bloqueie coleta sem consentimento e exporte relatórios de conformidade.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      <FeatureBanner
+        icon={Shield}
+        title="Consent Mode & LGPD"
+        description={<>Configure consentimento de cookies conforme a <strong>Lei Geral de Proteção de Dados</strong>. Gere o banner, bloqueie coleta sem consentimento e exporte relatórios de conformidade.</>}
+      />
 
       <Tabs defaultValue="banner" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">

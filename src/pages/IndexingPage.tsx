@@ -27,6 +27,7 @@ import {
   AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock, Wifi, WifiOff, Upload,
   Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus, XCircle
 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -325,6 +326,7 @@ export default function IndexingPage() {
     <>
       <TopBar title="Indexação" subtitle="Gerencie a indexação das suas páginas via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <FeatureBanner icon={Send} title="Indexação de Páginas" description={<>Gerencie a <strong>indexação</strong> das suas páginas no Google com submissão em lote, sitemaps, agendamentos e monitoramento em tempo real.</>} />
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>

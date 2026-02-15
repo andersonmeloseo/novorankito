@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -740,21 +741,11 @@ export function GoalsTab() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <AnimatedContainer>
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-success/5">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-success/20">
-              <Target className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold font-display">Metas Personalizadas</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Defina conversões por <strong>CTA</strong>, <strong>página de destino</strong>, <strong>padrão de URL</strong>, <strong>scroll</strong>, <strong>tempo na página</strong> ou <strong>combine múltiplos critérios</strong>. Cada conversão tem um valor monetário.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      <FeatureBanner
+        icon={Target}
+        title="Metas Personalizadas"
+        description={<>Defina conversões por <strong>CTA</strong>, <strong>página de destino</strong>, <strong>padrão de URL</strong>, <strong>scroll</strong>, <strong>tempo na página</strong> ou <strong>combine múltiplos critérios</strong>. Cada conversão tem um valor monetário.</>}
+      />
 
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">

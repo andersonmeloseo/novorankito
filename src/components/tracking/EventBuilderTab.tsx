@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -324,21 +325,11 @@ export function EventBuilderTab() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <AnimatedContainer>
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <MousePointerClick className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold font-display">Eventos Personalizados</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Ative eventos pré-configurados ou crie os seus. O <strong>Pixel Rankito já inclui todos os listeners</strong> — basta ativar aqui, sem código adicional.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      <FeatureBanner
+        icon={MousePointerClick}
+        title="Eventos Personalizados"
+        description={<>Ative eventos pré-configurados ou crie os seus. O <strong>Pixel Rankito já inclui todos os listeners</strong> — basta ativar aqui, sem código adicional.</>}
+      />
 
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp, Tag, Settings, AlertTriangle, CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
 import { TagHealthMonitor } from "@/components/tracking/TagHealthMonitor";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -656,29 +657,11 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <AnimatedContainer>
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Code className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold font-display text-foreground">Pixel Rankito — Instalar Script</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Cole o script abaixo em qualquer site para capturar eventos automaticamente. 
-                Funciona em <strong>WordPress</strong>, <strong>Shopify</strong>, <strong>HTML puro</strong> e qualquer plataforma.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                <Badge variant="secondary" className="text-[10px] gap-1"><Globe className="h-3 w-3" /> HTML / Sites</Badge>
-                <Badge variant="secondary" className="text-[10px] gap-1"><FileCode className="h-3 w-3" /> WordPress</Badge>
-                <Badge variant="secondary" className="text-[10px] gap-1"><ShoppingCart className="h-3 w-3" /> WooCommerce</Badge>
-                <Badge variant="secondary" className="text-[10px] gap-1"><ShoppingCart className="h-3 w-3" /> Shopify</Badge>
-                <Badge variant="secondary" className="text-[10px] gap-1"><Tag className="h-3 w-3" /> Tag Manager</Badge>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      <FeatureBanner
+        icon={Code}
+        title="Pixel Rankito — Instalar Script"
+        description={<>Cole o script abaixo em qualquer site para capturar eventos automaticamente. Funciona em <strong>WordPress</strong>, <strong>Shopify</strong>, <strong>HTML puro</strong> e qualquer plataforma.</>}
+      />
 
       {/* Project ID auto-detected */}
       <AnimatedContainer delay={0.02}>

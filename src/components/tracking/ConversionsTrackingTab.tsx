@@ -10,6 +10,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
 import { MessageCircle, Phone, Mail, FileText, TrendingUp, Users, DollarSign } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, LineGlowGradient, BarGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
@@ -120,6 +121,7 @@ export function ConversionsTrackingTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner icon={TrendingUp} title="Conversões por Canal" description={<>Analise conversões de <strong>WhatsApp</strong>, <strong>telefone</strong>, <strong>email</strong> e <strong>formulários</strong> com funis, cohorts e leads capturados automaticamente.</>} />
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <SparkKpi label="Total Conversões" value={totalConv} change={15.8} sparkData={generateSparkline(12, 40, 15)} color="hsl(var(--primary))" icon={TrendingUp} />

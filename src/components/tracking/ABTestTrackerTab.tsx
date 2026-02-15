@@ -12,6 +12,7 @@ import {
   Trash2, Eye, Zap, Copy, Check
 } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from "recharts";
 
 interface ABVariant {
@@ -236,21 +237,11 @@ export function ABTestTrackerTab() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <AnimatedContainer>
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <FlaskConical className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold font-display">A/B Test Tracker</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Crie testes A/B diretamente no dashboard, distribua tráfego entre variantes e acompanhe resultados com <strong>significância estatística em tempo real</strong>.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </AnimatedContainer>
+      <FeatureBanner
+        icon={FlaskConical}
+        title="A/B Test Tracker"
+        description={<>Crie testes A/B diretamente no dashboard, distribua tráfego entre variantes e acompanhe resultados com <strong>significância estatística em tempo real</strong>.</>}
+      />
 
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
