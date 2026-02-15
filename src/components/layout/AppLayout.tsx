@@ -1,5 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
+import { QuickActionFab } from "./QuickActionFab";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,6 +25,7 @@ export function AppLayout() {
             </motion.div>
           </AnimatePresence>
         </main>
+        <QuickActionFab />
       </div>
     </SidebarProvider>
   );
