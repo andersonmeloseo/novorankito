@@ -33,6 +33,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
+import { AdsPlatformCredentials } from "./AdsPlatformCredentials";
 
 // ── Constants ──
 
@@ -643,6 +644,9 @@ export function OfflineConversionsTab() {
           </Card>
         </AnimatedContainer>
       </div>
+
+      {/* Credentials Config */}
+      <AdsPlatformCredentials />
 
       {/* Platform Sync Cards */}
       {byAdPlatform.length > 0 && (
