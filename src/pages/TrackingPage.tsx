@@ -11,7 +11,8 @@ import { UserJourneyTab } from "@/components/tracking/UserJourneyTab";
 import { OfflineConversionsTab } from "@/components/tracking/OfflineConversionsTab";
 import { EventBuilderTab } from "@/components/tracking/EventBuilderTab";
 import { GoalsTab } from "@/components/tracking/GoalsTab";
-import { Activity, ShoppingCart, Target, Users, Code, Footprints, PhoneCall, MousePointerClick, Flag } from "lucide-react";
+import { HeatmapTab } from "@/components/tracking/HeatmapTab";
+import { Activity, ShoppingCart, Target, Users, Code, Footprints, PhoneCall, MousePointerClick, Flag, Flame } from "lucide-react";
 
 export default function TrackingPage() {
   return (
@@ -53,6 +54,9 @@ export default function TrackingPage() {
             <TabsTrigger value="goals" className="text-xs gap-1.5">
               <Flag className="h-3.5 w-3.5" /> Metas Personalizadas
             </TabsTrigger>
+            <TabsTrigger value="heatmap" className="text-xs gap-1.5">
+              <Flame className="h-3.5 w-3.5" /> Heatmaps
+            </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
               <Code className="h-3.5 w-3.5" /> Pixel Rankito
             </TabsTrigger>
@@ -88,6 +92,10 @@ export default function TrackingPage() {
 
           <TabsContent value="goals" className="mt-4">
             <GoalsTab />
+          </TabsContent>
+
+          <TabsContent value="heatmap" className="mt-4">
+            <HeatmapTab />
           </TabsContent>
 
           <TabsContent value="install" className="mt-4">

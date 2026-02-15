@@ -357,6 +357,9 @@ export function InstallScriptTab() {
   d.addEventListener('click',function(e){
     var t=e.target.closest('a,button,[data-rk-track]');if(!t)return;
     var ev=Object.assign({event_type:'click',cta_text:(t.textContent||'').trim().substring(0,100),cta_selector:t.tagName.toLowerCase()+(t.id?'#'+t.id:'')+(t.className?'.'+String(t.className).split(' ')[0]:'')},base);
+    // Capture click coordinates for visual heatmap
+    var rect=t.getBoundingClientRect();
+    ev.metadata=Object.assign(ev.metadata||{},{click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),el_x:Math.round(rect.left+w.scrollX),el_y:Math.round(rect.top+w.scrollY),el_w:Math.round(rect.width),el_h:Math.round(rect.height),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight});
     var href=t.getAttribute('href')||'';
     if(href.indexOf('wa.me')>-1||href.indexOf('whatsapp')>-1)ev.event_type='whatsapp_click';
     else if(href.indexOf('tel:')===0)ev.event_type='phone_click';
@@ -365,19 +368,30 @@ export function InstallScriptTab() {
     send(ev);
   },true);
 
+  // Capture ALL clicks (not just interactive elements) for heatmap density
+  d.addEventListener('click',function(e){
+    if(e.target.closest('a,button,[data-rk-track]'))return; // already captured above
+    send(Object.assign({event_type:'heatmap_click',metadata:{click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight,tag:e.target.tagName.toLowerCase(),selector:e.target.tagName.toLowerCase()+(e.target.id?'#'+e.target.id:'')}},base));
+  },true);
+
   d.addEventListener('submit',function(e){
     var f=e.target;
     send(Object.assign({event_type:'form_submit',form_id:f.id||f.getAttribute('name')||f.action||null},base));
   },true);
 
-  var maxScroll=0;
+  var maxScroll=0;var scrollSamples=[];
   w.addEventListener('scroll',function(){
     var h=d.documentElement;var pct=Math.round((w.scrollY/(h.scrollHeight-h.clientHeight))*100);
     if(pct>maxScroll)maxScroll=pct;
+    // Sample scroll depth for heatmap (throttled)
+    var now=Date.now();
+    if(!scrollSamples.length||now-scrollSamples[scrollSamples.length-1].t>3000){
+      scrollSamples.push({t:now,pct:pct,y:Math.round(w.scrollY),doc_h:h.scrollHeight,vp_h:w.innerHeight});
+    }
   },{passive:true});
 
   w.addEventListener('beforeunload',function(){
-    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000)},base));
+    send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight}},base));
     flush();
   });
 

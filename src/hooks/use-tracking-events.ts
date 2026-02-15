@@ -89,7 +89,7 @@ export function useTrackingEvents(projectId: string | null | undefined) {
 export const PLUGIN_EVENT_TYPES = [
   "page_view", "page_exit", "whatsapp_click", "phone_click", "email_click",
   "button_click", "form_submit", "product_view", "add_to_cart", "remove_from_cart",
-  "begin_checkout", "purchase", "search",
+  "begin_checkout", "purchase", "search", "heatmap_click",
 ] as const;
 
 export type PluginEventType = typeof PLUGIN_EVENT_TYPES[number];
@@ -109,6 +109,7 @@ export const EVENT_LABELS: Record<string, string> = {
   purchase: "Compra",
   search: "Busca",
   click: "Clique",
+  heatmap_click: "Clique (Heatmap)",
 };
 
 export const EVENT_CATEGORIES = {
