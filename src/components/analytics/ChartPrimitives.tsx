@@ -129,8 +129,8 @@ export function FunnelStep({ label, value, maxValue, color, index }: {
             className="h-full rounded-lg transition-all duration-700 ease-out flex items-center justify-end pr-2"
             style={{
               width: `${Math.max(pct, 4)}%`,
-              background: `linear-gradient(90deg, ${color}88, ${color})`,
-              boxShadow: `0 0 12px ${color}33`,
+              background: `linear-gradient(90deg, color-mix(in srgb, ${color} 55%, transparent), ${color})`,
+              boxShadow: `0 0 12px color-mix(in srgb, ${color} 20%, transparent)`,
             }}
           >
             <span className="text-[10px] font-bold text-white drop-shadow-sm">
