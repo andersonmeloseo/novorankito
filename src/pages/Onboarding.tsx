@@ -32,13 +32,13 @@ import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
 const STEPS = [
-  { label: "Projeto", icon: Globe },
-  { label: "Sitemap", icon: FileText },
-  { label: "GSC", icon: Search },
-  { label: "GA4", icon: BarChart3 },
-  { label: "Tracking", icon: MonitorSmartphone },
-  { label: "Ads", icon: Megaphone },
-  { label: "Agente IA", icon: Bot },
+  { label: "Projeto", icon: Globe, required: true },
+  { label: "Sitemap", icon: FileText, required: false },
+  { label: "GSC", icon: Search, required: false },
+  { label: "GA4", icon: BarChart3, required: false },
+  { label: "Tracking", icon: MonitorSmartphone, required: false },
+  { label: "Ads", icon: Megaphone, required: false },
+  { label: "Agente IA", icon: Bot, required: false },
 ];
 
 const SITE_TYPES = [
@@ -183,15 +183,36 @@ export default function Onboarding() {
               return (
                 <div key={s.label} className="flex items-center flex-1 last:flex-initial">
                   <button onClick={() => i <= step && setStep(i)}
-                    className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                    className={cn("relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
                       active && "bg-primary/10 text-primary", done && "text-primary cursor-pointer",
                       !active && !done && "text-muted-foreground")}>
                     {done ? (
-                      <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                      <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="h-3 w-3 text-primary-foreground" />
                       </div>
-                    ) : (<Icon className="h-3.5 w-3.5" />)}
+                    ) : active ? (
+                      <div className="h-5 w-5 rounded-full border-2 border-primary flex items-center justify-center">
+                        <Icon className="h-2.5 w-2.5" />
+                      </div>
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border border-border flex items-center justify-center">
+                        <Icon className="h-2.5 w-2.5" />
+                      </div>
+                    )}
                     <span className="hidden sm:inline">{s.label}</span>
+                    {/* Validation badge */}
+                    <span className={cn(
+                      "hidden sm:inline-flex ml-0.5 text-[8px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full",
+                      s.required
+                        ? done
+                          ? "bg-primary/10 text-primary"
+                          : "bg-destructive/10 text-destructive"
+                        : done
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                    )}>
+                      {done ? "✓" : s.required ? "obrig." : "opcional"}
+                    </span>
                   </button>
                   {i < STEPS.length - 1 && (
                     <div className={cn("flex-1 h-px mx-1", done ? "bg-primary" : "bg-border")} />
