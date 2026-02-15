@@ -9,7 +9,10 @@ import { SessionsTab } from "@/components/tracking/SessionsTab";
 import { InstallScriptTab } from "@/components/tracking/InstallScriptTab";
 import { UserJourneyTab } from "@/components/tracking/UserJourneyTab";
 import { OfflineConversionsTab } from "@/components/tracking/OfflineConversionsTab";
-import { Activity, ShoppingCart, Zap, Target, Users, Code, Footprints, PhoneCall } from "lucide-react";
+import { ConsentModeLGPD } from "@/components/tracking/ConsentModeLGPD";
+import { EventBuilderTab } from "@/components/tracking/EventBuilderTab";
+import { ABTestTrackerTab } from "@/components/tracking/ABTestTrackerTab";
+import { Activity, ShoppingCart, Zap, Target, Users, Code, Footprints, PhoneCall, Shield, MousePointerClick, FlaskConical } from "lucide-react";
 
 export default function TrackingPage() {
   return (
@@ -45,6 +48,15 @@ export default function TrackingPage() {
             <TabsTrigger value="offline" className="text-xs gap-1.5">
               <PhoneCall className="h-3.5 w-3.5" /> Offline
             </TabsTrigger>
+            <TabsTrigger value="event-builder" className="text-xs gap-1.5">
+              <MousePointerClick className="h-3.5 w-3.5" /> Event Builder
+            </TabsTrigger>
+            <TabsTrigger value="ab-test" className="text-xs gap-1.5">
+              <FlaskConical className="h-3.5 w-3.5" /> A/B Tests
+            </TabsTrigger>
+            <TabsTrigger value="consent" className="text-xs gap-1.5">
+              <Shield className="h-3.5 w-3.5" /> LGPD
+            </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
               <Code className="h-3.5 w-3.5" /> Pixel Rankito
             </TabsTrigger>
@@ -72,6 +84,18 @@ export default function TrackingPage() {
 
           <TabsContent value="offline" className="mt-4">
             <OfflineConversionsTab />
+          </TabsContent>
+
+          <TabsContent value="event-builder" className="mt-4">
+            <EventBuilderTab />
+          </TabsContent>
+
+          <TabsContent value="ab-test" className="mt-4">
+            <ABTestTrackerTab />
+          </TabsContent>
+
+          <TabsContent value="consent" className="mt-4">
+            <ConsentModeLGPD />
           </TabsContent>
 
           <TabsContent value="install" className="mt-4">

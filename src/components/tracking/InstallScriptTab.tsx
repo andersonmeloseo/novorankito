@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp, Tag, Settings, AlertTriangle, CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
+import { TagHealthMonitor } from "@/components/tracking/TagHealthMonitor";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -451,7 +452,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <Code className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold font-display text-foreground">Instalar Script de Tracking</h3>
+              <h3 className="text-base font-bold font-display text-foreground">Pixel Rankito — Instalar Script</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Cole o script abaixo em qualquer site para capturar eventos automaticamente. 
                 Funciona em <strong>WordPress</strong>, <strong>Shopify</strong>, <strong>HTML puro</strong> e qualquer plataforma.
@@ -694,6 +695,11 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
             ))}
           </div>
         </Card>
+      </AnimatedContainer>
+
+      {/* Tag Health Monitor */}
+      <AnimatedContainer delay={0.14}>
+        <TagHealthMonitor />
       </AnimatedContainer>
     </div>
   );
