@@ -3,8 +3,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Globe, Calendar } from "lucide-react";
+import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Calendar } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -107,39 +106,10 @@ export default function AiAgentPage() {
   const [tab, setTab] = useState("chat");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<any>(null);
-  const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string } | null>(null);
+  const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string; speciality?: string } | null>(null);
 
-  // Project selection with localStorage persistence
-  const [projectId, setProjectId] = useState<string | null>(() => {
-    return typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
-  });
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects-list-agent"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, name, domain")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Auto-select first project if none selected
-  useEffect(() => {
-    if (!projectId && projects.length > 0) {
-      const firstId = projects[0].id;
-      setProjectId(firstId);
-      localStorage.setItem("rankito_current_project", firstId);
-    }
-  }, [projects, projectId]);
-
-  const handleProjectChange = (id: string) => {
-    setProjectId(id);
-    localStorage.setItem("rankito_current_project", id);
-  };
+  // Use the active project from sidebar (localStorage)
+  const projectId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
 
   const { data: agents = [] } = useQuery({
     queryKey: ["ai-agents", projectId],
@@ -157,19 +127,15 @@ export default function AiAgentPage() {
     enabled: !!projectId,
   });
 
-  // Seed system agents - with retry and auth check
+  // Seed system agents
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
     if (!projectId || !user || seeded) return;
     if (agents === undefined || agents.length > 0) return;
     
     const doSeed = async () => {
-      // Verify we have an active session before inserting
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.warn("No active session, skipping agent seed");
-        return;
-      }
+      if (!session) return;
 
       const seedAgents = SYSTEM_AGENTS.map(a => ({
         ...a,
@@ -190,7 +156,6 @@ export default function AiAgentPage() {
       queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
     };
     
-    // Small delay to ensure auth is fully ready
     const timer = setTimeout(doSeed, 500);
     return () => clearTimeout(timer);
   }, [projectId, user, agents, seeded]);
@@ -251,7 +216,7 @@ export default function AiAgentPage() {
   };
 
   const handleOpenChat = (agent: any) => {
-    setChatAgent({ name: agent.name, instructions: agent.instructions || "" });
+    setChatAgent({ name: agent.name, instructions: agent.instructions || "", speciality: agent.speciality });
     setTab("chat");
   };
 
@@ -260,31 +225,12 @@ export default function AiAgentPage() {
       <TopBar title="Rankito IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureBanner icon={Bot} title="Rankito IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
-        {/* Project Selector */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground font-medium">Projeto:</span>
-          </div>
-          <Select value={projectId || ""} onValueChange={handleProjectChange}>
-            <SelectTrigger className="w-[280px] h-8 text-xs">
-              <SelectValue placeholder="Selecione um projeto..." />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id} className="text-xs">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="text-muted-foreground ml-2">({p.domain})</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!projectId && projects.length === 0 && (
-            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
-              Nenhum projeto encontrado
-            </Badge>
-          )}
-        </div>
+
+        {!projectId && (
+          <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+            Nenhum projeto selecionado. Selecione um projeto na barra lateral.
+          </Badge>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -312,6 +258,7 @@ export default function AiAgentPage() {
             <AgentChatTab
               agentName={chatAgent?.name}
               agentInstructions={chatAgent?.instructions}
+              agentSpeciality={chatAgent?.speciality}
               projectId={projectId || undefined}
             />
           </TabsContent>
