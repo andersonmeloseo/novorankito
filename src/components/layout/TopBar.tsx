@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
+import { Separator } from "@/components/ui/separator";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -34,50 +35,50 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   const greeting = getGreeting();
 
   return (
-    <header className="border-b border-border bg-background/70 backdrop-blur-xl sticky top-0 z-20 px-4 sm:px-6">
-      <div className="flex items-center justify-between h-16 gap-4">
+    <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-20 px-4 sm:px-6">
+      <div className="flex items-center justify-between h-14 gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <SidebarTrigger className="h-8 w-8 shrink-0" />
+          <Separator orientation="vertical" className="h-5 hidden sm:block" />
           <div className="min-w-0">
-            <h1 className="text-base font-bold text-foreground font-display tracking-tight truncate leading-tight">{title}</h1>
-            {subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>}
+            <h1 className="text-sm font-bold text-foreground font-display tracking-tight truncate leading-tight">{title}</h1>
+            {subtitle && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {displayName && (
-            <span className="hidden lg:block text-xs text-muted-foreground">
-              {greeting}, <span className="font-medium text-foreground">{displayName}</span> 👋
+            <span className="hidden lg:block text-[11px] text-muted-foreground mr-1">
+              {greeting}, <span className="font-semibold text-foreground">{displayName}</span>
             </span>
           )}
 
-          <div className="hidden md:flex items-center gap-1.5">
-            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 bg-success/5 border-success/20 text-success">
-              <Wifi className="h-3 w-3" /> GSC
+          <div className="hidden md:flex items-center gap-1">
+            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 bg-success/5 border-success/20 text-success rounded-full">
+              <Wifi className="h-2.5 w-2.5" /> GSC
             </Badge>
-            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 bg-success/5 border-success/20 text-success">
-              <Wifi className="h-3 w-3" /> GA4
+            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 bg-success/5 border-success/20 text-success rounded-full">
+              <Wifi className="h-2.5 w-2.5" /> GA4
             </Badge>
-            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6">
-              <WifiOff className="h-3 w-3 text-muted-foreground" /> Ads
+            <Badge variant="outline" className="text-[10px] gap-1 font-normal h-6 rounded-full">
+              <WifiOff className="h-2.5 w-2.5 text-muted-foreground" /> Ads
             </Badge>
           </div>
 
           <div className="hidden lg:flex items-center relative">
             <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Buscar…" className="h-8 w-48 pl-8 text-xs bg-muted/50 border-border/50 focus:border-primary/50" />
+            <Input placeholder="Buscar…" className="h-8 w-44 pl-8 text-xs bg-muted/40 border-transparent focus:border-primary/30 rounded-full" />
           </div>
 
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 hidden sm:flex">
+          <Button variant="ghost" size="sm" className="h-8 text-[11px] gap-1.5 hidden sm:flex text-muted-foreground hover:text-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            Últimos 30 dias
+            30 dias
           </Button>
 
           <NotificationBell />
 
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Exportar</span>
           </Button>
         </div>
       </div>
