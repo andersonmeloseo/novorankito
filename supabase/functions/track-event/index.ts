@@ -7,6 +7,32 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Fetch geolocation from IP using ipgeolocation.io
+async function getGeoFromIP(ip: string): Promise<{ country: string | null; city: string | null; state: string | null } | null> {
+  const apiKey = Deno.env.get("IPGEOLOCATION_API_KEY");
+  if (!apiKey || !ip || ip === "127.0.0.1" || ip === "::1") return null;
+
+  try {
+    const res = await fetch(
+      `https://api.ipgeolocation.io/ipgeo?apiKey=${apiKey}&ip=${ip}&fields=country_name,city,state_prov`,
+      { signal: AbortSignal.timeout(3000) }
+    );
+    if (!res.ok) {
+      console.warn("ipgeolocation API error:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    return {
+      country: data.country_name || null,
+      city: data.city || null,
+      state: data.state_prov || null,
+    };
+  } catch (err) {
+    console.warn("ipgeolocation fetch failed:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,7 +56,6 @@ serve(async (req) => {
       });
     }
 
-    // Limit batch size
     if (events.length > 50) {
       return new Response(JSON.stringify({ error: "max 50 events per batch" }), {
         status: 400,
@@ -54,6 +79,22 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Get client IP for geolocation
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-real-ip") ||
+      null;
+
+    // Fetch geolocation (only if no location already provided in first event)
+    const firstEvent = events[0];
+    const needsGeo = !firstEvent?.country && !firstEvent?.city;
+    let geo: { country: string | null; city: string | null; state: string | null } | null = null;
+
+    if (needsGeo && clientIP) {
+      geo = await getGeoFromIP(clientIP);
     }
 
     const ALLOWED_EVENT_TYPES = [
@@ -87,9 +128,10 @@ serve(async (req) => {
       screen_width: sanitizeNum(e.screen_width),
       screen_height: sanitizeNum(e.screen_height),
       language: sanitize(e.language, 10),
-      country: sanitize(e.country, 100),
-      city: sanitize(e.city, 100),
-      state: sanitize(e.state, 100),
+      // Use client-provided location OR fallback to IP geolocation
+      country: sanitize(e.country, 100) || geo?.country || null,
+      city: sanitize(e.city, 100) || geo?.city || null,
+      state: sanitize(e.state, 100) || geo?.state || null,
       platform: sanitize(e.platform, 50),
       cta_text: sanitize(e.cta_text, 200),
       cta_selector: sanitize(e.cta_selector, 300),
@@ -122,7 +164,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, count: rows.length }), {
+    return new Response(JSON.stringify({ ok: true, count: rows.length, geo: geo ? true : false }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
