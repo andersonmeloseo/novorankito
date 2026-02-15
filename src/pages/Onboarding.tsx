@@ -646,21 +646,44 @@ function StepGSC({ projectId }: { projectId: string | null }) {
   }, [projectId]);
 
   const saveConnection = async () => {
-    if (!projectId || !user || !parsedCreds || !selectedSite) return;
+    if (!projectId || !user || !parsedCreds || !selectedSite) {
+      console.error("saveConnection: missing required data", { projectId, user: !!user, parsedCreds: !!parsedCreds, selectedSite });
+      return;
+    }
     setSavingConnection(true);
     try {
-      const { error } = await supabase.from("gsc_connections").upsert({
-        project_id: projectId,
-        owner_id: user.id,
-        connection_name: connectionName,
-        client_email: parsedCreds.client_email,
-        private_key: parsedCreds.private_key,
-        site_url: selectedSite,
-      }, { onConflict: "project_id" });
-      if (error) throw error;
+      // Check if a connection already exists for this project
+      const { data: existing } = await supabase
+        .from("gsc_connections")
+        .select("id")
+        .eq("project_id", projectId)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing connection
+        const { error } = await supabase.from("gsc_connections").update({
+          connection_name: connectionName,
+          client_email: parsedCreds.client_email,
+          private_key: parsedCreds.private_key,
+          site_url: selectedSite,
+        }).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        // Insert new connection
+        const { error } = await supabase.from("gsc_connections").insert({
+          project_id: projectId,
+          owner_id: user.id,
+          connection_name: connectionName,
+          client_email: parsedCreds.client_email,
+          private_key: parsedCreds.private_key,
+          site_url: selectedSite,
+        });
+        if (error) throw error;
+      }
       setGscStep("saved");
       toast({ title: "Conexão GSC salva!", description: "Os dados serão sincronizados na página SEO." });
     } catch (err: any) {
+      console.error("GSC save error:", err);
       toast({ title: "Erro ao salvar conexão", description: err.message, variant: "destructive" });
     } finally {
       setSavingConnection(false);
