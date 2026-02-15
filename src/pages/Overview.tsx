@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -126,10 +127,23 @@ const CHART_COLORS = [
 
 export default function Overview() {
   const { user } = useAuth();
+  const [currentProjectId, setCurrentProjectId] = useState(localStorage.getItem("rankito_current_project"));
+
   const { data: projects = [] } = useQuery({
-    queryKey: ["my-projects"],
+    queryKey: ["my-projects", currentProjectId],
     queryFn: async () => {
+      if (currentProjectId) {
+        const { data } = await supabase.from("projects").select("id, name, domain").eq("id", currentProjectId).maybeSingle();
+        if (data) return [data];
+      }
+      
       const { data } = await supabase.from("projects").select("id, name, domain").eq("owner_id", user!.id).order("created_at", { ascending: false }).limit(1);
+      
+      if (data && data[0] && !currentProjectId) {
+         localStorage.setItem("rankito_current_project", data[0].id);
+         setCurrentProjectId(data[0].id);
+      }
+      
       return data || [];
     },
     enabled: !!user,
