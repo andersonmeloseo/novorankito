@@ -526,11 +526,12 @@ export default function IndexingPage() {
                   onClick={() => {
                     const quotaUrls = inventory.filter(u => u.last_request_status === "quota_exceeded").map(u => u.url);
                     if (quotaUrls.length === 0) return;
+                    toast.info(`Reenviando ${quotaUrls.slice(0, 50).length} URL(s) com quota excedida...`);
                     submitMutation.mutate({ urls: quotaUrls.slice(0, 50), requestType: "URL_UPDATED" });
                   }}
                   disabled={submitMutation.isPending}
                 >
-                  <RefreshCw className="h-3 w-3" />
+                  {submitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   Reenviar Quota ({inventory.filter(u => u.last_request_status === "quota_exceeded").length})
                 </Button>
               )}

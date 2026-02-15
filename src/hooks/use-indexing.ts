@@ -105,9 +105,38 @@ export function useSubmitUrls(projectId: string | undefined) {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["indexing-inventory", projectId] });
       qc.invalidateQueries({ queryKey: ["indexing-requests", projectId] });
-      toast.success(`${data.submitted} URL(s) enviada(s) com sucesso`);
-      if (data.failed > 0) toast.error(`${data.failed} URL(s) falharam`);
-      if (data.quota_exceeded > 0) toast.warning(`${data.quota_exceeded} URL(s) com quota excedida`);
+      // Show per-URL results when available
+      if (data.results && Array.isArray(data.results)) {
+        const succeeded = data.results.filter((r: any) => r.status === "success");
+        const failed = data.results.filter((r: any) => r.status === "failed");
+        const quota = data.results.filter((r: any) => r.status === "quota_exceeded");
+        if (succeeded.length > 0) {
+          toast.success(`${succeeded.length} URL(s) reenviada(s) para a fila de indexação`, {
+            description: succeeded.length <= 3
+              ? succeeded.map((r: any) => r.url).join("\n")
+              : `${succeeded.slice(0, 2).map((r: any) => r.url).join(", ")} e mais ${succeeded.length - 2}`,
+          });
+        }
+        if (failed.length > 0) {
+          toast.error(`${failed.length} URL(s) falharam no reenvio`, {
+            description: failed.length <= 3
+              ? failed.map((r: any) => `${r.url}: ${r.fail_reason || "erro"}`).join("\n")
+              : `${failed.length} URLs não foram aceitas pela API`,
+          });
+        }
+        if (quota.length > 0) {
+          toast.warning(`${quota.length} URL(s) ainda com quota excedida`, {
+            description: "Tente novamente mais tarde quando a quota resetar",
+          });
+        }
+        if (succeeded.length === 0 && failed.length === 0 && quota.length === 0) {
+          toast.info("Nenhuma URL processada");
+        }
+      } else {
+        if (data.submitted > 0) toast.success(`${data.submitted} URL(s) enviada(s) com sucesso`);
+        if (data.failed > 0) toast.error(`${data.failed} URL(s) falharam`);
+        if (data.quota_exceeded > 0) toast.warning(`${data.quota_exceeded} URL(s) com quota excedida`);
+      }
     },
     onError: (err: Error) => toast.error(err.message),
   });
