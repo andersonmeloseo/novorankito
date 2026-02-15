@@ -12,6 +12,7 @@ import { OverviewTrendChart } from "@/components/overview/OverviewTrendChart";
 import { OverviewDevicesCountries } from "@/components/overview/OverviewDevicesCountries";
 import { OverviewTopTables } from "@/components/overview/OverviewTopTables";
 import { SyncJobsDashboard } from "@/components/dashboard/SyncJobsDashboard";
+import { SystemHealthCard } from "@/components/dashboard/SystemHealthCard";
 import type { OverviewRpcData, IndexingStats } from "@/components/overview/types";
 
 export default function Overview() {
@@ -204,6 +205,7 @@ export default function Overview() {
         />
 
         {projectId && <SyncJobsDashboard projectId={projectId} />}
+        {projectId && <SystemHealthCard projectId={projectId} />}
       </div>
     </>
   );

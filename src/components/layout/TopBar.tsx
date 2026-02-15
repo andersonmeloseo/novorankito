@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -71,6 +72,8 @@ export function TopBar({ title, subtitle }: TopBarProps) {
             <Calendar className="h-3.5 w-3.5" />
             Últimos 30 dias
           </Button>
+
+          <NotificationBell />
 
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
             <Download className="h-3.5 w-3.5" />
