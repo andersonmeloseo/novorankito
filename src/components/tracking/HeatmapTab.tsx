@@ -220,8 +220,8 @@ const TRAIL_COLORS = [
 ];
 
 /* ── Page Card for listing view ── */
-function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, onClick }: {
-  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; onClick: () => void;
+function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick }: {
+  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; onClick: () => void;
 }) {
   let pathname = url;
   try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
@@ -245,8 +245,8 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, f
           <ArrowLeft className="h-4 w-4 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
 
-        {/* Date info */}
-        <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+        {/* Date & city info */}
+        <div className="flex items-center gap-3 text-[9px] text-muted-foreground flex-wrap">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             <span>Primeiro: <strong className="text-foreground">{fmtDate(firstEvent)}</strong></span>
@@ -255,6 +255,15 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, f
           <div className="flex items-center gap-1">
             <span>Último: <strong className="text-foreground">{fmtDate(lastEvent)}</strong></span>
           </div>
+          {topCity && (
+            <>
+              <span className="text-muted-foreground/40">•</span>
+              <div className="flex items-center gap-1">
+                <Globe className="h-3 w-3" />
+                <span>Cidade: <strong className="text-foreground">{topCity}</strong></span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -519,11 +528,11 @@ export function HeatmapTab() {
 
   // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string }>();
+    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number> }>();
     allEvents.forEach((e) => {
       const url = e.page_url;
       if (!url) return;
-      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at };
+      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>() };
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
         entry.exits++;
@@ -533,19 +542,26 @@ export function HeatmapTab() {
       }
       if (e.event_type === "page_view") entry.views++;
       if (e.visitor_id) entry.visitors.add(e.visitor_id);
+      if (e.city) entry.cities.set(e.city, (entry.cities.get(e.city) || 0) + 1);
       if (e.created_at < entry.firstEvent) entry.firstEvent = e.created_at;
       if (e.created_at > entry.lastEvent) entry.lastEvent = e.created_at;
       map.set(url, entry);
     });
     return Array.from(map.entries())
-      .map(([url, s]) => ({
-        url, clicks: s.clicks, exits: s.exits, views: s.views,
-        visitors: s.visitors.size,
-        avgScroll: s.scrollCount > 0 ? Math.round(s.scrollSum / s.scrollCount) : 0,
-        moveCount: s.moveSessions,
-        firstEvent: s.firstEvent,
-        lastEvent: s.lastEvent,
-      }))
+      .map(([url, s]) => {
+        let topCity = "";
+        let maxCityCount = 0;
+        s.cities.forEach((count, city) => { if (count > maxCityCount) { maxCityCount = count; topCity = city; } });
+        return {
+          url, clicks: s.clicks, exits: s.exits, views: s.views,
+          visitors: s.visitors.size,
+          avgScroll: s.scrollCount > 0 ? Math.round(s.scrollSum / s.scrollCount) : 0,
+          moveCount: s.moveSessions,
+          firstEvent: s.firstEvent,
+          lastEvent: s.lastEvent,
+          topCity,
+        };
+      })
       .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
   }, [allEvents]);
 
@@ -819,6 +835,7 @@ export function HeatmapTab() {
                   moveCount={opt.moveCount}
                   firstEvent={opt.firstEvent}
                   lastEvent={opt.lastEvent}
+                  topCity={opt.topCity}
                   onClick={() => setSelectedUrl(opt.url)}
                 />
               ))}
@@ -840,12 +857,6 @@ export function HeatmapTab() {
           );
         })()}
 
-        {/* Session Replay Section */}
-        {projectId && (
-          <AnimatedContainer delay={0.08}>
-            <SessionReplayViewer projectId={projectId} />
-          </AnimatedContainer>
-        )}
       </div>
     );
   }
