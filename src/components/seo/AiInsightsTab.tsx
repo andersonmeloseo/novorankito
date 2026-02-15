@@ -41,19 +41,20 @@ export function AiInsightsTab({ projectId, kpis, topQueries, topPages, dateRange
 
   const buildContextPrompt = (type: typeof ANALYSIS_TYPES[number]) => {
     const pctChange = (curr: number, prev: number) => prev === 0 ? "N/A" : `${(((curr - prev) / prev) * 100).toFixed(1)}%`;
+    const safe = (v: number | undefined | null) => Number(v || 0);
 
     const context = `
 DADOS DE SEO DO PERÍODO (${dateRange} dias):
-- Cliques: ${kpis.totalClicks.toLocaleString("pt-BR")} (variação: ${pctChange(kpis.totalClicks, kpis.prevClicks)})
-- Impressões: ${kpis.totalImpressions.toLocaleString("pt-BR")} (variação: ${pctChange(kpis.totalImpressions, kpis.prevImpressions)})
-- CTR Médio: ${kpis.avgCtr.toFixed(2)}% (anterior: ${kpis.prevAvgCtr.toFixed(2)}%)
-- Posição Média: ${kpis.avgPosition.toFixed(1)} (anterior: ${kpis.prevAvgPosition.toFixed(1)})
+- Cliques: ${safe(kpis.totalClicks).toLocaleString("pt-BR")} (variação: ${pctChange(safe(kpis.totalClicks), safe(kpis.prevClicks))})
+- Impressões: ${safe(kpis.totalImpressions).toLocaleString("pt-BR")} (variação: ${pctChange(safe(kpis.totalImpressions), safe(kpis.prevImpressions))})
+- CTR Médio: ${safe(kpis.avgCtr).toFixed(2)}% (anterior: ${safe(kpis.prevAvgCtr).toFixed(2)}%)
+- Posição Média: ${safe(kpis.avgPosition).toFixed(1)} (anterior: ${safe(kpis.prevAvgPosition).toFixed(1)})
 
 TOP 15 CONSULTAS:
-${topQueries.slice(0, 15).map((q, i) => `${i + 1}. "${q.name}" → ${q.clicks} cliques, ${q.impressions} imp, CTR ${q.ctr.toFixed(2)}%, pos ${q.position.toFixed(1)}`).join("\n")}
+${topQueries.slice(0, 15).map((q, i) => `${i + 1}. "${q.name}" → ${safe(q.clicks)} cliques, ${safe(q.impressions)} imp, CTR ${safe(q.ctr).toFixed(2)}%, pos ${safe(q.position).toFixed(1)}`).join("\n") || "Sem dados de consultas"}
 
 TOP 10 PÁGINAS:
-${topPages.slice(0, 10).map((p, i) => `${i + 1}. ${p.name} → ${p.clicks} cliques, ${p.impressions} imp, CTR ${p.ctr.toFixed(2)}%, pos ${p.position.toFixed(1)}`).join("\n")}
+${topPages.slice(0, 10).map((p, i) => `${i + 1}. ${p.name} → ${safe(p.clicks)} cliques, ${safe(p.impressions)} imp, CTR ${safe(p.ctr).toFixed(2)}%, pos ${safe(p.position).toFixed(1)}`).join("\n") || "Sem dados de páginas"}
 `;
 
     return `${type.prompt}\n\nUse estes dados reais para fundamentar sua análise:\n${context}\n\nSeja específico, cite dados reais, priorize por impacto e dê ações concretas. Formate com markdown.`;
@@ -172,7 +173,7 @@ ${topPages.slice(0, 10).map((p, i) => `${i + 1}. ${p.name} → ${p.clicks} cliqu
                 Clique em "Gerar Análise" para receber insights personalizados
               </p>
               <p className="text-[10px] text-muted-foreground">
-                A IA analisará {kpis.totalClicks.toLocaleString("pt-BR")} cliques e {topQueries.length} consultas do período selecionado
+                A IA analisará {(kpis.totalClicks || 0).toLocaleString("pt-BR")} cliques e {topQueries.length} consultas do período selecionado
               </p>
             </motion.div>
           )}
