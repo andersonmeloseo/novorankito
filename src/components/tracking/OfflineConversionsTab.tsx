@@ -503,42 +503,57 @@ export function OfflineConversionsTab() {
     <div className="space-y-4 sm:space-y-5">
       {/* Filters */}
       <Card className="p-3 sm:p-4">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar contato, campanha, gclid, fbclid..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="pl-8 h-9 text-xs"
-            />
+        <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+          <div className="flex-1 min-w-[180px] max-w-[280px] space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar contato, campanha, gclid, fbclid..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-8 h-9 text-xs"
+              />
+            </div>
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={platformFilter} onValueChange={(v) => { setPlatformFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[145px] h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PLATFORM_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={qualityFilter} onValueChange={(v) => { setQualityFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {QUALITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={(v: any) => { setSortBy(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">Mais recentes</SelectItem>
-              <SelectItem value="value">Maior valor</SelectItem>
-              <SelectItem value="match">Match Quality</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Status</label>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Plataforma</label>
+            <Select value={platformFilter} onValueChange={(v) => { setPlatformFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-[145px] h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PLATFORM_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Qualidade</label>
+            <Select value={qualityFilter} onValueChange={(v) => { setQualityFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {QUALITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Ordenar</label>
+            <Select value={sortBy} onValueChange={(v: any) => { setSortBy(v); setPage(1); }}>
+              <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Mais recentes</SelectItem>
+                <SelectItem value="value">Maior valor</SelectItem>
+                <SelectItem value="match">Match Quality</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
