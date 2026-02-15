@@ -313,10 +313,23 @@ export function InstallScriptTab() {
 
   var base={device:getDevice(),browser:getBrowser(),os:getOS(),screen_width:screen.width,screen_height:screen.height,language:navigator.language,referrer:d.referrer||null,page_url:location.href,page_title:d.title};
   var utm=getUTM();Object.assign(base,utm);
+  var geo={country:null,city:null,state:null};
   log('Script carregado',{project_id:P,endpoint:E});
+
+  // Fetch geolocation client-side (more accurate than server IP)
+  fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(4000)})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    geo.country=d.country_name||null;
+    geo.city=d.city||null;
+    geo.state=d.region||null;
+    log('Geolocalização detectada',geo);
+  })
+  .catch(function(e){log('Geo falhou (usando fallback servidor)',e);});
 
   function send(ev){
     ev.session_id=SID;ev.visitor_id=VID;
+    if(geo.country){ev.country=geo.country;ev.city=geo.city;ev.state=geo.state;}
     Q.push(ev);
     log('Evento capturado: '+ev.event_type,ev);
     if(Q.length>=10||ev.event_type==='page_exit'||ev.event_type==='page_view'){flush();}else{clearTimeout(w._rkTimer);w._rkTimer=setTimeout(flush,2000);}
@@ -337,7 +350,8 @@ export function InstallScriptTab() {
     .catch(function(e){log('Falha no envio',e);});
   }
 
-  send(Object.assign({event_type:'page_view'},base));
+  // Delay first page_view slightly to allow geo fetch to complete
+  setTimeout(function(){send(Object.assign({event_type:'page_view'},base));},500);
 
   d.addEventListener('click',function(e){
     var t=e.target.closest('a,button,[data-rk-track]');if(!t)return;
