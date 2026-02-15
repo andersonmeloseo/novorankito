@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface TrackingEvent {
@@ -40,6 +41,32 @@ export interface TrackingEvent {
 }
 
 export function useTrackingEvents(projectId: string | null | undefined) {
+  const queryClient = useQueryClient();
+
+  // Subscribe to realtime inserts for this project
+  useEffect(() => {
+    if (!projectId) return;
+    const channel = supabase
+      .channel(`tracking-events-${projectId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "tracking_events",
+          filter: `project_id=eq.${projectId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, queryClient]);
+
   return useQuery({
     queryKey: ["tracking-events", projectId],
     queryFn: async (): Promise<TrackingEvent[]> => {
@@ -54,7 +81,7 @@ export function useTrackingEvents(projectId: string | null | undefined) {
       return (data || []) as TrackingEvent[];
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 }
 
