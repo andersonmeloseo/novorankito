@@ -173,12 +173,13 @@ function ScrollDepthOverlay({ events, iframeHeight }: { events: TrackingEvent[];
 /* ── KPI Card ── */
 function HeatKpi({ label, value, icon: Icon }: { label: string; value: string | number; icon: React.ElementType }) {
   return (
-    <Card className="p-3 card-hover">
-      <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+    <Card className="p-3 sm:p-4 card-hover group relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative flex flex-col items-center text-center gap-1">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xl font-bold text-foreground font-display tracking-tight">{value}</span>
+        <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
       </div>
-      <span className="text-base font-bold text-foreground font-display">{value}</span>
     </Card>
   );
 }
