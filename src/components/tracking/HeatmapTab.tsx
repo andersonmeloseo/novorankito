@@ -11,6 +11,7 @@ import {
   Flame, MousePointer2, ArrowDownFromLine, Loader2, ExternalLink,
   Monitor, Smartphone, Tablet, Eye, BarChart3, Target, Layers,
   RefreshCw, Camera, Download, History, Trash2, Clock, Move,
+  ArrowLeft, Globe,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -105,7 +106,6 @@ function drawMoveTrails(
     }
     ctx.stroke();
 
-    // Draw dots at each sample
     points.forEach((p, i) => {
       const px = p.x * scale, py = p.y * scale;
       ctx.globalAlpha = 0.3 + (i / points.length) * 0.5;
@@ -117,7 +117,6 @@ function drawMoveTrails(
     ctx.globalAlpha = 1;
   });
 
-  // Also draw as a density heatmap overlay
   const allPts = sessions.flatMap(s => s.points);
   if (allPts.length > 10) {
     ctx.globalAlpha = 0.3;
@@ -165,27 +164,6 @@ function ScrollDepthOverlay({ events, iframeHeight }: { events: TrackingEvent[];
       })}
     </div>
   );
-}
-
-/* ── Draw Scroll on Canvas (for export) ── */
-function drawScrollOnCanvas(canvas: HTMLCanvasElement, events: TrackingEvent[], height: number) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  canvas.height = height;
-  ctx.clearRect(0, 0, canvas.width, height);
-  const buckets = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  const total = events.length || 1;
-  const counts = buckets.map(() => 0);
-  events.forEach((e) => { const depth = e.scroll_depth ?? 0; for (let i = 0; i < buckets.length; i++) { if (depth >= buckets[i]) counts[i]++; } });
-  buckets.forEach((pct, i) => {
-    const ratio = counts[i] / total;
-    const y = (pct / 100) * height;
-    const bandH = i < buckets.length - 1 ? height / buckets.length : 20;
-    ctx.fillStyle = `rgba(255, 69, 0, ${(1 - ratio) * 0.35})`;
-    ctx.fillRect(0, y, canvas.width, bandH);
-    ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "bold 11px sans-serif";
-    ctx.fillText(`${pct}% — ${Math.round(ratio * 100)}% usuários`, 10, y + 14);
-  });
 }
 
 /* ── KPI Card ── */
@@ -236,12 +214,72 @@ const TRAIL_COLORS = [
   "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
 ];
 
-/* ── Main Component ── */
+/* ── Page Card for listing view ── */
+function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, onClick }: {
+  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; onClick: () => void;
+}) {
+  let pathname = url;
+  try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
+
+  return (
+    <Card className="card-hover cursor-pointer group transition-all hover:border-primary/40" onClick={onClick}>
+      <div className="p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+            <Globe className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate" title={url}>{pathname}</p>
+            <p className="text-[10px] text-muted-foreground truncate" title={url}>{url}</p>
+          </div>
+          <ArrowLeft className="h-4 w-4 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{views.toLocaleString("pt-BR")}</p>
+            <p className="text-[9px] text-muted-foreground">Views</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{clicks.toLocaleString("pt-BR")}</p>
+            <p className="text-[9px] text-muted-foreground">Cliques</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{visitors.toLocaleString("pt-BR")}</p>
+            <p className="text-[9px] text-muted-foreground">Visitantes</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{avgScroll}%</p>
+            <p className="text-[9px] text-muted-foreground">Scroll</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{exits.toLocaleString("pt-BR")}</p>
+            <p className="text-[9px] text-muted-foreground">Saídas</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-bold text-foreground">{moveCount}</p>
+            <p className="text-[9px] text-muted-foreground">Trilhas</p>
+          </div>
+        </div>
+
+        <div className="flex gap-1.5">
+          <Badge variant="outline" className="text-[8px] gap-1"><MousePointer2 className="h-2.5 w-2.5" /> Click Map</Badge>
+          <Badge variant="outline" className="text-[8px] gap-1"><ArrowDownFromLine className="h-2.5 w-2.5" /> Scroll Map</Badge>
+          <Badge variant="outline" className="text-[8px] gap-1"><Move className="h-2.5 w-2.5" /> Movement</Badge>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Main Component
+   ══════════════════════════════════════════════════════════════ */
 export function HeatmapTab() {
   const projectId = localStorage.getItem("rankito_current_project");
   const { data: allEvents = [], isLoading } = useTrackingEvents(projectId);
 
-  const [selectedUrl, setSelectedUrl] = useState<string>("");
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [heatmapMode, setHeatmapMode] = useState<"click" | "scroll" | "move">("click");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
   const [opacity] = useState(0.65);
@@ -254,22 +292,33 @@ export function HeatmapTab() {
   const [iframeError, setIframeError] = useState(false);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
 
-  // URL options
+  // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { clicks: number; exits: number; views: number }>();
+    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number }>();
     allEvents.forEach((e) => {
       const url = e.page_url;
       if (!url) return;
-      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0 };
+      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0 };
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
-      if (e.event_type === "page_exit") entry.exits++;
+      if (e.event_type === "page_exit") {
+        entry.exits++;
+        if (e.scroll_depth != null) { entry.scrollSum += e.scroll_depth; entry.scrollCount++; }
+        const m = e.metadata as any;
+        if (m?.move_samples?.length) entry.moveSessions++;
+      }
       if (e.event_type === "page_view") entry.views++;
+      if (e.visitor_id) entry.visitors.add(e.visitor_id);
       map.set(url, entry);
     });
-    return Array.from(map.entries()).map(([url, stats]) => ({ url, ...stats })).sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
+    return Array.from(map.entries())
+      .map(([url, s]) => ({
+        url, clicks: s.clicks, exits: s.exits, views: s.views,
+        visitors: s.visitors.size,
+        avgScroll: s.scrollCount > 0 ? Math.round(s.scrollSum / s.scrollCount) : 0,
+        moveCount: s.moveSessions,
+      }))
+      .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
   }, [allEvents]);
-
-  useEffect(() => { if (!selectedUrl && urlOptions.length > 0) setSelectedUrl(urlOptions[0].url); }, [urlOptions, selectedUrl]);
 
   const filteredEvents = useMemo(() => {
     if (!selectedUrl) return [];
@@ -289,24 +338,18 @@ export function HeatmapTab() {
       });
   }, [filteredEvents]);
 
-  // Extract mouse movement data from page_exit events
   const moveSessions = useMemo(() => {
     const sessions: { sessionId: string; points: MovePoint[]; vpW: number }[] = [];
     filteredEvents.forEach((e) => {
       if (e.event_type !== "page_exit") return;
       const m = e.metadata as any;
       if (!m?.move_samples?.length) return;
-      sessions.push({
-        sessionId: e.session_id || e.visitor_id || "unknown",
-        points: m.move_samples,
-        vpW: m.vp_w || 1440,
-      });
+      sessions.push({ sessionId: e.session_id || e.visitor_id || "unknown", points: m.move_samples, vpW: m.vp_w || 1440 });
     });
     return sessions;
   }, [filteredEvents]);
 
   const totalMovePoints = useMemo(() => moveSessions.reduce((s, sess) => s + sess.points.length, 0), [moveSessions]);
-
   const exitEvents = useMemo(() => filteredEvents.filter((e) => e.event_type === "page_exit"), [filteredEvents]);
 
   const referenceVpW = useMemo(() => {
@@ -380,7 +423,7 @@ export function HeatmapTab() {
     const modeLabel = heatmapMode === "click" ? "Cliques" : heatmapMode === "scroll" ? "Scroll" : "Movimento";
     ctx.fillText(`Rankito Heatmap — ${modeLabel} — ${new Date().toLocaleDateString("pt-BR")}`, 16, 24);
     ctx.font = "13px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.7)";
-    try { ctx.fillText(new URL(selectedUrl).pathname, 16, 46); } catch { ctx.fillText(selectedUrl, 16, 46); }
+    try { ctx.fillText(new URL(selectedUrl || "").pathname, 16, 46); } catch { ctx.fillText(selectedUrl || "", 16, 46); }
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, exportCanvas.height - 40, exportCanvas.width, 40);
     ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = "12px sans-serif";
     ctx.fillText(`${totalClicks} cliques  •  ${uniqueVisitors} visitantes  •  ${avgScrollDepth}% scroll médio  •  ${moveSessions.length} trilhas de mouse`, 16, exportCanvas.height - 14);
@@ -400,7 +443,7 @@ export function HeatmapTab() {
     ctx.fillStyle = "#1a1a2e"; ctx.fillRect(0, 0, 400, 260);
     if (canvasRef.current) ctx.drawImage(canvasRef.current, 0, 0, 400, 260);
     const snap: HeatmapSnapshot = {
-      id: crypto.randomUUID(), url: selectedUrl, mode: heatmapMode, device: deviceFilter,
+      id: crypto.randomUUID(), url: selectedUrl || "", mode: heatmapMode, device: deviceFilter,
       totalClicks, avgScroll: avgScrollDepth, visitors: uniqueVisitors,
       capturedAt: new Date().toISOString(), thumbnail: thumbCanvas.toDataURL("image/png", 0.7),
     };
@@ -424,9 +467,94 @@ export function HeatmapTab() {
 
   const hasData = allEvents.length > 0;
 
+  /* ══════════════════════════════════════════════
+     LISTING VIEW — cards per URL
+     ══════════════════════════════════════════════ */
+  if (!selectedUrl) {
+    return (
+      <div className="space-y-4 sm:space-y-5">
+        <FeatureBanner icon={Flame} title="Heatmaps Visuais" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong> e <strong>rastro do mouse</strong> com mapas de calor sobrepostos ao seu site. Clique em uma página para explorar.</>} />
+
+        {/* Global KPIs */}
+        <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <HeatKpi label="Páginas Rastreadas" value={urlOptions.length} icon={Globe} />
+          <HeatKpi label="Total de Cliques" value={allEvents.filter(e => ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)).length.toLocaleString("pt-BR")} icon={MousePointer2} />
+          <HeatKpi label="Visitantes Únicos" value={new Set(allEvents.map(e => e.visitor_id).filter(Boolean)).size.toLocaleString("pt-BR")} icon={Eye} />
+          <HeatKpi label="Snapshots Salvos" value={snapshots.length} icon={Camera} />
+        </StaggeredGrid>
+
+        {/* Snapshot History toggle */}
+        {snapshots.length > 0 && (
+          <div className="flex justify-end">
+            <Button size="sm" variant={showHistory ? "default" : "outline"} className="h-8 gap-1.5 text-[10px]" onClick={() => setShowHistory(!showHistory)}>
+              <History className="h-3.5 w-3.5" /> Histórico de Snapshots
+              <Badge variant="secondary" className="text-[8px] ml-0.5 h-4 min-w-[16px] px-1">{snapshots.length}</Badge>
+            </Button>
+          </div>
+        )}
+
+        {showHistory && (
+          <AnimatedContainer delay={0.02}>
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  <h4 className="text-sm font-bold font-display">Histórico de Snapshots</h4>
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] text-destructive hover:text-destructive gap-1" onClick={() => { setSnapshots([]); saveSnapshots([]); toast("Histórico limpo."); }}>
+                  <Trash2 className="h-3 w-3" /> Limpar tudo
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {snapshots.map((snap) => <SnapshotCard key={snap.id} snap={snap} onDelete={() => deleteSnapshot(snap.id)} onExport={() => exportSnapshot(snap)} />)}
+              </div>
+            </Card>
+          </AnimatedContainer>
+        )}
+
+        {/* Page cards */}
+        {urlOptions.length > 0 ? (
+          <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {urlOptions.map((opt) => (
+              <PageCard
+                key={opt.url}
+                url={opt.url}
+                clicks={opt.clicks}
+                exits={opt.exits}
+                views={opt.views}
+                visitors={opt.visitors}
+                avgScroll={opt.avgScroll}
+                moveCount={opt.moveCount}
+                onClick={() => setSelectedUrl(opt.url)}
+              />
+            ))}
+          </StaggeredGrid>
+        ) : (
+          <AnimatedContainer delay={0.06}>
+            <Card className="p-8 text-center">
+              <Flame className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <h4 className="text-sm font-bold text-foreground mb-1">Nenhum dado de heatmap ainda</h4>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Instale o Pixel Rankito v3.3.0 no seu site para capturar cliques, scroll e movimento do mouse automaticamente.
+              </p>
+            </Card>
+          </AnimatedContainer>
+        )}
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════════
+     DETAIL VIEW — heatmap for selected URL
+     ══════════════════════════════════════════════ */
   return (
     <div className="space-y-4 sm:space-y-5">
-      <FeatureBanner icon={Flame} title="Heatmaps Visuais" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong> e <strong>rastro do mouse</strong> com mapas de calor sobrepostos ao seu site. Salve snapshots e exporte como imagem.</>} />
+      {/* Back button */}
+      <AnimatedContainer>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => { setSelectedUrl(null); setIframeLoaded(false); setIframeError(false); }}>
+          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para páginas
+        </Button>
+      </AnimatedContainer>
 
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <HeatKpi label="Cliques Mapeados" value={totalClicks.toLocaleString("pt-BR")} icon={MousePointer2} />
@@ -486,8 +614,8 @@ export function HeatmapTab() {
 
             <div className="self-end flex gap-1">
               <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-[10px]" onClick={redrawHeatmap}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
-              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={saveSnapshot} disabled={!selectedUrl}><Camera className="h-3.5 w-3.5" /> Snapshot</Button>
-              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={exportAsImage} disabled={!selectedUrl}><Download className="h-3.5 w-3.5" /> PNG</Button>
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={saveSnapshot}><Camera className="h-3.5 w-3.5" /> Snapshot</Button>
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={exportAsImage}><Download className="h-3.5 w-3.5" /> PNG</Button>
               <Button size="sm" variant={showHistory ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => setShowHistory(!showHistory)}>
                 <History className="h-3.5 w-3.5" /> Histórico
                 {snapshots.length > 0 && <Badge variant="secondary" className="text-[8px] ml-0.5 h-4 min-w-[16px] px-1">{snapshots.length}</Badge>}
@@ -533,95 +661,81 @@ export function HeatmapTab() {
           <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              <span className="text-[10px] text-muted-foreground truncate">{selectedUrl || "Nenhuma página selecionada"}</span>
+              <span className="text-[10px] text-muted-foreground truncate">{selectedUrl}</span>
             </div>
             <div className="flex items-center gap-1">
               <Badge variant="outline" className="text-[9px] gap-1">
                 <Flame className="h-3 w-3" />
                 {heatmapMode === "click" ? `${totalClicks} cliques` : heatmapMode === "move" ? `${moveSessions.length} trilhas` : `${exitEvents.length} sessões`}
               </Badge>
-              {selectedUrl && (
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" asChild>
-                  <a href={selectedUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
-                </Button>
-              )}
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" asChild>
+                <a href={selectedUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
+              </Button>
             </div>
           </div>
 
           <div ref={containerRef} className="relative bg-muted/10" style={{ height: `${containerSize.height}px`, minHeight: "500px" }}>
-            {selectedUrl ? (
-              <>
-                <iframe ref={iframeRef} src={selectedUrl} className="absolute inset-0 w-full h-full border-0" style={{ zIndex: 1, pointerEvents: "none" }}
-                  sandbox="allow-same-origin allow-scripts"
-                  onLoad={() => { setIframeLoaded(true); setIframeError(false); }}
-                  onError={() => { setIframeError(true); setIframeLoaded(false); }}
-                  title="Heatmap preview"
-                />
+            <iframe ref={iframeRef} src={selectedUrl} className="absolute inset-0 w-full h-full border-0" style={{ zIndex: 1, pointerEvents: "none" }}
+              sandbox="allow-same-origin allow-scripts"
+              onLoad={() => { setIframeLoaded(true); setIframeError(false); }}
+              onError={() => { setIframeError(true); setIframeLoaded(false); }}
+              title="Heatmap preview"
+            />
 
-                {(heatmapMode === "click" || heatmapMode === "move") && (
-                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"
-                    style={{ zIndex: 5, pointerEvents: "none", mixBlendMode: heatmapMode === "click" ? "multiply" : "normal", opacity: 0.8 }}
-                  />
-                )}
+            {(heatmapMode === "click" || heatmapMode === "move") && (
+              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"
+                style={{ zIndex: 5, pointerEvents: "none", mixBlendMode: heatmapMode === "click" ? "multiply" : "normal", opacity: 0.8 }}
+              />
+            )}
 
-                {heatmapMode === "scroll" && <ScrollDepthOverlay events={exitEvents} iframeHeight={containerSize.height} />}
+            {heatmapMode === "scroll" && <ScrollDepthOverlay events={exitEvents} iframeHeight={containerSize.height} />}
 
-                {/* Move legend */}
-                {heatmapMode === "move" && moveSessions.length > 0 && (
-                  <div className="absolute top-3 right-3 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-2.5 max-h-[200px] overflow-y-auto">
-                    <p className="text-[9px] font-bold text-foreground mb-1.5 uppercase tracking-wider">Sessões ({moveSessions.length})</p>
-                    {moveSessions.slice(0, 10).map((s, i) => (
-                      <div key={s.sessionId} className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
-                        <div className="w-3 h-1 rounded-full" style={{ backgroundColor: TRAIL_COLORS[i % TRAIL_COLORS.length] }} />
-                        <span className="truncate max-w-[80px]">{s.sessionId.slice(-8)}</span>
-                        <span className="text-muted-foreground/60">{s.points.length} pts</span>
-                      </div>
-                    ))}
-                    {moveSessions.length > 10 && <p className="text-[8px] text-muted-foreground/50 mt-1">+{moveSessions.length - 10} mais</p>}
+            {heatmapMode === "move" && moveSessions.length > 0 && (
+              <div className="absolute top-3 right-3 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-2.5 max-h-[200px] overflow-y-auto">
+                <p className="text-[9px] font-bold text-foreground mb-1.5 uppercase tracking-wider">Sessões ({moveSessions.length})</p>
+                {moveSessions.slice(0, 10).map((s, i) => (
+                  <div key={s.sessionId} className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                    <div className="w-3 h-1 rounded-full" style={{ backgroundColor: TRAIL_COLORS[i % TRAIL_COLORS.length] }} />
+                    <span className="truncate max-w-[80px]">{s.sessionId.slice(-8)}</span>
+                    <span className="text-muted-foreground/60">{s.points.length} pts</span>
                   </div>
-                )}
+                ))}
+                {moveSessions.length > 10 && <p className="text-[8px] text-muted-foreground/50 mt-1">+{moveSessions.length - 10} mais</p>}
+              </div>
+            )}
 
-                {heatmapMode === "move" && moveSessions.length === 0 && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                    <div className="text-center space-y-2 max-w-md px-6">
-                      <Move className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                      <h3 className="text-sm font-bold text-foreground">Nenhuma trilha de mouse ainda</h3>
-                      <p className="text-xs text-muted-foreground">
-                        O Pixel Rankito v3.3.0 captura automaticamente o movimento do mouse. As trilhas aparecerão nos dados de <code className="bg-muted px-1 rounded text-[10px]">page_exit</code> quando usuários navegarem pelo site.
-                      </p>
-                    </div>
-                  </div>
-                )}
+            {heatmapMode === "move" && moveSessions.length === 0 && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                <div className="text-center space-y-2 max-w-md px-6">
+                  <Move className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                  <h3 className="text-sm font-bold text-foreground">Nenhuma trilha de mouse ainda</h3>
+                  <p className="text-xs text-muted-foreground">
+                    O Pixel Rankito v3.3.0 captura automaticamente o movimento do mouse. As trilhas aparecerão nos dados de <code className="bg-muted px-1 rounded text-[10px]">page_exit</code> quando usuários navegarem pelo site.
+                  </p>
+                </div>
+              </div>
+            )}
 
-                {!iframeLoaded && !iframeError && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">Carregando página...</p>
-                    </div>
-                  </div>
-                )}
+            {!iframeLoaded && !iframeError && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Carregando página...</p>
+                </div>
+              </div>
+            )}
 
-                {iframeError && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/90 backdrop-blur-sm">
-                    <div className="text-center space-y-3 max-w-md px-6">
-                      <div className="mx-auto w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center"><Flame className="h-6 w-6 text-warning" /></div>
-                      <h3 className="text-sm font-bold text-foreground">Não foi possível carregar o iframe</h3>
-                      <p className="text-xs text-muted-foreground">O site pode estar bloqueando o carregamento via iframe.</p>
-                      <div className="flex justify-center gap-3">
-                        <Badge variant="secondary" className="text-[10px]">{totalClicks} cliques</Badge>
-                        <Badge variant="secondary" className="text-[10px]">{exitEvents.length} sessões</Badge>
-                        <Badge variant="secondary" className="text-[10px]">{moveSessions.length} trilhas</Badge>
-                      </div>
-                    </div>
+            {iframeError && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/90 backdrop-blur-sm">
+                <div className="text-center space-y-3 max-w-md px-6">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center"><Flame className="h-6 w-6 text-warning" /></div>
+                  <h3 className="text-sm font-bold text-foreground">Não foi possível carregar o iframe</h3>
+                  <p className="text-xs text-muted-foreground">O site pode estar bloqueando o carregamento via iframe.</p>
+                  <div className="flex justify-center gap-3">
+                    <Badge variant="secondary" className="text-[10px]">{totalClicks} cliques</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{exitEvents.length} sessões</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{moveSessions.length} trilhas</Badge>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <MousePointer2 className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm text-muted-foreground">Selecione uma página acima para ver o heatmap</p>
                 </div>
               </div>
             )}
