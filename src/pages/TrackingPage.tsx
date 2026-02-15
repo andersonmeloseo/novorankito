@@ -43,7 +43,7 @@ export default function TrackingPage() {
               <Users className="h-3.5 w-3.5" /> Sessões
             </TabsTrigger>
             <TabsTrigger value="journey" className="text-xs gap-1.5">
-              <Footprints className="h-3.5 w-3.5" /> Jornada
+              <Footprints className="h-3.5 w-3.5" /> Jornada do Usuário
             </TabsTrigger>
             <TabsTrigger value="offline" className="text-xs gap-1.5">
               <PhoneCall className="h-3.5 w-3.5" /> Conversão Offline
