@@ -626,7 +626,7 @@ export function EventsTab() {
                         }}
                         title={`${row.day} ${cell.hour}:00 — ${cell.value} eventos`}
                       >
-                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-white" : "text-muted-foreground"}`}>
+                        <span className={`text-[8px] font-medium ${cell.value > 20 ? "text-primary-foreground" : "text-muted-foreground"}`}>
                           {cell.value}
                         </span>
                       </div>
