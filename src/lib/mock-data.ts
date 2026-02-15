@@ -246,6 +246,7 @@ export interface JourneyStep {
   duration_sec: number;
   action: string;
   cta_clicked: string | null;
+  cta_selector: string | null;
   scroll_depth: number;
 }
 
@@ -256,18 +257,23 @@ export interface MockUserJourney {
   total_duration_sec: number;
   device: string;
   browser: string;
+  os: string;
   city: string;
+  country: string;
+  ip_address: string;
   source: string;
   medium: string;
   referrer: string;
   converted: boolean;
   conversion_value: number;
+  conversion_page: string | null;
   steps: JourneyStep[];
 }
 
 const JOURNEY_ACTIONS = ["page_view", "scroll", "cta_click", "form_focus", "video_play", "hover_product", "add_to_cart", "search"];
 const JOURNEY_CTAS = ["Chamar no WhatsApp", "Comprar Agora", "Ver Planos", "Enviar Formulário", "Agendar Demo", "Download PDF", null, null, null];
-const VISITOR_NAMES = ["Visitante Azul", "Visitante Verde", "Visitante Roxo", "Visitante Laranja", "Visitante Rosa", "Visitante Ciano", "Visitante Dourado", "Visitante Prata"];
+const JOURNEY_CTA_SELECTORS = ["button.whatsapp-cta", "a.buy-now", "#plans-btn", "form.contact button[type=submit]", "a.demo-link", "a.download-pdf"];
+const OS_LIST = ["Windows 11", "macOS Sonoma", "Android 14", "iOS 18", "Linux", "Windows 10", "iPadOS 18"];
 
 const JOURNEY_PAGES_FLOW = [
   ["/", "/products/wireless-headphones", "/pricing", "/checkout", "/checkout/success"],
@@ -280,6 +286,10 @@ const JOURNEY_PAGES_FLOW = [
   ["/products/wireless-headphones", "/blog/best-noise-cancelling-2026", "/products/smart-speaker", "/pricing", "/checkout", "/checkout/success"],
 ];
 
+function randomIp(): string {
+  return `${Math.floor(Math.random() * 200 + 10)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+}
+
 export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_, i) => {
   const flowTemplate = JOURNEY_PAGES_FLOW[i % JOURNEY_PAGES_FLOW.length];
   const numSteps = Math.min(flowTemplate.length, Math.floor(Math.random() * 3) + 2);
@@ -290,12 +300,14 @@ export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_
   let cursor = new Date(d);
   const steps: JourneyStep[] = pages.map((page, si) => {
     const dur = Math.floor(Math.random() * 180 + 10);
+    const hasCta = si > 0 && Math.random() < 0.4;
     const step: JourneyStep = {
       page,
       timestamp: cursor.toISOString(),
       duration_sec: dur,
       action: si === 0 ? "page_view" : randomFrom(JOURNEY_ACTIONS),
-      cta_clicked: si > 0 && Math.random() < 0.4 ? randomFrom(JOURNEY_CTAS.filter(Boolean) as string[]) : null,
+      cta_clicked: hasCta ? randomFrom(JOURNEY_CTAS.filter(Boolean) as string[]) : null,
+      cta_selector: hasCta ? randomFrom(JOURNEY_CTA_SELECTORS) : null,
       scroll_depth: Math.floor(Math.random() * 60 + 40),
     };
     cursor = new Date(cursor.getTime() + dur * 1000 + Math.random() * 5000);
@@ -303,6 +315,7 @@ export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_
   });
 
   const totalDuration = steps.reduce((s, st) => s + st.duration_sec, 0);
+  const conversionPage = converted ? (pages.includes("/checkout/success") ? "/checkout/success" : pages[pages.length - 1]) : null;
 
   return {
     visitor_id: `vis-${(2000 + i).toString(36)}`,
@@ -311,12 +324,61 @@ export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_
     total_duration_sec: totalDuration,
     device: randomFrom(DEVICES),
     browser: randomFrom(BROWSERS),
+    os: randomFrom(OS_LIST),
     city: randomFrom(CITIES),
+    country: "BR",
+    ip_address: randomIp(),
     source: randomFrom(SOURCES),
     medium: randomFrom(MEDIUMS),
     referrer: randomFrom(SESSION_REFERRERS),
     converted,
     conversion_value: converted ? parseFloat((Math.random() * 500 + 30).toFixed(2)) : 0,
+    conversion_page: conversionPage,
     steps,
+  };
+});
+
+// ── Offline Conversions Mock Data ──
+
+export interface MockOfflineConversion {
+  id: string;
+  visitor_id: string | null;
+  contact_name: string;
+  contact_phone: string | null;
+  contact_email: string | null;
+  conversion_type: string;
+  value: number;
+  converted_at: string;
+  source_channel: string;
+  notes: string | null;
+  status: string;
+  attributed_campaign: string | null;
+  city: string;
+}
+
+const OFFLINE_TYPES = ["Ligação Telefônica", "Visita Presencial", "WhatsApp (Offline)", "Indicação", "Evento/Feira", "Formulário Físico"];
+const OFFLINE_CHANNELS = ["Telefone", "Presencial", "WhatsApp", "Indicação", "Evento", "Panfleto"];
+const OFFLINE_STATUSES = ["confirmado", "pendente", "cancelado"];
+const CONTACT_NAMES = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Costa", "Carlos Oliveira", "Juliana Lima", "Rafael Almeida", "Beatriz Ferreira", "Lucas Rocha", "Fernanda Dias", "Gustavo Martins", "Camila Ribeiro"];
+const CAMPAIGNS = ["Google Ads - Brand", "Meta Ads - Remarketing", "Panfleto Centro", "Evento Tech 2026", "Indicação VIP", null, null];
+
+export const mockOfflineConversions: MockOfflineConversion[] = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(2026, 1, 14 - Math.floor(i / 2));
+  d.setHours(Math.floor(Math.random() * 10 + 8), Math.floor(Math.random() * 60));
+  const status = randomFrom(OFFLINE_STATUSES);
+  return {
+    id: `oconv-${i + 1}`,
+    visitor_id: Math.random() < 0.4 ? `vis-${(2000 + Math.floor(Math.random() * 40)).toString(36)}` : null,
+    contact_name: randomFrom(CONTACT_NAMES),
+    contact_phone: `+55 ${Math.floor(Math.random() * 90 + 10)} 9${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+    contact_email: Math.random() < 0.6 ? `${randomFrom(CONTACT_NAMES).toLowerCase().replace(" ", ".")}@email.com` : null,
+    conversion_type: randomFrom(OFFLINE_TYPES),
+    value: status === "cancelado" ? 0 : parseFloat((Math.random() * 800 + 50).toFixed(2)),
+    converted_at: d.toISOString(),
+    source_channel: randomFrom(OFFLINE_CHANNELS),
+    notes: Math.random() < 0.3 ? "Cliente interessado em plano premium" : null,
+    status,
+    attributed_campaign: randomFrom(CAMPAIGNS),
+    city: randomFrom(CITIES),
   };
 });
