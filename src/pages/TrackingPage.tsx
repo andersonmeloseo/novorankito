@@ -12,7 +12,7 @@ import { Activity, ShoppingCart, Zap, Target, Users, Code } from "lucide-react";
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Analítica Rankito" subtitle="Plugin v3.1.0 — Tracking Universal de Cliques, E-commerce, Conversões e Ads" />
+      <TopBar title="Analítica Rankito" subtitle="Plugin v3.2.0 — Tracking Universal com Debug Mode" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
@@ -20,7 +20,7 @@ export default function TrackingPage() {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
           </span>
           <span className="text-sm font-medium text-foreground">Plugin Ativo — Capturando Eventos em Tempo Real</span>
-          <Badge variant="secondary" className="text-[10px]">v3.1.0</Badge>
+          <Badge variant="secondary" className="text-[10px]">v3.2.0</Badge>
         </Card>
 
         <Tabs defaultValue="all-events">
