@@ -87,6 +87,49 @@ function EventCard({ event, onToggle, onDelete, onEdit, loading }: {
               <span className="text-[9px] text-muted-foreground">{event.fires_count.toLocaleString("pt-BR")} disparos</span>
             )}
           </div>
+          {/* Captured data preview */}
+          <div className="mt-2 p-2 rounded bg-muted/30 border border-border/50">
+            <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Dados capturados automaticamente:</p>
+            <div className="flex flex-wrap gap-1">
+              {["page_url", "page_title", "device", "browser", "referrer", "visitor_id", "session_id", "utm_source"].map(f => (
+                <Badge key={f} variant="secondary" className="text-[8px] font-mono">{f}</Badge>
+              ))}
+              {(event.trigger_type === "click") && (
+                <>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">cta_text</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">cta_selector</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">href</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">tag</Badge>
+                </>
+              )}
+              {(event.trigger_type === "submit") && (
+                <>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">form_id</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">cta_text (botão)</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">fields</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">action</Badge>
+                </>
+              )}
+              {(event.trigger_type === "visible") && (
+                <>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">visible_element</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">visible_ratio</Badge>
+                </>
+              )}
+              {(event.trigger_type === "scroll") && (
+                <>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">scroll_depth</Badge>
+                  <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">threshold</Badge>
+                </>
+              )}
+              {(event.trigger_type === "timer") && (
+                <Badge variant="secondary" className="text-[8px] font-mono bg-primary/10 text-primary">time_on_page</Badge>
+              )}
+              {event.metadata?.length > 0 && event.metadata.map((m: any, i: number) => (
+                <Badge key={i} variant="secondary" className="text-[8px] font-mono bg-success/10 text-success">{m.key}={m.value}</Badge>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} disabled={loading}>
