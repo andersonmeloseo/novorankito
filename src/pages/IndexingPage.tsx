@@ -25,7 +25,7 @@ import {
   ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
   ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, ChevronDown, Layers, History, Package, ScanSearch,
   AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock, Wifi, WifiOff, Upload,
-  Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus
+  Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus, XCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -68,6 +68,9 @@ export default function IndexingPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchFilter, setSearchFilter] = useState("");
   const [verdictFilter, setVerdictFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [urlTypeFilter, setUrlTypeFilter] = useState("all");
+  const [requestStatusFilter, setRequestStatusFilter] = useState("all");
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -227,6 +230,13 @@ export default function IndexingPage() {
       if (verdictFilter === "not_indexed" && u.verdict !== "FAIL" && u.verdict !== "PARTIAL") return false;
       if (verdictFilter === "unknown" && u.verdict && u.verdict !== "NEUTRAL" && u.verdict !== "VERDICT_UNSPECIFIED") return false;
       if (verdictFilter === "never_sent" && u.last_request_status) return false;
+      if (priorityFilter !== "all" && u.priority !== priorityFilter) return false;
+      if (urlTypeFilter !== "all" && u.url_type !== urlTypeFilter) return false;
+      if (requestStatusFilter === "quota_exceeded" && u.last_request_status !== "quota_exceeded") return false;
+      if (requestStatusFilter === "success" && u.last_request_status !== "success") return false;
+      if (requestStatusFilter === "failed" && u.last_request_status !== "failed") return false;
+      if (requestStatusFilter === "pending" && u.last_request_status !== "pending") return false;
+      if (requestStatusFilter === "never" && u.last_request_status) return false;
       return true;
     });
     if (sortCol) {
@@ -247,7 +257,7 @@ export default function IndexingPage() {
       });
     }
     return items;
-  }, [inventory, searchFilter, verdictFilter, sortCol, sortDir]);
+  }, [inventory, searchFilter, verdictFilter, priorityFilter, urlTypeFilter, requestStatusFilter, sortCol, sortDir]);
 
   const invTotalPages = Math.max(1, Math.ceil(filteredInventory.length / INV_PAGE_SIZE));
   const safeInvPage = Math.min(invPage, invTotalPages - 1);
@@ -343,37 +353,75 @@ export default function IndexingPage() {
             </TabsList>
 
             {/* Filters */}
-            <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 flex-1 w-full sm:w-auto">
               {(activeTab === "inventory" || activeTab === "history" || activeTab === "sitemap") && (
                 <div className="relative flex-1 max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Buscar URL..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
+                  <Input placeholder="Buscar URL ou título..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
                 </div>
               )}
               {activeTab === "inventory" && (
-                <Select value={verdictFilter} onValueChange={v => { setVerdictFilter(v); setInvPage(0); }}>
-                  <SelectTrigger className="w-[150px] h-9 text-xs">
-                    <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="indexed">Indexadas</SelectItem>
-                    <SelectItem value="not_indexed">Não Indexadas</SelectItem>
-                    <SelectItem value="unknown">Sem Inspeção</SelectItem>
-                    <SelectItem value="never_sent">Nunca Enviadas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select value={verdictFilter} onValueChange={v => { setVerdictFilter(v); setInvPage(0); }}>
+                    <SelectTrigger className="w-[150px] h-9 text-xs" title="Filtrar por status de indexação">
+                      <ShieldCheck className="h-3 w-3 mr-1 shrink-0" /><SelectValue placeholder="Indexação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Indexação: Todas</SelectItem>
+                      <SelectItem value="indexed">Indexadas</SelectItem>
+                      <SelectItem value="not_indexed">Não Indexadas</SelectItem>
+                      <SelectItem value="unknown">Sem Inspeção</SelectItem>
+                      <SelectItem value="never_sent">Nunca Enviadas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={requestStatusFilter} onValueChange={v => { setRequestStatusFilter(v); setInvPage(0); }}>
+                    <SelectTrigger className="w-[150px] h-9 text-xs" title="Filtrar por status do último envio">
+                      <Send className="h-3 w-3 mr-1 shrink-0" /><SelectValue placeholder="Último Envio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Envio: Todos</SelectItem>
+                      <SelectItem value="success">Sucesso</SelectItem>
+                      <SelectItem value="failed">Falha</SelectItem>
+                      <SelectItem value="quota_exceeded">Quota Excedida</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="never">Nunca Enviada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={priorityFilter} onValueChange={v => { setPriorityFilter(v); setInvPage(0); }}>
+                    <SelectTrigger className="w-[130px] h-9 text-xs" title="Filtrar por prioridade">
+                      <Zap className="h-3 w-3 mr-1 shrink-0" /><SelectValue placeholder="Prioridade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Prioridade: Todas</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="low">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={urlTypeFilter} onValueChange={v => { setUrlTypeFilter(v); setInvPage(0); }}>
+                    <SelectTrigger className="w-[130px] h-9 text-xs" title="Filtrar por tipo de URL">
+                      <FileText className="h-3 w-3 mr-1 shrink-0" /><SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tipo: Todos</SelectItem>
+                      <SelectItem value="page">Página</SelectItem>
+                      <SelectItem value="post">Post</SelectItem>
+                      <SelectItem value="category">Categoria</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
               )}
               {activeTab === "history" && (
                 <Select value={historyStatusFilter} onValueChange={v => { setHistoryStatusFilter(v); setHistPage(0); }}>
-                  <SelectTrigger className="w-[130px] h-9 text-xs">
-                    <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
+                  <SelectTrigger className="w-[150px] h-9 text-xs" title="Filtrar por status">
+                    <Filter className="h-3 w-3 mr-1.5" /><SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Status: Todos</SelectItem>
                     <SelectItem value="success">Sucesso</SelectItem>
                     <SelectItem value="failed">Falha</SelectItem>
-                    <SelectItem value="quota_exceeded">Quota</SelectItem>
+                    <SelectItem value="quota_exceeded">Quota Excedida</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -394,6 +442,26 @@ export default function IndexingPage() {
 
           {/* ─── INVENTORY TAB ─── */}
           <TabsContent value="inventory" className="mt-4 space-y-4">
+            {/* Active Filters Summary */}
+            {(verdictFilter !== "all" || priorityFilter !== "all" || urlTypeFilter !== "all" || requestStatusFilter !== "all" || searchFilter) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] text-muted-foreground font-medium">Filtros ativos:</span>
+                {searchFilter && <Badge variant="secondary" className="text-[10px] gap-1">Busca: "{searchFilter}"</Badge>}
+                {verdictFilter !== "all" && <Badge variant="secondary" className="text-[10px] gap-1">Indexação: {verdictFilter}</Badge>}
+                {requestStatusFilter !== "all" && <Badge variant="secondary" className="text-[10px] gap-1">Envio: {requestStatusFilter}</Badge>}
+                {priorityFilter !== "all" && <Badge variant="secondary" className="text-[10px] gap-1">Prioridade: {priorityFilter}</Badge>}
+                {urlTypeFilter !== "all" && <Badge variant="secondary" className="text-[10px] gap-1">Tipo: {urlTypeFilter}</Badge>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] text-muted-foreground hover:text-destructive gap-1 px-2"
+                  onClick={() => { setVerdictFilter("all"); setPriorityFilter("all"); setUrlTypeFilter("all"); setRequestStatusFilter("all"); setSearchFilter(""); setInvPage(0); }}
+                >
+                  <XCircle className="h-3 w-3" /> Limpar tudo
+                </Button>
+                <span className="text-[10px] text-muted-foreground ml-auto">{filteredInventory.length} resultado(s)</span>
+              </div>
+            )}
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-2">
               <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
@@ -448,6 +516,24 @@ export default function IndexingPage() {
                 {inspectMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
                 Varrer Status (até 20)
               </Button>
+
+              {/* Retry quota-exceeded URLs */}
+              {inventory.some(u => u.last_request_status === "quota_exceeded") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
+                  onClick={() => {
+                    const quotaUrls = inventory.filter(u => u.last_request_status === "quota_exceeded").map(u => u.url);
+                    if (quotaUrls.length === 0) return;
+                    submitMutation.mutate({ urls: quotaUrls.slice(0, 50), requestType: "URL_UPDATED" });
+                  }}
+                  disabled={submitMutation.isPending}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Reenviar Quota ({inventory.filter(u => u.last_request_status === "quota_exceeded").length})
+                </Button>
+              )}
 
               {selectedUrls.size > 0 && (
                 <>
@@ -560,14 +646,48 @@ export default function IndexingPage() {
                             )}
                           </td>
                           <td className="px-3 py-2.5">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDetailUrl(item)}>
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Detalhes</TooltipContent>
-                            </Tooltip>
+                            <div className="flex items-center gap-1">
+                              {item.last_request_status === "quota_exceeded" && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
+                                      onClick={() => submitMutation.mutate({ urls: [item.url], requestType: "URL_UPDATED" })}
+                                      disabled={submitMutation.isPending}
+                                    >
+                                      <RefreshCw className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Reenviar (quota excedida)</TooltipContent>
+                                </Tooltip>
+                              )}
+                              {item.last_request_status === "failed" && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => submitMutation.mutate({ urls: [item.url], requestType: "URL_UPDATED" })}
+                                      disabled={submitMutation.isPending}
+                                    >
+                                      <RefreshCw className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Reenviar (falhou)</TooltipContent>
+                                </Tooltip>
+                              )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDetailUrl(item)}>
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Detalhes</TooltipContent>
+                              </Tooltip>
+                            </div>
                           </td>
                         </tr>
                       ))}
