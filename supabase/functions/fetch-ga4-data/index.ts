@@ -107,8 +107,16 @@ serve(async (req) => {
     const sb = createClient(supabaseUrl, supabaseKey);
 
     const { data: conn } = await sb.from("ga4_connections").select("*").eq("project_id", project_id).maybeSingle();
-    if (!conn) throw new Error("Nenhuma conexão GA4 encontrada para este projeto.");
-    if (!conn.property_id) throw new Error("Property ID do GA4 não configurado.");
+    if (!conn) {
+      return new Response(JSON.stringify({ success: false, error: "no_connection", data: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!conn.property_id) {
+      return new Response(JSON.stringify({ success: false, error: "no_property_id", data: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key });
     const propId = conn.property_id;

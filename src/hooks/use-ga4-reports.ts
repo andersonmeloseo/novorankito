@@ -39,6 +39,7 @@ export function useGA4Report(
         },
       });
       if (error) throw error;
+      if (data?.error === "no_connection" || data?.error === "no_property_id") return null;
       if (data?.error) throw new Error(data.error);
       return data?.data || {};
     },
