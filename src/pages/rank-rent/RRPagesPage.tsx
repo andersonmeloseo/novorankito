@@ -115,9 +115,12 @@ export default function RRPagesPage() {
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div className="flex gap-2 items-center">
-            <div className="relative w-56">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Buscar URL…" className="pl-8 h-9 text-xs" value={search} onChange={e => setSearch(e.target.value)} />
+            <div className="w-56 space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar URL</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="Buscar URL…" className="pl-8 h-9 text-xs" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
             </div>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-xs">
               <option value="all">Todos</option>

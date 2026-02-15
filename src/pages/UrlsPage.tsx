@@ -220,9 +220,12 @@ export default function UrlsPage() {
         <FeatureBanner icon={Globe} title="Inventário de URLs" description={<>Gerencie o inventário completo de <strong>páginas</strong>, <strong>meta tags</strong>, <strong>prioridades</strong> e <strong>grupos de URL</strong> do seu projeto.</>} />
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Buscar por URL, título ou descrição..." className="pl-9 h-9 text-sm" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+          <div className="flex-1 w-full space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar URL</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar por URL, título ou descrição..." className="pl-9 h-9 text-sm" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5" onClick={handleExportCSV}>

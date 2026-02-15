@@ -119,14 +119,17 @@ export function LinksTab({ projectId }: Props) {
     <div className="space-y-4">
       {/* Search filter */}
       <AnimatedContainer>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar páginas..."
-            value={searchTerm}
-            onChange={e => { setSearchTerm(e.target.value); setTopPagesPage(1); setCoveragePage(1); }}
-            className="pl-8 h-9 text-xs"
-          />
+        <div className="max-w-sm space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar Página</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar páginas..."
+              value={searchTerm}
+              onChange={e => { setSearchTerm(e.target.value); setTopPagesPage(1); setCoveragePage(1); }}
+              className="pl-8 h-9 text-xs"
+            />
+          </div>
         </div>
       </AnimatedContainer>
 

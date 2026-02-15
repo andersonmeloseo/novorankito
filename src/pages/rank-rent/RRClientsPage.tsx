@@ -88,9 +88,12 @@ export default function RRClientsPage() {
       <div className="p-4 sm:p-6 space-y-5">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Buscar clientes…" className="pl-8 h-9 text-xs" value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="w-full sm:w-64 space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar Cliente</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar clientes…" className="pl-8 h-9 text-xs" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditingClient(null); }}>
             <DialogTrigger asChild>

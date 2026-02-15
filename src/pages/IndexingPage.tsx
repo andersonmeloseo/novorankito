@@ -357,9 +357,12 @@ export default function IndexingPage() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2 flex-1 w-full sm:w-auto">
               {(activeTab === "inventory" || activeTab === "history" || activeTab === "sitemap") && (
-                <div className="relative flex-1 max-w-xs">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Buscar URL ou título..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
+                <div className="flex-1 max-w-xs space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar</label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input placeholder="Buscar URL ou título..." value={searchFilter} onChange={e => { setSearchFilter(e.target.value); setInvPage(0); setHistPage(0); }} className="pl-8 h-9 text-xs" />
+                  </div>
                 </div>
               )}
               {activeTab === "inventory" && (
