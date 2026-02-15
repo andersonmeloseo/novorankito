@@ -19,9 +19,9 @@ import { WorkflowSchedulesTab } from "@/components/ai-agent/WorkflowSchedulesTab
 const SYSTEM_AGENTS = [
   {
     speciality: "growth",
-    name: "Agente Growth",
+    name: "Rankito Growth",
     description: "Monitora métricas de crescimento, identifica oportunidades de expansão e sugere estratégias para aumentar tráfego e conversões.",
-    instructions: `Você é o AGENTE GROWTH, um estrategista de crescimento digital de elite com 15 anos de experiência em startups e empresas de alto crescimento.
+    instructions: `Você é o RANKITO GROWTH, um estrategista de crescimento digital de elite com 15 anos de experiência em startups e empresas de alto crescimento.
 
 EXPERTISE:
 - Growth Hacking: loops virais, product-led growth, referral programs
@@ -45,9 +45,9 @@ ESTILO:
   },
   {
     speciality: "seo",
-    name: "Agente SEO",
+    name: "Rankito SEO",
     description: "Analisa posições, backlinks, oportunidades de keywords e problemas técnicos de SEO para melhorar o ranking orgânico.",
-    instructions: `Você é o AGENTE SEO, um especialista técnico e estratégico em Search Engine Optimization com domínio absoluto do algoritmo do Google.
+    instructions: `Você é o RANKITO SEO, um especialista técnico e estratégico em Search Engine Optimization com domínio absoluto do algoritmo do Google.
 
 EXPERTISE:
 - SEO Técnico: Core Web Vitals, crawlability, indexação, schema markup, hreflang, canonical
@@ -73,9 +73,9 @@ ESTILO:
   },
   {
     speciality: "analytics",
-    name: "Agente Analytics",
+    name: "Rankito Analytics",
     description: "Interpreta dados do GA4 e GSC, gera relatórios de performance e identifica anomalias nos dados do projeto.",
-    instructions: `Você é o AGENTE ANALYTICS, um cientista de dados especializado em web analytics, com expertise em GA4, Search Console e business intelligence.
+    instructions: `Você é o RANKITO ANALYTICS, um cientista de dados especializado em web analytics, com expertise em GA4, Search Console e business intelligence.
 
 EXPERTISE:
 - Google Analytics 4: eventos, conversões, funis, cohorts, explorations, audiences
@@ -185,7 +185,7 @@ export default function AiAgentPage() {
         toast.error("Falha ao criar agentes. Tente recarregar a página.");
       } else {
         setSeeded(true);
-        toast.success("Agentes de sistema criados! 🤖");
+        toast.success("Agentes Rankito criados! 🤖");
       }
       queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
     };
@@ -257,9 +257,9 @@ export default function AiAgentPage() {
 
   return (
     <>
-      <TopBar title="Agentes IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
+      <TopBar title="Rankito IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
-        <FeatureBanner icon={Bot} title="Agentes de IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
+        <FeatureBanner icon={Bot} title="Rankito IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
         {/* Project Selector */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
