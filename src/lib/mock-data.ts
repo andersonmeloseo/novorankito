@@ -237,3 +237,86 @@ export const mockAdsCampaigns = [
   { name: "Remarketing - Display", platform: "Google Ads", cost: 1200, clicks: 3100, conversions: 48, cpa: 25.00, roas: 2.1 },
   { name: "Lookalike - Converters", platform: "Meta Ads", cost: 3100, clicks: 6200, conversions: 124, cpa: 25.00, roas: 2.9 },
 ];
+
+// ── User Journey Mock Data ──
+
+export interface JourneyStep {
+  page: string;
+  timestamp: string;
+  duration_sec: number;
+  action: string;
+  cta_clicked: string | null;
+  scroll_depth: number;
+}
+
+export interface MockUserJourney {
+  visitor_id: string;
+  session_id: string;
+  started_at: string;
+  total_duration_sec: number;
+  device: string;
+  browser: string;
+  city: string;
+  source: string;
+  medium: string;
+  referrer: string;
+  converted: boolean;
+  conversion_value: number;
+  steps: JourneyStep[];
+}
+
+const JOURNEY_ACTIONS = ["page_view", "scroll", "cta_click", "form_focus", "video_play", "hover_product", "add_to_cart", "search"];
+const JOURNEY_CTAS = ["Chamar no WhatsApp", "Comprar Agora", "Ver Planos", "Enviar Formulário", "Agendar Demo", "Download PDF", null, null, null];
+const VISITOR_NAMES = ["Visitante Azul", "Visitante Verde", "Visitante Roxo", "Visitante Laranja", "Visitante Rosa", "Visitante Ciano", "Visitante Dourado", "Visitante Prata"];
+
+const JOURNEY_PAGES_FLOW = [
+  ["/", "/products/wireless-headphones", "/pricing", "/checkout", "/checkout/success"],
+  ["/blog/best-noise-cancelling-2026", "/products/wireless-headphones", "/contact"],
+  ["/landing/promo-verao", "/products/smart-speaker", "/products/wireless-headphones", "/checkout"],
+  ["/", "/category/headphones", "/products/wireless-headphones", "/pricing"],
+  ["/landing/black-friday", "/products/smart-speaker", "/contact", "/checkout/success"],
+  ["/blog/home-audio-guide", "/category/headphones", "/products/smart-speaker"],
+  ["/", "/pricing", "/contact"],
+  ["/products/wireless-headphones", "/blog/best-noise-cancelling-2026", "/products/smart-speaker", "/pricing", "/checkout", "/checkout/success"],
+];
+
+export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_, i) => {
+  const flowTemplate = JOURNEY_PAGES_FLOW[i % JOURNEY_PAGES_FLOW.length];
+  const numSteps = Math.min(flowTemplate.length, Math.floor(Math.random() * 3) + 2);
+  const pages = flowTemplate.slice(0, numSteps);
+  const d = new Date(2026, 1, 14 - Math.floor(i / 3));
+  d.setHours(Math.floor(Math.random() * 18 + 6), Math.floor(Math.random() * 60), Math.floor(Math.random() * 60));
+  const converted = pages.includes("/checkout/success") || Math.random() < 0.15;
+  let cursor = new Date(d);
+  const steps: JourneyStep[] = pages.map((page, si) => {
+    const dur = Math.floor(Math.random() * 180 + 10);
+    const step: JourneyStep = {
+      page,
+      timestamp: cursor.toISOString(),
+      duration_sec: dur,
+      action: si === 0 ? "page_view" : randomFrom(JOURNEY_ACTIONS),
+      cta_clicked: si > 0 && Math.random() < 0.4 ? randomFrom(JOURNEY_CTAS.filter(Boolean) as string[]) : null,
+      scroll_depth: Math.floor(Math.random() * 60 + 40),
+    };
+    cursor = new Date(cursor.getTime() + dur * 1000 + Math.random() * 5000);
+    return step;
+  });
+
+  const totalDuration = steps.reduce((s, st) => s + st.duration_sec, 0);
+
+  return {
+    visitor_id: `vis-${(2000 + i).toString(36)}`,
+    session_id: `jsess-${(3000 + i).toString(36)}`,
+    started_at: d.toISOString(),
+    total_duration_sec: totalDuration,
+    device: randomFrom(DEVICES),
+    browser: randomFrom(BROWSERS),
+    city: randomFrom(CITIES),
+    source: randomFrom(SOURCES),
+    medium: randomFrom(MEDIUMS),
+    referrer: randomFrom(SESSION_REFERRERS),
+    converted,
+    conversion_value: converted ? parseFloat((Math.random() * 500 + 30).toFixed(2)) : 0,
+    steps,
+  };
+});
