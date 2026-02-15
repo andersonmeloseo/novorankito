@@ -567,6 +567,62 @@ export type Database = {
           },
         ]
       }
+      custom_event_configs: {
+        Row: {
+          conditions: Json
+          created_at: string
+          display_name: string
+          enabled: boolean
+          fires_count: number
+          id: string
+          metadata: Json
+          name: string
+          owner_id: string
+          project_id: string
+          selector: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          conditions?: Json
+          created_at?: string
+          display_name: string
+          enabled?: boolean
+          fires_count?: number
+          id?: string
+          metadata?: Json
+          name: string
+          owner_id: string
+          project_id: string
+          selector?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string
+          display_name?: string
+          enabled?: boolean
+          fires_count?: number
+          id?: string
+          metadata?: Json
+          name?: string
+          owner_id?: string
+          project_id?: string
+          selector?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_event_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           allowed_plans: string[]

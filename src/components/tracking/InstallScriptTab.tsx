@@ -386,6 +386,44 @@ export function InstallScriptTab() {
   w._rkTrack=function(eventType,data){send(Object.assign({event_type:eventType},base,data||{}));};
   w.rankitoTrack=w._rkTrack;
   w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID};};
+
+  // --- Custom Events (Event Builder) ---
+  var CFG_URL='${import.meta.env.VITE_SUPABASE_URL}/rest/v1/custom_event_configs?project_id=eq.'+P+'&enabled=eq.true&select=name,trigger_type,selector,metadata';
+  fetch(CFG_URL,{headers:{'apikey':K,'Authorization':'Bearer '+K}})
+  .then(function(r){return r.json();})
+  .then(function(cfgs){
+    log('Custom events carregados: '+cfgs.length);
+    var scrollFired={};
+    cfgs.forEach(function(c){
+      var meta=Array.isArray(c.metadata)&&c.metadata.length?c.metadata.reduce(function(o,m){o[m.key]=m.value;return o;},{}):{};
+      if(c.trigger_type==='click'){
+        d.querySelectorAll(c.selector).forEach(function(el){
+          el.addEventListener('click',function(){send(Object.assign({event_type:c.name,metadata:meta},base));});
+        });
+      }else if(c.trigger_type==='submit'){
+        d.querySelectorAll(c.selector).forEach(function(form){
+          form.addEventListener('submit',function(){send(Object.assign({event_type:c.name,metadata:meta},base));});
+        });
+      }else if(c.trigger_type==='visible'){
+        var obs=new IntersectionObserver(function(entries){
+          entries.forEach(function(e){if(e.isIntersecting){send(Object.assign({event_type:c.name,metadata:meta},base));obs.unobserve(e.target);}});
+        },{threshold:0.5});
+        d.querySelectorAll(c.selector).forEach(function(el){obs.observe(el);});
+      }else if(c.trigger_type==='scroll'){
+        var thr=parseInt(c.selector)||75;
+        w.addEventListener('scroll',function(){
+          if(scrollFired[c.name])return;
+          var pct=Math.round((w.scrollY/(d.documentElement.scrollHeight-w.innerHeight))*100);
+          if(pct>=thr){scrollFired[c.name]=true;send(Object.assign({event_type:c.name,scroll_depth:pct,metadata:meta},base));}
+        },{passive:true});
+      }else if(c.trigger_type==='timer'){
+        setTimeout(function(){send(Object.assign({event_type:c.name,metadata:meta},base));},parseInt(c.selector)*1000||30000);
+      }
+      log('Evento custom registrado: '+c.name+' ('+c.trigger_type+')');
+    });
+  })
+  .catch(function(e){log('Erro ao carregar custom events',e);});
+
   log('Pronto! Use ?rankito_debug=1 na URL para ver logs.');
 })(window,document);
 </script>`;
