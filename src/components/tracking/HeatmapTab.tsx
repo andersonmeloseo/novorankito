@@ -10,22 +10,47 @@ import {
 import {
   Flame, MousePointer2, ArrowDownFromLine, Loader2, ExternalLink,
   Monitor, Smartphone, Tablet, Eye, BarChart3, Target, Layers,
-  RefreshCw, ZoomIn, ZoomOut, Maximize2,
+  RefreshCw, Camera, Download, History, Trash2, Clock,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 /* ── Types ── */
 interface ClickPoint {
-  x: number; // pageX (absolute)
-  y: number; // pageY (absolute)
-  vx: number; // clientX (viewport)
-  vy: number; // clientY (viewport)
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
   vpW: number;
   vpH: number;
   docH: number;
+}
+
+interface HeatmapSnapshot {
+  id: string;
+  url: string;
+  mode: "click" | "scroll";
+  device: string;
+  totalClicks: number;
+  avgScroll: number;
+  visitors: number;
+  capturedAt: string;
+  thumbnail: string; // base64 data URL
+}
+
+const SNAPSHOTS_KEY = "rankito_heatmap_snapshots";
+
+function loadSnapshots(): HeatmapSnapshot[] {
+  try {
+    return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]");
+  } catch { return []; }
+}
+
+function saveSnapshots(snapshots: HeatmapSnapshot[]) {
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots.slice(0, 30)));
 }
 
 /* ── Heatmap Canvas Renderer ── */
@@ -48,15 +73,11 @@ function drawHeatmap(
 
   if (!points.length) return;
 
-  // Scale factor: map original viewport width to current iframe width
   const scale = iframeRect.width / referenceVpW;
 
-  // Draw intensity circles
   points.forEach((p) => {
     const x = p.x * scale;
     const y = (p.y - scrollOffset) * scale;
-
-    // Skip if outside visible area
     if (y < -radius || y > canvas.height + radius) return;
 
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius * scale);
@@ -71,14 +92,12 @@ function drawHeatmap(
     ctx.fill();
   });
 
-  // Apply colorize effect
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
     const alpha = data[i + 3];
     if (alpha === 0) continue;
     const ratio = alpha / 255;
-    // Hot → cold color mapping
     if (ratio > 0.7) {
       data[i] = 255; data[i + 1] = Math.round(255 * (1 - ratio) * 3); data[i + 2] = 0;
     } else if (ratio > 0.4) {
@@ -123,7 +142,6 @@ function ScrollDepthOverlay({ events, iframeHeight }: { events: TrackingEvent[];
 
         return (
           <div key={d.pct} className="absolute left-0 right-0 flex items-center" style={{ top }}>
-            {/* Gradient band */}
             <div
               className="absolute left-0 right-0"
               style={{
@@ -131,7 +149,6 @@ function ScrollDepthOverlay({ events, iframeHeight }: { events: TrackingEvent[];
                 background: color,
               }}
             />
-            {/* Label */}
             <div className="relative z-20 flex items-center gap-1.5 ml-2">
               <div
                 className="h-0.5 w-8"
@@ -148,9 +165,48 @@ function ScrollDepthOverlay({ events, iframeHeight }: { events: TrackingEvent[];
   );
 }
 
+/* ── Draw Scroll on Canvas (for export) ── */
+function drawScrollOnCanvas(
+  canvas: HTMLCanvasElement,
+  events: TrackingEvent[],
+  height: number,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const width = canvas.width;
+  canvas.height = height;
+  ctx.clearRect(0, 0, width, height);
+
+  const buckets = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const total = events.length || 1;
+  const counts = buckets.map(() => 0);
+  events.forEach((e) => {
+    const depth = e.scroll_depth ?? 0;
+    for (let i = 0; i < buckets.length; i++) {
+      if (depth >= buckets[i]) counts[i]++;
+    }
+  });
+
+  buckets.forEach((pct, i) => {
+    const ratio = counts[i] / total;
+    const y = (pct / 100) * height;
+    const bandH = i < buckets.length - 1 ? height / buckets.length : 20;
+    const opacity = (1 - ratio) * 0.35;
+
+    ctx.fillStyle = `rgba(255, 69, 0, ${opacity})`;
+    ctx.fillRect(0, y, width, bandH);
+
+    // Label
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText(`${pct}% — ${Math.round(ratio * 100)}% usuários`, 10, y + 14);
+  });
+}
+
 /* ── KPI Card ── */
-function HeatKpi({ label, value, icon: Icon, color }: {
-  label: string; value: string | number; icon: React.ElementType; color?: string;
+function HeatKpi({ label, value, icon: Icon }: {
+  label: string; value: string | number; icon: React.ElementType;
 }) {
   return (
     <Card className="p-3 card-hover">
@@ -163,6 +219,57 @@ function HeatKpi({ label, value, icon: Icon, color }: {
   );
 }
 
+/* ── Snapshot Card ── */
+function SnapshotCard({ snap, onDelete, onExport }: {
+  snap: HeatmapSnapshot;
+  onDelete: () => void;
+  onExport: () => void;
+}) {
+  const date = new Date(snap.capturedAt);
+  return (
+    <Card className="overflow-hidden card-hover group">
+      {/* Thumbnail */}
+      <div className="relative h-32 bg-muted/30">
+        <img
+          src={snap.thumbnail}
+          alt="Heatmap snapshot"
+          className="w-full h-full object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center gap-2 pb-2">
+          <Button size="sm" variant="secondary" className="h-7 text-[10px] gap-1" onClick={onExport}>
+            <Download className="h-3 w-3" /> Exportar
+          </Button>
+          <Button size="sm" variant="destructive" className="h-7 text-[10px] gap-1" onClick={onDelete}>
+            <Trash2 className="h-3 w-3" /> Excluir
+          </Button>
+        </div>
+        <Badge
+          variant="secondary"
+          className="absolute top-2 right-2 text-[8px] bg-background/80 backdrop-blur-sm"
+        >
+          {snap.mode === "click" ? "Cliques" : "Scroll"}
+        </Badge>
+      </div>
+      {/* Info */}
+      <div className="p-3 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground truncate" title={snap.url}>
+          {(() => { try { return new URL(snap.url).pathname; } catch { return snap.url; } })()}
+        </p>
+        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          {date.toLocaleDateString("pt-BR")} às {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          <Badge variant="outline" className="text-[8px]">{snap.device}</Badge>
+          <Badge variant="outline" className="text-[8px]">{snap.totalClicks} cliques</Badge>
+          <Badge variant="outline" className="text-[8px]">{snap.avgScroll}% scroll</Badge>
+          <Badge variant="outline" className="text-[8px]">{snap.visitors} visitantes</Badge>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 /* ── Main Component ── */
 export function HeatmapTab() {
   const projectId = localStorage.getItem("rankito_current_project");
@@ -171,7 +278,9 @@ export function HeatmapTab() {
   const [selectedUrl, setSelectedUrl] = useState<string>("");
   const [heatmapMode, setHeatmapMode] = useState<"click" | "scroll">("click");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
-  const [opacity, setOpacity] = useState(0.65);
+  const [opacity] = useState(0.65);
+  const [showHistory, setShowHistory] = useState(false);
+  const [snapshots, setSnapshots] = useState<HeatmapSnapshot[]>(loadSnapshots);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,7 +288,7 @@ export function HeatmapTab() {
   const [iframeError, setIframeError] = useState(false);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
 
-  // Get unique URLs with event counts
+  // URL options
   const urlOptions = useMemo(() => {
     const map = new Map<string, { clicks: number; exits: number; views: number }>();
     allEvents.forEach((e) => {
@@ -196,14 +305,10 @@ export function HeatmapTab() {
       .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
   }, [allEvents]);
 
-  // Auto-select first URL
   useEffect(() => {
-    if (!selectedUrl && urlOptions.length > 0) {
-      setSelectedUrl(urlOptions[0].url);
-    }
+    if (!selectedUrl && urlOptions.length > 0) setSelectedUrl(urlOptions[0].url);
   }, [urlOptions, selectedUrl]);
 
-  // Filter events for selected URL
   const filteredEvents = useMemo(() => {
     if (!selectedUrl) return [];
     return allEvents.filter((e) => {
@@ -213,30 +318,21 @@ export function HeatmapTab() {
     });
   }, [allEvents, selectedUrl, deviceFilter]);
 
-  // Extract click points from filtered events
   const clickPoints = useMemo((): ClickPoint[] => {
     return filteredEvents
       .filter((e) => e.metadata && typeof e.metadata === "object" && (e.metadata as any).click_x != null)
       .map((e) => {
         const m = e.metadata as any;
         return {
-          x: m.click_x || 0,
-          y: m.click_y || 0,
-          vx: m.click_vx || 0,
-          vy: m.click_vy || 0,
-          vpW: m.vp_w || 1440,
-          vpH: m.vp_h || 900,
-          docH: m.doc_h || 3000,
+          x: m.click_x || 0, y: m.click_y || 0,
+          vx: m.click_vx || 0, vy: m.click_vy || 0,
+          vpW: m.vp_w || 1440, vpH: m.vp_h || 900, docH: m.doc_h || 3000,
         };
       });
   }, [filteredEvents]);
 
-  // Exit events for scroll depth
-  const exitEvents = useMemo(() => {
-    return filteredEvents.filter((e) => e.event_type === "page_exit");
-  }, [filteredEvents]);
+  const exitEvents = useMemo(() => filteredEvents.filter((e) => e.event_type === "page_exit"), [filteredEvents]);
 
-  // Reference viewport width (most common)
   const referenceVpW = useMemo(() => {
     if (!clickPoints.length) return 1440;
     const counts = new Map<number, number>();
@@ -246,13 +342,11 @@ export function HeatmapTab() {
     return maxW;
   }, [clickPoints]);
 
-  // Estimated doc height
   const estimatedDocH = useMemo(() => {
     if (!clickPoints.length) return 3000;
     return Math.max(...clickPoints.map((p) => p.docH), 3000);
   }, [clickPoints]);
 
-  // Stats
   const totalClicks = clickPoints.length;
   const uniqueVisitors = new Set(filteredEvents.map((e) => e.visitor_id).filter(Boolean)).size;
   const avgScrollDepth = exitEvents.length > 0
@@ -260,7 +354,6 @@ export function HeatmapTab() {
     : 0;
   const hotZone = useMemo(() => {
     if (!clickPoints.length) return "—";
-    // Find the densest vertical zone (in 10% buckets)
     const buckets = Array(10).fill(0);
     clickPoints.forEach((p) => {
       const pct = Math.min(Math.floor((p.y / estimatedDocH) * 10), 9);
@@ -270,40 +363,119 @@ export function HeatmapTab() {
     return `${maxIdx * 10}–${(maxIdx + 1) * 10}%`;
   }, [clickPoints, estimatedDocH]);
 
-  // Resize observer for container
   useEffect(() => {
     if (!containerRef.current) return;
     const obs = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) {
-        setContainerSize({
-          width: entry.contentRect.width,
-          height: Math.max(entry.contentRect.width * 0.65, 500),
-        });
-      }
+      if (entry) setContainerSize({ width: entry.contentRect.width, height: Math.max(entry.contentRect.width * 0.65, 500) });
     });
     obs.observe(containerRef.current);
     return () => obs.disconnect();
   }, []);
 
-  // Draw heatmap on canvas when data changes
   const redrawHeatmap = useCallback(() => {
     if (!canvasRef.current || heatmapMode !== "click") return;
-    drawHeatmap(
-      canvasRef.current,
-      clickPoints,
-      { width: containerSize.width, height: containerSize.height },
-      referenceVpW,
-      estimatedDocH,
-      0,
-      28,
-      opacity,
-    );
+    drawHeatmap(canvasRef.current, clickPoints, { width: containerSize.width, height: containerSize.height }, referenceVpW, estimatedDocH, 0, 28, opacity);
   }, [clickPoints, containerSize, referenceVpW, estimatedDocH, heatmapMode, opacity]);
 
-  useEffect(() => {
-    redrawHeatmap();
-  }, [redrawHeatmap]);
+  useEffect(() => { redrawHeatmap(); }, [redrawHeatmap]);
+
+  /* ── Export as PNG ── */
+  const exportAsImage = useCallback(() => {
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = containerSize.width * 2; // 2x for quality
+    exportCanvas.height = containerSize.height * 2;
+    const ctx = exportCanvas.getContext("2d");
+    if (!ctx) return;
+
+    // Background
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    // Draw heatmap data
+    if (heatmapMode === "click" && canvasRef.current) {
+      ctx.drawImage(canvasRef.current, 0, 0, exportCanvas.width, exportCanvas.height);
+    } else if (heatmapMode === "scroll") {
+      drawScrollOnCanvas(exportCanvas, exitEvents, exportCanvas.height);
+    }
+
+    // Add watermark header
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(0, 0, exportCanvas.width, 60);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 18px sans-serif";
+    ctx.fillText(`Rankito Heatmap — ${heatmapMode === "click" ? "Cliques" : "Scroll"} — ${new Date().toLocaleDateString("pt-BR")}`, 16, 24);
+    ctx.font = "13px sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    try { ctx.fillText(new URL(selectedUrl).pathname, 16, 46); } catch { ctx.fillText(selectedUrl, 16, 46); }
+
+    // Add stats footer
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(0, exportCanvas.height - 40, exportCanvas.width, 40);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(`${totalClicks} cliques  •  ${uniqueVisitors} visitantes  •  ${avgScrollDepth}% scroll médio  •  Zona quente: ${hotZone}`, 16, exportCanvas.height - 14);
+
+    // Download
+    const link = document.createElement("a");
+    link.download = `heatmap-${heatmapMode}-${Date.now()}.png`;
+    link.href = exportCanvas.toDataURL("image/png");
+    link.click();
+    toast.success("Imagem exportada com sucesso!");
+  }, [containerSize, heatmapMode, exitEvents, selectedUrl, totalClicks, uniqueVisitors, avgScrollDepth, hotZone]);
+
+  /* ── Save Snapshot ── */
+  const saveSnapshot = useCallback(() => {
+    const thumbCanvas = document.createElement("canvas");
+    thumbCanvas.width = 400;
+    thumbCanvas.height = 260;
+    const ctx = thumbCanvas.getContext("2d");
+    if (!ctx) return;
+
+    // Draw heatmap as thumbnail
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, 400, 260);
+
+    if (heatmapMode === "click" && canvasRef.current) {
+      ctx.drawImage(canvasRef.current, 0, 0, 400, 260);
+    } else if (heatmapMode === "scroll") {
+      drawScrollOnCanvas(thumbCanvas, exitEvents, 260);
+    }
+
+    const snap: HeatmapSnapshot = {
+      id: crypto.randomUUID(),
+      url: selectedUrl,
+      mode: heatmapMode,
+      device: deviceFilter,
+      totalClicks,
+      avgScroll: avgScrollDepth,
+      visitors: uniqueVisitors,
+      capturedAt: new Date().toISOString(),
+      thumbnail: thumbCanvas.toDataURL("image/png", 0.7),
+    };
+
+    const updated = [snap, ...snapshots];
+    setSnapshots(updated);
+    saveSnapshots(updated);
+    toast.success("Snapshot salvo no histórico!");
+  }, [heatmapMode, exitEvents, selectedUrl, deviceFilter, totalClicks, avgScrollDepth, uniqueVisitors, snapshots]);
+
+  /* ── Delete Snapshot ── */
+  const deleteSnapshot = useCallback((id: string) => {
+    const updated = snapshots.filter((s) => s.id !== id);
+    setSnapshots(updated);
+    saveSnapshots(updated);
+    toast("Snapshot excluído.");
+  }, [snapshots]);
+
+  /* ── Export Snapshot ── */
+  const exportSnapshot = useCallback((snap: HeatmapSnapshot) => {
+    const link = document.createElement("a");
+    link.download = `heatmap-${snap.mode}-${new Date(snap.capturedAt).toISOString().slice(0, 10)}.png`;
+    link.href = snap.thumbnail;
+    link.click();
+    toast.success("Imagem exportada!");
+  }, []);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -313,11 +485,10 @@ export function HeatmapTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Banner */}
       <FeatureBanner
         icon={Flame}
         title="Heatmaps Visuais"
-        description={<>Visualize <strong>onde os usuários clicam</strong> e <strong>até onde rolam</strong> com mapas de calor sobrepostos ao seu site. Dados capturados automaticamente pelo Pixel Rankito v3.3.0.</>}
+        description={<>Visualize <strong>onde os usuários clicam</strong> e <strong>até onde rolam</strong> com mapas de calor sobrepostos ao seu site. Salve snapshots e exporte como imagem.</>}
       />
 
       {/* KPIs */}
@@ -343,7 +514,7 @@ export function HeatmapTab() {
                   {urlOptions.map((opt) => (
                     <SelectItem key={opt.url} value={opt.url} className="text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="truncate max-w-[300px]">{new URL(opt.url).pathname}</span>
+                        <span className="truncate max-w-[300px]">{(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}</span>
                         <Badge variant="secondary" className="text-[9px] shrink-0">{opt.clicks} cliques</Badge>
                       </div>
                     </SelectItem>
@@ -391,20 +562,84 @@ export function HeatmapTab() {
               </Tabs>
             </div>
 
-            {/* Refresh */}
-            <div className="self-end">
+            {/* Action buttons */}
+            <div className="self-end flex gap-1">
               <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-[10px]" onClick={redrawHeatmap}>
                 <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+              </Button>
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={saveSnapshot} disabled={!selectedUrl}>
+                <Camera className="h-3.5 w-3.5" /> Salvar Snapshot
+              </Button>
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-[10px]" onClick={exportAsImage} disabled={!selectedUrl}>
+                <Download className="h-3.5 w-3.5" /> Exportar PNG
+              </Button>
+              <Button
+                size="sm"
+                variant={showHistory ? "default" : "outline"}
+                className="h-9 gap-1.5 text-[10px]"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <History className="h-3.5 w-3.5" />
+                Histórico
+                {snapshots.length > 0 && (
+                  <Badge variant="secondary" className="text-[8px] ml-0.5 h-4 min-w-[16px] px-1">{snapshots.length}</Badge>
+                )}
               </Button>
             </div>
           </div>
         </Card>
       </AnimatedContainer>
 
+      {/* Snapshot History Panel */}
+      {showHistory && (
+        <AnimatedContainer delay={0.02}>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-primary" />
+                <h4 className="text-sm font-bold font-display">Histórico de Snapshots</h4>
+                <Badge variant="secondary" className="text-[9px]">{snapshots.length} gravações</Badge>
+              </div>
+              {snapshots.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[10px] text-destructive hover:text-destructive gap-1"
+                  onClick={() => {
+                    setSnapshots([]);
+                    saveSnapshots([]);
+                    toast("Histórico limpo.");
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" /> Limpar tudo
+                </Button>
+              )}
+            </div>
+
+            {snapshots.length === 0 ? (
+              <div className="text-center py-8">
+                <Camera className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Nenhum snapshot salvo ainda. Clique em "Salvar Snapshot" para capturar o heatmap atual.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {snapshots.map((snap) => (
+                  <SnapshotCard
+                    key={snap.id}
+                    snap={snap}
+                    onDelete={() => deleteSnapshot(snap.id)}
+                    onExport={() => exportSnapshot(snap)}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+        </AnimatedContainer>
+      )}
+
       {/* Heatmap Viewport */}
       <AnimatedContainer delay={0.04}>
         <Card className="p-0 overflow-hidden">
-          {/* Toolbar */}
           <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
@@ -425,7 +660,6 @@ export function HeatmapTab() {
             </div>
           </div>
 
-          {/* iframe + overlay container */}
           <div
             ref={containerRef}
             className="relative bg-muted/10"
@@ -433,7 +667,6 @@ export function HeatmapTab() {
           >
             {selectedUrl ? (
               <>
-                {/* iframe */}
                 <iframe
                   ref={iframeRef}
                   src={selectedUrl}
@@ -445,7 +678,6 @@ export function HeatmapTab() {
                   title="Heatmap preview"
                 />
 
-                {/* Click heatmap canvas */}
                 {heatmapMode === "click" && (
                   <canvas
                     ref={canvasRef}
@@ -454,12 +686,10 @@ export function HeatmapTab() {
                   />
                 )}
 
-                {/* Scroll depth overlay */}
                 {heatmapMode === "scroll" && (
                   <ScrollDepthOverlay events={exitEvents} iframeHeight={containerSize.height} />
                 )}
 
-                {/* Loading overlay */}
                 {!iframeLoaded && !iframeError && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-3">
@@ -469,7 +699,6 @@ export function HeatmapTab() {
                   </div>
                 )}
 
-                {/* Error overlay */}
                 {iframeError && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/90 backdrop-blur-sm">
                     <div className="text-center space-y-3 max-w-md px-6">
@@ -478,9 +707,8 @@ export function HeatmapTab() {
                       </div>
                       <h3 className="text-sm font-bold text-foreground">Não foi possível carregar o iframe</h3>
                       <p className="text-xs text-muted-foreground">
-                        O site pode estar bloqueando o carregamento via iframe (X-Frame-Options). 
-                        Os dados de heatmap continuam sendo coletados normalmente — a visualização ficará disponível 
-                        quando o site permitir ser embutido.
+                        O site pode estar bloqueando o carregamento via iframe (X-Frame-Options).
+                        Os dados de heatmap continuam sendo coletados normalmente.
                       </p>
                       <div className="flex flex-col gap-2">
                         <p className="text-[10px] text-muted-foreground font-medium">Dados disponíveis para esta página:</p>
@@ -526,7 +754,7 @@ export function HeatmapTab() {
             <Flame className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-foreground mb-1">Nenhum dado de heatmap ainda</h4>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Instale o Pixel Rankito v3.3.0 no seu site. Ele captura automaticamente coordenadas de cliques 
+              Instale o Pixel Rankito v3.3.0 no seu site. Ele captura automaticamente coordenadas de cliques
               e profundidade de scroll para gerar heatmaps visuais.
             </p>
           </Card>
