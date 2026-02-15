@@ -14,7 +14,7 @@ import {
   Search, Phone, Mail, MapPin, Calendar, DollarSign, TrendingUp,
   Download, FileJson, FileSpreadsheet, PhoneCall, Users, UserCheck,
   ArrowUpDown, ChevronLeft, ChevronRight, Link2, Trophy, AlertCircle,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, Megaphone, Send, Tag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,6 +95,22 @@ export function OfflineConversionsTab() {
   const avgValue = confirmed > 0 ? totalRevenue / confirmed : 0;
   const attributed = filtered.filter(c => c.visitor_id).length;
   const attributionRate = totalConversions > 0 ? ((attributed / totalConversions) * 100).toFixed(1) : "0";
+  const withAds = filtered.filter(c => c.ad_platform).length;
+  const sentToAds = filtered.filter(c => c.sent_to_ads).length;
+
+  // By ad platform
+  const byAdPlatform = useMemo(() => {
+    const map = new Map<string, { count: number; revenue: number; sent: number }>();
+    filtered.forEach(c => {
+      if (!c.ad_platform) return;
+      const entry = map.get(c.ad_platform) || { count: 0, revenue: 0, sent: 0 };
+      entry.count++;
+      if (c.status === "confirmado") entry.revenue += c.value;
+      if (c.sent_to_ads) entry.sent++;
+      map.set(c.ad_platform, entry);
+    });
+    return Array.from(map.entries()).map(([platform, v]) => ({ platform, ...v }));
+  }, [filtered]);
 
   // By channel
   const byChannel = useMemo(() => {
@@ -196,7 +212,7 @@ export function OfflineConversionsTab() {
       </Card>
 
       {/* KPIs */}
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {[
           { label: "Total Offline", value: totalConversions, icon: PhoneCall, color: "hsl(var(--primary))" },
           { label: "Confirmados", value: confirmed, icon: CheckCircle2, color: "hsl(var(--success))" },
@@ -204,6 +220,8 @@ export function OfflineConversionsTab() {
           { label: "Receita Offline", value: `R$ ${totalRevenue.toFixed(0)}`, icon: DollarSign, color: "hsl(var(--success))" },
           { label: "Ticket Médio", value: `R$ ${avgValue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--info))" },
           { label: "Taxa Atribuição", value: `${attributionRate}%`, icon: Link2, color: "hsl(var(--chart-5))" },
+          { label: "Com Ads ID", value: withAds, icon: Tag, color: "hsl(var(--chart-3))" },
+          { label: "Enviadas p/ Ads", value: sentToAds, icon: Send, color: "hsl(var(--chart-4))" },
         ].map((kpi, i) => (
           <Card key={i} className="p-4 sm:p-5 card-hover group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -282,6 +300,34 @@ export function OfflineConversionsTab() {
         </AnimatedContainer>
       </div>
 
+      {/* Ads Attribution Summary */}
+      {byAdPlatform.length > 0 && (
+        <AnimatedContainer delay={0.1}>
+          <Card className="p-4">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+              <Megaphone className="h-4 w-4 text-primary" />
+              Atribuição por Plataforma de Ads
+            </h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {byAdPlatform.map(p => (
+                <Card key={p.platform} className="p-3 bg-muted/30 border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="text-[10px] font-semibold">{p.platform}</Badge>
+                    <span className="text-[10px] text-muted-foreground">{p.count} conversões</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Receita: <strong className="text-foreground">R$ {p.revenue.toFixed(0)}</strong></span>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Send className="h-3 w-3" /> {p.sent}/{p.count} enviadas
+                    </span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </Card>
+        </AnimatedContainer>
+      )}
+
       {/* Table */}
       <AnimatedContainer delay={0.1}>
         <Card className="p-4">
@@ -297,8 +343,8 @@ export function OfflineConversionsTab() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border">
-                  {["Status", "Contato", "Tipo", "Valor", "Canal", "Data", "Campanha", "Vínculo Online"].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+                  {["Status", "Contato", "Tipo", "Valor", "Canal", "Plataforma Ads", "Click ID", "Enviada", "Data", "Vínculo Online"].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -333,11 +379,39 @@ export function OfflineConversionsTab() {
                         {conv.value > 0 ? `R$ ${conv.value.toFixed(2)}` : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground">{conv.source_channel}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground">
-                        {format(new Date(conv.converted_at), "dd/MM · HH:mm")}
+                      <td className="px-3 py-2.5">
+                        {conv.ad_platform ? (
+                          <Badge variant="outline" className={`text-[9px] gap-1 ${conv.ad_platform === "Google Ads" ? "border-chart-3/40 text-chart-3" : "border-chart-4/40 text-chart-4"}`}>
+                            <Megaphone className="h-2.5 w-2.5" /> {conv.ad_platform}
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/50">—</span>
+                        )}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate" title={conv.attributed_campaign || ""}>
-                        {conv.attributed_campaign || "—"}
+                      <td className="px-3 py-2.5">
+                        {(conv.gclid || conv.fbclid) ? (
+                          <Badge variant="outline" className="text-[9px] gap-1 font-mono border-muted-foreground/30">
+                            <Tag className="h-2.5 w-2.5" /> {conv.gclid ? `gclid` : `fbclid`}
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {conv.sent_to_ads ? (
+                          <Badge className="text-[9px] gap-1 bg-success/15 text-success border-success/30">
+                            <Send className="h-2.5 w-2.5" /> Sim
+                          </Badge>
+                        ) : conv.ad_platform ? (
+                          <Badge variant="outline" className="text-[9px] gap-1 border-warning/40 text-warning">
+                            <Clock className="h-2.5 w-2.5" /> Pendente
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/50">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                        {format(new Date(conv.converted_at), "dd/MM · HH:mm")}
                       </td>
                       <td className="px-3 py-2.5">
                         {conv.visitor_id ? (
