@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
 // Fetch geolocation from IP using ipgeolocation.io
@@ -39,7 +39,23 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Support both application/json and text/plain (sendBeacon)
+    let body: any;
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      body = await req.json();
+    } else {
+      // sendBeacon sends as text/plain
+      const text = await req.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        return new Response(JSON.stringify({ error: "invalid JSON body" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
     const { project_id, events } = body;
 
     if (!project_id || typeof project_id !== "string") {
