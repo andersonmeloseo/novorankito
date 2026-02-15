@@ -159,7 +159,7 @@ export default function Overview() {
   return (
     <>
       <TopBar title="Visão Geral" subtitle="Resumo de performance do seu projeto" />
-      <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-auto">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-auto">
         <OverviewWelcomeBanner
           user={user}
           project={projects[0] || null}

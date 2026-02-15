@@ -225,9 +225,14 @@
   }
 
   .table-row-hover {
-    @apply transition-all duration-200;
+    @apply transition-all duration-150;
   }
   .table-row-hover:hover {
-    background: hsl(var(--accent) / 0.5);
+    background: hsl(var(--accent) / 0.4);
+  }
+
+  /* Refined focus states */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1;
   }
 }
