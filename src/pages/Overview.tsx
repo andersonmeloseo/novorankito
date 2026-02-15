@@ -11,6 +11,7 @@ import { OverviewGa4Row } from "@/components/overview/OverviewGa4Row";
 import { OverviewTrendChart } from "@/components/overview/OverviewTrendChart";
 import { OverviewDevicesCountries } from "@/components/overview/OverviewDevicesCountries";
 import { OverviewTopTables } from "@/components/overview/OverviewTopTables";
+import { SyncJobsDashboard } from "@/components/dashboard/SyncJobsDashboard";
 import type { OverviewRpcData, IndexingStats } from "@/components/overview/types";
 
 export default function Overview() {
@@ -201,6 +202,8 @@ export default function Overview() {
           topPages={serverOverview?.top_pages || []}
           topQueries={serverOverview?.top_queries || []}
         />
+
+        {projectId && <SyncJobsDashboard projectId={projectId} />}
       </div>
     </>
   );
