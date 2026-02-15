@@ -220,8 +220,8 @@ const TRAIL_COLORS = [
 ];
 
 /* ── Page Card for listing view ── */
-function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick }: {
-  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; onClick: () => void;
+function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick, onDelete }: {
+  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
 }) {
   let pathname = url;
   try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
@@ -232,13 +232,21 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, f
   };
 
   return (
-    <Card className="card-hover cursor-pointer group transition-all hover:border-primary/40" onClick={onClick}>
+    <Card className="card-hover cursor-pointer group transition-all hover:border-primary/40 relative" onClick={onClick}>
+      {/* Delete button on hover */}
+      <button
+        className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-background border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 hover:border-destructive/30"
+        onClick={onDelete}
+        title="Excluir dados desta página"
+      >
+        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+      </button>
       <div className="p-4 space-y-3">
         <div className="flex items-start gap-3">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
             <Globe className="h-4 w-4 text-primary" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-6">
             <p className="text-sm font-semibold text-foreground truncate" title={url}>{pathname}</p>
             <p className="text-[10px] text-muted-foreground truncate" title={url}>{url}</p>
           </div>
@@ -621,6 +629,7 @@ function SessionReplayViewer({ projectId }: { projectId: string }) {
    ══════════════════════════════════════════════════════════════ */
 export function HeatmapTab() {
   const projectId = localStorage.getItem("rankito_current_project");
+  const queryClient = useQueryClient();
   const { data: allEvents = [], isLoading } = useTrackingEvents(projectId);
 
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
@@ -849,15 +858,15 @@ export function HeatmapTab() {
                 if (!projectId) return;
                 const confirmed = window.confirm("Tem certeza que deseja excluir TODOS os eventos de heatmap deste projeto? Esta ação não pode ser desfeita.");
                 if (!confirmed) return;
-                const heatmapTypes = ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click", "page_exit", "page_view"];
+                const heatmapTypes = ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click", "page_exit", "page_view", "rage_click", "dead_click"];
                 const { error } = await supabase
                   .from("tracking_events")
                   .delete()
                   .eq("project_id", projectId)
                   .in("event_type", heatmapTypes);
                 if (error) { toast.error("Erro ao limpar dados: " + error.message); return; }
-                toast.success("Dados de heatmap limpos com sucesso!");
-                window.location.reload();
+                toast.success("Todos os dados de heatmap foram excluídos!");
+                queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
               }}
             >
               <Trash2 className="h-3 w-3" /> Limpar todos os dados
@@ -985,6 +994,19 @@ export function HeatmapTab() {
                     lastEvent={opt.lastEvent}
                     topCity={opt.topCity}
                     onClick={() => setSelectedUrl(opt.url)}
+                    onDelete={async (e) => {
+                      e.stopPropagation();
+                      if (!projectId) return;
+                      if (!window.confirm(`Excluir todos os dados de heatmap da página "${(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}"?`)) return;
+                      const { error } = await supabase
+                        .from("tracking_events")
+                        .delete()
+                        .eq("project_id", projectId)
+                        .eq("page_url", opt.url);
+                      if (error) { toast.error("Erro ao excluir: " + error.message); return; }
+                      toast.success("Dados da página excluídos!");
+                      queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
+                    }}
                   />
                 ))}
               </StaggeredGrid>
