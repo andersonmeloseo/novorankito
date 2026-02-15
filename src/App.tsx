@@ -96,7 +96,7 @@ const App = () => (
                   <Route path="/seo" element={<SeoPage />} />
                   <Route path="/ga4" element={<GA4Page />} />
                   <Route path="/indexing" element={<IndexingPage />} />
-                  <Route path="/ai-agent" element={<AiAgentPage />} />
+                  <Route path="/rankito-ai" element={<AiAgentPage />} />
                   <Route path="/analitica-rankito" element={<TrackingPage />} />
                   <Route path="/conversions" element={<ConversionsPage />} />
                   <Route path="/ads" element={<AdsPage />} />
