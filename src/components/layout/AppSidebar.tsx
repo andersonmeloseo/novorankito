@@ -84,7 +84,8 @@ export function AppSidebar() {
   });
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Usuário";
-  const activeProject = projects[0];
+  const storedId = localStorage.getItem("rankito_current_project");
+  const activeProject = projects.find(p => p.id === storedId) || projects[0];
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
