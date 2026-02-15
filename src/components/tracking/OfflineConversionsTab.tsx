@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,9 +98,9 @@ function ConversionDetail({ conv }: { conv: MockOfflineConversion }) {
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
     >
-      <td colSpan={99} className="p-0">
-        <div className="bg-muted/20 border-t border-b border-primary/10 p-4 w-full">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <td colSpan={99} className="!p-0 !bg-primary/[0.06]" style={{ background: 'hsl(var(--accent) / 0.5)' }}>
+        <div className="border-t-2 border-b-2 border-primary/25 p-5 sm:p-6" style={{ background: 'hsl(var(--accent) / 0.5)', width: '100%' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 w-full">
             {/* PII / Identity */}
             <div>
               <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1">
@@ -747,7 +747,7 @@ export function OfflineConversionsTab() {
                     const isSelected = selectedIds.has(conv.id);
                     const isExpanded = expandedId === conv.id;
                     return (
-                      <motion.tbody key={conv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
+                      <React.Fragment key={conv.id}>
                         <tr
                           className={`border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : i % 2 === 0 ? "bg-muted/10" : ""}`}
                           onClick={() => setExpandedId(isExpanded ? null : conv.id)}
@@ -832,7 +832,7 @@ export function OfflineConversionsTab() {
                           </td>
                         </tr>
                         {isExpanded && <ConversionDetail conv={conv} />}
-                      </motion.tbody>
+                      </React.Fragment>
                     );
                   })}
                 </AnimatePresence>
