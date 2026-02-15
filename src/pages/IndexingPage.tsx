@@ -787,49 +787,35 @@ export default function IndexingPage() {
                           variant="default"
                           className="gap-1.5 text-xs"
                           onClick={() => {
-                            // Get all inventory URLs that belong to selected sitemaps
-                            // Since sitemaps don't directly map to inventory URLs, we submit the sitemap paths
-                            // to fetch their URLs via the edge function
-                            const selectedPaths = Array.from(selectedSmUrls);
-                            // Filter inventory URLs whose url starts with any selected sitemap domain
                             const urlsToSubmit = inventory
-                              .filter(u => selectedPaths.some(smPath => {
-                                try {
-                                  const smDomain = new URL(smPath).origin;
-                                  return u.url.startsWith(smDomain);
-                                } catch { return false; }
-                              }))
+                              .filter(u => u.verdict !== "PASS" && u.last_request_status !== "success")
                               .map(u => u.url);
                             if (urlsToSubmit.length === 0) {
-                              toast.warning("Nenhuma URL do inventário corresponde aos sitemaps selecionados");
+                              toast.warning("Todas as URLs já estão indexadas ou enviadas com sucesso");
                               return;
                             }
-                            toast.info(`Enviando ${Math.min(urlsToSubmit.length, 50)} URL(s) dos sitemaps selecionados...`);
-                            submitMutation.mutate({ urls: urlsToSubmit.slice(0, 50), requestType: "URL_UPDATED" });
+                            const batch = urlsToSubmit.slice(0, 50);
+                            toast.info(`Enviando ${batch.length} URL(s) não indexadas para a fila...`);
+                            submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
                           }}
                           disabled={submitMutation.isPending}
                         >
                           {submitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                          Enviar para Indexação
+                          Enviar para Indexação ({inventory.filter(u => u.verdict !== "PASS" && u.last_request_status !== "success").length})
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           className="gap-1.5 text-xs"
                           onClick={() => {
-                            const selectedPaths = Array.from(selectedSmUrls);
                             const urlsToInspect = inventory
-                              .filter(u => selectedPaths.some(smPath => {
-                                try {
-                                  const smDomain = new URL(smPath).origin;
-                                  return u.url.startsWith(smDomain);
-                                } catch { return false; }
-                              }))
+                              .filter(u => !u.verdict || u.verdict === "VERDICT_UNSPECIFIED" || u.verdict === "NEUTRAL")
                               .map(u => u.url);
                             if (urlsToInspect.length === 0) {
-                              toast.warning("Nenhuma URL do inventário corresponde aos sitemaps selecionados");
+                              toast.warning("Todas as URLs já foram inspecionadas");
                               return;
                             }
+                            toast.info(`Inspecionando ${Math.min(urlsToInspect.length, 20)} URL(s)...`);
                             inspectMutation.mutate(urlsToInspect.slice(0, 20));
                           }}
                           disabled={inspectMutation.isPending}
