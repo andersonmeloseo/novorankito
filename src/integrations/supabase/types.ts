@@ -329,6 +329,45 @@ export type Database = {
         }
         Relationships: []
       }
+      app_errors: {
+        Row: {
+          created_at: string | null
+          error_message: string
+          error_stack: string | null
+          function_name: string | null
+          id: string
+          metadata: Json | null
+          project_id: string | null
+          request_id: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message: string
+          error_stack?: string | null
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          request_id?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string
+          error_stack?: string | null
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          request_id?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -901,6 +940,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          count: number | null
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number | null
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number | null
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       rr_clients: {
         Row: {
           address: string | null
@@ -1269,6 +1326,65 @@ export type Database = {
           },
         ]
       }
+      sync_jobs: {
+        Row: {
+          attempts: number | null
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          job_type: string
+          locked_at: string | null
+          max_attempts: number | null
+          owner_id: string
+          payload: Json | null
+          project_id: string
+          result: Json | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_type: string
+          locked_at?: string | null
+          max_attempts?: number | null
+          owner_id: string
+          payload?: Json | null
+          project_id: string
+          result?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          locked_at?: string | null
+          max_attempts?: number | null
+          owner_id?: string
+          payload?: Json | null
+          project_id?: string
+          result?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_announcements: {
         Row: {
           content: string
@@ -1564,9 +1680,18 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_key: string
+          p_max_requests: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       decrypt_sensitive: { Args: { encrypted_text: string }; Returns: string }
       encrypt_sensitive: { Args: { plain_text: string }; Returns: string }
       get_project_overview: { Args: { p_project_id: string }; Returns: Json }
+      get_project_overview_v2: { Args: { p_project_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
