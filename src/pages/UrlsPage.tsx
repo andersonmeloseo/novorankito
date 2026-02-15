@@ -238,49 +238,60 @@ export default function UrlsPage() {
         </div>
 
         {/* Filters row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-[130px]">
-              <Filter className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Status</SelectItem>
-              <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="noindex">Noindex</SelectItem>
-              <SelectItem value="redirect">Redirecionado</SelectItem>
-              <SelectItem value="404">404</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-[120px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Tipos</SelectItem>
-              {allTypes.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-[130px]">
-              <SelectValue placeholder="Grupo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Grupos</SelectItem>
-              {allGroups.map((g: string) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-[130px]">
-              <SelectValue placeholder="Prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Prioridades</SelectItem>
-              <SelectItem value="high">Alta</SelectItem>
-              <SelectItem value="medium">Média</SelectItem>
-              <SelectItem value="low">Baixa</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Status</label>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="noindex">Noindex</SelectItem>
+                <SelectItem value="redirect">Redirecionado</SelectItem>
+                <SelectItem value="404">404</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Tipo</label>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-[120px]">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Tipos</SelectItem>
+                {allTypes.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Grupo</label>
+            <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-[130px]">
+                <SelectValue placeholder="Grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Grupos</SelectItem>
+                {allGroups.map((g: string) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Prioridade</label>
+            <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-[130px]">
+                <SelectValue placeholder="Prioridade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Prioridades</SelectItem>
+                <SelectItem value="high">Alta</SelectItem>
+                <SelectItem value="medium">Média</SelectItem>
+                <SelectItem value="low">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {activeFilters > 0 && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-muted-foreground" onClick={() => { setStatusFilter("all"); setTypeFilter("all"); setGroupFilter("all"); setPriorityFilter("all"); setPage(1); }}>
               <X className="h-3 w-3" /> Limpar filtros ({activeFilters})
