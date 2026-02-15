@@ -1694,6 +1694,62 @@ export type Database = {
           },
         ]
       }
+      tracking_goals: {
+        Row: {
+          created_at: string
+          currency_value: number | null
+          description: string | null
+          enabled: boolean
+          goal_type: string
+          id: string
+          name: string
+          owner_id: string
+          project_id: string
+          target_events: string[] | null
+          target_urls: string[] | null
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_value?: number | null
+          description?: string | null
+          enabled?: boolean
+          goal_type?: string
+          id?: string
+          name: string
+          owner_id: string
+          project_id: string
+          target_events?: string[] | null
+          target_urls?: string[] | null
+          target_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_value?: number | null
+          description?: string | null
+          enabled?: boolean
+          goal_type?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          project_id?: string
+          target_events?: string[] | null
+          target_urls?: string[] | null
+          target_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_goals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

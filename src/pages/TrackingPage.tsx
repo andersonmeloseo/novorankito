@@ -9,10 +9,9 @@ import { SessionsTab } from "@/components/tracking/SessionsTab";
 import { InstallScriptTab } from "@/components/tracking/InstallScriptTab";
 import { UserJourneyTab } from "@/components/tracking/UserJourneyTab";
 import { OfflineConversionsTab } from "@/components/tracking/OfflineConversionsTab";
-import { ConsentModeLGPD } from "@/components/tracking/ConsentModeLGPD";
 import { EventBuilderTab } from "@/components/tracking/EventBuilderTab";
-import { ABTestTrackerTab } from "@/components/tracking/ABTestTrackerTab";
-import { Activity, ShoppingCart, Zap, Target, Users, Code, Footprints, PhoneCall, Shield, MousePointerClick, FlaskConical } from "lucide-react";
+import { GoalsTab } from "@/components/tracking/GoalsTab";
+import { Activity, ShoppingCart, Target, Users, Code, Footprints, PhoneCall, MousePointerClick, Flag } from "lucide-react";
 
 export default function TrackingPage() {
   return (
@@ -51,11 +50,8 @@ export default function TrackingPage() {
             <TabsTrigger value="event-builder" className="text-xs gap-1.5">
               <MousePointerClick className="h-3.5 w-3.5" /> Eventos Personalizados
             </TabsTrigger>
-            <TabsTrigger value="ab-test" className="text-xs gap-1.5">
-              <FlaskConical className="h-3.5 w-3.5" /> A/B Tests
-            </TabsTrigger>
-            <TabsTrigger value="consent" className="text-xs gap-1.5">
-              <Shield className="h-3.5 w-3.5" /> LGPD
+            <TabsTrigger value="goals" className="text-xs gap-1.5">
+              <Flag className="h-3.5 w-3.5" /> Metas
             </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
               <Code className="h-3.5 w-3.5" /> Pixel Rankito
@@ -90,12 +86,8 @@ export default function TrackingPage() {
             <EventBuilderTab />
           </TabsContent>
 
-          <TabsContent value="ab-test" className="mt-4">
-            <ABTestTrackerTab />
-          </TabsContent>
-
-          <TabsContent value="consent" className="mt-4">
-            <ConsentModeLGPD />
+          <TabsContent value="goals" className="mt-4">
+            <GoalsTab />
           </TabsContent>
 
           <TabsContent value="install" className="mt-4">
