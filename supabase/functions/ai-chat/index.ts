@@ -1,10 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, validateBody, validateUUID, jsonResponse, errorResponse } from "../_shared/utils.ts";
+import { getCorsHeaders, validateUUID, jsonResponse, errorResponse } from "../_shared/utils.ts";
+import { createLogger, getRequestId } from "../_shared/logger.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  const requestId = getRequestId(req);
+  const log = createLogger("ai-chat", requestId);
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -12,12 +16,10 @@ serve(async (req) => {
 
     const body = await req.json();
 
-    // Validate required fields
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
       return errorResponse("messages array is required and cannot be empty", cors, 400);
     }
 
-    // Validate message format
     for (const msg of body.messages) {
       if (!msg.role || !msg.content || typeof msg.content !== "string") {
         return errorResponse("Each message must have 'role' and 'content' (string) fields", cors, 400);
@@ -37,9 +39,8 @@ serve(async (req) => {
       if (uuidErr) return uuidErr;
     }
 
-    console.log("ai-chat called:", { agent_name, project_id: project_id || "NONE", msgCount: messages?.length, hasInstructions: !!agent_instructions });
+    log.info("Chat request", { agent_name, project_id: project_id || "NONE", msg_count: messages?.length });
 
-    // Fetch project context from DB
     let projectContext = "";
     if (project_id) {
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -54,7 +55,7 @@ serve(async (req) => {
         { data: conversions },
         { data: gscConn },
         { data: ga4Conn },
-      ] = await Promise.all([
+      ] = await log.time("fetch-project-context", () => Promise.all([
         sb.from("projects").select("*").eq("id", project_id).single(),
         sb.from("seo_metrics").select("query, url, clicks, impressions, ctr, position, metric_date").eq("project_id", project_id).order("metric_date", { ascending: false }).limit(30),
         sb.from("site_urls").select("url, status, meta_title, meta_description, url_type, priority").eq("project_id", project_id).limit(50),
@@ -64,7 +65,7 @@ serve(async (req) => {
         sb.from("conversions").select("event_type, page, source, value, converted_at").eq("project_id", project_id).order("converted_at", { ascending: false }).limit(20),
         sb.from("gsc_connections").select("site_url, connection_name, last_sync_at").eq("project_id", project_id).limit(1),
         sb.from("ga4_connections").select("property_name, property_id, last_sync_at").eq("project_id", project_id).limit(1),
-      ]);
+      ]), { project_id });
 
       projectContext = `
 === DADOS DO PROJETO ===
@@ -80,7 +81,7 @@ GSC: ${gscConn?.[0] ? `${gscConn[0].site_url} (${gscConn[0].connection_name}) - 
 GA4: ${ga4Conn?.[0] ? `${ga4Conn[0].property_name} (ID: ${ga4Conn[0].property_id}) - Último sync: ${ga4Conn[0].last_sync_at || 'nunca'}` : 'Não conectado'}
 
 === TOP QUERIES SEO (últimas) ===
-${seoMetrics?.length ? seoMetrics.map(m => `• "${m.query}" → pos: ${m.position?.toFixed(1)}, cliques: ${m.clicks}, imp: ${m.impressions}, CTR: ${(m.ctr * 100).toFixed(1)}% | ${m.url}`).join('\n') : 'Sem dados de SEO'}
+${seoMetrics?.length ? seoMetrics.map(m => `• "${m.query}" → pos: ${(m.position as number)?.toFixed(1)}, cliques: ${m.clicks}, imp: ${m.impressions}, CTR: ${((m.ctr as number) * 100).toFixed(1)}% | ${m.url}`).join('\n') : 'Sem dados de SEO'}
 
 === URLs DO SITE ===
 ${siteUrls?.length ? siteUrls.map(u => `• [${u.status}] ${u.url} (${u.url_type}, prioridade: ${u.priority}) - ${u.meta_title || 'sem title'}`).join('\n') : 'Sem URLs cadastradas'}
@@ -121,7 +122,7 @@ DIRETRIZES DE RESPOSTA:
 - Formate tabelas quando apresentar comparativos
 - Sempre termine com uma pergunta ou sugestão de próximo passo`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await log.time("ai-gateway-call", () => fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -132,20 +133,22 @@ DIRETRIZES DE RESPOSTA:
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
-    });
+    }), { project_id: project_id || "NONE" });
 
     if (!response.ok) {
       if (response.status === 429) return errorResponse("Limite de requisições excedido. Tente novamente em alguns segundos.", cors, 429);
       if (response.status === 402) return errorResponse("Créditos de IA esgotados. Adicione créditos ao workspace.", cors, 402);
-      console.error("AI gateway error:", response.status, await response.text());
+      log.error("AI gateway error", null, { status: response.status });
       return errorResponse("Erro no gateway de IA", cors);
     }
 
+    log.info("Streaming response started", { project_id: project_id || "NONE" });
+
     return new Response(response.body, {
-      headers: { ...cors, "Content-Type": "text/event-stream" },
+      headers: { ...cors, "Content-Type": "text/event-stream", "X-Request-ID": requestId },
     });
   } catch (e) {
-    console.error("ai-chat error:", e);
+    log.error("Request failed", e);
     return errorResponse(e instanceof Error ? e.message : "Erro desconhecido", cors);
   }
 });
