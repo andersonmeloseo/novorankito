@@ -16,7 +16,7 @@ import { Activity, ShoppingCart, Target, Users, Code, Footprints, PhoneCall, Mou
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Analítica Rankito" subtitle="Plugin v3.2.0 — Tracking Universal com Debug Mode" />
+      <TopBar title="Analítica Rankito" subtitle="Plugin v3.3.0 — Tracking Universal com E-commerce Automático" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
@@ -24,7 +24,7 @@ export default function TrackingPage() {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
           </span>
           <span className="text-sm font-medium text-foreground">Plugin Ativo — Capturando Eventos em Tempo Real</span>
-          <Badge variant="secondary" className="text-[10px]">v3.2.0</Badge>
+          <Badge variant="secondary" className="text-[10px]">v3.3.0</Badge>
         </Card>
 
         <Tabs defaultValue="all-events">
