@@ -460,42 +460,57 @@ export function SessionsTab() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Select value={sourceFilter} onValueChange={v => { setSourceFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Source" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {sources.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={deviceFilter} onValueChange={v => { setDeviceFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Device" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {devices.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={browserFilter} onValueChange={v => { setBrowserFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {browsersList.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="bounce">Bounce</SelectItem>
-                  <SelectItem value="engaged">Engajada</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={cityFilter} onValueChange={v => { setCityFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {cities.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Source:</span>
+                <Select value={sourceFilter} onValueChange={v => { setSourceFilter(v); setPage(1); }}>
+                  <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Source" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {sources.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Dispositivo:</span>
+                <Select value={deviceFilter} onValueChange={v => { setDeviceFilter(v); setPage(1); }}>
+                  <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Device" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {devices.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Browser:</span>
+                <Select value={browserFilter} onValueChange={v => { setBrowserFilter(v); setPage(1); }}>
+                  <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {browsersList.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Status:</span>
+                <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
+                  <SelectTrigger className="w-[110px] h-8 text-[11px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="bounce">Bounce</SelectItem>
+                    <SelectItem value="engaged">Engajada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Cidade:</span>
+                <Select value={cityFilter} onValueChange={v => { setCityFilter(v); setPage(1); }}>
+                  <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {cities.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -521,8 +536,8 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(s.started_at), "dd/MM HH:mm")}</td>
                       <td className="px-3 py-2 text-[11px] font-medium text-foreground">{formatDuration(s.duration_sec)}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground text-center">{s.pages_viewed}</td>
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate">{s.landing_page}</td>
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate">{s.exit_page}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.landing_page}>{s.landing_page}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.exit_page}>{s.exit_page}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.referrer}>🔗 {s.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</td>
                       <td className="px-3 py-2"><Badge variant="outline" className="text-[9px] capitalize">{s.source} / {s.medium}</Badge></td>
                       <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device === "mobile" ? "📱" : s.device === "desktop" ? "🖥️" : "📟"} {s.device}</td>

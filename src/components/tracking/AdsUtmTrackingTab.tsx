@@ -260,8 +260,8 @@ export function AdsUtmTrackingTab() {
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{e.utm_source || "—"}</td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{e.utm_medium || "—"}</td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{e.utm_campaign || "—"}</td>
-                      <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground truncate max-w-[100px]">{e.gclid ? e.gclid.substring(0, 12) + "…" : "—"}</td>
-                      <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground truncate max-w-[100px]">{e.fbclid ? e.fbclid.substring(0, 12) + "…" : "—"}</td>
+                      <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground truncate max-w-[100px]" title={e.gclid || undefined}>{e.gclid ? e.gclid.substring(0, 12) + "…" : "—"}</td>
+                      <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground truncate max-w-[100px]" title={e.fbclid || undefined}>{e.fbclid ? e.fbclid.substring(0, 12) + "…" : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
