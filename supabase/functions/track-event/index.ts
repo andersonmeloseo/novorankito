@@ -128,6 +128,7 @@ serve(async (req) => {
       "whatsapp_click", "phone_click", "email_click", "form_submit",
       "scroll", "product_view", "add_to_cart", "remove_from_cart",
       "begin_checkout", "purchase", "search", "video_play", "file_download",
+      "heatmap_click", "rage_click", "dead_click", "js_error", "web_vitals", "text_copy",
       "custom",
     ];
 
