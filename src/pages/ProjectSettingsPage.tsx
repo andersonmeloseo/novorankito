@@ -28,11 +28,23 @@ export default function ProjectSettingsPage() {
   const queryClient = useQueryClient();
 
   const { data: project, isLoading } = useQuery({
-    queryKey: ["active-project-settings"],
+    queryKey: ["active-project-settings", user?.id],
     queryFn: async () => {
+      const savedId = localStorage.getItem("rankito_current_project");
+      if (savedId) {
+        const { data } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("id", savedId)
+          .eq("owner_id", user!.id)
+          .single();
+        if (data) return data;
+      }
+      // Fallback: get first project owned by user
       const { data } = await supabase
         .from("projects")
         .select("*")
+        .eq("owner_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
