@@ -78,14 +78,14 @@ function SparkKpi({ label, value, color, icon: Icon, smallValue }: {
   label: string; value: string | number; color: string; icon?: React.ElementType; smallValue?: boolean;
 }) {
   return (
-    <Card className="p-3.5 card-hover group relative overflow-hidden">
+    <Card className="p-4 sm:p-5 card-hover group relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="relative">
-        <div className="flex items-center gap-1.5 mb-2">
-          {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+      <div className="relative flex flex-col items-center text-center gap-1.5">
+        <div className="flex items-center gap-1.5">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
         </div>
-        <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-xs" : "text-xl"}`}>{value}</span>
+        <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-sm" : "text-2xl"}`}>{value}</span>
       </div>
     </Card>
   );
