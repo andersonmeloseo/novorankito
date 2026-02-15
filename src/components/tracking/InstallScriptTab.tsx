@@ -294,11 +294,12 @@ export function InstallScriptTab() {
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
   const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const mainScript = `<!-- Rankito Analytics v3.3.0 -->
+  const mainScript = `<!-- Rankito Analytics v3.4.0 -->
 <script>
 (function(w,d){
   var P="${projectId || 'SEU_PROJECT_ID'}";
   var E="${ENDPOINT}";
+  var RE="${ENDPOINT}".replace('track-event','save-session-recording');
   var K="${ANON_KEY}";
   var DBG=location.search.indexOf('rankito_debug')>-1||w.__RANKITO_DEBUG;
   var Q=[];var S=Date.now();
@@ -315,7 +316,7 @@ export function InstallScriptTab() {
   var base={device:getDevice(),browser:getBrowser(),os:getOS(),screen_width:screen.width,screen_height:screen.height,language:navigator.language,referrer:d.referrer||null,page_url:location.href,page_title:d.title};
   var utm=getUTM();Object.assign(base,utm);
   var geo={country:null,city:null,state:null};
-  log('Script carregado',{project_id:P,endpoint:E});
+  log('Script carregado v3.4.0',{project_id:P,endpoint:E});
 
   // Fetch geolocation client-side (more accurate than server IP)
   fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(4000)})
@@ -399,16 +400,47 @@ export function InstallScriptTab() {
     }
   },{passive:true});
 
+  /* ── Session Recording (lightweight — captures interactions, not DOM) ── */
+  var recEvents=[];var lastRecT=0;
+  function recCapture(type,data){
+    var now=Date.now();
+    if(now-lastRecT<100&&type==='move')return; // throttle moves
+    lastRecT=now;
+    if(recEvents.length>=400)return; // cap per session
+    recEvents.push(Object.assign({type:type,t:Math.round((now-S)/1000)},data));
+  }
+  d.addEventListener('click',function(e){
+    recCapture('click',{x:Math.round(e.pageX),y:Math.round(e.pageY),tag:e.target.tagName.toLowerCase(),text:(e.target.textContent||'').trim().substring(0,50)});
+  },true);
+  d.addEventListener('mousemove',function(e){
+    recCapture('move',{x:Math.round(e.pageX),y:Math.round(e.pageY)});
+  },{passive:true});
+  w.addEventListener('scroll',function(){
+    recCapture('scroll',{y:Math.round(w.scrollY),pct:Math.round((w.scrollY/(d.documentElement.scrollHeight-w.innerHeight))*100)});
+  },{passive:true});
+
+  function flushRecording(){
+    if(!recEvents.length)return;
+    var body=JSON.stringify({project_id:P,session_id:SID,visitor_id:VID,page_url:location.href,device:base.device,browser:base.browser,os:base.os,screen_width:screen.width,screen_height:screen.height,duration_ms:Date.now()-S,events_count:recEvents.length,recording_data:recEvents});
+    log('Salvando gravação ('+recEvents.length+' eventos)...');
+    fetch(RE,{method:'POST',headers:{'Content-Type':'application/json','apikey':K,'Authorization':'Bearer '+K},body:body,keepalive:true})
+    .then(function(r){log('Recording salvo: '+r.status);})
+    .catch(function(e){log('Falha ao salvar recording',e);});
+  }
+
   w.addEventListener('beforeunload',function(){
     send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000),metadata:{scroll_samples:scrollSamples.slice(-20),move_samples:moveSamples.slice(-100),doc_h:d.documentElement.scrollHeight,vp_h:w.innerHeight,vp_w:w.innerWidth}},base));
     flush();
+    flushRecording();
   });
 
+  // Also flush recording periodically (every 60s)
+  setInterval(function(){flushRecording();},60000);
   setInterval(flush,30000);
 
   w._rkTrack=function(eventType,data){send(Object.assign({event_type:eventType},base,data||{}));};
   w.rankitoTrack=w._rkTrack;
-  w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID};};
+  w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID,recording_events:recEvents.length};};
 
   // --- Auto E-commerce: WooCommerce ---
   function initWoo(){
