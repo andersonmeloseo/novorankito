@@ -1,18 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer } from "@/components/ui/animated-container";
-import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp, Tag, Settings, AlertTriangle } from "lucide-react";
+import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp, Tag, Settings, AlertTriangle, CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 
 function useProjectId() {
-  const stored = localStorage.getItem("rankito_current_project");
-  if (stored) {
-    try { return JSON.parse(stored)?.id; } catch { return null; }
-  }
-  return null;
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("rankito_current_project");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setProjectId(parsed?.id || null);
+        setProjectName(parsed?.name || parsed?.domain || null);
+      } catch { /* ignore */ }
+    }
+
+    const handleStorage = () => {
+      const s = localStorage.getItem("rankito_current_project");
+      if (s) {
+        try {
+          const p = JSON.parse(s);
+          setProjectId(p?.id || null);
+          setProjectName(p?.name || p?.domain || null);
+        } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  return { projectId, projectName };
 }
 
 function CopyBlock({ code, label }: { code: string; label?: string }) {
@@ -64,8 +88,177 @@ function InstructionCard({ icon, title, children }: { icon: React.ReactNode; tit
   );
 }
 
+type VerifyStatus = "idle" | "loading" | "success" | "error";
+
+function VerifyConnection({ projectId }: { projectId: string | null }) {
+  const [status, setStatus] = useState<VerifyStatus>("idle");
+  const [lastCheck, setLastCheck] = useState<string | null>(null);
+  const [eventCount, setEventCount] = useState<number | null>(null);
+
+  const verify = useCallback(async () => {
+    if (!projectId) {
+      toast.error("Selecione um projeto primeiro.");
+      return;
+    }
+
+    setStatus("loading");
+
+    try {
+      // Check if any tracking events exist for this project in the last 24h
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error, count } = await supabase
+        .from("tracking_events")
+        .select("id, created_at", { count: "exact" })
+        .eq("project_id", projectId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      const total = count ?? 0;
+      setEventCount(total);
+      setLastCheck(new Date().toLocaleTimeString("pt-BR"));
+
+      if (total > 0) {
+        setStatus("success");
+        toast.success(`Script detectado! ${total} evento(s) nas últimas 24h.`);
+      } else {
+        setStatus("error");
+        toast.error("Nenhum evento recebido nas últimas 24h. Verifique se o script está instalado corretamente.");
+      }
+    } catch (err) {
+      console.error("Verify error:", err);
+      setStatus("error");
+      toast.error("Erro ao verificar conexão.");
+    }
+  }, [projectId]);
+
+  const sendTestEvent = useCallback(async () => {
+    if (!projectId) {
+      toast.error("Selecione um projeto primeiro.");
+      return;
+    }
+
+    setStatus("loading");
+
+    try {
+      const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectId,
+          events: [{
+            event_type: "page_view",
+            page_url: "https://test.rankito.com/verification",
+            page_title: "Rankito - Teste de Conexão",
+            device: "desktop",
+            browser: "Rankito Dashboard",
+            os: "Web",
+            session_id: "test_" + Date.now(),
+            visitor_id: "test_verification",
+          }],
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to send test event");
+
+      // Wait briefly then check
+      await new Promise((r) => setTimeout(r, 2000));
+
+      const since = new Date(Date.now() - 60 * 1000).toISOString();
+      const { count } = await supabase
+        .from("tracking_events")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .gte("created_at", since);
+
+      if ((count ?? 0) > 0) {
+        setStatus("success");
+        setEventCount(count);
+        setLastCheck(new Date().toLocaleTimeString("pt-BR"));
+        toast.success("Evento de teste recebido com sucesso!");
+      } else {
+        setStatus("error");
+        toast.error("Evento enviado, mas não foi encontrado. Tente novamente em alguns segundos.");
+      }
+    } catch (err) {
+      console.error("Test event error:", err);
+      setStatus("error");
+      toast.error("Erro ao enviar evento de teste.");
+    }
+  }, [projectId]);
+
+  return (
+    <Card className="p-5 border-border">
+      <div className="flex items-center gap-2 mb-3">
+        <StepNumber n={3} />
+        <h4 className="text-sm font-bold font-display">Verificar Conexão</h4>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Após instalar o script, verifique se os eventos estão chegando corretamente.
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button
+          size="sm"
+          onClick={verify}
+          disabled={status === "loading" || !projectId}
+          className="gap-1.5 text-xs"
+        >
+          {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Verificar Eventos (24h)
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={sendTestEvent}
+          disabled={status === "loading" || !projectId}
+          className="gap-1.5 text-xs"
+        >
+          {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+          Enviar Evento de Teste
+        </Button>
+      </div>
+
+      {status !== "idle" && status !== "loading" && (
+        <div className={`flex items-start gap-2.5 p-3 rounded-lg border ${
+          status === "success" 
+            ? "bg-success/5 border-success/20" 
+            : "bg-destructive/5 border-destructive/20"
+        }`}>
+          {status === "success" ? (
+            <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+          ) : (
+            <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          )}
+          <div className="text-xs space-y-1">
+            {status === "success" ? (
+              <>
+                <p className="font-semibold text-success">Conexão verificada com sucesso!</p>
+                <p className="text-muted-foreground">
+                  {eventCount} evento(s) detectado(s).
+                  {lastCheck && <span className="ml-1">Verificado às {lastCheck}.</span>}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-destructive">Nenhum evento detectado</p>
+                <p className="text-muted-foreground">
+                  Verifique se o script foi instalado corretamente antes do <code className="bg-muted px-1 rounded">&lt;/body&gt;</code> e se o Project ID está correto.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function InstallScriptTab() {
-  const projectId = useProjectId();
+  const { projectId, projectName } = useProjectId();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
@@ -217,14 +410,30 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
         </Card>
       </AnimatedContainer>
 
-      {/* Project ID notice */}
-      {!projectId && (
-        <AnimatedContainer delay={0.02}>
-          <Card className="p-4 border-warning/30 bg-warning/5">
-            <p className="text-sm text-warning font-medium">⚠️ Selecione um projeto primeiro para gerar o script com o ID correto.</p>
+      {/* Project ID auto-detected */}
+      <AnimatedContainer delay={0.02}>
+        {projectId ? (
+          <Card className="p-4 border-success/30 bg-success/5">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  Projeto detectado: <strong>{projectName || "Sem nome"}</strong>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">ID: {projectId}</p>
+              </div>
+              <Badge variant="secondary" className="text-[9px]">Auto-detectado</Badge>
+            </div>
           </Card>
-        </AnimatedContainer>
-      )}
+        ) : (
+          <Card className="p-4 border-warning/30 bg-warning/5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <p className="text-sm text-warning font-medium">⚠️ Selecione um projeto na sidebar para gerar o script com o ID correto.</p>
+            </div>
+          </Card>
+        )}
+      </AnimatedContainer>
 
       {/* Step 1: Main Script */}
       <AnimatedContainer delay={0.04}>
@@ -303,7 +512,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<Settings className="h-4 w-4 text-muted-foreground" />} title="WordPress — Via Editor de Temas (Alternativa)">
                 <ol className="list-decimal list-inside space-y-2">
                   <li>Vá em <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">Aparência → Editor de Temas</code>.</li>
-                  <li>Selecione o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">footer.php</code> (ou <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">theme.json</code> em temas de bloco).</li>
+                  <li>Selecione o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">footer.php</code>.</li>
                   <li>Cole o script <strong>antes do</strong> <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
                   <li>Clique em <strong>Atualizar Arquivo</strong>.</li>
                 </ol>
@@ -314,7 +523,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               </InstructionCard>
 
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} title="WooCommerce — Tracking de E-commerce">
-                <p>Se o seu WordPress usa <strong>WooCommerce</strong>, adicione este snippet <strong>após</strong> o script principal para capturar eventos de e-commerce (product view, add to cart, checkout, purchase):</p>
+                <p>Se o seu WordPress usa <strong>WooCommerce</strong>, adicione este snippet <strong>após</strong> o script principal:</p>
                 <div className="mt-2">
                   <CopyBlock code={wooCommerceSnippet} />
                 </div>
@@ -329,20 +538,20 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
                   <li>Clique em <strong>Tags → Nova</strong>.</li>
                   <li>Escolha o tipo <strong>"HTML Personalizado"</strong>.</li>
                   <li>Cole o <strong>Script Principal</strong> inteiro (com as tags <code className="bg-muted px-1 rounded text-[10px]">&lt;script&gt;</code>).</li>
-                  <li>Em <strong>Acionamento (Trigger)</strong>, selecione <strong>"All Pages"</strong> (Todas as Páginas).</li>
+                  <li>Em <strong>Acionamento (Trigger)</strong>, selecione <strong>"All Pages"</strong>.</li>
                   <li>Nomeie a tag como <strong>"Rankito Analytics"</strong> e clique em <strong>Salvar</strong>.</li>
                   <li>Clique em <strong>Enviar → Publicar</strong> para ativar.</li>
                 </ol>
                 <div className="p-3 mt-2 rounded-lg bg-muted/40 border border-border/50">
                   <p className="text-[11px] font-medium text-foreground mb-1">⚙️ Configuração avançada (opcional):</p>
                   <ul className="list-disc list-inside text-[10px] space-y-1 text-muted-foreground">
-                    <li>Em <strong>Configurações avançadas → Opções de disparo da tag</strong>, selecione <strong>"Uma vez por página"</strong>.</li>
+                    <li>Em <strong>Configurações avançadas → Opções de disparo</strong>, selecione <strong>"Uma vez por página"</strong>.</li>
                     <li>Marque <strong>"Suportar document.write"</strong> se necessário.</li>
                   </ul>
                 </div>
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10 mt-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px]"><strong>Dica:</strong> Use o modo de <strong>Visualização</strong> do GTM para testar antes de publicar. Verifique se o evento <code className="bg-muted px-1 rounded">page_view</code> aparece no debug.</p>
+                  <p className="text-[10px]"><strong>Dica:</strong> Use o modo de <strong>Visualização</strong> do GTM para testar antes de publicar.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -355,7 +564,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
                   <li>Clique em <strong>Ações → Editar código</strong>.</li>
                   <li>Abra o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">theme.liquid</code>.</li>
                   <li>Cole o <strong>Script Principal</strong> antes do <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
-                  <li>Logo abaixo, cole o <strong>snippet de e-commerce</strong> do Shopify.</li>
+                  <li>Logo abaixo, cole o <strong>snippet de e-commerce</strong>.</li>
                   <li>Clique em <strong>Salvar</strong>.</li>
                 </ol>
               </InstructionCard>
@@ -371,8 +580,13 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
         </Card>
       </AnimatedContainer>
 
-      {/* Advanced: Manual tracking */}
+      {/* Step 3: Verify Connection */}
       <AnimatedContainer delay={0.08}>
+        <VerifyConnection projectId={projectId} />
+      </AnimatedContainer>
+
+      {/* Advanced: Manual tracking */}
+      <AnimatedContainer delay={0.1}>
         <Card className="p-5">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -385,7 +599,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
           {showAdvanced && (
             <div className="mt-3">
               <p className="text-xs text-muted-foreground mb-3">
-                Use <code className="bg-muted px-1 rounded text-[10px]">window.rankitoTrack()</code> para enviar eventos customizados a qualquer momento.
+                Use <code className="bg-muted px-1 rounded text-[10px]">window.rankitoTrack()</code> para enviar eventos customizados.
               </p>
               <CopyBlock code={manualTrackingSnippet} />
             </div>
@@ -394,7 +608,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
       </AnimatedContainer>
 
       {/* Events captured list */}
-      <AnimatedContainer delay={0.1}>
+      <AnimatedContainer delay={0.12}>
         <Card className="p-5">
           <h4 className="text-sm font-bold font-display mb-3">📊 Eventos Capturados Automaticamente</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
