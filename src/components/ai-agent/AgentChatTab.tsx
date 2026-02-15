@@ -45,12 +45,45 @@ interface AgentChatTabProps {
 }
 
 const QUICK_PROMPTS = [
+  // Performance Geral
   "📊 Analise a performance geral do meu projeto",
-  "🔍 Quais keywords têm mais potencial de crescimento?",
   "📈 Como está meu tráfego orgânico?",
-  "⚡ Quais páginas precisam de otimização urgente?",
+  "📉 Houve queda de tráfego recente? Diagnostique",
+  "🏆 Quais são minhas páginas com melhor performance?",
+  "⚠️ Quais páginas estão perdendo tráfego?",
+  // SEO & Keywords
+  "🔍 Quais keywords têm mais potencial de crescimento?",
   "🎯 Sugira 5 ações para melhorar meu SEO",
   "🔗 Analise minha cobertura de indexação",
+  "⚡ Quais páginas precisam de otimização urgente?",
+  "📝 Sugira melhorias de title e meta description",
+  "🔄 Existe canibalização de keywords no meu site?",
+  "🥇 Quais keywords estou quase no Top 3?",
+  "🧲 Quais keywords de cauda longa devo focar?",
+  "🗺️ Como está meu sitemap e robots.txt?",
+  "🔎 Quais queries têm CTR abaixo do esperado?",
+  // Analytics & Dados
+  "👥 Qual o perfil dos meus visitantes?",
+  "📱 Como é o tráfego mobile vs desktop?",
+  "🌍 De quais países vêm meus visitantes?",
+  "⏱️ Qual o tempo médio nas páginas?",
+  "🚪 Quais páginas têm maior bounce rate?",
+  "🔀 Quais são minhas principais fontes de tráfego?",
+  "📅 Compare meu tráfego desta semana vs anterior",
+  "📊 Gere um relatório executivo do mês",
+  // Growth & Conversão
+  "💰 Quais páginas convertem mais?",
+  "🚀 Sugira estratégias de growth hacking",
+  "🎯 Monte um plano de ação para 30 dias",
+  "🔥 Quais são os quick wins mais impactantes?",
+  "📣 Sugira estratégias de conteúdo para tráfego",
+  "🧪 Sugira testes A/B para melhorar conversão",
+  // Técnico
+  "🛠️ Há problemas técnicos de SEO no site?",
+  "📋 Analise os Core Web Vitals do projeto",
+  "🔐 Verifique problemas de segurança e HTTPS",
+  "🧩 Sugira melhorias de schema markup / dados estruturados",
+  "🌐 Analise a estrutura de links internos",
 ];
 
 function useDataSources(projectId?: string) {
@@ -82,6 +115,7 @@ function useDataSources(projectId?: string) {
 
 export function AgentChatTab({ agentName, agentInstructions, projectId }: AgentChatTabProps) {
   const [input, setInput] = useState("");
+  const [showAllPrompts, setShowAllPrompts] = useState(false);
   const { messages, isLoading, sendMessage, clearMessages } = useAiChat();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { data: sources } = useDataSources(projectId);
@@ -240,8 +274,8 @@ export function AgentChatTab({ agentName, agentInstructions, projectId }: AgentC
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2 w-full max-w-md mt-2">
-              {QUICK_PROMPTS.map((prompt, i) => (
+            <div className="grid grid-cols-2 gap-2 w-full max-w-lg mt-2">
+              {(showAllPrompts ? QUICK_PROMPTS : QUICK_PROMPTS.slice(0, 8)).map((prompt, i) => (
                 <button
                   key={i}
                   onClick={() => handleSend(prompt)}
@@ -251,6 +285,14 @@ export function AgentChatTab({ agentName, agentInstructions, projectId }: AgentC
                 </button>
               ))}
             </div>
+            {QUICK_PROMPTS.length > 8 && (
+              <button
+                onClick={() => setShowAllPrompts(v => !v)}
+                className="text-[11px] text-primary hover:underline mt-1 font-medium"
+              >
+                {showAllPrompts ? "Mostrar menos ▲" : `Ver mais ${QUICK_PROMPTS.length - 8} sugestões ▼`}
+              </button>
+            )}
           </div>
         )}
         {messages.map((msg, i) => (
