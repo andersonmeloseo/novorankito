@@ -4,13 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchAllPaginated } from "@/lib/supabase-helpers";
 import type { Tables } from "@/integrations/supabase/types";
 
+export type SeoMetricRow = Tables<"seo_metrics">;
+export type SiteUrlRow = Tables<"site_urls">;
+
 // ─── Site URLs ───
 export function useSiteUrls(projectId?: string) {
   const { user } = useAuth();
-  return useQuery({
+  return useQuery<SiteUrlRow[]>({
     queryKey: ["site-urls", projectId],
     queryFn: async () => {
-      return fetchAllPaginated("site_urls", {
+      return fetchAllPaginated<SiteUrlRow>("site_urls", {
         filters: projectId ? { project_id: projectId } : {},
         orderBy: { column: "created_at", ascending: false },
         maxRows: 20000,
@@ -57,14 +60,14 @@ export function useDeleteSiteUrl() {
 // ─── SEO Metrics ───
 export function useSeoMetrics(projectId?: string, dimensionType?: string) {
   const { user } = useAuth();
-  return useQuery({
+  return useQuery<SeoMetricRow[]>({
     queryKey: ["seo-metrics", projectId, dimensionType],
     queryFn: async () => {
       const filters: Record<string, string> = {};
       if (projectId) filters.project_id = projectId;
       if (dimensionType) filters.dimension_type = dimensionType;
 
-      return fetchAllPaginated("seo_metrics", {
+      return fetchAllPaginated<SeoMetricRow>("seo_metrics", {
         filters,
         orderBy: { column: "metric_date", ascending: false },
         maxRows: 30000,

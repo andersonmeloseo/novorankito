@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
  * Fetch all rows from a table with automatic pagination to bypass the 1000-row limit.
  * Includes a safety cap to prevent runaway queries.
  */
-export async function fetchAllPaginated(
+export async function fetchAllPaginated<T = Record<string, unknown>>(
   table: string,
   options: {
     filters?: Record<string, string>;
@@ -12,13 +12,14 @@ export async function fetchAllPaginated(
     select?: string;
     maxRows?: number;
   } = {}
-): Promise<any[]> {
+): Promise<T[]> {
   const { filters = {}, orderBy, select = "*", maxRows = 50000 } = options;
-  const allData: any[] = [];
+  const allData: T[] = [];
   let from = 0;
   const pageSize = 1000;
 
   while (allData.length < maxRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = (supabase.from as any)(table).select(select).range(from, from + pageSize - 1);
 
     for (const [key, value] of Object.entries(filters)) {
@@ -32,7 +33,7 @@ export async function fetchAllPaginated(
     const { data, error } = await q;
     if (error) throw error;
     if (!data || data.length === 0) break;
-    allData.push(...data);
+    allData.push(...(data as T[]));
     if (data.length < pageSize) break;
     from += pageSize;
   }
@@ -47,6 +48,7 @@ export async function getExactCount(
   table: string,
   filters: Record<string, string> = {}
 ): Promise<number> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q = (supabase.from as any)(table).select("id", { count: "exact", head: true });
 
   for (const [key, value] of Object.entries(filters)) {
