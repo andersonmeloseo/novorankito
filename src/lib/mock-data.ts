@@ -342,51 +342,156 @@ export const mockUserJourneys: MockUserJourney[] = Array.from({ length: 40 }, (_
 
 export interface MockOfflineConversion {
   id: string;
+  event_id: string;
   visitor_id: string | null;
   contact_name: string;
   contact_phone: string | null;
   contact_email: string | null;
+  contact_lastname: string | null;
+  city: string;
+  state: string | null;
+  zip_code: string | null;
   conversion_type: string;
   value: number;
+  currency: string;
   converted_at: string;
   source_channel: string;
   notes: string | null;
   status: string;
   attributed_campaign: string | null;
-  city: string;
   ad_platform: string | null;
+  // Google Click IDs
   gclid: string | null;
+  wbraid: string | null;
+  gbraid: string | null;
+  // Meta Click IDs
   fbclid: string | null;
+  fbc: string | null;
+  fbp: string | null;
+  // Context signals
+  ip_address: string | null;
+  user_agent: string | null;
+  // Pixel match
+  pixel_matched: boolean;
+  pixel_session_id: string | null;
+  // Quality & sync
+  quality: "good" | "bad" | null;
   sent_to_ads: boolean;
+  sent_at: string | null;
+  // Match quality score (0-10)
+  match_quality_score: number;
+  // Campaign details from ads
+  campaign_name: string | null;
+  adset_name: string | null;
+  ad_name: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
 }
 
 const OFFLINE_TYPES = ["Ligação Telefônica", "Visita Presencial", "WhatsApp (Offline)", "Indicação", "Evento/Feira", "Formulário Físico"];
 const OFFLINE_CHANNELS = ["Telefone", "Presencial", "WhatsApp", "Indicação", "Evento", "Panfleto"];
 const OFFLINE_STATUSES = ["confirmado", "pendente", "cancelado"];
 const CONTACT_NAMES = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Costa", "Carlos Oliveira", "Juliana Lima", "Rafael Almeida", "Beatriz Ferreira", "Lucas Rocha", "Fernanda Dias", "Gustavo Martins", "Camila Ribeiro"];
-const CAMPAIGNS = ["Google Ads - Brand", "Meta Ads - Remarketing", "Panfleto Centro", "Evento Tech 2026", "Indicação VIP", null, null];
+const OFFLINE_STATES = ["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "CE", "PE", "GO"];
+const CAMPAIGN_NAMES_GOOGLE = ["Brand - Institucional", "Search - Serviços", "Display - Remarketing", "Performance Max", "Search - Concorrentes"];
+const CAMPAIGN_NAMES_META = ["Awareness - Lookalike", "Conversão - Remarketing", "Tráfego - Interesse", "Leads - Formulário", "Vendas - DPA"];
+const ADSET_NAMES = ["Lookalike 1%", "Remarketing 30d", "Interesse Amplo", "Custom Audience", "Broad", null];
+const AD_NAMES = ["Criativo A - Video", "Criativo B - Carrossel", "Criativo C - Estático", "Copy Urgência", null];
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
+  "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 Safari/17.2",
+];
 
-export const mockOfflineConversions: MockOfflineConversion[] = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date(2026, 1, 14 - Math.floor(i / 2));
+function computeMatchScore(c: Partial<MockOfflineConversion>): number {
+  let score = 0;
+  if (c.contact_email) score += 3;
+  if (c.contact_phone) score += 2;
+  if (c.contact_name) score += 1;
+  if (c.city) score += 0.5;
+  if (c.state) score += 0.5;
+  if (c.fbc || c.fbclid || c.gclid || c.wbraid) score += 2;
+  if (c.ip_address) score += 0.5;
+  if (c.user_agent) score += 0.5;
+  return Math.min(score, 10);
+}
+
+export const mockOfflineConversions: MockOfflineConversion[] = Array.from({ length: 40 }, (_, i) => {
+  const d = new Date(2026, 1, 14 - Math.floor(i / 3));
   d.setHours(Math.floor(Math.random() * 10 + 8), Math.floor(Math.random() * 60));
   const status = randomFrom(OFFLINE_STATUSES);
+  const isGoogle = Math.random() < 0.35;
+  const isMeta = !isGoogle && Math.random() < 0.5;
+  const adPlatform = isGoogle ? "Google Ads" : isMeta ? "Meta Ads" : null;
+  const hasPixel = Math.random() < 0.5;
+  const hasEmail = Math.random() < 0.7;
+  const hasPhone = true;
+  const name = randomFrom(CONTACT_NAMES);
+  const nameParts = name.split(" ");
+  const state = randomFrom(OFFLINE_STATES);
+  const city = randomFrom(CITIES);
+  const hasClickId = adPlatform && Math.random() < 0.7;
+  const hasIp = Math.random() < 0.6;
+  const hasUa = Math.random() < 0.5;
+
+  const partial: Partial<MockOfflineConversion> = {
+    contact_email: hasEmail ? `${name.toLowerCase().replace(" ", ".")}@email.com` : null,
+    contact_phone: hasPhone ? `+55 ${Math.floor(Math.random() * 90 + 10)} 9${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}` : null,
+    contact_name: name,
+    city,
+    state,
+    fbc: isMeta && hasClickId ? `fb.1.${Date.now() - i * 86400000}.${Math.random().toString(36).slice(2, 14)}` : null,
+    fbclid: isMeta && hasClickId ? `IwAR${Math.random().toString(36).slice(2, 20)}` : null,
+    fbp: isMeta && hasPixel ? `fb.1.${Date.now() - i * 86400000}.${Math.floor(Math.random() * 1e10)}` : null,
+    gclid: isGoogle && hasClickId ? `Cj0KCQjw${Math.random().toString(36).slice(2, 20)}` : null,
+    wbraid: isGoogle && !hasClickId && Math.random() < 0.3 ? `Cj0KCQ${Math.random().toString(36).slice(2, 12)}` : null,
+    ip_address: hasIp ? `${Math.floor(Math.random() * 200 + 10)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : null,
+    user_agent: hasUa ? randomFrom(USER_AGENTS) : null,
+  };
+
+  const matchScore = computeMatchScore(partial);
+
   return {
     id: `oconv-${i + 1}`,
-    visitor_id: Math.random() < 0.4 ? `vis-${(2000 + Math.floor(Math.random() * 40)).toString(36)}` : null,
-    contact_name: randomFrom(CONTACT_NAMES),
-    contact_phone: `+55 ${Math.floor(Math.random() * 90 + 10)} 9${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`,
-    contact_email: Math.random() < 0.6 ? `${randomFrom(CONTACT_NAMES).toLowerCase().replace(" ", ".")}@email.com` : null,
+    event_id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    visitor_id: hasPixel ? `vis-${(2000 + Math.floor(Math.random() * 40)).toString(36)}` : null,
+    contact_name: name,
+    contact_lastname: nameParts.length > 1 ? nameParts[nameParts.length - 1] : null,
+    contact_phone: partial.contact_phone!,
+    contact_email: partial.contact_email || null,
+    city,
+    state,
+    zip_code: Math.random() < 0.4 ? `${Math.floor(Math.random() * 90000 + 10000)}-${Math.floor(Math.random() * 900 + 100)}` : null,
     conversion_type: randomFrom(OFFLINE_TYPES),
     value: status === "cancelado" ? 0 : parseFloat((Math.random() * 800 + 50).toFixed(2)),
+    currency: "BRL",
     converted_at: d.toISOString(),
     source_channel: randomFrom(OFFLINE_CHANNELS),
     notes: Math.random() < 0.3 ? "Cliente interessado em plano premium" : null,
     status,
-    attributed_campaign: randomFrom(CAMPAIGNS),
-    city: randomFrom(CITIES),
-    ad_platform: Math.random() < 0.35 ? "Google Ads" : Math.random() < 0.5 ? "Meta Ads" : null,
-    gclid: Math.random() < 0.3 ? `Cj0KCQjw${Math.random().toString(36).slice(2, 10)}` : null,
-    fbclid: Math.random() < 0.25 ? `fb.1.${Date.now()}.${Math.floor(Math.random() * 1e9)}` : null,
-    sent_to_ads: Math.random() < 0.3,
-  };
+    attributed_campaign: adPlatform ? randomFrom(adPlatform === "Google Ads" ? CAMPAIGN_NAMES_GOOGLE : CAMPAIGN_NAMES_META) : null,
+    ad_platform: adPlatform,
+    gclid: partial.gclid || null,
+    wbraid: partial.wbraid || null,
+    gbraid: null,
+    fbclid: partial.fbclid || null,
+    fbc: partial.fbc || null,
+    fbp: partial.fbp || null,
+    ip_address: partial.ip_address || null,
+    user_agent: partial.user_agent || null,
+    pixel_matched: hasPixel,
+    pixel_session_id: hasPixel ? `sess_${Math.random().toString(36).slice(2, 10)}` : null,
+    quality: null,
+    sent_to_ads: Math.random() < 0.15,
+    sent_at: null,
+    match_quality_score: matchScore,
+    campaign_name: adPlatform ? randomFrom(adPlatform === "Google Ads" ? CAMPAIGN_NAMES_GOOGLE : CAMPAIGN_NAMES_META) : null,
+    adset_name: isMeta ? randomFrom(ADSET_NAMES) : null,
+    ad_name: isMeta ? randomFrom(AD_NAMES) : null,
+    utm_source: adPlatform ? (isGoogle ? "google" : "facebook") : null,
+    utm_medium: adPlatform ? "cpc" : null,
+    utm_campaign: adPlatform ? (isGoogle ? "brand_2026" : "conversao_rmkt") : null,
+  } as MockOfflineConversion;
 });
