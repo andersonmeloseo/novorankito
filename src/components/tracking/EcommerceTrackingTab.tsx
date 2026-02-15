@@ -88,11 +88,47 @@ export function EcommerceTrackingTab() {
 
   /* ── Funnel ── */
   const ecommerceFunnelTotals = [
-    { label: "Visualização", value: totalViews, color: "#3b82f6" },
-    { label: "Carrinho", value: totalAddToCart, color: "#8b5cf6" },
-    { label: "Checkout", value: totalCheckout, color: "#f59e0b" },
-    { label: "Compra", value: totalPurchases, color: "#22c55e" },
+    { label: "Visualização", value: totalViews, color: "#3b82f6", width: 80 },
+    { label: "Carrinho", value: totalAddToCart, color: "#8b5cf6", width: 60 },
+    { label: "Checkout", value: totalCheckout, color: "#f59e0b", width: 40 },
+    { label: "Compra", value: totalPurchases, color: "#22c55e", width: 30 },
   ];
+
+  /* ── Heatmap: Day × Hour for ecommerce events ── */
+  const heatmapData = useMemo(() => {
+    const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    const grid: number[][] = DAYS.map(() => Array(24).fill(0));
+    ecomEvents.forEach(e => {
+      const d = new Date(e.created_at);
+      const dayIdx = (d.getDay() + 6) % 7;
+      grid[dayIdx][d.getHours()]++;
+    });
+    return DAYS.map((day, i) => ({ day, hours: grid[i].map((value, hour) => ({ hour, value })) }));
+  }, [ecomEvents]);
+
+  const heatmapMax = useMemo(() => Math.max(...heatmapData.flatMap(d => d.hours.map(h => h.value)), 1), [heatmapData]);
+
+  /* ── Session-level heatmap (unique sessions per hour) ── */
+  const sessionHeatmapData = useMemo(() => {
+    const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    const grid: Set<string>[][] = DAYS.map(() => Array.from({ length: 24 }, () => new Set<string>()));
+    ecomEvents.forEach(e => {
+      if (!e.session_id) return;
+      const d = new Date(e.created_at);
+      const dayIdx = (d.getDay() + 6) % 7;
+      grid[dayIdx][d.getHours()].add(e.session_id);
+    });
+    return DAYS.map((day, i) => ({ day, hours: grid[i].map((set, hour) => ({ hour, value: set.size })) }));
+  }, [ecomEvents]);
+
+  const sessionHeatmapMax = useMemo(() => Math.max(...sessionHeatmapData.flatMap(d => d.hours.map(h => h.value)), 1), [sessionHeatmapData]);
+
+  /* ── Peak activity ── */
+  const peakActivity = useMemo(() => {
+    let maxVal = 0, peakDay = "", peakHour = 0;
+    heatmapData.forEach(d => d.hours.forEach(h => { if (h.value > maxVal) { maxVal = h.value; peakDay = d.day; peakHour = h.hour; } }));
+    return { day: peakDay, hour: peakHour, value: maxVal };
+  }, [heatmapData]);
 
   /* ── Product performance ── */
   const productPerformance = useMemo(() => {
@@ -224,29 +260,46 @@ export function EcommerceTrackingTab() {
         <SparkKpi label="Checkout→Compra" value={checkoutToPurchase.toFixed(1)} suffix="%" color="hsl(var(--success))" icon={TrendingUp} />
       </StaggeredGrid>
 
-      {/* ── Visual Funnel ── */}
+      {/* ── Visual Funnel (redesigned) ── */}
       <AnimatedContainer>
         <Card className="p-5">
           <ChartHeader title="Funil de Conversão E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
-          <div className="flex flex-col items-center py-4 gap-0">
+          <div className="flex flex-col items-center py-6 gap-0">
             {ecommerceFunnelTotals.map((step, i) => {
-              const fixedWidths = [90, 65, 50, 30];
-              const widthPct = fixedWidths[i] || 30;
               const prevVal = i > 0 ? ecommerceFunnelTotals[i - 1].value : null;
-              const dropRate = prevVal && prevVal > 0 ? (((prevVal - step.value) / prevVal) * 100).toFixed(1) : null;
+              const conversionPct = prevVal && prevVal > 0 ? ((step.value / prevVal) * 100).toFixed(1) : null;
+              const dropPct = prevVal && prevVal > 0 ? (((prevVal - step.value) / prevVal) * 100).toFixed(1) : null;
               return (
                 <div key={step.label} className="flex flex-col items-center w-full">
-                  {dropRate && <div className="text-[10px] text-muted-foreground py-1">▼ {dropRate}% drop</div>}
-                  <div className="relative flex items-center justify-center py-3 transition-all duration-500"
+                  {/* Arrow + conversion % between steps */}
+                  {i > 0 && (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="flex flex-col items-center">
+                        <svg width="20" height="20" viewBox="0 0 20 20" className="text-muted-foreground">
+                          <path d="M10 2 L10 14 M5 10 L10 16 L15 10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <span className="text-[11px] font-semibold text-success">{conversionPct}% conversão</span>
+                      <span className="text-[10px] text-muted-foreground">({dropPct}% drop)</span>
+                    </div>
+                  )}
+                  {/* Funnel step */}
+                  <div
+                    className="relative flex items-center justify-center transition-all duration-500"
                     style={{
-                      width: `${widthPct}%`, background: step.color,
-                      clipPath: i < ecommerceFunnelTotals.length - 1 ? "polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)" : "polygon(4% 0%, 96% 0%, 92% 100%, 8% 100%)",
-                      borderRadius: i === 0 ? "8px 8px 0 0" : i === ecommerceFunnelTotals.length - 1 ? "0 0 8px 8px" : "0",
-                      boxShadow: `0 2px 16px ${step.color}44`,
-                    }}>
-                    <div className="flex items-center gap-2 z-10">
-                      <span className="text-xs font-bold text-white drop-shadow-sm">{step.label}</span>
-                      <span className="text-white/80 text-[10px] font-semibold">{fmt(step.value)}</span>
+                      width: `${step.width}%`,
+                      height: "56px",
+                      background: `linear-gradient(135deg, ${step.color}, ${step.color}cc)`,
+                      clipPath: i < ecommerceFunnelTotals.length - 1
+                        ? "polygon(3% 0%, 97% 0%, 100% 100%, 0% 100%)"
+                        : "polygon(3% 0%, 97% 0%, 94% 100%, 6% 100%)",
+                      borderRadius: i === 0 ? "10px 10px 0 0" : i === ecommerceFunnelTotals.length - 1 ? "0 0 10px 10px" : "0",
+                      boxShadow: `0 4px 20px ${step.color}55`,
+                    }}
+                  >
+                    <div className="flex flex-col items-center gap-0.5 z-10">
+                      <span className="text-sm font-bold text-white drop-shadow-sm">{step.label}</span>
+                      <span className="text-white/90 text-xs font-semibold">{fmt(step.value)}</span>
                     </div>
                   </div>
                 </div>
@@ -256,6 +309,76 @@ export function EcommerceTrackingTab() {
           {!hasData && <p className="text-center text-xs text-muted-foreground mt-2">Instale o Pixel Rankito para começar a capturar dados do funil.</p>}
         </Card>
       </AnimatedContainer>
+
+      {/* ── Heatmaps: Events + Sessions ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AnimatedContainer delay={0.03}>
+          <Card className="p-5">
+            <ChartHeader title="Mapa de Calor — Eventos E-commerce" subtitle="Descubra quais dias e horários têm mais ações de e-commerce" />
+            {peakActivity.value > 0 && (
+              <p className="text-[10px] text-muted-foreground mb-3">
+                Pico: <strong className="text-foreground">{peakActivity.day} às {String(peakActivity.hour).padStart(2, "0")}h</strong> ({peakActivity.value} eventos)
+              </p>
+            )}
+            <div className="overflow-x-auto">
+              <div className="min-w-[500px]">
+                <div className="flex gap-0.5 mb-1 pl-10">
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <div key={h} className="flex-1 text-center text-[8px] text-muted-foreground">{h}</div>
+                  ))}
+                </div>
+                {heatmapData.map(row => (
+                  <div key={row.day} className="flex gap-0.5 items-center mb-0.5">
+                    <span className="w-10 text-[10px] text-muted-foreground text-right pr-1.5 shrink-0">{row.day}</span>
+                    {row.hours.map(cell => {
+                      const intensity = heatmapMax > 0 ? cell.value / heatmapMax : 0;
+                      return (
+                        <div
+                          key={cell.hour}
+                          className="flex-1 aspect-square rounded-[2px] transition-colors"
+                          style={{ backgroundColor: intensity > 0 ? `color-mix(in srgb, hsl(var(--primary)) ${Math.round(intensity * 100)}%, hsl(var(--muted)))` : "hsl(var(--muted)/0.3)" }}
+                          title={`${row.day} ${String(cell.hour).padStart(2, "0")}h: ${cell.value} eventos`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={0.04}>
+          <Card className="p-5">
+            <ChartHeader title="Mapa de Calor — Sessões E-commerce" subtitle="Volume de sessões únicas por dia e horário" />
+            <div className="overflow-x-auto">
+              <div className="min-w-[500px]">
+                <div className="flex gap-0.5 mb-1 pl-10">
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <div key={h} className="flex-1 text-center text-[8px] text-muted-foreground">{h}</div>
+                  ))}
+                </div>
+                {sessionHeatmapData.map(row => (
+                  <div key={row.day} className="flex gap-0.5 items-center mb-0.5">
+                    <span className="w-10 text-[10px] text-muted-foreground text-right pr-1.5 shrink-0">{row.day}</span>
+                    {row.hours.map(cell => {
+                      const intensity = sessionHeatmapMax > 0 ? cell.value / sessionHeatmapMax : 0;
+                      return (
+                        <div
+                          key={cell.hour}
+                          className="flex-1 aspect-square rounded-[2px] transition-colors"
+                          style={{ backgroundColor: intensity > 0 ? `color-mix(in srgb, hsl(var(--success)) ${Math.round(intensity * 100)}%, hsl(var(--muted)))` : "hsl(var(--muted)/0.3)" }}
+                          title={`${row.day} ${String(cell.hour).padStart(2, "0")}h: ${cell.value} sessões`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </AnimatedContainer>
+      </div>
 
       {/* ── Revenue Trend + Stacked Area ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
