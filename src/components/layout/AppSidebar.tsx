@@ -27,8 +27,6 @@ const projectNav = [
   { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Agente IA", url: "/ai-agent", icon: Bot },
   { title: "Analítica Rankito", url: "/analitica-rankito", icon: MousePointerClick },
-  { title: "Conversões", url: "/conversions", icon: Target },
-  { title: "Ads", url: "/ads", icon: Megaphone },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
 ];
