@@ -780,6 +780,66 @@ export default function IndexingPage() {
                       {selectedSmUrls.size === sitemaps.length ? "Desmarcar Todos" : "Selecionar Todos"}
                     </Button>
 
+                    {selectedSmUrls.size > 0 && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="gap-1.5 text-xs"
+                          onClick={() => {
+                            // Get all inventory URLs that belong to selected sitemaps
+                            // Since sitemaps don't directly map to inventory URLs, we submit the sitemap paths
+                            // to fetch their URLs via the edge function
+                            const selectedPaths = Array.from(selectedSmUrls);
+                            // Filter inventory URLs whose url starts with any selected sitemap domain
+                            const urlsToSubmit = inventory
+                              .filter(u => selectedPaths.some(smPath => {
+                                try {
+                                  const smDomain = new URL(smPath).origin;
+                                  return u.url.startsWith(smDomain);
+                                } catch { return false; }
+                              }))
+                              .map(u => u.url);
+                            if (urlsToSubmit.length === 0) {
+                              toast.warning("Nenhuma URL do inventário corresponde aos sitemaps selecionados");
+                              return;
+                            }
+                            toast.info(`Enviando ${Math.min(urlsToSubmit.length, 50)} URL(s) dos sitemaps selecionados...`);
+                            submitMutation.mutate({ urls: urlsToSubmit.slice(0, 50), requestType: "URL_UPDATED" });
+                          }}
+                          disabled={submitMutation.isPending}
+                        >
+                          {submitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                          Enviar para Indexação
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 text-xs"
+                          onClick={() => {
+                            const selectedPaths = Array.from(selectedSmUrls);
+                            const urlsToInspect = inventory
+                              .filter(u => selectedPaths.some(smPath => {
+                                try {
+                                  const smDomain = new URL(smPath).origin;
+                                  return u.url.startsWith(smDomain);
+                                } catch { return false; }
+                              }))
+                              .map(u => u.url);
+                            if (urlsToInspect.length === 0) {
+                              toast.warning("Nenhuma URL do inventário corresponde aos sitemaps selecionados");
+                              return;
+                            }
+                            inspectMutation.mutate(urlsToInspect.slice(0, 20));
+                          }}
+                          disabled={inspectMutation.isPending}
+                        >
+                          {inspectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                          Inspecionar URLs
+                        </Button>
+                      </>
+                    )}
+
                     <span className="text-[10px] text-muted-foreground ml-auto">
                       {selectedSmUrls.size > 0 ? `${selectedSmUrls.size} de ${sitemaps.length} selecionado(s)` : `${filteredSm.length} sitemap(s)`}
                     </span>
