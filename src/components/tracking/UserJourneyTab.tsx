@@ -11,9 +11,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell,
 } from "recharts";
 import {
-  Search, Route, Clock, ArrowRight, MapPin, Globe, Smartphone, Monitor,
+  Search, Route, Clock, ArrowRight, MapPin, Globe, Smartphone, Monitor, Tablet,
   Target, TrendingUp, Footprints, Eye, MousePointerClick, ChevronDown, ChevronUp,
   Zap, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileJson, FileSpreadsheet,
+  Trophy, Wifi, Hash, Laptop, Copy,
 } from "lucide-react";
 import { format, formatDistanceStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,7 +96,7 @@ function JourneyTimeline({ steps, isExpanded }: { steps: MockUserJourney["steps"
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-foreground truncate max-w-[200px]">{step.page}</span>
+                <span className="text-xs font-semibold text-foreground truncate max-w-[200px]" title={step.page}>{step.page}</span>
                 {isEntry && <Badge className="text-[9px] px-1.5 py-0 bg-primary/15 text-primary border-primary/30">Entrada</Badge>}
                 {isExit && <Badge className="text-[9px] px-1.5 py-0 bg-destructive/15 text-destructive border-destructive/30">Saída</Badge>}
                 {step.cta_clicked && (
@@ -103,8 +104,9 @@ function JourneyTimeline({ steps, isExpanded }: { steps: MockUserJourney["steps"
                     <MousePointerClick className="h-2.5 w-2.5" /> {step.cta_clicked}
                   </Badge>
                 )}
+                {step.action === "add_to_cart" && <Badge className="text-[9px] px-1.5 py-0 bg-warning/15 text-warning border-warning/30">🛒 Carrinho</Badge>}
               </div>
-              <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1">
                   <Clock className="h-2.5 w-2.5" /> {formatDuration(step.duration_sec)}
                 </span>
@@ -112,7 +114,10 @@ function JourneyTimeline({ steps, isExpanded }: { steps: MockUserJourney["steps"
                   <Eye className="h-2.5 w-2.5" /> Scroll {step.scroll_depth}%
                 </span>
                 <span>{format(new Date(step.timestamp), "HH:mm:ss")}</span>
-                <Badge variant="secondary" className="text-[9px] px-1 py-0">{step.action.replace("_", " ")}</Badge>
+                <Badge variant="secondary" className="text-[9px] px-1 py-0">{step.action.replace(/_/g, " ")}</Badge>
+                {step.cta_selector && (
+                  <span className="font-mono text-[8px] text-muted-foreground/70" title={step.cta_selector}>{step.cta_selector}</span>
+                )}
               </div>
             </div>
 
@@ -139,8 +144,7 @@ function JourneyTimeline({ steps, isExpanded }: { steps: MockUserJourney["steps"
 function JourneyCard({ journey, index }: { journey: MockUserJourney; index: number }) {
   const [expanded, setExpanded] = useState(false);
 
-  const deviceIcon = journey.device === "mobile" ? Smartphone : Monitor;
-  const DeviceIcon = deviceIcon;
+  const DeviceIcon = journey.device === "mobile" ? Smartphone : journey.device === "tablet" ? Tablet : Monitor;
 
   return (
     <motion.div
@@ -148,49 +152,75 @@ function JourneyCard({ journey, index }: { journey: MockUserJourney; index: numb
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
     >
-      <Card className="p-4 card-hover group relative overflow-hidden">
+      <Card className={`p-4 card-hover group relative overflow-hidden ${journey.converted ? "ring-1 ring-success/30" : ""}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Trophy badge for converted */}
+        {journey.converted && (
+          <div className="absolute top-2 right-2">
+            <div className="h-7 w-7 rounded-full bg-success/15 flex items-center justify-center" title="Conversão realizada!">
+              <Trophy className="h-4 w-4 text-success" />
+            </div>
+          </div>
+        )}
 
         <div className="relative">
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 pr-8">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-info/20 flex items-center justify-center">
                 <Footprints className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-xs font-bold text-foreground">{journey.visitor_id}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-foreground">{journey.visitor_id}</p>
+                  <span className="text-[9px] font-mono text-muted-foreground/60">{journey.session_id}</span>
+                </div>
                 <p className="text-[10px] text-muted-foreground">
                   {format(new Date(journey.started_at), "dd/MM · HH:mm", { locale: ptBR })}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {journey.converted && (
                 <Badge className="text-[9px] bg-success/15 text-success border-success/30 gap-1">
                   <Target className="h-2.5 w-2.5" /> R$ {journey.conversion_value.toFixed(0)}
                 </Badge>
               )}
-              <Badge variant="outline" className="text-[9px] gap-1">
-                <DeviceIcon className="h-2.5 w-2.5" /> {journey.device}
-              </Badge>
             </div>
           </div>
 
-          {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-2 mb-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" /> {journey.source}/{journey.medium}</span>
-            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {journey.city}</span>
-            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDuration(journey.total_duration_sec)}</span>
-            <span className="flex items-center gap-1"><Route className="h-2.5 w-2.5" /> {journey.steps.length} páginas</span>
+          {/* Device/Tech row */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><DeviceIcon className="h-2.5 w-2.5" /> {journey.device}</span>
+            <span className="flex items-center gap-1"><Laptop className="h-2.5 w-2.5" /> {journey.os}</span>
+            <span>{journey.browser}</span>
+            <span className="flex items-center gap-1 font-mono text-[9px]"><Wifi className="h-2.5 w-2.5" /> {journey.ip_address}</span>
           </div>
 
-          {/* Page Flow mini-preview */}
-          <div className="flex items-center gap-1 mb-3 overflow-hidden">
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" /> {journey.source}/{journey.medium}</span>
+            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {journey.city}, {journey.country}</span>
+            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDuration(journey.total_duration_sec)}</span>
+            <span className="flex items-center gap-1"><Route className="h-2.5 w-2.5" /> {journey.steps.length} páginas</span>
+            {journey.conversion_page && (
+              <span className="flex items-center gap-1 text-success"><Trophy className="h-2.5 w-2.5" /> {journey.conversion_page}</span>
+            )}
+          </div>
+
+          {/* Page Flow mini-preview with all pages */}
+          <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-none pb-1">
             {journey.steps.map((step, si) => (
               <div key={si} className="flex items-center gap-1 shrink-0">
-                <span className="text-[9px] font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded-md truncate max-w-[100px]" title={step.page}>
+                <span
+                  className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${
+                    step.cta_clicked ? "bg-success/15 text-success border border-success/30" : "bg-muted/60 text-foreground"
+                  }`}
+                  title={`${step.page} — ${formatDuration(step.duration_sec)} — ${step.action}${step.cta_clicked ? ` → ${step.cta_clicked}` : ""}`}
+                >
                   {step.page === "/" ? "Home" : step.page.split("/").pop()}
+                  {step.cta_clicked && " 🎯"}
                 </span>
                 {si < journey.steps.length - 1 && <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />}
               </div>
