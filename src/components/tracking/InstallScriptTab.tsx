@@ -3,12 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer } from "@/components/ui/animated-container";
-import { useAuth } from "@/contexts/AuthContext";
-import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Check, Code, Globe, ShoppingCart, FileCode, Zap, ChevronDown, ChevronUp, Tag, Settings, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function useProjectId() {
-  // Get from URL or localStorage
   const stored = localStorage.getItem("rankito_current_project");
   if (stored) {
     try { return JSON.parse(stored)?.id; } catch { return null; }
@@ -44,6 +43,24 @@ function CopyBlock({ code, label }: { code: string; label?: string }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+function StepNumber({ n }: { n: number }) {
+  return (
+    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">{n}</div>
+  );
+}
+
+function InstructionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h4 className="text-sm font-bold font-display">{title}</h4>
+      </div>
+      <div className="text-xs text-muted-foreground space-y-2">{children}</div>
+    </Card>
   );
 }
 
@@ -85,10 +102,8 @@ export function InstallScriptTab() {
     else{fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true}).catch(function(){});}
   }
 
-  // Page View
   send(Object.assign({event_type:'page_view'},base));
 
-  // Click tracking
   d.addEventListener('click',function(e){
     var t=e.target.closest('a,button,[data-rk-track]');if(!t)return;
     var ev=Object.assign({event_type:'click',cta_text:(t.textContent||'').trim().substring(0,100),cta_selector:t.tagName.toLowerCase()+(t.id?'#'+t.id:'')+(t.className?'.'+String(t.className).split(' ')[0]:'')},base);
@@ -100,59 +115,45 @@ export function InstallScriptTab() {
     send(ev);
   },true);
 
-  // Form submit
   d.addEventListener('submit',function(e){
     var f=e.target;
     send(Object.assign({event_type:'form_submit',form_id:f.id||f.getAttribute('name')||f.action||null},base));
   },true);
 
-  // Scroll depth
   var maxScroll=0;
   w.addEventListener('scroll',function(){
     var h=d.documentElement;var pct=Math.round((w.scrollY/(h.scrollHeight-h.clientHeight))*100);
     if(pct>maxScroll)maxScroll=pct;
   },{passive:true});
 
-  // Page exit
   w.addEventListener('beforeunload',function(){
     send(Object.assign({event_type:'page_exit',scroll_depth:maxScroll,time_on_page:Math.round((Date.now()-S)/1000)},base));
     flush();
   });
 
-  // Flush every 30s
   setInterval(flush,30000);
 
-  // WooCommerce / E-commerce data layer
   w._rkTrack=function(eventType,data){send(Object.assign({event_type:eventType},base,data||{}));};
-
-  // Expose for manual tracking
   w.rankitoTrack=w._rkTrack;
 })(window,document);
 </script>`;
 
-  const wooCommerceSnippet = `<!-- Rankito WooCommerce Integration (adicionar APÓS o script principal) -->
+  const wooCommerceSnippet = `<!-- Rankito WooCommerce (adicionar APÓS o script principal) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Detecta adição ao carrinho (WooCommerce AJAX)
   jQuery && jQuery(document.body).on('added_to_cart', function(e, fragments, hash, btn) {
-    var name = btn.closest('.product').find('.woocommerce-loop-product__title').text() || btn.data('product_name') || '';
+    var name = btn.closest('.product').find('.woocommerce-loop-product__title').text() || '';
     var price = btn.closest('.product').find('.price .amount').first().text() || '';
     window.rankitoTrack('add_to_cart', { product_name: name, product_id: btn.data('product_id'), product_price: parseFloat(price.replace(/[^0-9.,]/g,'')) || 0 });
   });
-
-  // Detecta visualização de produto
   if (document.querySelector('.single-product')) {
-    var pName = document.querySelector('.product_title') ? document.querySelector('.product_title').textContent : '';
-    var pPrice = document.querySelector('.price .amount') ? document.querySelector('.price .amount').textContent : '';
+    var pName = document.querySelector('.product_title')?.textContent || '';
+    var pPrice = document.querySelector('.price .amount')?.textContent || '';
     window.rankitoTrack('product_view', { product_name: pName, product_price: parseFloat(pPrice.replace(/[^0-9.,]/g,'')) || 0 });
   }
-
-  // Detecta checkout
   if (document.querySelector('.woocommerce-checkout')) {
     window.rankitoTrack('begin_checkout', { cart_value: parseFloat(document.querySelector('.order-total .amount')?.textContent?.replace(/[^0-9.,]/g,'')) || 0 });
   }
-
-  // Detecta compra finalizada
   if (document.querySelector('.woocommerce-order-received')) {
     var total = document.querySelector('.order-total .amount')?.textContent || '0';
     window.rankitoTrack('purchase', { cart_value: parseFloat(total.replace(/[^0-9.,]/g,'')) || 0 });
@@ -160,15 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>`;
 
-  const shopifySnippet = `<!-- Rankito Shopify Integration (adicionar no theme.liquid APÓS o script principal) -->
+  const shopifySnippet = `<!-- Rankito Shopify (adicionar no theme.liquid APÓS o script principal) -->
 <script>
-// Product view
 if (window.ShopifyAnalytics && ShopifyAnalytics.meta && ShopifyAnalytics.meta.product) {
   var p = ShopifyAnalytics.meta.product;
   window.rankitoTrack('product_view', { product_id: String(p.id), product_name: p.type, product_price: p.variants?.[0]?.price || 0 });
 }
-
-// Add to cart
 document.querySelectorAll('form[action*="/cart/add"]').forEach(function(form) {
   form.addEventListener('submit', function() {
     var name = document.querySelector('.product-single__title, .product__title, h1')?.textContent?.trim() || '';
@@ -176,8 +174,6 @@ document.querySelectorAll('form[action*="/cart/add"]').forEach(function(form) {
     window.rankitoTrack('add_to_cart', { product_name: name, product_price: parseFloat(price.replace(/[^0-9.,]/g,'')) || 0 });
   });
 });
-
-// Checkout & Purchase detection via Shopify events
 if (window.Shopify && Shopify.checkout) {
   window.rankitoTrack('purchase', { cart_value: parseFloat(Shopify.checkout.total_price) || 0 });
 }
@@ -214,6 +210,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
                 <Badge variant="secondary" className="text-[10px] gap-1"><FileCode className="h-3 w-3" /> WordPress</Badge>
                 <Badge variant="secondary" className="text-[10px] gap-1"><ShoppingCart className="h-3 w-3" /> WooCommerce</Badge>
                 <Badge variant="secondary" className="text-[10px] gap-1"><ShoppingCart className="h-3 w-3" /> Shopify</Badge>
+                <Badge variant="secondary" className="text-[10px] gap-1"><Tag className="h-3 w-3" /> Tag Manager</Badge>
               </div>
             </div>
           </div>
@@ -233,54 +230,149 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
       <AnimatedContainer delay={0.04}>
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</div>
-            <h4 className="text-sm font-bold font-display">Script Principal — Cole antes do &lt;/body&gt;</h4>
+            <StepNumber n={1} />
+            <h4 className="text-sm font-bold font-display">Script Principal</h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Este script captura automaticamente: <strong>page views</strong>, <strong>cliques</strong> (botões, links, WhatsApp, telefone, email), 
-            <strong> submissões de formulário</strong>, <strong>scroll depth</strong>, <strong>tempo na página</strong> e <strong>UTMs/GCLID/FBCLID</strong>.
+            Este script captura automaticamente: <strong>page views</strong>, <strong>cliques</strong>, <strong>formulários</strong>, 
+            <strong> scroll depth</strong>, <strong>tempo na página</strong> e <strong>UTMs/GCLID/FBCLID</strong>.
           </p>
           <CopyBlock code={mainScript} />
-          
-          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
-            <p className="text-[11px] text-muted-foreground">
-              <strong>WordPress:</strong> Cole em <code className="bg-muted px-1 rounded text-[10px]">Aparência → Editor de Temas → footer.php</code> antes do <code className="bg-muted px-1 rounded text-[10px]">&lt;/body&gt;</code>, 
-              ou use um plugin como <strong>Insert Headers and Footers</strong>.
-            </p>
-          </div>
         </Card>
       </AnimatedContainer>
 
-      {/* Step 2: WooCommerce (optional) */}
+      {/* Step 2: How to Install — sub-tabs */}
       <AnimatedContainer delay={0.06}>
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</div>
-            <h4 className="text-sm font-bold font-display">WooCommerce — E-commerce Tracking <Badge variant="outline" className="text-[9px] ml-1">Opcional</Badge></h4>
+          <div className="flex items-center gap-2 mb-4">
+            <StepNumber n={2} />
+            <h4 className="text-sm font-bold font-display">Como Instalar</h4>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Se o site usa WooCommerce, adicione este snippet <strong>após</strong> o script principal para capturar eventos de e-commerce automaticamente.
-          </p>
-          <CopyBlock code={wooCommerceSnippet} />
-        </Card>
-      </AnimatedContainer>
 
-      {/* Step 3: Shopify (optional) */}
-      <AnimatedContainer delay={0.08}>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</div>
-            <h4 className="text-sm font-bold font-display">Shopify — E-commerce Tracking <Badge variant="outline" className="text-[9px] ml-1">Opcional</Badge></h4>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Para lojas Shopify, adicione no <code className="bg-muted px-1 rounded text-[10px]">theme.liquid</code> antes do <code className="bg-muted px-1 rounded text-[10px]">&lt;/body&gt;</code>.
-          </p>
-          <CopyBlock code={shopifySnippet} />
+          <Tabs defaultValue="html" className="w-full">
+            <TabsList className="flex-wrap h-auto gap-1 mb-4">
+              <TabsTrigger value="html" className="text-[11px] gap-1.5"><Globe className="h-3 w-3" /> HTML Puro</TabsTrigger>
+              <TabsTrigger value="wordpress" className="text-[11px] gap-1.5"><FileCode className="h-3 w-3" /> WordPress</TabsTrigger>
+              <TabsTrigger value="tagmanager" className="text-[11px] gap-1.5"><Tag className="h-3 w-3" /> Google Tag Manager</TabsTrigger>
+              <TabsTrigger value="shopify" className="text-[11px] gap-1.5"><ShoppingCart className="h-3 w-3" /> Shopify</TabsTrigger>
+            </TabsList>
+
+            {/* HTML */}
+            <TabsContent value="html" className="space-y-3 mt-0">
+              <InstructionCard icon={<Globe className="h-4 w-4 text-primary" />} title="Site HTML / Landing Page">
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Abra o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">index.html</code> do seu site.</li>
+                  <li>Cole o <strong>Script Principal</strong> (copiado acima) <strong>antes da tag</strong> <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
+                  <li>Salve e publique o arquivo.</li>
+                </ol>
+                <div className="p-3 mt-2 rounded-lg bg-muted/40 border border-border/50">
+                  <p className="text-[11px] font-medium text-foreground mb-1">📄 Exemplo de posição no HTML:</p>
+                  <pre className="text-[10px] text-muted-foreground font-mono whitespace-pre">{`    ...
+    <!-- Seu conteúdo -->
+
+    <!-- Rankito Analytics -->
+    <script>
+      (function(w,d,r){ ... })(window,document);
+    </script>
+
+  </body>
+</html>`}</pre>
+                </div>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10 mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[10px]"><strong>Importante:</strong> Sempre coloque antes do <code className="bg-muted px-1 rounded">&lt;/body&gt;</code>, nunca no <code className="bg-muted px-1 rounded">&lt;head&gt;</code>. Isso garante que o DOM está carregado e não bloqueia o carregamento da página.</p>
+                </div>
+              </InstructionCard>
+            </TabsContent>
+
+            {/* WordPress */}
+            <TabsContent value="wordpress" className="space-y-3 mt-0">
+              <InstructionCard icon={<FileCode className="h-4 w-4 text-primary" />} title="WordPress — Via Plugin (Recomendado)">
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Instale o plugin gratuito <strong>Insert Headers and Footers</strong> (WPCode) ou <strong>Header Footer Code Manager</strong>.</li>
+                  <li>Vá em <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">WPCode → Header & Footer</code>.</li>
+                  <li>Cole o <strong>Script Principal</strong> no campo <strong>"Footer"</strong>.</li>
+                  <li>Clique em <strong>Salvar</strong>.</li>
+                </ol>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10 mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[10px]"><strong>Não cole no campo "Header"!</strong> Sempre use o campo <strong>Footer</strong> para garantir que o DOM está carregado.</p>
+                </div>
+              </InstructionCard>
+
+              <InstructionCard icon={<Settings className="h-4 w-4 text-muted-foreground" />} title="WordPress — Via Editor de Temas (Alternativa)">
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Vá em <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">Aparência → Editor de Temas</code>.</li>
+                  <li>Selecione o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">footer.php</code> (ou <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">theme.json</code> em temas de bloco).</li>
+                  <li>Cole o script <strong>antes do</strong> <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
+                  <li>Clique em <strong>Atualizar Arquivo</strong>.</li>
+                </ol>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-warning/5 border border-warning/20 mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                  <p className="text-[10px]"><strong>Atenção:</strong> Ao atualizar o tema, o código pode ser perdido. Prefira o método via plugin ou use um <strong>child theme</strong>.</p>
+                </div>
+              </InstructionCard>
+
+              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} title="WooCommerce — Tracking de E-commerce">
+                <p>Se o seu WordPress usa <strong>WooCommerce</strong>, adicione este snippet <strong>após</strong> o script principal para capturar eventos de e-commerce (product view, add to cart, checkout, purchase):</p>
+                <div className="mt-2">
+                  <CopyBlock code={wooCommerceSnippet} />
+                </div>
+              </InstructionCard>
+            </TabsContent>
+
+            {/* Google Tag Manager */}
+            <TabsContent value="tagmanager" className="space-y-3 mt-0">
+              <InstructionCard icon={<Tag className="h-4 w-4 text-primary" />} title="Google Tag Manager">
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Acesse o <strong>Google Tag Manager</strong> e selecione seu contêiner.</li>
+                  <li>Clique em <strong>Tags → Nova</strong>.</li>
+                  <li>Escolha o tipo <strong>"HTML Personalizado"</strong>.</li>
+                  <li>Cole o <strong>Script Principal</strong> inteiro (com as tags <code className="bg-muted px-1 rounded text-[10px]">&lt;script&gt;</code>).</li>
+                  <li>Em <strong>Acionamento (Trigger)</strong>, selecione <strong>"All Pages"</strong> (Todas as Páginas).</li>
+                  <li>Nomeie a tag como <strong>"Rankito Analytics"</strong> e clique em <strong>Salvar</strong>.</li>
+                  <li>Clique em <strong>Enviar → Publicar</strong> para ativar.</li>
+                </ol>
+                <div className="p-3 mt-2 rounded-lg bg-muted/40 border border-border/50">
+                  <p className="text-[11px] font-medium text-foreground mb-1">⚙️ Configuração avançada (opcional):</p>
+                  <ul className="list-disc list-inside text-[10px] space-y-1 text-muted-foreground">
+                    <li>Em <strong>Configurações avançadas → Opções de disparo da tag</strong>, selecione <strong>"Uma vez por página"</strong>.</li>
+                    <li>Marque <strong>"Suportar document.write"</strong> se necessário.</li>
+                  </ul>
+                </div>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10 mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[10px]"><strong>Dica:</strong> Use o modo de <strong>Visualização</strong> do GTM para testar antes de publicar. Verifique se o evento <code className="bg-muted px-1 rounded">page_view</code> aparece no debug.</p>
+                </div>
+              </InstructionCard>
+            </TabsContent>
+
+            {/* Shopify */}
+            <TabsContent value="shopify" className="space-y-3 mt-0">
+              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-primary" />} title="Shopify — Instalação">
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>No admin do Shopify, vá em <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">Loja Online → Temas</code>.</li>
+                  <li>Clique em <strong>Ações → Editar código</strong>.</li>
+                  <li>Abra o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">theme.liquid</code>.</li>
+                  <li>Cole o <strong>Script Principal</strong> antes do <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
+                  <li>Logo abaixo, cole o <strong>snippet de e-commerce</strong> do Shopify.</li>
+                  <li>Clique em <strong>Salvar</strong>.</li>
+                </ol>
+              </InstructionCard>
+
+              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} title="Shopify — Tracking de E-commerce">
+                <p>Adicione este snippet <strong>após</strong> o script principal no <code className="bg-muted px-1 rounded text-[10px]">theme.liquid</code>:</p>
+                <div className="mt-2">
+                  <CopyBlock code={shopifySnippet} />
+                </div>
+              </InstructionCard>
+            </TabsContent>
+          </Tabs>
         </Card>
       </AnimatedContainer>
 
       {/* Advanced: Manual tracking */}
-      <AnimatedContainer delay={0.1}>
+      <AnimatedContainer delay={0.08}>
         <Card className="p-5">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -302,7 +394,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
       </AnimatedContainer>
 
       {/* Events captured list */}
-      <AnimatedContainer delay={0.12}>
+      <AnimatedContainer delay={0.1}>
         <Card className="p-5">
           <h4 className="text-sm font-bold font-display mb-3">📊 Eventos Capturados Automaticamente</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
