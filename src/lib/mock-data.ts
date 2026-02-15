@@ -354,6 +354,10 @@ export interface MockOfflineConversion {
   status: string;
   attributed_campaign: string | null;
   city: string;
+  ad_platform: string | null;
+  gclid: string | null;
+  fbclid: string | null;
+  sent_to_ads: boolean;
 }
 
 const OFFLINE_TYPES = ["Ligação Telefônica", "Visita Presencial", "WhatsApp (Offline)", "Indicação", "Evento/Feira", "Formulário Físico"];
@@ -380,5 +384,9 @@ export const mockOfflineConversions: MockOfflineConversion[] = Array.from({ leng
     status,
     attributed_campaign: randomFrom(CAMPAIGNS),
     city: randomFrom(CITIES),
+    ad_platform: Math.random() < 0.35 ? "Google Ads" : Math.random() < 0.5 ? "Meta Ads" : null,
+    gclid: Math.random() < 0.3 ? `Cj0KCQjw${Math.random().toString(36).slice(2, 10)}` : null,
+    fbclid: Math.random() < 0.25 ? `fb.1.${Date.now()}.${Math.floor(Math.random() * 1e9)}` : null,
+    sent_to_ads: Math.random() < 0.3,
   };
 });
