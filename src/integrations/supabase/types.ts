@@ -1409,6 +1409,68 @@ export type Database = {
           },
         ]
       }
+      session_recordings: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device: string | null
+          duration_ms: number | null
+          events_count: number | null
+          id: string
+          os: string | null
+          page_url: string | null
+          project_id: string
+          recording_data: Json
+          screen_height: number | null
+          screen_width: number | null
+          session_id: string
+          updated_at: string
+          visitor_id: string | null
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          duration_ms?: number | null
+          events_count?: number | null
+          id?: string
+          os?: string | null
+          page_url?: string | null
+          project_id: string
+          recording_data?: Json
+          screen_height?: number | null
+          screen_width?: number | null
+          session_id: string
+          updated_at?: string
+          visitor_id?: string | null
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          duration_ms?: number | null
+          events_count?: number | null
+          id?: string
+          os?: string | null
+          page_url?: string | null
+          project_id?: string
+          recording_data?: Json
+          screen_height?: number | null
+          screen_width?: number | null
+          session_id?: string
+          updated_at?: string
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_recordings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_urls: {
         Row: {
           created_at: string

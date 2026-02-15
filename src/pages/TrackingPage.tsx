@@ -17,7 +17,7 @@ import { Activity, ShoppingCart, Target, Users, Code, Footprints, PhoneCall, Mou
 export default function TrackingPage() {
   return (
     <>
-      <TopBar title="Analítica Rankito" subtitle="Plugin v3.3.0 — Tracking Universal com E-commerce Automático" />
+      <TopBar title="Analítica Rankito" subtitle="Pixel v3.4.0 — Tracking Universal com E-commerce Automático + Session Replay" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Card className="p-4 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
@@ -25,7 +25,7 @@ export default function TrackingPage() {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
           </span>
           <span className="text-sm font-medium text-foreground">Pixel Ativado — Capturando Eventos em Tempo Real</span>
-          <Badge variant="secondary" className="text-[10px]">v3.3.0</Badge>
+          <Badge variant="secondary" className="text-[10px]">v3.4.0</Badge>
         </Card>
 
         <Tabs defaultValue="all-events">

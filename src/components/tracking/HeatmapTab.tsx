@@ -11,8 +11,11 @@ import {
   Flame, MousePointer2, ArrowDownFromLine, Loader2, ExternalLink,
   Monitor, Smartphone, Tablet, Eye, BarChart3, Target, Layers,
   RefreshCw, Camera, Download, History, Trash2, Clock, Move,
-  ArrowLeft, Globe,
+  ArrowLeft, Globe, Play, AlertCircle, CheckCircle2, Info,
+  Video, PauseCircle, SkipForward, SkipBack,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -290,6 +293,206 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, f
   );
 }
 
+/* ── Data Availability Indicator ── */
+function DataAvailabilityBadge({ available, count, label, icon: Icon }: { available: boolean; count: number; label: string; icon: React.ElementType }) {
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[10px] ${available ? "bg-success/5 border-success/20 text-success" : "bg-muted/50 border-border text-muted-foreground"}`}>
+      {available ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+      <Icon className="h-3 w-3" />
+      <span className="font-medium">{label}</span>
+      <Badge variant="secondary" className="text-[8px] h-4 min-w-[16px] px-1">{count}</Badge>
+    </div>
+  );
+}
+
+/* ── Session Replay Viewer ── */
+function SessionReplayViewer({ projectId }: { projectId: string }) {
+  const { data: recordings = [], isLoading } = useQuery({
+    queryKey: ["session-recordings", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("session_recordings")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId,
+    staleTime: 30_000,
+  });
+
+  const [selectedRecording, setSelectedRecording] = useState<any | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentEventIdx, setCurrentEventIdx] = useState(0);
+  const replayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopPlayback = useCallback(() => {
+    if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+    setIsPlaying(false);
+  }, []);
+
+  const startPlayback = useCallback(() => {
+    if (!selectedRecording) return;
+    const events = selectedRecording.recording_data || [];
+    if (!events.length) return;
+
+    setIsPlaying(true);
+    setCurrentEventIdx(0);
+    
+    let idx = 0;
+    replayTimerRef.current = setInterval(() => {
+      idx++;
+      if (idx >= events.length) {
+        stopPlayback();
+        return;
+      }
+      setCurrentEventIdx(idx);
+    }, 200);
+  }, [selectedRecording, stopPlayback]);
+
+  useEffect(() => { return () => { if (replayTimerRef.current) clearInterval(replayTimerRef.current); }; }, []);
+
+  if (isLoading) return <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  if (recordings.length === 0) {
+    return (
+      <Card className="p-8 text-center">
+        <Video className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+        <h4 className="text-sm font-bold text-foreground mb-1">Nenhuma gravação de sessão ainda</h4>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          Atualize o Pixel Rankito para v3.4.0+ para capturar gravações de sessão automaticamente.
+          As gravações incluem movimentos do mouse, cliques, scroll e mudanças na tela.
+        </p>
+      </Card>
+    );
+  }
+
+  if (selectedRecording) {
+    const events = selectedRecording.recording_data || [];
+    const currentEvent = events[currentEventIdx];
+    
+    return (
+      <div className="space-y-3">
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => { stopPlayback(); setSelectedRecording(null); }}>
+          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para lista
+        </Button>
+        
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-bold font-display">Replay da Sessão</h4>
+              <Badge variant="secondary" className="text-[9px]">{selectedRecording.session_id?.slice(-8)}</Badge>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {Math.round((selectedRecording.duration_ms || 0) / 1000)}s
+            </div>
+          </div>
+
+          {/* Replay viewport */}
+          <div className="relative bg-muted/20 border border-border rounded-lg overflow-hidden" style={{ height: "400px" }}>
+            {/* Simulated page with cursor */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {currentEvent ? (
+                <div className="relative w-full h-full">
+                  {/* Show page URL */}
+                  <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-[9px] text-muted-foreground">
+                    {selectedRecording.page_url || "—"}
+                  </div>
+                  {/* Cursor dot */}
+                  {currentEvent.x != null && currentEvent.y != null && (
+                    <div
+                      className="absolute w-4 h-4 -ml-2 -mt-2 rounded-full bg-destructive/80 border-2 border-white shadow-lg transition-all duration-150"
+                      style={{ left: `${(currentEvent.x / (selectedRecording.screen_width || 1440)) * 100}%`, top: `${(currentEvent.y / (selectedRecording.screen_height || 900)) * 100}%` }}
+                    />
+                  )}
+                  {/* Event info overlay */}
+                  <div className="absolute bottom-2 left-2 z-10 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-[9px] text-muted-foreground">
+                    Evento {currentEventIdx + 1}/{events.length}: {currentEvent.type || "move"} 
+                    {currentEvent.tag && ` → <${currentEvent.tag}>`}
+                    {currentEvent.text && ` "${currentEvent.text.slice(0, 30)}"`}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Play className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Clique em Play para iniciar</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Playback controls */}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setCurrentEventIdx(Math.max(0, currentEventIdx - 10))}>
+              <SkipBack className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={isPlaying ? stopPlayback : startPlayback}>
+              {isPlaying ? <PauseCircle className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {isPlaying ? "Pausar" : "Play"}
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setCurrentEventIdx(Math.min(events.length - 1, currentEventIdx + 10))}>
+              <SkipForward className="h-3.5 w-3.5" />
+            </Button>
+            <div className="flex-1 mx-2">
+              <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{ width: `${events.length ? (currentEventIdx / events.length) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{currentEventIdx + 1}/{events.length}</span>
+          </div>
+
+          {/* Session metadata */}
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="outline" className="text-[8px]">{selectedRecording.device}</Badge>
+            <Badge variant="outline" className="text-[8px]">{selectedRecording.browser}</Badge>
+            <Badge variant="outline" className="text-[8px]">{selectedRecording.os}</Badge>
+            <Badge variant="outline" className="text-[8px]">{selectedRecording.screen_width}×{selectedRecording.screen_height}</Badge>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Video className="h-4 w-4 text-primary" />
+        <h4 className="text-sm font-bold font-display">Gravações de Sessão</h4>
+        <Badge variant="secondary" className="text-[9px]">{recordings.length} sessões</Badge>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {recordings.map((rec: any) => {
+          const date = new Date(rec.created_at);
+          return (
+            <Card key={rec.id} className="card-hover cursor-pointer group" onClick={() => setSelectedRecording(rec)}>
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Play className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{rec.page_url ? (() => { try { return new URL(rec.page_url).pathname; } catch { return rec.page_url; } })() : "—"}</p>
+                    <p className="text-[9px] text-muted-foreground">{date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="outline" className="text-[8px]">{rec.device || "—"}</Badge>
+                  <Badge variant="outline" className="text-[8px]">{Math.round((rec.duration_ms || 0) / 1000)}s</Badge>
+                  <Badge variant="outline" className="text-[8px]">{rec.events_count || 0} eventos</Badge>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════
    Main Component
    ══════════════════════════════════════════════════════════════ */
@@ -498,7 +701,7 @@ export function HeatmapTab() {
   if (!selectedUrl) {
     return (
       <div className="space-y-4 sm:space-y-5">
-        <FeatureBanner icon={Flame} title="Heatmaps Visuais" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong> e <strong>rastro do mouse</strong> com mapas de calor sobrepostos ao seu site. Clique em uma página para explorar.</>} />
+        <FeatureBanner icon={Flame} title="Heatmaps Visuais & Session Replay" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong>, <strong>rastro do mouse</strong> e <strong>grave sessões completas</strong> dos seus visitantes.</>} />
 
         {/* Global KPIs */}
         <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -635,6 +838,13 @@ export function HeatmapTab() {
             </AnimatedContainer>
           );
         })()}
+
+        {/* Session Replay Section */}
+        {projectId && (
+          <AnimatedContainer delay={0.08}>
+            <SessionReplayViewer projectId={projectId} />
+          </AnimatedContainer>
+        )}
       </div>
     );
   }
@@ -658,6 +868,21 @@ export function HeatmapTab() {
         <HeatKpi label="Zona Quente" value={hotZone} icon={Target} />
         <HeatKpi label="Trilhas de Mouse" value={`${moveSessions.length} sessões (${totalMovePoints} pts)`} icon={Move} />
       </StaggeredGrid>
+
+      {/* Data Availability Feedback */}
+      <AnimatedContainer delay={0.01}>
+        <div className="flex flex-wrap gap-2">
+          <DataAvailabilityBadge available={totalClicks > 0} count={totalClicks} label="Cliques com coordenadas" icon={MousePointer2} />
+          <DataAvailabilityBadge available={exitEvents.length > 0} count={exitEvents.length} label="Sessões com scroll" icon={ArrowDownFromLine} />
+          <DataAvailabilityBadge available={moveSessions.length > 0} count={moveSessions.length} label="Trilhas de mouse" icon={Move} />
+          {!totalClicks && !exitEvents.length && !moveSessions.length && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-warning/5 border-warning/20 text-warning text-[10px]">
+              <Info className="h-3 w-3" />
+              <span>Aguardando dados. Instale o Pixel Rankito v3.3.0+ no seu site.</span>
+            </div>
+          )}
+        </div>
+      </AnimatedContainer>
 
       {/* Controls */}
       <AnimatedContainer delay={0.02}>
@@ -821,15 +1046,41 @@ export function HeatmapTab() {
             )}
 
             {iframeError && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/90 backdrop-blur-sm">
-                <div className="text-center space-y-3 max-w-md px-6">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center"><Flame className="h-6 w-6 text-warning" /></div>
-                  <h3 className="text-sm font-bold text-foreground">Não foi possível carregar o iframe</h3>
-                  <p className="text-xs text-muted-foreground">O site pode estar bloqueando o carregamento via iframe.</p>
-                  <div className="flex justify-center gap-3">
-                    <Badge variant="secondary" className="text-[10px]">{totalClicks} cliques</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{exitEvents.length} sessões</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{moveSessions.length} trilhas</Badge>
+              <div className="absolute inset-0 z-6">
+                {/* Fallback grid background when iframe can't load */}
+                <div className="absolute inset-0" style={{
+                  backgroundImage: "linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px)",
+                  backgroundSize: "60px 60px",
+                  backgroundColor: "hsl(var(--muted) / 0.3)",
+                }} />
+                {/* Page structure skeleton */}
+                <div className="absolute inset-x-0 top-0 h-14 bg-muted/50 border-b border-border/30 flex items-center px-6">
+                  <div className="h-4 w-24 bg-muted-foreground/10 rounded" />
+                  <div className="flex-1" />
+                  <div className="flex gap-3">
+                    <div className="h-3 w-12 bg-muted-foreground/10 rounded" />
+                    <div className="h-3 w-12 bg-muted-foreground/10 rounded" />
+                    <div className="h-3 w-12 bg-muted-foreground/10 rounded" />
+                  </div>
+                </div>
+                <div className="absolute inset-x-0 top-14 bottom-0 p-8 space-y-4">
+                  <div className="h-8 w-64 bg-muted-foreground/8 rounded" />
+                  <div className="h-4 w-96 bg-muted-foreground/5 rounded" />
+                  <div className="h-4 w-80 bg-muted-foreground/5 rounded" />
+                  <div className="grid grid-cols-3 gap-4 mt-6">
+                    <div className="h-24 bg-muted-foreground/5 rounded-lg" />
+                    <div className="h-24 bg-muted-foreground/5 rounded-lg" />
+                    <div className="h-24 bg-muted-foreground/5 rounded-lg" />
+                  </div>
+                </div>
+                {/* Info banner */}
+                <div className="absolute bottom-3 left-3 right-3 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Info className="h-4 w-4 text-warning shrink-0" />
+                    <span className="text-muted-foreground">O site bloqueia iframe. O heatmap é renderizado sobre um grid de referência com seus dados reais.</span>
+                    <a href={selectedUrl || "#"} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 shrink-0">
+                      Abrir site <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
                 </div>
               </div>
