@@ -24,7 +24,7 @@ export default function TrackingPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
           </span>
-          <span className="text-sm font-medium text-foreground">Plugin Ativo — Capturando Eventos em Tempo Real</span>
+          <span className="text-sm font-medium text-foreground">Pixel Ativado — Capturando Eventos em Tempo Real</span>
           <Badge variant="secondary" className="text-[10px]">v3.3.0</Badge>
         </Card>
 
