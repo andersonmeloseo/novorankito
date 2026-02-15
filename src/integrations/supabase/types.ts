@@ -1696,6 +1696,7 @@ export type Database = {
       }
       tracking_goals: {
         Row: {
+          config: Json | null
           created_at: string
           currency_value: number | null
           description: string | null
@@ -1711,6 +1712,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          config?: Json | null
           created_at?: string
           currency_value?: number | null
           description?: string | null
@@ -1726,6 +1728,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          config?: Json | null
           created_at?: string
           currency_value?: number | null
           description?: string | null

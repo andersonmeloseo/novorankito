@@ -51,7 +51,7 @@ export default function TrackingPage() {
               <MousePointerClick className="h-3.5 w-3.5" /> Eventos Personalizados
             </TabsTrigger>
             <TabsTrigger value="goals" className="text-xs gap-1.5">
-              <Flag className="h-3.5 w-3.5" /> Metas
+              <Flag className="h-3.5 w-3.5" /> Metas Personalizadas
             </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
               <Code className="h-3.5 w-3.5" /> Pixel Rankito
