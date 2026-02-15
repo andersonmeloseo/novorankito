@@ -294,7 +294,7 @@ export function InstallScriptTab() {
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
   const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const mainScript = `<!-- Rankito Analytics v3.2.0 -->
+  const mainScript = `<!-- Rankito Analytics v3.3.0 -->
 <script>
 (function(w,d){
   var P="${projectId || 'SEU_PROJECT_ID'}";
@@ -387,6 +387,132 @@ export function InstallScriptTab() {
   w.rankitoTrack=w._rkTrack;
   w._rkStatus=function(){return{project_id:P,endpoint:E,queue:Q.length,visitor_id:VID,session_id:SID};};
 
+  // --- Auto E-commerce: WooCommerce ---
+  function initWoo(){
+    if(!w.jQuery)return false;
+    var $=w.jQuery;
+    log('WooCommerce detectado — ativando e-commerce automático');
+    // Product view
+    if(d.querySelector('.single-product')){
+      var pN=(d.querySelector('.product_title')||{}).textContent||'';
+      var pP=(d.querySelector('.price .amount')||{}).textContent||'';
+      var pId=d.querySelector('.product')&&d.querySelector('.product').getAttribute('data-product-id')||d.querySelector('input[name=product_id],button.single_add_to_cart_button')&&d.querySelector('button.single_add_to_cart_button').getAttribute('value')||'';
+      send(Object.assign({event_type:'product_view',product_name:pN.trim(),product_id:pId,product_price:parseFloat((pP).replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+    }
+    // Add to cart (AJAX — WooCommerce fires this jQuery event)
+    $(d.body).on('added_to_cart',function(e,frags,hash,btn){
+      var row=btn.closest('.product,.product-item,.wc-block-grid__product');
+      var nm=row?row.find('.woocommerce-loop-product__title,.product-title,h2').first().text().trim():'';
+      var pr=row?row.find('.price .amount').first().text():'';
+      var pid=btn.data('product_id')||btn.attr('data-product_id')||'';
+      send(Object.assign({event_type:'add_to_cart',product_name:nm,product_id:String(pid),product_price:parseFloat((pr).replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+    });
+    // Add to cart (non-AJAX single product page)
+    var singleForm=d.querySelector('form.cart');
+    if(singleForm){
+      singleForm.addEventListener('submit',function(){
+        var nm=(d.querySelector('.product_title')||{}).textContent||'';
+        var pr=(d.querySelector('.price .amount')||{}).textContent||'';
+        var qty=parseInt((d.querySelector('input.qty')||{}).value)||1;
+        send(Object.assign({event_type:'add_to_cart',product_name:nm.trim(),product_price:parseFloat((pr).replace(/[^0-9.,]/g,'').replace(',','.'))||0,metadata:{quantity:qty}},base));
+      });
+    }
+    // Remove from cart
+    $(d.body).on('removed_from_cart',function(){
+      send(Object.assign({event_type:'remove_from_cart'},base));
+    });
+    // Checkout page
+    if(d.querySelector('.woocommerce-checkout')){
+      var cv=(d.querySelector('.order-total .amount')||{}).textContent||'0';
+      send(Object.assign({event_type:'begin_checkout',cart_value:parseFloat(cv.replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+    }
+    // Order received (purchase)
+    if(d.querySelector('.woocommerce-order-received')){
+      var tot=(d.querySelector('.order-total .amount')||{}).textContent||'0';
+      send(Object.assign({event_type:'purchase',cart_value:parseFloat(tot.replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+    }
+    return true;
+  }
+
+  // --- Auto E-commerce: Shopify ---
+  function initShopify(){
+    if(!w.Shopify&&!w.ShopifyAnalytics)return false;
+    log('Shopify detectado — ativando e-commerce automático');
+    // Product view
+    if(w.ShopifyAnalytics&&w.ShopifyAnalytics.meta&&w.ShopifyAnalytics.meta.product){
+      var sp=w.ShopifyAnalytics.meta.product;
+      send(Object.assign({event_type:'product_view',product_id:String(sp.id||''),product_name:sp.type||d.querySelector('.product-single__title,.product__title,h1')&&d.querySelector('.product-single__title,.product__title,h1').textContent.trim()||'',product_price:sp.variants&&sp.variants[0]?parseFloat(sp.variants[0].price)||0:0},base));
+    }
+    // Add to cart
+    d.querySelectorAll('form[action*="/cart/add"]').forEach(function(f){
+      f.addEventListener('submit',function(){
+        var nm=(d.querySelector('.product-single__title,.product__title,h1')||{}).textContent||'';
+        var pr=(d.querySelector('.product__price,.price__regular,.price .money')||{}).textContent||'';
+        send(Object.assign({event_type:'add_to_cart',product_name:nm.trim(),product_price:parseFloat((pr).replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+      });
+    });
+    // Shopify AJAX add to cart intercept
+    var origFetch=w.fetch;
+    w.fetch=function(){
+      var url=arguments[0];var opts=arguments[1]||{};
+      if(typeof url==='string'&&url.indexOf('/cart/add')>-1&&opts.method&&opts.method.toUpperCase()==='POST'){
+        log('Shopify AJAX add_to_cart interceptado');
+        try{
+          var bd=opts.body;
+          if(typeof bd==='string'){var parsed=JSON.parse(bd);send(Object.assign({event_type:'add_to_cart',product_id:String(parsed.id||''),metadata:{quantity:parsed.quantity||1}},base));}
+        }catch(ex){}
+      }
+      return origFetch.apply(this,arguments);
+    };
+    // Purchase (thank-you page)
+    if(w.Shopify&&w.Shopify.checkout){
+      var sc=w.Shopify.checkout;
+      send(Object.assign({event_type:'purchase',cart_value:parseFloat(sc.total_price)||0,metadata:{order_id:sc.order_id||'',currency:sc.currency||''}},base));
+    }
+    return true;
+  }
+
+  // --- Auto E-commerce: Generic (data attributes & structured data) ---
+  function initGenericEcom(){
+    // Support data-rk-product elements
+    d.querySelectorAll('[data-rk-product]').forEach(function(el){
+      var nm=el.getAttribute('data-rk-product')||'';
+      var pr=parseFloat(el.getAttribute('data-rk-price'))||0;
+      var pid=el.getAttribute('data-rk-product-id')||'';
+      // Observe visibility for product_view
+      var obs=new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(en.isIntersecting){send(Object.assign({event_type:'product_view',product_name:nm,product_id:pid,product_price:pr},base));obs.unobserve(en.target);}
+        });
+      },{threshold:0.5});
+      obs.observe(el);
+    });
+    // Support data-rk-add-to-cart buttons
+    d.querySelectorAll('[data-rk-add-to-cart]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var nm=btn.getAttribute('data-rk-product')||btn.closest('[data-rk-product]')&&btn.closest('[data-rk-product]').getAttribute('data-rk-product')||'';
+        var pr=parseFloat(btn.getAttribute('data-rk-price')||btn.closest('[data-rk-product]')&&btn.closest('[data-rk-product]').getAttribute('data-rk-price'))||0;
+        var pid=btn.getAttribute('data-rk-product-id')||'';
+        send(Object.assign({event_type:'add_to_cart',product_name:nm,product_id:pid,product_price:pr},base));
+      });
+    });
+    // Support data-rk-purchase on thank-you pages
+    var purchaseEl=d.querySelector('[data-rk-purchase]');
+    if(purchaseEl){
+      var cv=parseFloat(purchaseEl.getAttribute('data-rk-value'))||0;
+      send(Object.assign({event_type:'purchase',cart_value:cv},base));
+    }
+    log('E-commerce genérico (data-rk-*) inicializado');
+  }
+
+  // Run e-commerce auto-detection after DOM is ready
+  function initEcom(){
+    var detected=initWoo()||initShopify();
+    initGenericEcom();
+    if(!detected)log('Nenhuma plataforma de e-commerce detectada. Use data-rk-* ou rankitoTrack() para tracking manual.');
+  }
+  if(d.readyState==='loading'){d.addEventListener('DOMContentLoaded',initEcom);}else{initEcom();}
+
   // --- Custom Events (Event Builder) ---
   var CFG_URL='${import.meta.env.VITE_SUPABASE_URL}/rest/v1/custom_event_configs?project_id=eq.'+P+'&enabled=eq.true&select=name,trigger_type,selector,metadata';
   fetch(CFG_URL,{headers:{'apikey':K,'Authorization':'Bearer '+K}})
@@ -445,49 +571,8 @@ export function InstallScriptTab() {
   })
   .catch(function(e){log('Erro ao carregar custom events',e);});
 
-  log('Pronto! Use ?rankito_debug=1 na URL para ver logs.');
+  log('Pronto! v3.3.0 com e-commerce automático. Use ?rankito_debug=1 para ver logs.');
 })(window,document);
-</script>`;
-
-  const wooCommerceSnippet = `<!-- Rankito WooCommerce (adicionar APÓS o script principal) -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  jQuery && jQuery(document.body).on('added_to_cart', function(e, fragments, hash, btn) {
-    var name = btn.closest('.product').find('.woocommerce-loop-product__title').text() || '';
-    var price = btn.closest('.product').find('.price .amount').first().text() || '';
-    window.rankitoTrack('add_to_cart', { product_name: name, product_id: btn.data('product_id'), product_price: parseFloat(price.replace(/[^0-9.,]/g,'')) || 0 });
-  });
-  if (document.querySelector('.single-product')) {
-    var pName = document.querySelector('.product_title')?.textContent || '';
-    var pPrice = document.querySelector('.price .amount')?.textContent || '';
-    window.rankitoTrack('product_view', { product_name: pName, product_price: parseFloat(pPrice.replace(/[^0-9.,]/g,'')) || 0 });
-  }
-  if (document.querySelector('.woocommerce-checkout')) {
-    window.rankitoTrack('begin_checkout', { cart_value: parseFloat(document.querySelector('.order-total .amount')?.textContent?.replace(/[^0-9.,]/g,'')) || 0 });
-  }
-  if (document.querySelector('.woocommerce-order-received')) {
-    var total = document.querySelector('.order-total .amount')?.textContent || '0';
-    window.rankitoTrack('purchase', { cart_value: parseFloat(total.replace(/[^0-9.,]/g,'')) || 0 });
-  }
-});
-</script>`;
-
-  const shopifySnippet = `<!-- Rankito Shopify (adicionar no theme.liquid APÓS o script principal) -->
-<script>
-if (window.ShopifyAnalytics && ShopifyAnalytics.meta && ShopifyAnalytics.meta.product) {
-  var p = ShopifyAnalytics.meta.product;
-  window.rankitoTrack('product_view', { product_id: String(p.id), product_name: p.type, product_price: p.variants?.[0]?.price || 0 });
-}
-document.querySelectorAll('form[action*="/cart/add"]').forEach(function(form) {
-  form.addEventListener('submit', function() {
-    var name = document.querySelector('.product-single__title, .product__title, h1')?.textContent?.trim() || '';
-    var price = document.querySelector('.product__price, .price__regular')?.textContent?.trim() || '';
-    window.rankitoTrack('add_to_cart', { product_name: name, product_price: parseFloat(price.replace(/[^0-9.,]/g,'')) || 0 });
-  });
-});
-if (window.Shopify && Shopify.checkout) {
-  window.rankitoTrack('purchase', { cart_value: parseFloat(Shopify.checkout.total_price) || 0 });
-}
 </script>`;
 
   const manualTrackingSnippet = `// Tracking manual de eventos customizados
@@ -500,6 +585,18 @@ window.rankitoTrack('custom', {
 window.rankitoTrack('video_play', { cta_text: 'Video Hero' });
 window.rankitoTrack('file_download', { cta_text: 'Ebook SEO.pdf' });
 window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
+
+  const dataAttributeSnippet = `<!-- Para sites sem WooCommerce/Shopify, use data attributes: -->
+
+<!-- Produto (auto-detecta product_view ao ficar visível) -->
+<div data-rk-product="Camiseta Premium" data-rk-price="89.90" data-rk-product-id="SKU-001">
+  <h3>Camiseta Premium</h3>
+  <p>R$ 89,90</p>
+  <button data-rk-add-to-cart>Adicionar ao Carrinho</button>
+</div>
+
+<!-- Página de obrigado (auto-detecta purchase) -->
+<div data-rk-purchase data-rk-value="189.80"></div>`;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -561,8 +658,9 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
             <h4 className="text-sm font-bold font-display">Script Principal</h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Este script captura automaticamente: <strong>page views</strong>, <strong>cliques</strong>, <strong>formulários</strong>, 
-            <strong> scroll depth</strong>, <strong>tempo na página</strong> e <strong>UTMs/GCLID/FBCLID</strong>.
+            Script único que captura automaticamente: <strong>page views</strong>, <strong>cliques</strong>, <strong>formulários</strong>, 
+            <strong> scroll depth</strong>, <strong>tempo na página</strong>, <strong>UTMs/GCLID/FBCLID</strong> e 
+            <strong> e-commerce completo</strong> (WooCommerce, Shopify e sites genéricos via <code className="bg-muted px-1 rounded text-[10px]">data-rk-*</code>).
           </p>
           <CopyBlock code={mainScript} />
         </Card>
@@ -640,10 +738,10 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
                 </div>
               </InstructionCard>
 
-              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} title="WooCommerce — Tracking de E-commerce">
-                <p>Se o seu WordPress usa <strong>WooCommerce</strong>, adicione este snippet <strong>após</strong> o script principal:</p>
-                <div className="mt-2">
-                  <CopyBlock code={wooCommerceSnippet} />
+              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="WooCommerce — Auto-detectado ✓">
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+                  <p className="text-[10px]">O script v3.3.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>product_view</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -682,15 +780,14 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
                   <li>Clique em <strong>Ações → Editar código</strong>.</li>
                   <li>Abra o arquivo <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">theme.liquid</code>.</li>
                   <li>Cole o <strong>Script Principal</strong> antes do <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">&lt;/body&gt;</code>.</li>
-                  <li>Logo abaixo, cole o <strong>snippet de e-commerce</strong>.</li>
-                  <li>Clique em <strong>Salvar</strong>.</li>
+                  <li>Clique em <strong>Salvar</strong>. <strong>Pronto!</strong></li>
                 </ol>
               </InstructionCard>
 
-              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} title="Shopify — Tracking de E-commerce">
-                <p>Adicione este snippet <strong>após</strong> o script principal no <code className="bg-muted px-1 rounded text-[10px]">theme.liquid</code>:</p>
-                <div className="mt-2">
-                  <CopyBlock code={shopifySnippet} />
+              <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="Shopify — Auto-detectado ✓">
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+                  <p className="text-[10px]">O script v3.3.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>product_view</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -715,11 +812,20 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
             {showAdvanced ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           {showAdvanced && (
-            <div className="mt-3">
-              <p className="text-xs text-muted-foreground mb-3">
-                Use <code className="bg-muted px-1 rounded text-[10px]">window.rankitoTrack()</code> para enviar eventos customizados.
-              </p>
-              <CopyBlock code={manualTrackingSnippet} />
+            <div className="mt-3 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Use <code className="bg-muted px-1 rounded text-[10px]">window.rankitoTrack()</code> para enviar eventos customizados.
+                </p>
+                <CopyBlock code={manualTrackingSnippet} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground mb-1">🏷️ E-commerce via Data Attributes (sites genéricos)</p>
+                <p className="text-[10px] text-muted-foreground mb-3">
+                  Para sites que não usam WooCommerce ou Shopify, use atributos <code className="bg-muted px-1 rounded">data-rk-*</code> no HTML:
+                </p>
+                <CopyBlock code={dataAttributeSnippet} />
+              </div>
             </div>
           )}
         </Card>
@@ -730,7 +836,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
         <Card className="p-5">
           <h4 className="text-sm font-bold font-display mb-3">📊 Eventos Capturados Automaticamente</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {[
+             {[
               { emoji: "👁️", name: "Page View", desc: "Visualização de página" },
               { emoji: "🚪", name: "Page Exit", desc: "Saída + tempo + scroll" },
               { emoji: "🖱️", name: "Button Click", desc: "Cliques em botões" },
@@ -740,9 +846,12 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               { emoji: "✉️", name: "Email Click", desc: "Cliques em mailto" },
               { emoji: "📝", name: "Form Submit", desc: "Submissão de formulários" },
               { emoji: "📏", name: "Scroll Depth", desc: "Profundidade de rolagem" },
-              { emoji: "🛍️", name: "Product View", desc: "WooCommerce/Shopify" },
-              { emoji: "🛒", name: "Add to Cart", desc: "WooCommerce/Shopify" },
-              { emoji: "💰", name: "Purchase", desc: "Compra finalizada" },
+              { emoji: "🛍️", name: "Product View", desc: "Auto: Woo/Shopify/data-rk" },
+              { emoji: "🛒", name: "Add to Cart", desc: "Auto: Woo/Shopify/data-rk" },
+              { emoji: "🗑️", name: "Remove from Cart", desc: "Auto: WooCommerce" },
+              { emoji: "💳", name: "Begin Checkout", desc: "Auto: WooCommerce" },
+              { emoji: "💰", name: "Purchase", desc: "Auto: Woo/Shopify/data-rk" },
+              { emoji: "🔍", name: "Search", desc: "Via rankitoTrack()" },
             ].map((ev) => (
               <div key={ev.name} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/40">
                 <span className="text-base">{ev.emoji}</span>
