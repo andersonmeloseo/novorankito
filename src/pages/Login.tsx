@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Loader2, Check, Star } from "lucide-react";
+import { Zap, Loader2, Check, Star, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { checkLeakedPassword } from "@/lib/password-check";
 
 const PLANS = [
   {
@@ -54,12 +55,27 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [leakedWarning, setLeakedWarning] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLeakedWarning(false);
     try {
       if (isSignup) {
+        // Check for leaked password before signup
+        const pwCheck = await checkLeakedPassword(password);
+        if (pwCheck.isLeaked) {
+          setLeakedWarning(true);
+          toast({
+            title: "⚠️ Senha comprometida",
+            description: `Esta senha já apareceu em ${pwCheck.occurrences.toLocaleString("pt-BR")} vazamentos de dados. Escolha outra senha para sua segurança.`,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signUp(email, password, name);
         if (error) throw error;
         toast({ title: "Conta criada!", description: "Você já está logado." });
@@ -112,7 +128,13 @@ export default function Login() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Senha</Label>
-                <Input type="password" placeholder="••••••••" className="h-9 text-sm" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                <Input type="password" placeholder="••••••••" className="h-9 text-sm" value={password} onChange={(e) => { setPassword(e.target.value); setLeakedWarning(false); }} required minLength={6} />
+                {leakedWarning && (
+                  <p className="text-[11px] text-destructive flex items-center gap-1.5">
+                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                    Esta senha foi exposta em vazamentos. Escolha outra.
+                  </p>
+                )}
               </div>
               <Button className="w-full h-9 text-sm" type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
