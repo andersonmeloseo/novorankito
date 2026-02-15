@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
-import { useTrackingEvents, TrackingEvent, buildHeatmap } from "@/hooks/use-tracking-events";
+import { useTrackingEvents, TrackingEvent, buildHeatmap, EVENT_LABELS } from "@/hooks/use-tracking-events";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -149,6 +151,7 @@ export function SessionsTab() {
   const [sortKey, setSortKey] = useState<SortKey>("started_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let data = sessions;
@@ -538,7 +541,7 @@ export function SessionsTab() {
                 {paged.map(s => {
                   const status = getSessionStatus(s);
                   return (
-                    <tr key={s.session_id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                    <tr key={s.session_id} className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedSession(s.session_id)}>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(s.started_at), "dd/MM HH:mm")}</td>
                       <td className="px-3 py-2 text-[11px] font-medium text-foreground">{formatDuration(s.duration_sec)}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground text-center">{s.pages_viewed}</td>
@@ -573,6 +576,235 @@ export function SessionsTab() {
           </div>
         </Card>
       </AnimatedContainer>
+
+      {/* Session Detail Drawer */}
+      <SessionDetailDrawer
+        sessionId={selectedSession}
+        events={allEvents}
+        onClose={() => setSelectedSession(null)}
+      />
     </div>
+  );
+}
+
+/* ── Session Detail Drawer ── */
+function SessionDetailDrawer({ sessionId, events, onClose }: {
+  sessionId: string | null;
+  events: TrackingEvent[];
+  onClose: () => void;
+}) {
+  const sessionEvents = useMemo(() => {
+    if (!sessionId) return [];
+    return events
+      .filter(e => (e.session_id || e.visitor_id) === sessionId)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }, [sessionId, events]);
+
+  if (!sessionId || !sessionEvents.length) {
+    return (
+      <Sheet open={!!sessionId} onOpenChange={() => onClose()}>
+        <SheetContent className="w-[420px] sm:w-[500px] overflow-y-auto"><SheetHeader><SheetTitle>Sessão não encontrada</SheetTitle></SheetHeader></SheetContent>
+      </Sheet>
+    );
+  }
+
+  const first = sessionEvents[0];
+  const last = sessionEvents[sessionEvents.length - 1];
+  const exitEvent = sessionEvents.find(e => e.event_type === "page_exit");
+  const duration = exitEvent?.time_on_page || Math.round((new Date(last.created_at).getTime() - new Date(first.created_at).getTime()) / 1000);
+  const pages = new Set(sessionEvents.map(e => e.page_url).filter(Boolean));
+  const scrollDepth = exitEvent?.scroll_depth ?? 0;
+  const moveData = exitEvent?.metadata && typeof exitEvent.metadata === "object" ? (exitEvent.metadata as any).move_samples : null;
+
+  return (
+    <Sheet open={!!sessionId} onOpenChange={() => onClose()}>
+      <SheetContent className="w-[420px] sm:w-[520px] overflow-y-auto p-0">
+        <SheetHeader className="px-5 pt-5 pb-3">
+          <SheetTitle className="text-sm font-display">Detalhe da Sessão</SheetTitle>
+        </SheetHeader>
+
+        {/* Session Overview */}
+        <div className="px-5 space-y-4">
+          {/* Visitor info card */}
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                {first.visitor_id?.slice(-2)?.toUpperCase() || "??"}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground font-mono">{first.visitor_id?.slice(-12) || "—"}</p>
+                <p className="text-[10px] text-muted-foreground">{first.session_id?.slice(-12) || "—"}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Início", value: format(new Date(first.created_at), "dd/MM/yyyy HH:mm:ss") },
+                { label: "Duração", value: formatDuration(duration) },
+                { label: "Páginas", value: `${pages.size} página(s)` },
+                { label: "Scroll", value: `${scrollDepth}%` },
+                { label: "Dispositivo", value: `${first.device === "mobile" ? "📱" : first.device === "desktop" ? "🖥️" : "📟"} ${first.device || "—"}` },
+                { label: "Browser", value: `${first.browser || "—"} / ${first.os || "—"}` },
+                { label: "Resolução", value: `${first.screen_width || "—"} × ${first.screen_height || "—"}` },
+                { label: "Idioma", value: first.language || "—" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                  <p className="text-[11px] font-medium text-foreground">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Origin & Attribution */}
+          <Card className="p-4 space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Origem & Atribuição</h4>
+            <Separator />
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Referrer", value: first.referrer || "Direto" },
+                { label: "UTM Source", value: first.utm_source || "—" },
+                { label: "UTM Medium", value: first.utm_medium || "—" },
+                { label: "UTM Campaign", value: first.utm_campaign || "—" },
+                { label: "UTM Term", value: first.utm_term || "—" },
+                { label: "UTM Content", value: first.utm_content || "—" },
+                { label: "GCLID", value: first.gclid ? `${first.gclid.slice(0, 16)}...` : "—" },
+                { label: "FBCLID", value: first.fbclid ? `${first.fbclid.slice(0, 16)}...` : "—" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                  <p className="text-[11px] font-medium text-foreground truncate" title={item.value}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Geolocation */}
+          <Card className="p-4 space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">📍 Geolocalização</h4>
+            <Separator />
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "País", value: first.country || "—" },
+                { label: "Estado", value: first.state || "—" },
+                { label: "Cidade", value: first.city || "—" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                  <p className="text-[11px] font-medium text-foreground">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Mouse movement summary */}
+          {moveData && Array.isArray(moveData) && moveData.length > 0 && (
+            <Card className="p-4 space-y-2">
+              <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">🖱️ Movimento do Mouse</h4>
+              <Separator />
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Pontos</p>
+                  <p className="text-[11px] font-medium text-foreground">{moveData.length}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Primeiro</p>
+                  <p className="text-[11px] font-medium text-foreground">{moveData[0].t}s</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Último</p>
+                  <p className="text-[11px] font-medium text-foreground">{moveData[moveData.length - 1].t}s</p>
+                </div>
+              </div>
+              {/* Mini trail preview */}
+              <div className="bg-muted/30 rounded-lg p-2 h-20 relative overflow-hidden">
+                <svg viewBox="0 0 400 80" className="w-full h-full" preserveAspectRatio="none">
+                  {moveData.length > 1 && (() => {
+                    const xs = moveData.map((p: any) => p.x);
+                    const ys = moveData.map((p: any) => p.y);
+                    const minX = Math.min(...xs), maxX = Math.max(...xs) || 1;
+                    const minY = Math.min(...ys), maxY = Math.max(...ys) || 1;
+                    const points = moveData.map((p: any) => {
+                      const nx = ((p.x - minX) / (maxX - minX)) * 380 + 10;
+                      const ny = ((p.y - minY) / (maxY - minY)) * 60 + 10;
+                      return `${nx},${ny}`;
+                    }).join(" ");
+                    return <polyline points={points} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinejoin="round" opacity="0.7" />;
+                  })()}
+                  {moveData.slice(-5).map((p: any, i: number) => {
+                    const xs = moveData.map((pp: any) => pp.x);
+                    const ys = moveData.map((pp: any) => pp.y);
+                    const minX = Math.min(...xs), maxX = Math.max(...xs) || 1;
+                    const minY = Math.min(...ys), maxY = Math.max(...ys) || 1;
+                    const nx = ((p.x - minX) / (maxX - minX)) * 380 + 10;
+                    const ny = ((p.y - minY) / (maxY - minY)) * 60 + 10;
+                    return <circle key={i} cx={nx} cy={ny} r="2" fill="hsl(var(--primary))" opacity={0.3 + (i / 5) * 0.7} />;
+                  })}
+                </svg>
+              </div>
+            </Card>
+          )}
+
+          {/* Timeline */}
+          <div className="space-y-2 pb-6">
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">📋 Timeline de Ações ({sessionEvents.length} eventos)</h4>
+            <div className="relative pl-4 border-l-2 border-border space-y-0">
+              {sessionEvents.map((e, i) => {
+                const time = format(new Date(e.created_at), "HH:mm:ss");
+                const eventLabel = EVENT_LABELS[e.event_type] || e.event_type;
+                const isExit = e.event_type === "page_exit";
+                const isView = e.event_type === "page_view";
+                const isConversion = ["whatsapp_click", "phone_click", "email_click", "form_submit", "purchase"].includes(e.event_type);
+
+                return (
+                  <div key={e.id || i} className="relative pb-3 group">
+                    {/* Dot */}
+                    <div className={`absolute -left-[calc(0.5rem+5px)] top-1 w-2.5 h-2.5 rounded-full border-2 ${
+                      isConversion ? "bg-success border-success" :
+                      isExit ? "bg-destructive border-destructive" :
+                      isView ? "bg-primary border-primary" :
+                      "bg-muted-foreground/30 border-muted-foreground/50"
+                    }`} />
+
+                    <div className="ml-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] text-muted-foreground font-mono">{time}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[8px] ${
+                            isConversion ? "bg-success/10 text-success border-success/30" :
+                            isExit ? "bg-destructive/10 text-destructive border-destructive/30" :
+                            isView ? "bg-primary/10 text-primary border-primary/30" :
+                            ""
+                          }`}
+                        >
+                          {eventLabel}
+                        </Badge>
+                      </div>
+
+                      {/* Event details */}
+                      <div className="mt-0.5 text-[10px] text-muted-foreground space-y-0.5">
+                        {e.page_url && (
+                          <p className="truncate max-w-[350px]" title={e.page_url}>
+                            📄 {e.page_url.replace(/^https?:\/\/[^/]+/, "")}
+                          </p>
+                        )}
+                        {e.cta_text && <p>🖱️ <span className="text-foreground">"{e.cta_text}"</span></p>}
+                        {e.cta_selector && <p className="font-mono text-[9px]">🎯 {e.cta_selector}</p>}
+                        {e.form_id && <p>📝 Form: {e.form_id}</p>}
+                        {e.scroll_depth != null && <p>📜 Scroll: {e.scroll_depth}%</p>}
+                        {e.time_on_page != null && <p>⏱️ Tempo: {formatDuration(e.time_on_page)}</p>}
+                        {e.product_name && <p>🛒 {e.product_name} {e.product_price ? `— R$ ${e.product_price.toFixed(2)}` : ""}</p>}
+                        {e.cart_value != null && e.cart_value > 0 && <p>💰 Valor: R$ {e.cart_value.toFixed(2)}</p>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
