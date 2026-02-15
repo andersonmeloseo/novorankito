@@ -200,6 +200,30 @@ export default function Overview() {
     enabled: !!projectId,
   });
 
+  // Site URLs count (real page count)
+  const { data: siteUrlsCount = 0 } = useQuery({
+    queryKey: ["site-urls-count", projectId],
+    queryFn: async () => {
+      let total = 0;
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("site_urls")
+          .select("id", { count: "exact", head: false })
+          .eq("project_id", projectId!)
+          .range(from, from + pageSize - 1);
+        if (error) break;
+        if (!data || data.length === 0) break;
+        total += data.length;
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return total;
+    },
+    enabled: !!projectId,
+  });
+
   // Country data
   const { data: countryData = [] } = useQuery({
     queryKey: ["seo-country-overview", projectId],
@@ -297,7 +321,7 @@ export default function Overview() {
   const ga4Sessions = ga4Overview?.sessions || sessions.reduce((s: number, a: any) => s + (a.sessions_count || 0), 0);
 
   const totalConversions = conversions.length;
-  const totalPages = pageMetrics.length;
+  const totalPages = siteUrlsCount || pageMetrics.length;
   const totalQueries = queryMetrics.length;
 
   const hasGscData = seoMetrics.length > 0;
@@ -446,7 +470,7 @@ export default function Overview() {
               value={formatCompact(totalPages)}
               previousValue={formatCompact(prevTotalPages)}
               change={prevTotalPages > 0 ? ((totalPages - prevTotalPages) / prevTotalPages) * 100 : 0}
-              explanation="Número de páginas únicas do seu site que receberam impressões no Google."
+              explanation="Total de URLs inventariadas do seu site (sitemap + descobertas)."
               icon={Globe}
               color="text-chart-5"
               bgColor="bg-chart-5/10"
