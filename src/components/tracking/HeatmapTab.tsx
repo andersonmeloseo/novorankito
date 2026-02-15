@@ -1038,7 +1038,7 @@ export function HeatmapTab() {
                 </h4>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto">
                   {urlOptions.length === 0
-                    ? "Instale o Pixel Rankito v3.3.0 no seu site para capturar cliques, scroll e movimento do mouse automaticamente."
+                    ? "Nenhum evento de clique, scroll ou movimento registrado para este projeto."
                     : "Tente ajustar os filtros de busca ou dispositivo."}
                 </p>
               </Card>
@@ -1079,7 +1079,7 @@ export function HeatmapTab() {
           {!totalClicks && !exitEvents.length && !moveSessions.length && (
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-warning/5 border-warning/20 text-warning text-[10px]">
               <Info className="h-3 w-3" />
-              <span>Aguardando dados. Instale o Pixel Rankito v3.3.0+ no seu site.</span>
+              <span>Aguardando dados do pixel de rastreamento.</span>
             </div>
           )}
         </div>
@@ -1311,7 +1311,7 @@ export function HeatmapTab() {
             <Flame className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-foreground mb-1">Nenhum dado de heatmap ainda</h4>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Instale o Pixel Rankito v3.3.0 no seu site para capturar cliques, scroll e movimento do mouse automaticamente.
+              Nenhum evento de clique, scroll ou movimento registrado para este projeto.
             </p>
           </Card>
         </AnimatedContainer>
