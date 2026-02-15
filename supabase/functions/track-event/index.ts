@@ -190,7 +190,55 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, count: rows.length, geo: geo ? true : false }), {
+    // ── Auto-create offline conversions for conversion-type events ──
+    const CONVERSION_EVENT_TYPES = ["whatsapp_click", "phone_click", "email_click", "form_submit", "purchase"];
+    const conversionRows = rows
+      .filter((r: any) => CONVERSION_EVENT_TYPES.includes(r.event_type))
+      .map((r: any) => {
+        // Get project owner for owner_id
+        const eventType = r.event_type === "purchase" ? "sale"
+          : r.event_type === "form_submit" ? "lead"
+          : r.event_type === "email_click" ? "email"
+          : r.event_type === "phone_click" ? "call"
+          : "whatsapp";
+
+        return {
+          project_id,
+          owner_id: "00000000-0000-0000-0000-000000000000", // placeholder, will be set below
+          event_type: eventType,
+          source: r.utm_source || null,
+          medium: r.utm_medium || null,
+          campaign: r.utm_campaign || null,
+          device: r.device || null,
+          location: [r.city, r.state, r.country].filter(Boolean).join(", ") || null,
+          page: r.page_url || null,
+          lead_name: r.cta_text || null,
+          lead_phone: r.event_type === "phone_click" ? (r.cta_text || null) : null,
+          lead_email: r.event_type === "email_click" ? (r.cta_text || null) : null,
+          value: r.event_type === "purchase" ? (r.cart_value || r.product_price || null) : null,
+        };
+      });
+
+    if (conversionRows.length > 0) {
+      // Get project owner_id
+      const { data: proj } = await supabase
+        .from("projects")
+        .select("owner_id")
+        .eq("id", project_id)
+        .single();
+
+      if (proj?.owner_id) {
+        const withOwner = conversionRows.map((c: any) => ({ ...c, owner_id: proj.owner_id }));
+        const { error: convErr } = await supabase.from("conversions").insert(withOwner);
+        if (convErr) {
+          console.warn("Auto-conversion insert error:", convErr.message);
+        } else {
+          console.log(`Auto-created ${withOwner.length} conversion(s) from pixel events`);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, count: rows.length, conversions: conversionRows.length, geo: geo ? true : false }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

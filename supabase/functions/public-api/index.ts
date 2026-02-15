@@ -79,12 +79,73 @@ serve(async (req) => {
     const projectId = apiKeyRecord.project_id;
     const scopes = apiKeyRecord.scopes || ["read"];
 
+    log.info("API request", { action, project_id: projectId, method: req.method });
+
+    // ── POST: Write actions ──
+    if (req.method === "POST") {
+      if (!scopes.includes("write") && !scopes.includes("read")) {
+        timer();
+        return errorResponse("Insufficient scopes. Need 'write' scope.", cors, 403);
+      }
+
+      if (action === "conversions") {
+        const body = await req.json();
+        const conversionData = Array.isArray(body) ? body : [body];
+
+        if (conversionData.length > 50) {
+          timer();
+          return errorResponse("Max 50 conversions per batch.", cors, 400);
+        }
+
+        // Get project owner
+        const { data: proj } = await supabase
+          .from("projects")
+          .select("owner_id")
+          .eq("id", projectId)
+          .single();
+
+        if (!proj?.owner_id) {
+          timer();
+          return errorResponse("Project not found.", cors, 404);
+        }
+
+        const rows = conversionData.map((c: any) => ({
+          project_id: projectId,
+          owner_id: proj.owner_id,
+          event_type: c.event_type || "lead",
+          lead_name: c.lead_name || c.name || null,
+          lead_email: c.lead_email || c.email || null,
+          lead_phone: c.lead_phone || c.phone || null,
+          value: c.value != null ? Number(c.value) : null,
+          source: c.source || c.utm_source || null,
+          medium: c.medium || c.utm_medium || null,
+          campaign: c.campaign || c.utm_campaign || null,
+          device: c.device || null,
+          location: c.location || null,
+          page: c.page || c.landing_page || null,
+        }));
+
+        const { data: inserted, error: insErr } = await supabase
+          .from("conversions")
+          .insert(rows)
+          .select("id");
+
+        if (insErr) throw new Error(insErr.message);
+
+        log.info("Conversions created via API", { count: rows.length });
+        timer();
+        return jsonResponse({ ok: true, created: inserted?.length || rows.length }, cors);
+      }
+
+      timer();
+      return errorResponse(`Unknown POST action: ${action}. Available: conversions`, cors, 400);
+    }
+
+    // ── GET: Read actions ──
     if (!scopes.includes("read")) {
       timer();
       return errorResponse("Insufficient scopes.", cors, 403);
     }
-
-    log.info("API request", { action, project_id: projectId });
 
     let result: unknown;
 
@@ -135,9 +196,24 @@ serve(async (req) => {
         break;
       }
 
+      case "conversions": {
+        const days = parseInt(url.searchParams.get("days") || "30");
+        const startDate = new Date(Date.now() - days * 86400000).toISOString();
+        const { data, error } = await supabase
+          .from("conversions")
+          .select("id, event_type, value, converted_at, source, medium, campaign, device, location, page, lead_name, lead_email, lead_phone")
+          .eq("project_id", projectId)
+          .gte("converted_at", startDate)
+          .order("converted_at", { ascending: false })
+          .limit(500);
+        if (error) throw new Error(error.message);
+        result = data;
+        break;
+      }
+
       default:
         timer();
-        return errorResponse(`Unknown action: ${action}. Available: overview, metrics, urls, indexing`, cors, 400);
+        return errorResponse(`Unknown action: ${action}. Available: overview, metrics, urls, indexing, conversions`, cors, 400);
     }
 
     timer();
