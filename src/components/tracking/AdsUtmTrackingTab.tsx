@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
@@ -105,17 +106,11 @@ export function AdsUtmTrackingTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <Card className="p-4 border-primary/20 bg-primary/5">
-        <div className="flex items-start gap-3">
-          <Target className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">Dados de Ads Capturados</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              O plugin captura automaticamente <strong>gclid</strong> (Google Ads), <strong>fbclid</strong> (Meta Ads) e todos os parâmetros <strong>UTM</strong>.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <FeatureBanner
+        icon={Target}
+        title="Ads & UTM Tracking"
+        description={<>O Pixel Rankito captura automaticamente <strong>gclid</strong> (Google Ads), <strong>fbclid</strong> (Meta Ads) e todos os parâmetros <strong>UTM</strong> (source, medium, campaign, term, content). Visualize a distribuição por fonte, campanha e taxa de conversão de cada canal de aquisição paga.</>}
+      />
 
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <SparkKpi label="UTM Capturados" value={stats.withUtm} color="hsl(var(--primary))" icon={Tag} />

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -402,6 +403,11 @@ export function UserJourneyTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner
+        icon={Footprints}
+        title="Jornada do Usuário"
+        description={<>Visualize o <strong>caminho completo</strong> que cada visitante percorre no seu site: páginas acessadas, CTAs clicados, tempo em cada etapa e se converteu ou não. Filtre por dispositivo, status de conversão e busque por CTA ou landing page.</>}
+      />
       {/* Filters */}
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-end gap-2 sm:gap-3">
