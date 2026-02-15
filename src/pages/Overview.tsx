@@ -12,7 +12,6 @@ import { useSeoMetrics, useAnalyticsSessions, useConversions } from "@/hooks/use
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getExactCount } from "@/lib/supabase-helpers";
 import {
   BarChart3, TrendingUp, Sparkles, Lightbulb, MousePointerClick,
   Eye, Users, Target, Globe, ArrowUp, ArrowDown, Activity,
@@ -203,12 +202,42 @@ export default function Overview() {
     enabled: !!projectId,
   });
 
-  // Site URLs count (exact count with head:true — single request)
-  const { data: siteUrlsCount = 0 } = useQuery({
-    queryKey: ["site-urls-count", projectId],
-    queryFn: () => getExactCount("site_urls", { project_id: projectId! }),
+  // Server-side aggregation — replaces multiple client queries with single RPC
+  const { data: serverOverview } = useQuery({
+    queryKey: ["project-overview-rpc", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_project_overview", { p_project_id: projectId! });
+      if (error) { console.error("RPC error:", error); return null; }
+      return data as {
+        total_urls: number;
+        total_clicks: number;
+        total_impressions: number;
+        avg_position: number;
+        avg_ctr: number;
+        total_queries: number;
+        indexing: {
+          submitted: number;
+          failed: number;
+          inspected: number;
+          indexed: number;
+          total_requests: number;
+          total_urls: number;
+        };
+      } | null;
+    },
     enabled: !!projectId,
   });
+
+  const siteUrlsCount = serverOverview?.total_urls || 0;
+  const indexingStats = serverOverview ? {
+    totalUrls: serverOverview.indexing.total_urls,
+    submitted: serverOverview.indexing.submitted,
+    failed: serverOverview.indexing.failed,
+    inspected: serverOverview.indexing.inspected,
+    indexed: serverOverview.indexing.indexed,
+    totalRequests: serverOverview.indexing.total_requests,
+    pending: 0,
+  } : null;
 
   // Country data
   const { data: countryData = [] } = useQuery({
@@ -229,7 +258,7 @@ export default function Overview() {
   // GSC live with correct params
   const today = new Date();
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  const currentEnd = fmt(new Date(today.getTime() - 86400000)); // yesterday
+  const currentEnd = fmt(new Date(today.getTime() - 86400000));
   const currentStart = fmt(new Date(today.getTime() - 28 * 86400000));
   const previousEnd = fmt(new Date(today.getTime() - 29 * 86400000));
   const previousStart = fmt(new Date(today.getTime() - 56 * 86400000));
@@ -265,28 +294,6 @@ export default function Overview() {
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
     retry: false,
-  });
-
-  // Indexing data
-  const { data: indexingStats } = useQuery({
-    queryKey: ["indexing-stats-overview", projectId],
-    queryFn: async () => {
-      const [reqRes, coverageRes, urlsRes] = await Promise.all([
-        supabase.from("indexing_requests").select("status").eq("project_id", projectId!),
-        supabase.from("index_coverage").select("verdict, indexing_state").eq("project_id", projectId!),
-        supabase.from("site_urls").select("id", { count: "exact", head: true }).eq("project_id", projectId!),
-      ]);
-      const requests = reqRes.data || [];
-      const coverage = coverageRes.data || [];
-      const totalUrls = urlsRes.count || 0;
-      const submitted = requests.filter((r: any) => r.status === "success").length;
-      const pending = requests.filter((r: any) => r.status === "pending" || r.status === "processing").length;
-      const failed = requests.filter((r: any) => r.status === "quota_exceeded" || r.status === "failed").length;
-      const inspected = coverage.length;
-      const indexed = coverage.filter((c: any) => c.verdict === "PASS" || c.indexing_state === "INDEXING_ALLOWED").length;
-      return { totalUrls, submitted, pending, failed, inspected, indexed, totalRequests: requests.length };
-    },
-    enabled: !!projectId,
   });
 
   const isLoading = seoLoading || sessionsLoading || conversionsLoading;

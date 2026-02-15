@@ -1,31 +1,39 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, validateBody, validateUUID, jsonResponse, errorResponse } from "../_shared/utils.ts";
 
-const corsHeaders = {
+const corsHeaders_fallback = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { urls } = await req.json();
-    // urls: Array of { id: string, url: string }
+    const body = await req.json();
+
+    const validationErr = validateBody(body, ["urls"], cors);
+    if (validationErr) return validationErr;
+
+    const { urls } = body;
 
     if (!Array.isArray(urls) || urls.length === 0) {
-      return new Response(JSON.stringify({ error: "No URLs provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("urls must be a non-empty array", cors, 400);
     }
 
-    // Limit to 50 URLs per batch
-    const batch = urls.slice(0, 50);
+    // Validate each URL item
+    for (const item of urls) {
+      if (!item.id || !item.url || typeof item.url !== "string") {
+        return errorResponse("Each item in urls must have 'id' and 'url' (string) fields", cors, 400);
+      }
+      try { new URL(item.url); } catch {
+        return errorResponse(`Invalid URL: ${item.url}`, cors, 400);
+      }
+    }
 
+    const batch = urls.slice(0, 50);
     const results: Array<{ id: string; meta_title: string | null; meta_description: string | null; error?: string }> = [];
 
     for (const item of batch) {
@@ -45,17 +53,13 @@ Deno.serve(async (req) => {
 
         const html = await res.text();
 
-        // Extract title
         const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
         const metaTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i)
           || html.match(/<meta[^>]*name=["']title["'][^>]*content=["']([^"']+)["']/i);
-        
         const title = metaTitleMatch?.[1]?.trim() || titleMatch?.[1]?.trim() || null;
 
-        // Extract description
         const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
           || html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
-        
         const description = descMatch?.[1]?.trim() || null;
 
         results.push({ id: item.id, meta_title: title, meta_description: description });
@@ -64,10 +68,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let updated = 0;
     for (const r of results) {
@@ -81,13 +82,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, results, updated }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: true, results, updated }, cors);
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(e.message || "Unknown error", cors);
   }
 });
