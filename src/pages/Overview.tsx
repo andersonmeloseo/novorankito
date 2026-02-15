@@ -133,8 +133,8 @@ export default function Overview() {
         agents: agents.count || 0,
         workflows: workflows.count || 0,
         indexTotal: indexReqs.count || 0,
-        indexSubmitted: indexData.filter((r: any) => r.status === "completed").length,
-        indexFailed: indexData.filter((r: any) => r.status === "failed").length,
+        indexSubmitted: indexData.filter((r: any) => r.status === "completed" || r.status === "success").length,
+        indexFailed: indexData.filter((r: any) => r.status === "failed" || r.status === "quota_exceeded").length,
         indexPending: indexData.filter((r: any) => r.status === "pending" || r.status === "processing").length,
         rrPages: rrPages.count || 0,
         rrContracts: rrContracts.count || 0,
@@ -308,10 +308,10 @@ export default function Overview() {
 
         {/* Analytics & Tracking */}
         <div className="grid lg:grid-cols-2 gap-4">
-          <Section title="Analytics (GA4)" icon={BarChart3} badge={counts ? `${formatCompact(counts.sessions)} sessões` : undefined} to="/ga4" delay={0.14}>
+          <Section title="Analytics (GA4)" icon={BarChart3} badge={ga4Conn ? "Conectado" : "Não conectado"} to="/ga4" delay={0.14}>
             <div className="grid grid-cols-2 gap-3">
-              <MiniStat icon={Users} iconColor="text-chart-5" bgColor="bg-chart-5/10" label="Sessões" value={formatCompact(counts?.sessions ?? 0)} />
-              <MiniStat icon={Target} iconColor="text-chart-6" bgColor="bg-chart-6/10" label="Conversões" value={formatCompact(counts?.conversions ?? 0)} />
+              <MiniStat icon={Users} iconColor="text-chart-5" bgColor="bg-chart-5/10" label="Sessões" value={counts?.sessions ? formatCompact(counts.sessions) : ga4Conn ? "Ver GA4" : "—"} />
+              <MiniStat icon={Target} iconColor="text-chart-6" bgColor="bg-chart-6/10" label="Conversões" value={counts?.conversions ? formatCompact(counts.conversions) : ga4Conn ? "Ver GA4" : "—"} />
             </div>
           </Section>
 
