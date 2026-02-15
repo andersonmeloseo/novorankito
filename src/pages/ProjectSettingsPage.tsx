@@ -22,6 +22,8 @@ import { format, parseISO } from "date-fns";
 import { WhiteLabelSettings } from "@/components/settings/WhiteLabelSettings";
 import { ApiKeysSettings } from "@/components/settings/ApiKeysSettings";
 import { WebhooksSettings } from "@/components/settings/WebhooksSettings";
+import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
+import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
 export default function ProjectSettingsPage() {
   const { user } = useAuth();
@@ -366,6 +368,7 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [connectionName, setConnectionName] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -525,9 +528,14 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
           </div>
         </div>
         {!adding && !editingId && (
-          <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setAdding(true)}>
-            <Search className="h-3 w-3" /> Adicionar Conta
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+              <BookOpen className="h-3 w-3" /> Tutorial
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setAdding(true)}>
+              <Search className="h-3 w-3" /> Adicionar Conta
+            </Button>
+          </div>
         )}
       </div>
 
@@ -662,10 +670,16 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
 
       {/* Empty state: show form directly */}
       {connections.length === 0 && !adding && (
-        <Button size="sm" className="w-full text-xs gap-1.5" onClick={() => setAdding(true)}>
-          <Search className="h-3 w-3" /> Conectar Google Search Console
-        </Button>
+        <div className="space-y-2">
+          <Button size="sm" className="w-full text-xs gap-1.5" onClick={() => setAdding(true)}>
+            <Search className="h-3 w-3" /> Conectar Google Search Console
+          </Button>
+          <Button size="sm" variant="outline" className="w-full text-xs gap-1.5" onClick={() => setShowTutorial(true)}>
+            <BookOpen className="h-3 w-3" /> Ver tutorial passo a passo
+          </Button>
+        </div>
       )}
+      <GSCTutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
     </Card>
   );
 }
@@ -678,6 +692,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [connectionName, setConnectionName] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -870,9 +885,13 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
             <p className="text-[10px] text-muted-foreground">{editing ? "Editando credenciais" : "Não conectado"}</p>
           </div>
         </div>
-        {editing && (
+        {editing ? (
           <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setEditing(false); setStep("form"); setJsonError(""); }}>
             Cancelar
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+            <BookOpen className="h-3 w-3" /> Tutorial
           </Button>
         )}
       </div>
@@ -942,6 +961,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
           </Button>
         </div>
       )}
+      <GA4TutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
     </Card>
   );
 }
