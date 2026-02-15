@@ -260,46 +260,59 @@ export function EcommerceTrackingTab() {
         <SparkKpi label="Checkout→Compra" value={checkoutToPurchase.toFixed(1)} suffix="%" color="hsl(var(--success))" icon={TrendingUp} />
       </StaggeredGrid>
 
-      {/* ── Visual Funnel (redesigned) ── */}
+      {/* ── Visual Funnel (polished trapezoid) ── */}
       <AnimatedContainer>
         <Card className="p-5">
           <ChartHeader title="Funil de Conversão E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
-          <div className="flex flex-col items-center py-6 gap-0">
+          <style>{`
+            @keyframes funnelArrowBounce {
+              0%, 100% { transform: translateY(0); opacity: 0.7; }
+              50% { transform: translateY(3px); opacity: 1; }
+            }
+            .funnel-arrow { animation: funnelArrowBounce 1.5s ease-in-out infinite; }
+            .funnel-step-bar { transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+            .funnel-step-bar:hover { filter: brightness(1.15); transform: scaleY(1.04); }
+          `}</style>
+          <div className="flex flex-col items-center py-6 max-w-lg mx-auto">
             {ecommerceFunnelTotals.map((step, i) => {
               const prevVal = i > 0 ? ecommerceFunnelTotals[i - 1].value : null;
-              const conversionPct = prevVal && prevVal > 0 ? ((step.value / prevVal) * 100).toFixed(1) : null;
+              const convPct = prevVal && prevVal > 0 ? ((step.value / prevVal) * 100).toFixed(1) : null;
               const dropPct = prevVal && prevVal > 0 ? (((prevVal - step.value) / prevVal) * 100).toFixed(1) : null;
+              const topW = step.width;
+              const bottomW = i < ecommerceFunnelTotals.length - 1 ? ecommerceFunnelTotals[i + 1].width : step.width - 6;
+              const topInset = ((100 - topW) / 2).toFixed(1);
+              const botInset = ((100 - bottomW) / 2).toFixed(1);
+
               return (
                 <div key={step.label} className="flex flex-col items-center w-full">
-                  {/* Arrow + conversion % between steps */}
+                  {/* Animated arrow + conversion label */}
                   {i > 0 && (
-                    <div className="flex items-center gap-2 py-2">
-                      <div className="flex flex-col items-center">
-                        <svg width="20" height="20" viewBox="0 0 20 20" className="text-muted-foreground">
-                          <path d="M10 2 L10 14 M5 10 L10 16 L15 10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                    <div className="flex items-center gap-2.5 py-1.5">
+                      <svg width="16" height="22" viewBox="0 0 16 22" className="funnel-arrow text-muted-foreground/60">
+                        <path d="M8 0 L8 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        <path d="M3 12 L8 19 L13 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-success">{convPct}%</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[9px] text-destructive/70">-{dropPct}% drop</span>
                       </div>
-                      <span className="text-[11px] font-semibold text-success">{conversionPct}% conversão</span>
-                      <span className="text-[10px] text-muted-foreground">({dropPct}% drop)</span>
                     </div>
                   )}
-                  {/* Funnel step */}
+                  {/* Trapezoid step */}
                   <div
-                    className="relative flex items-center justify-center transition-all duration-500"
+                    className="funnel-step-bar relative flex items-center justify-center cursor-default"
                     style={{
-                      width: `${step.width}%`,
-                      height: "56px",
-                      background: `linear-gradient(135deg, ${step.color}, ${step.color}cc)`,
-                      clipPath: i < ecommerceFunnelTotals.length - 1
-                        ? "polygon(3% 0%, 97% 0%, 100% 100%, 0% 100%)"
-                        : "polygon(3% 0%, 97% 0%, 94% 100%, 6% 100%)",
-                      borderRadius: i === 0 ? "10px 10px 0 0" : i === ecommerceFunnelTotals.length - 1 ? "0 0 10px 10px" : "0",
-                      boxShadow: `0 4px 20px ${step.color}55`,
+                      width: "100%",
+                      height: "52px",
+                      background: `linear-gradient(180deg, ${step.color}ee, ${step.color}bb)`,
+                      clipPath: `polygon(${topInset}% 0%, ${100 - Number(topInset)}% 0%, ${100 - Number(botInset)}% 100%, ${botInset}% 100%)`,
+                      boxShadow: `0 6px 24px ${step.color}40, inset 0 1px 0 ${step.color}66`,
                     }}
                   >
-                    <div className="flex flex-col items-center gap-0.5 z-10">
-                      <span className="text-sm font-bold text-white drop-shadow-sm">{step.label}</span>
-                      <span className="text-white/90 text-xs font-semibold">{fmt(step.value)}</span>
+                    <div className="flex items-center gap-3 z-10">
+                      <span className="text-sm font-bold text-white drop-shadow-md tracking-wide">{step.label}</span>
+                      <span className="bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white">{fmt(step.value)}</span>
                     </div>
                   </div>
                 </div>
