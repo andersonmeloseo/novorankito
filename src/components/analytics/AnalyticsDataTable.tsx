@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface AnalyticsDataTableProps {
   columns: string[];
   rows: string[][];
+  tooltips?: (string | null)[][];
   pageSize?: number;
 }
 
@@ -18,7 +19,7 @@ function parseNumeric(val: string): number {
   return isNaN(n) ? -Infinity : n;
 }
 
-export function AnalyticsDataTable({ columns, rows, pageSize = 10 }: AnalyticsDataTableProps) {
+export function AnalyticsDataTable({ columns, rows, tooltips, pageSize = 10 }: AnalyticsDataTableProps) {
   const [sortCol, setSortCol] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
@@ -108,13 +109,23 @@ export function AnalyticsDataTable({ columns, rows, pageSize = 10 }: AnalyticsDa
             {paginated.length === 0 ? (
               <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
             ) : (
-              paginated.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                  {row.map((cell, j) => (
-                    <td key={j} className={cn("px-4 py-3 text-xs", j === 0 ? "font-medium text-foreground" : "text-muted-foreground")}>{cell}</td>
-                  ))}
-                </tr>
-              ))
+              paginated.map((row, i) => {
+                const originalIdx = sorted.indexOf(row);
+                const rowTooltips = tooltips?.[rows.indexOf(row)];
+                return (
+                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    {row.map((cell, j) => (
+                      <td
+                        key={j}
+                        className={cn("px-4 py-3 text-xs max-w-[200px] truncate", j === 0 ? "font-medium text-foreground" : "text-muted-foreground")}
+                        title={rowTooltips?.[j] || undefined}
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
