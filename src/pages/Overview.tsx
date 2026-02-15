@@ -2,7 +2,8 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import { KpiSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   BarChart3, TrendingUp, Sparkles, Lightbulb, MousePointerClick,
   Eye, Users, Target, Globe, ArrowUp, ArrowDown, Activity,
-  Search, Monitor, Smartphone, Tablet, ExternalLink, MapPin
+  Search, Monitor, Smartphone, Tablet, ExternalLink, MapPin, HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,8 @@ interface OverviewKpiProps {
   label: string;
   value: string;
   change?: number;
+  previousValue?: string;
+  explanation?: string;
   icon: React.ElementType;
   color: string;
   bgColor: string;
@@ -35,13 +38,31 @@ interface OverviewKpiProps {
   subtitle?: string;
 }
 
-function OverviewKpi({ label, value, change, icon: Icon, color, bgColor, sparkData, sparkColor, subtitle }: OverviewKpiProps) {
+function OverviewKpi({ label, value, change, previousValue, explanation, icon: Icon, color, bgColor, sparkData, sparkColor, subtitle }: OverviewKpiProps) {
   const isPositive = (change ?? 0) >= 0;
   const chartData = sparkData?.map((v) => ({ v })) || [];
 
   return (
-    <Card className="p-4 card-hover group relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <Card className="p-4 card-hover group relative overflow-visible">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      
+      {explanation && (
+        <div className="absolute top-3 right-3 z-20">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-help opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] text-xs bg-card border-border shadow-xl">
+                {explanation}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <div className={cn("p-2 rounded-xl", bgColor)}>
@@ -57,23 +78,41 @@ function OverviewKpi({ label, value, change, icon: Icon, color, bgColor, sparkDa
             </span>
           )}
         </div>
+        
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
         <p className="text-2xl font-bold text-foreground font-display tracking-tight">{value}</p>
-        {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
-        {chartData.length > 2 && (
-          <div className="h-10 mt-2 -mx-1">
+        
+        {previousValue && (
+          <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+            <span className="opacity-70">vs anterior:</span>
+            <span className="font-medium opacity-90">{previousValue}</span>
+          </p>
+        )}
+
+        {chartData.length > 2 ? (
+          <div className="h-10 mt-3 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id={`kpi-grad-${label}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`kpi-grad-${label.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={sparkColor || "hsl(var(--primary))"} stopOpacity={0.2} />
                     <stop offset="95%" stopColor={sparkColor || "hsl(var(--primary))"} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <Area type="monotone" dataKey="v" stroke={sparkColor || "hsl(var(--primary))"} strokeWidth={1.5} fill={`url(#kpi-grad-${label})`} dot={false} isAnimationActive={false} />
+                <Area 
+                  type="monotone" 
+                  dataKey="v" 
+                  stroke={sparkColor || "hsl(var(--primary))"} 
+                  strokeWidth={1.5} 
+                  fill={`url(#kpi-grad-${label.replace(/\s/g, '')})`} 
+                  dot={false} 
+                  isAnimationActive={false} 
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+        ) : (
+          <div className="h-10 mt-3" /> 
         )}
       </div>
     </Card>
@@ -128,6 +167,21 @@ export default function Overview() {
         .eq("dimension_type", "device")
         .order("clicks", { ascending: false });
       return data || [];
+    },
+    enabled: !!projectId,
+  });
+
+  // Previous period data from DB for comparison
+  const { data: previousSeoMetrics = [] } = useQuery({
+    queryKey: ["seo-previous-period", projectId],
+    queryFn: async () => {
+       const { data } = await supabase
+         .from("seo_metrics")
+         .select("dimension_type, clicks, impressions, ctr, position")
+         .eq("project_id", projectId!)
+         .gte("metric_date", previousStart)
+         .lte("metric_date", previousEnd);
+       return data || [];
     },
     enabled: !!projectId,
   });
@@ -200,6 +254,18 @@ export default function Overview() {
   const posCount = pageMetrics.filter((m: any) => m.position > 0).length;
   const avgPosition = posCount > 0 ? pageMetrics.reduce((s: number, m: any) => s + (m.position || 0), 0) / posCount : 0;
   const avgCtr = pageMetrics.length > 0 ? pageMetrics.reduce((s: number, m: any) => s + (Number(m.ctr) || 0), 0) / pageMetrics.length * 100 : 0;
+
+  // Previous period calculations
+  const prevPageMetrics = previousSeoMetrics.filter((m: any) => m.dimension_type === "page");
+  const prevQueryMetrics = previousSeoMetrics.filter((m: any) => m.dimension_type === "query");
+  
+  const prevClicks = prevPageMetrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
+  const prevImpressions = prevPageMetrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
+  const prevPosCount = prevPageMetrics.filter((m: any) => m.position > 0).length;
+  const prevAvgPosition = prevPosCount > 0 ? prevPageMetrics.reduce((s: number, m: any) => s + (m.position || 0), 0) / prevPosCount : 0;
+  const prevAvgCtr = prevPageMetrics.length > 0 ? prevPageMetrics.reduce((s: number, m: any) => s + (Number(m.ctr) || 0), 0) / prevPageMetrics.length * 100 : 0;
+  const prevTotalPages = prevPageMetrics.length;
+  const prevTotalQueries = prevQueryMetrics.length;
 
   // GSC live comparison for change %
   const gscCurrent = gscLive?.query?.current || [];
@@ -316,52 +382,72 @@ export default function Overview() {
             <OverviewKpi
               label="Cliques"
               value={formatCompact(totalClicks)}
+              previousValue={formatCompact(prevClicks)}
               change={clicksChange}
+              explanation="Total de vezes que usuários clicaram no seu site nos resultados de pesquisa do Google."
               icon={MousePointerClick}
               color="text-primary"
               bgColor="bg-primary/10"
               sparkData={clicksSpark}
               sparkColor="hsl(var(--primary))"
-              subtitle="Últimos 28 dias"
             />
             <OverviewKpi
               label="Impressões"
               value={formatCompact(totalImpressions)}
+              previousValue={formatCompact(prevImpressions)}
               change={impressionsChange}
+              explanation="Quantas vezes seu site apareceu nos resultados de pesquisa, mesmo sem cliques."
               icon={Eye}
               color="text-info"
               bgColor="bg-info/10"
+              sparkData={trendData.map((d: any) => d.impressions)}
               sparkColor="hsl(var(--info))"
             />
             <OverviewKpi
               label="CTR Médio"
               value={`${avgCtr.toFixed(2)}%`}
+              previousValue={`${prevAvgCtr.toFixed(2)}%`}
+              change={prevAvgCtr > 0 ? ((avgCtr - prevAvgCtr) / prevAvgCtr) * 100 : 0}
+              explanation="Taxa de cliques: porcentagem de impressões que resultaram em um clique."
               icon={Target}
               color="text-success"
               bgColor="bg-success/10"
+              sparkData={trendData.map((d: any) => (d.clicks / (d.impressions || 1)) * 100)}
+              sparkColor="hsl(var(--success))"
             />
             <OverviewKpi
               label="Posição Média"
               value={avgPosition > 0 ? avgPosition.toFixed(1) : "—"}
+              previousValue={prevAvgPosition > 0 ? prevAvgPosition.toFixed(1) : "—"}
+              change={prevAvgPosition > 0 ? ((prevAvgPosition - avgPosition) / prevAvgPosition) * 100 : 0} // Lower is better
+              explanation="Posição média do seu site nos resultados de busca. Quanto menor, melhor."
               icon={TrendingUp}
               color="text-warning"
               bgColor="bg-warning/10"
+              sparkData={trendData.map((d: any) => d.position > 0 ? d.position : null).filter(Boolean)}
+              sparkColor="hsl(var(--warning))"
             />
             <OverviewKpi
               label="Páginas"
               value={formatCompact(totalPages)}
+              previousValue={formatCompact(prevTotalPages)}
+              change={prevTotalPages > 0 ? ((totalPages - prevTotalPages) / prevTotalPages) * 100 : 0}
+              explanation="Número de páginas únicas do seu site que receberam impressões no Google."
               icon={Globe}
               color="text-chart-5"
               bgColor="bg-chart-5/10"
-              subtitle="Rastreadas no GSC"
+              sparkColor="hsl(var(--chart-5))"
             />
             <OverviewKpi
               label="Consultas"
               value={formatCompact(totalQueries)}
+              previousValue={formatCompact(prevTotalQueries)}
+              change={prevTotalQueries > 0 ? ((totalQueries - prevTotalQueries) / prevTotalQueries) * 100 : 0}
+              explanation="Número de termos de pesquisa únicos (keywords) que exibiram seu site."
               icon={Search}
               color="text-chart-6"
               bgColor="bg-chart-6/10"
-              subtitle="Keywords únicas"
+              sparkColor="hsl(var(--chart-6))"
             />
           </StaggeredGrid>
         )}
@@ -440,7 +526,7 @@ export default function Overview() {
                       <XAxis dataKey="date" tick={{ fontSize: 10, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                       <YAxis yAxisId="left" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                       <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card) / 0.95)", backdropFilter: "blur(12px)", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontFamily: "Inter", boxShadow: "0 8px 32px -8px rgba(0,0,0,0.2)" }} />
+                      <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card) / 0.95)", backdropFilter: "blur(12px)", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontFamily: "Inter", boxShadow: "0 8px 32px -8px rgba(0,0,0,0.2)" }} />
                       <Area yAxisId="left" type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#clicksGrad)" dot={false} name="Cliques" />
                       <Area yAxisId="right" type="monotone" dataKey="impressions" stroke="hsl(var(--info))" strokeWidth={1.5} fill="url(#impressionsGrad)" dot={false} name="Impressões" />
                     </AreaChart>
@@ -470,7 +556,7 @@ export default function Overview() {
                                 <Cell key={i} fill={entry.fill} />
                               ))}
                             </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -505,7 +591,7 @@ export default function Overview() {
                         <BarChart data={countryChartData} layout="vertical">
                           <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                           <YAxis type="category" dataKey="country" tick={{ fontSize: 11, fontFamily: "Inter" }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={40} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                          <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                           <Bar dataKey="clicks" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Cliques" />
                         </BarChart>
                       </ResponsiveContainer>
