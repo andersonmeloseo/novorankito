@@ -585,7 +585,7 @@ function SessionReplayViewer({ projectId }: { projectId: string }) {
             <Card key={rec.id} className="card-hover cursor-pointer group relative" onClick={() => setSelectedRecording(rec)}>
               {/* Delete button */}
               <button
-                className="absolute top-2 right-2 z-10 h-6 w-6 rounded-full bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:border-destructive/30"
+                className="absolute top-2 right-2 z-10 h-6 w-6 rounded-full bg-background border border-border flex items-center justify-center transition-colors hover:bg-destructive/10 hover:border-destructive/30"
                 onClick={(e) => deleteRecording(rec.id, e)}
                 title="Excluir gravação"
               >
@@ -754,18 +754,20 @@ export function HeatmapTab() {
     return () => obs.disconnect();
   }, []);
 
+  const fullPageHeight = useMemo(() => Math.max(containerSize.height, estimatedDocH * (containerSize.width / referenceVpW)), [containerSize, estimatedDocH, referenceVpW]);
+
   const redrawHeatmap = useCallback(() => {
     if (!canvasRef.current) return;
     if (heatmapMode === "click") {
-      drawHeatmap(canvasRef.current, clickPoints, { width: containerSize.width, height: containerSize.height }, referenceVpW, estimatedDocH, 0, 28, opacity);
+      drawHeatmap(canvasRef.current, clickPoints, { width: containerSize.width, height: fullPageHeight }, referenceVpW, estimatedDocH, 0, 28, opacity);
     } else if (heatmapMode === "move") {
       const sessionsWithColors = moveSessions.map((s, i) => ({
         points: s.points,
         color: TRAIL_COLORS[i % TRAIL_COLORS.length],
       }));
-      drawMoveTrails(canvasRef.current, sessionsWithColors, { width: containerSize.width, height: containerSize.height }, referenceVpW);
+      drawMoveTrails(canvasRef.current, sessionsWithColors, { width: containerSize.width, height: fullPageHeight }, referenceVpW);
     }
-  }, [clickPoints, moveSessions, containerSize, referenceVpW, estimatedDocH, heatmapMode, opacity]);
+  }, [clickPoints, moveSessions, containerSize, referenceVpW, estimatedDocH, heatmapMode, opacity, fullPageHeight]);
 
   useEffect(() => { redrawHeatmap(); }, [redrawHeatmap]);
 
@@ -1171,19 +1173,20 @@ export function HeatmapTab() {
             </div>
           </div>
 
-          <div ref={containerRef} className="relative bg-muted/10" style={{ height: `${containerSize.height}px`, minHeight: "500px" }}>
-            <iframe ref={iframeRef} src={selectedUrl} className="absolute inset-0 w-full h-full border-0" style={{ zIndex: 1, pointerEvents: "none" }}
-              sandbox="allow-same-origin allow-scripts"
-              onLoad={() => { setIframeLoaded(true); setIframeError(false); }}
-              onError={() => { setIframeError(true); setIframeLoaded(false); }}
-              title="Heatmap preview"
-            />
-
-            {(heatmapMode === "click" || heatmapMode === "move") && (
-              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"
-                style={{ zIndex: 5, pointerEvents: "none", mixBlendMode: heatmapMode === "click" ? "multiply" : "normal", opacity: 0.8 }}
+          <div ref={containerRef} className="relative bg-muted/10 overflow-y-auto" style={{ height: `${containerSize.height}px`, minHeight: "500px" }}>
+            <div className="relative" style={{ minHeight: `${Math.max(containerSize.height, estimatedDocH * (containerSize.width / referenceVpW))}px` }}>
+              <iframe ref={iframeRef} src={selectedUrl} className="absolute inset-0 w-full border-0" style={{ zIndex: 1, pointerEvents: "none", height: `${Math.max(containerSize.height, estimatedDocH * (containerSize.width / referenceVpW))}px` }}
+                sandbox="allow-same-origin allow-scripts"
+                onLoad={() => { setIframeLoaded(true); setIframeError(false); }}
+                onError={() => { setIframeError(true); setIframeLoaded(false); }}
+                title="Heatmap preview"
               />
-            )}
+
+              {(heatmapMode === "click" || heatmapMode === "move") && (
+                <canvas ref={canvasRef} className="absolute inset-0 w-full"
+                  style={{ zIndex: 5, pointerEvents: "none", mixBlendMode: heatmapMode === "click" ? "multiply" : "normal", opacity: 0.8, height: `${Math.max(containerSize.height, estimatedDocH * (containerSize.width / referenceVpW))}px` }}
+                />
+              )}
 
             {heatmapMode === "scroll" && <ScrollDepthOverlay events={exitEvents} iframeHeight={containerSize.height} />}
 
@@ -1262,6 +1265,7 @@ export function HeatmapTab() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </Card>
       </AnimatedContainer>
