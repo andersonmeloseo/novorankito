@@ -516,6 +516,8 @@ export function HeatmapTab() {
   const [listDeviceFilter, setListDeviceFilter] = useState<string>("all");
   const [listSortBy, setListSortBy] = useState<string>("relevance");
   const [listSearch, setListSearch] = useState("");
+  const [listPage, setListPage] = useState(0);
+  const CARDS_PER_PAGE = 12;
   const [opacity] = useState(0.65);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshots, setSnapshots] = useState<HeatmapSnapshot[]>(loadSnapshots);
@@ -766,7 +768,7 @@ export function HeatmapTab() {
                 <Input
                   placeholder="Filtrar por URL..."
                   value={listSearch}
-                  onChange={(e) => setListSearch(e.target.value)}
+                  onChange={(e) => { setListSearch(e.target.value); setListPage(0); }}
                   className="h-9 text-xs"
                 />
               </div>
@@ -821,25 +823,49 @@ export function HeatmapTab() {
           else if (listSortBy === "recent") filtered.sort((a, b) => b.lastEvent.localeCompare(a.lastEvent));
           else if (listSortBy === "oldest") filtered.sort((a, b) => a.firstEvent.localeCompare(b.firstEvent));
 
+          const totalPages = Math.ceil(filtered.length / CARDS_PER_PAGE);
+          const safePage = Math.min(listPage, totalPages - 1);
+          const paginated = filtered.slice(safePage * CARDS_PER_PAGE, (safePage + 1) * CARDS_PER_PAGE);
+
           return filtered.length > 0 ? (
-            <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filtered.map((opt) => (
-                <PageCard
-                  key={opt.url}
-                  url={opt.url}
-                  clicks={opt.clicks}
-                  exits={opt.exits}
-                  views={opt.views}
-                  visitors={opt.visitors}
-                  avgScroll={opt.avgScroll}
-                  moveCount={opt.moveCount}
-                  firstEvent={opt.firstEvent}
-                  lastEvent={opt.lastEvent}
-                  topCity={opt.topCity}
-                  onClick={() => setSelectedUrl(opt.url)}
-                />
-              ))}
-            </StaggeredGrid>
+            <div className="space-y-4">
+              <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {paginated.map((opt) => (
+                  <PageCard
+                    key={opt.url}
+                    url={opt.url}
+                    clicks={opt.clicks}
+                    exits={opt.exits}
+                    views={opt.views}
+                    visitors={opt.visitors}
+                    avgScroll={opt.avgScroll}
+                    moveCount={opt.moveCount}
+                    firstEvent={opt.firstEvent}
+                    lastEvent={opt.lastEvent}
+                    topCity={opt.topCity}
+                    onClick={() => setSelectedUrl(opt.url)}
+                  />
+                ))}
+              </StaggeredGrid>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2">
+                  <Button size="sm" variant="outline" className="h-8 text-xs" disabled={safePage === 0} onClick={() => setListPage(safePage - 1)}>
+                    Anterior
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <Button key={i} size="sm" variant={i === safePage ? "default" : "outline"} className="h-8 w-8 text-xs p-0" onClick={() => setListPage(i)}>
+                        {i + 1}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" disabled={safePage >= totalPages - 1} onClick={() => setListPage(safePage + 1)}>
+                    Próximo
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground ml-2">{filtered.length} páginas</span>
+                </div>
+              )}
+            </div>
           ) : (
             <AnimatedContainer delay={0.06}>
               <Card className="p-8 text-center">
