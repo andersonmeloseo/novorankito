@@ -45,7 +45,7 @@ export default function TrackingPage() {
               <Footprints className="h-3.5 w-3.5" /> Jornada
             </TabsTrigger>
             <TabsTrigger value="offline" className="text-xs gap-1.5">
-              <PhoneCall className="h-3.5 w-3.5" /> Offline
+              <PhoneCall className="h-3.5 w-3.5" /> Conversão Offline
             </TabsTrigger>
             <TabsTrigger value="event-builder" className="text-xs gap-1.5">
               <MousePointerClick className="h-3.5 w-3.5" /> Eventos Personalizados
