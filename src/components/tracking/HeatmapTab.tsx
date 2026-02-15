@@ -720,9 +720,35 @@ export function HeatmapTab() {
   if (!selectedUrl) {
     return (
       <div className="space-y-4 sm:space-y-5">
-        <FeatureBanner icon={Flame} title="Heatmaps Visuais & Session Replay" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong>, <strong>rastro do mouse</strong> e <strong>grave sessões completas</strong> dos seus visitantes.</>} />
+        <FeatureBanner icon={Flame} title="Heatmaps Visuais & Session Replay" description={<>Visualize <strong>cliques</strong>, <strong>scroll</strong>, <strong>rastro do mouse</strong> e <strong>grave sessões completas</strong> dos seus visitantes. Os dados atualizam em <strong>tempo real</strong> (a cada 30s ou ao receber novos eventos).</>} />
 
-        {/* Global KPIs */}
+        {/* Global KPIs + cleanup */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex-1" />
+          {hasData && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-[10px] text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
+              onClick={async () => {
+                if (!projectId) return;
+                const confirmed = window.confirm("Tem certeza que deseja excluir TODOS os eventos de heatmap deste projeto? Esta ação não pode ser desfeita.");
+                if (!confirmed) return;
+                const heatmapTypes = ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click", "page_exit", "page_view"];
+                const { error } = await supabase
+                  .from("tracking_events")
+                  .delete()
+                  .eq("project_id", projectId)
+                  .in("event_type", heatmapTypes);
+                if (error) { toast.error("Erro ao limpar dados: " + error.message); return; }
+                toast.success("Dados de heatmap limpos com sucesso!");
+                window.location.reload();
+              }}
+            >
+              <Trash2 className="h-3 w-3" /> Limpar todos os dados
+            </Button>
+          )}
+        </div>
         <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <HeatKpi label="Páginas Rastreadas" value={urlOptions.length} icon={Globe} />
           <HeatKpi label="Total de Cliques" value={allEvents.filter(e => ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)).length.toLocaleString("pt-BR")} icon={MousePointer2} />
