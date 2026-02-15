@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,64 +7,50 @@ import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-conta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  Plus, Trash2, Copy, Check, MousePointerClick, FormInput, Eye, Scroll,
-  Timer, Play, Pause, Code, Zap, GripVertical, Settings, ArrowRight,
-  Hash, Type, ToggleLeft, Globe
+  Plus, Trash2, MousePointerClick, FormInput, Eye, Scroll,
+  Timer, Play, Pause, Zap, Settings, Hash, Loader2, Sparkles, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
+import { useCustomEvents, TRIGGER_OPTIONS, CustomEventConfig } from "@/hooks/use-custom-events";
+import { supabase } from "@/integrations/supabase/client";
 
-interface CustomEvent {
-  id: string;
-  name: string;
-  displayName: string;
-  trigger: "click" | "submit" | "visible" | "scroll" | "timer";
-  selector: string;
-  conditions: { field: string; operator: string; value: string }[];
-  metadata: { key: string; value: string }[];
-  enabled: boolean;
-  fires: number;
+const TRIGGER_ICONS = {
+  click: MousePointerClick,
+  submit: FormInput,
+  visible: Eye,
+  scroll: Scroll,
+  timer: Timer,
+};
+
+function useProjectAndUser() {
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("rankito_current_project");
+    if (stored) setProjectId(stored);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+    const handleStorage = () => {
+      const s = localStorage.getItem("rankito_current_project");
+      if (s) setProjectId(s);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  return { projectId, userId };
 }
 
-const TRIGGER_OPTIONS = [
-  { value: "click", label: "Clique", icon: MousePointerClick, desc: "Dispara quando o elemento é clicado" },
-  { value: "submit", label: "Formulário", icon: FormInput, desc: "Dispara quando o formulário é enviado" },
-  { value: "visible", label: "Visibilidade", icon: Eye, desc: "Dispara quando o elemento entra na viewport" },
-  { value: "scroll", label: "Scroll", icon: Scroll, desc: "Dispara em uma profundidade de scroll específica" },
-  { value: "timer", label: "Tempo", icon: Timer, desc: "Dispara após X segundos na página" },
-];
-
-const INITIAL_EVENTS: CustomEvent[] = [
-  {
-    id: "ev1", name: "cta_hero_click", displayName: "Clique CTA Hero",
-    trigger: "click", selector: "#hero-cta, .btn-hero", conditions: [],
-    metadata: [{ key: "section", value: "hero" }], enabled: true, fires: 1247,
-  },
-  {
-    id: "ev2", name: "newsletter_submit", displayName: "Newsletter Enviado",
-    trigger: "submit", selector: "#newsletter-form, .newsletter-form",
-    conditions: [{ field: "page_url", operator: "contains", value: "/blog" }],
-    metadata: [{ key: "source", value: "blog_sidebar" }], enabled: true, fires: 342,
-  },
-  {
-    id: "ev3", name: "pricing_view", displayName: "Seção Preços Visível",
-    trigger: "visible", selector: "#pricing, .pricing-section", conditions: [],
-    metadata: [{ key: "section", value: "pricing" }], enabled: true, fires: 890,
-  },
-  {
-    id: "ev4", name: "deep_scroll", displayName: "Scroll Profundo (75%)",
-    trigger: "scroll", selector: "75", conditions: [],
-    metadata: [{ key: "threshold", value: "75%" }], enabled: false, fires: 0,
-  },
-  {
-    id: "ev5", name: "engaged_user", displayName: "Usuário Engajado (30s)",
-    trigger: "timer", selector: "30", conditions: [],
-    metadata: [{ key: "threshold_seconds", value: "30" }], enabled: true, fires: 567,
-  },
-];
-
-function EventCard({ event, onToggle, onDelete, onEdit }: { event: CustomEvent; onToggle: () => void; onDelete: () => void; onEdit: () => void }) {
-  const triggerInfo = TRIGGER_OPTIONS.find(t => t.value === event.trigger);
-  const TriggerIcon = triggerInfo?.icon || Zap;
+function EventCard({ event, onToggle, onDelete, loading }: {
+  event: CustomEventConfig;
+  onToggle: () => void;
+  onDelete: () => void;
+  loading: boolean;
+}) {
+  const TriggerIcon = TRIGGER_ICONS[event.trigger_type] || Zap;
+  const triggerInfo = TRIGGER_OPTIONS.find(t => t.value === event.trigger_type);
 
   return (
     <Card className={`p-4 transition-all ${event.enabled ? "border-primary/20" : "border-border opacity-60"}`}>
@@ -74,7 +60,7 @@ function EventCard({ event, onToggle, onDelete, onEdit }: { event: CustomEvent; 
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold font-display truncate">{event.displayName}</h4>
+            <h4 className="text-sm font-bold font-display truncate">{event.display_name}</h4>
             {event.enabled ? (
               <Badge variant="secondary" className="text-[9px] bg-success/10 text-success border-success/20">Ativo</Badge>
             ) : (
@@ -86,20 +72,22 @@ function EventCard({ event, onToggle, onDelete, onEdit }: { event: CustomEvent; 
             <Badge variant="outline" className="text-[9px] gap-1">
               <TriggerIcon className="h-2.5 w-2.5" /> {triggerInfo?.label}
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-mono">{event.selector}</Badge>
+            <Badge variant="outline" className="text-[9px] font-mono truncate max-w-[200px]" title={event.selector}>
+              {event.selector}
+            </Badge>
             {event.conditions.length > 0 && (
               <Badge variant="outline" className="text-[9px] gap-1">
                 <Settings className="h-2.5 w-2.5" /> {event.conditions.length} condição(ões)
               </Badge>
             )}
-            {event.fires > 0 && (
-              <span className="text-[9px] text-muted-foreground">{event.fires.toLocaleString("pt-BR")} disparos</span>
+            {event.fires_count > 0 && (
+              <span className="text-[9px] text-muted-foreground">{event.fires_count.toLocaleString("pt-BR")} disparos</span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Switch checked={event.enabled} onCheckedChange={onToggle} />
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete}>
+          <Switch checked={event.enabled} onCheckedChange={onToggle} disabled={loading} />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete} disabled={loading}>
             <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </div>
@@ -109,92 +97,71 @@ function EventCard({ event, onToggle, onDelete, onEdit }: { event: CustomEvent; 
 }
 
 export function EventBuilderTab() {
-  const [events, setEvents] = useState<CustomEvent[]>(INITIAL_EVENTS);
+  const { projectId, userId } = useProjectAndUser();
+  const { data: events = [], isLoading, createEvent, toggleEvent, deleteEvent, seedPresets } = useCustomEvents(projectId);
+
   const [creating, setCreating] = useState(false);
   const [newEvent, setNewEvent] = useState({
-    name: "", displayName: "", trigger: "click" as CustomEvent["trigger"],
+    name: "", displayName: "", trigger: "click" as CustomEventConfig["trigger_type"],
     selector: "", metaKey: "", metaValue: "",
   });
 
   const activeCount = events.filter(e => e.enabled).length;
-  const totalFires = events.reduce((s, e) => s + e.fires, 0);
+  const totalFires = events.reduce((s, e) => s + e.fires_count, 0);
 
-  const handleCreate = () => {
+  const handleSeedPresets = async () => {
+    if (!projectId || !userId) {
+      toast.error("Projeto ou usuário não encontrado.");
+      return;
+    }
+    try {
+      await seedPresets.mutateAsync({ projectId, ownerId: userId });
+      toast.success("Eventos pré-configurados adicionados! Ative os que desejar.");
+    } catch (err: any) {
+      toast.error("Erro ao adicionar presets: " + (err.message || ""));
+    }
+  };
+
+  const handleCreate = async () => {
     if (!newEvent.name.trim() || !newEvent.selector.trim()) {
       toast.error("Preencha o nome e o seletor.");
       return;
     }
-    const ev: CustomEvent = {
-      id: "ev_" + Date.now(),
-      name: newEvent.name.replace(/\s+/g, "_").toLowerCase(),
-      displayName: newEvent.displayName || newEvent.name,
-      trigger: newEvent.trigger,
-      selector: newEvent.selector,
-      conditions: [],
-      metadata: newEvent.metaKey ? [{ key: newEvent.metaKey, value: newEvent.metaValue }] : [],
-      enabled: true,
-      fires: 0,
-    };
-    setEvents(prev => [ev, ...prev]);
-    setCreating(false);
-    setNewEvent({ name: "", displayName: "", trigger: "click", selector: "", metaKey: "", metaValue: "" });
-    toast.success(`Evento "${ev.displayName}" criado!`);
+    if (!projectId || !userId) {
+      toast.error("Projeto ou usuário não encontrado.");
+      return;
+    }
+    try {
+      await createEvent.mutateAsync({
+        project_id: projectId,
+        owner_id: userId,
+        name: newEvent.name.replace(/\s+/g, "_").toLowerCase(),
+        display_name: newEvent.displayName || newEvent.name,
+        trigger_type: newEvent.trigger,
+        selector: newEvent.selector,
+        conditions: [],
+        metadata: newEvent.metaKey ? [{ key: newEvent.metaKey, value: newEvent.metaValue }] : [],
+        enabled: true,
+      });
+      setCreating(false);
+      setNewEvent({ name: "", displayName: "", trigger: "click", selector: "", metaKey: "", metaValue: "" });
+      toast.success("Evento criado!");
+    } catch (err: any) {
+      toast.error("Erro ao criar evento: " + (err.message || ""));
+    }
   };
 
-  const generatedCode = useMemo(() => {
-    const activeEvents = events.filter(e => e.enabled);
-    if (activeEvents.length === 0) return "// Nenhum evento ativo";
-
-    let code = `// Rankito Custom Events — Gerado automaticamente\n`;
-    code += `// Cole este snippet APÓS o script principal do Pixel Rankito\n`;
-    code += `<script>\n(function(){\n  var rk = window.rankitoTrack;\n  if(!rk) return;\n\n`;
-
-    activeEvents.forEach(ev => {
-      const meta = ev.metadata.length > 0
-        ? `, { ${ev.metadata.map(m => `${m.key}: '${m.value}'`).join(", ")} }`
-        : "";
-
-      if (ev.trigger === "click") {
-        code += `  // ${ev.displayName}\n`;
-        code += `  document.querySelectorAll('${ev.selector}').forEach(function(el){\n`;
-        code += `    el.addEventListener('click', function(){ rk('${ev.name}'${meta}); });\n`;
-        code += `  });\n\n`;
-      } else if (ev.trigger === "submit") {
-        code += `  // ${ev.displayName}\n`;
-        code += `  document.querySelectorAll('${ev.selector}').forEach(function(form){\n`;
-        code += `    form.addEventListener('submit', function(){ rk('${ev.name}'${meta}); });\n`;
-        code += `  });\n\n`;
-      } else if (ev.trigger === "visible") {
-        code += `  // ${ev.displayName}\n`;
-        code += `  var obs = new IntersectionObserver(function(entries){\n`;
-        code += `    entries.forEach(function(e){ if(e.isIntersecting){ rk('${ev.name}'${meta}); obs.unobserve(e.target); }});\n`;
-        code += `  }, {threshold:0.5});\n`;
-        code += `  document.querySelectorAll('${ev.selector}').forEach(function(el){ obs.observe(el); });\n\n`;
-      } else if (ev.trigger === "scroll") {
-        code += `  // ${ev.displayName}\n`;
-        code += `  var fired_${ev.name}=false;\n`;
-        code += `  window.addEventListener('scroll',function(){\n`;
-        code += `    if(fired_${ev.name})return;\n`;
-        code += `    var pct=Math.round((window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100);\n`;
-        code += `    if(pct>=${ev.selector}){fired_${ev.name}=true;rk('${ev.name}'${meta});}\n`;
-        code += `  },{passive:true});\n\n`;
-      } else if (ev.trigger === "timer") {
-        code += `  // ${ev.displayName}\n`;
-        code += `  setTimeout(function(){ rk('${ev.name}'${meta}); }, ${parseInt(ev.selector) * 1000});\n\n`;
-      }
-    });
-
-    code += `})();\n</script>`;
-    return code;
-  }, [events]);
-
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(generatedCode);
-    setCopied(true);
-    toast.success("Código copiado!");
-    setTimeout(() => setCopied(false), 2000);
-  };
+  if (!projectId) {
+    return (
+      <AnimatedContainer>
+        <Card className="p-8 text-center">
+          <AlertTriangle className="h-8 w-8 text-warning mx-auto mb-3" />
+          <h3 className="text-sm font-bold font-display">Selecione um Projeto</h3>
+          <p className="text-xs text-muted-foreground mt-1">Escolha um projeto na sidebar para gerenciar eventos customizados.</p>
+        </Card>
+      </AnimatedContainer>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -206,9 +173,9 @@ export function EventBuilderTab() {
               <MousePointerClick className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold font-display">Event Builder Visual</h3>
+              <h3 className="text-base font-bold font-display">Event Builder</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Crie eventos customizados <strong>sem escrever código</strong>. Selecione o trigger, defina o seletor CSS e o script é gerado automaticamente.
+                Ative eventos pré-configurados ou crie os seus. O <strong>Pixel Rankito já inclui todos os listeners</strong> — basta ativar aqui, sem código adicional.
               </p>
             </div>
           </div>
@@ -233,13 +200,26 @@ export function EventBuilderTab() {
         ))}
       </StaggeredGrid>
 
-      {/* Create new event */}
+      {/* Seed presets or create */}
       <AnimatedContainer delay={0.04}>
-        {!creating ? (
-          <Button onClick={() => setCreating(true)} className="gap-1.5 text-xs">
-            <Plus className="h-3.5 w-3.5" /> Criar Evento Customizado
-          </Button>
-        ) : (
+        <div className="flex flex-wrap gap-2">
+          {events.length === 0 && (
+            <Button onClick={handleSeedPresets} variant="outline" className="gap-1.5 text-xs" disabled={seedPresets.isPending}>
+              {seedPresets.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Carregar Eventos Pré-configurados
+            </Button>
+          )}
+          {!creating && (
+            <Button onClick={() => setCreating(true)} className="gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" /> Criar Evento Customizado
+            </Button>
+          )}
+        </div>
+      </AnimatedContainer>
+
+      {/* Create form */}
+      {creating && (
+        <AnimatedContainer delay={0.04}>
           <Card className="p-5 border-primary/20 space-y-4">
             <h4 className="text-sm font-bold font-display">Novo Evento</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -283,47 +263,68 @@ export function EventBuilderTab() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleCreate} className="gap-1.5 text-xs"><Plus className="h-3.5 w-3.5" /> Criar</Button>
+              <Button size="sm" onClick={handleCreate} className="gap-1.5 text-xs" disabled={createEvent.isPending}>
+                {createEvent.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Criar
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => setCreating(false)} className="text-xs">Cancelar</Button>
             </div>
           </Card>
-        )}
-      </AnimatedContainer>
+        </AnimatedContainer>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
 
       {/* Events list */}
-      <AnimatedContainer delay={0.06}>
-        <div className="space-y-2">
-          {events.map(ev => (
-            <EventCard
-              key={ev.id}
-              event={ev}
-              onToggle={() => setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, enabled: !e.enabled } : e))}
-              onDelete={() => { setEvents(prev => prev.filter(e => e.id !== ev.id)); toast.success("Evento removido"); }}
-              onEdit={() => {}}
-            />
-          ))}
-        </div>
-      </AnimatedContainer>
-
-      {/* Generated code */}
-      <AnimatedContainer delay={0.08}>
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold font-display flex items-center gap-2">
-              <Code className="h-4 w-4 text-primary" /> Código Gerado
-            </h4>
-            <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5 text-xs">
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copiado" : "Copiar Código"}
-            </Button>
+      {!isLoading && events.length > 0 && (
+        <AnimatedContainer delay={0.06}>
+          <div className="space-y-2">
+            {events.map(ev => (
+              <EventCard
+                key={ev.id}
+                event={ev}
+                loading={toggleEvent.isPending || deleteEvent.isPending}
+                onToggle={async () => {
+                  try {
+                    await toggleEvent.mutateAsync({ id: ev.id, enabled: !ev.enabled });
+                    toast.success(ev.enabled ? `"${ev.display_name}" desativado` : `"${ev.display_name}" ativado`);
+                  } catch { toast.error("Erro ao alterar evento"); }
+                }}
+                onDelete={async () => {
+                  try {
+                    await deleteEvent.mutateAsync(ev.id);
+                    toast.success("Evento removido");
+                  } catch { toast.error("Erro ao remover"); }
+                }}
+              />
+            ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Cole este snippet <strong>após</strong> o script principal do Pixel Rankito. Os eventos serão disparados automaticamente.
-          </p>
-          <div className="relative bg-muted/50 border border-border rounded-lg overflow-hidden">
-            <pre className="p-4 text-xs text-foreground overflow-x-auto leading-relaxed font-mono whitespace-pre-wrap break-all max-h-[400px]">
-              {generatedCode}
-            </pre>
+        </AnimatedContainer>
+      )}
+
+      {/* How it works */}
+      <AnimatedContainer delay={0.08}>
+        <Card className="p-5 space-y-3 border-muted">
+          <h4 className="text-sm font-bold font-display flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" /> Como Funciona
+          </h4>
+          <div className="text-xs text-muted-foreground space-y-2">
+            <p>
+              <strong>1.</strong> O Pixel Rankito (já instalado no site) busca automaticamente a lista de eventos ativos deste projeto.
+            </p>
+            <p>
+              <strong>2.</strong> Para cada evento ativo, o pixel registra o listener correspondente (clique, scroll, visibilidade, etc.).
+            </p>
+            <p>
+              <strong>3.</strong> Quando o trigger dispara, o evento é enviado como <code className="bg-muted px-1 rounded">tracking_event</code> e aparece nas abas Eventos, Sessões e Jornada.
+            </p>
+            <p>
+              <strong>4.</strong> Basta ativar/desativar aqui — <strong>sem alterar nada no site</strong>.
+            </p>
           </div>
         </Card>
       </AnimatedContainer>
