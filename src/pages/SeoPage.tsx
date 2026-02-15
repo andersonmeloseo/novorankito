@@ -57,12 +57,13 @@ export default function SeoPage() {
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id").limit(1);
+      const { data } = await supabase.from("projects").select("id").eq("owner_id", user!.id).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!user,
   });
-  const projectId = projects[0]?.id;
+  const storedId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
+  const projectId = (storedId && projects.find(p => p.id === storedId)?.id) || projects[0]?.id;
   const queryClient = useQueryClient();
   const [syncing, setSyncing] = useState(false);
 
