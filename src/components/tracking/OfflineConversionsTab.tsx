@@ -98,8 +98,8 @@ function ConversionDetail({ conv }: { conv: MockOfflineConversion }) {
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
     >
-      <td colSpan={12} className="p-0">
-        <div className="bg-muted/20 border-t border-b border-primary/10 p-4">
+      <td colSpan={99} className="p-0">
+        <div className="bg-muted/20 border-t border-b border-primary/10 p-4 w-full">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* PII / Identity */}
             <div>
