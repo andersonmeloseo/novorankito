@@ -24,12 +24,13 @@ function getUserDisplayName(user: any): string {
   return "";
 }
 
-interface TopBarProps {
+export interface TopBarProps {
   title: string;
   subtitle?: string;
+  extra?: React.ReactNode;
 }
 
-export function TopBar({ title, subtitle }: TopBarProps) {
+export function TopBar({ title, subtitle, extra }: TopBarProps) {
   const { user } = useAuth();
   const displayName = getUserDisplayName(user);
   const greeting = getGreeting();
@@ -45,6 +46,8 @@ export function TopBar({ title, subtitle }: TopBarProps) {
             {subtitle && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
           </div>
         </div>
+
+        {extra && <div className="hidden sm:flex">{extra}</div>}
 
         <div className="flex items-center gap-1.5">
           {displayName && (

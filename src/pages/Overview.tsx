@@ -13,11 +13,16 @@ import { OverviewDevicesCountries } from "@/components/overview/OverviewDevicesC
 import { OverviewTopTables } from "@/components/overview/OverviewTopTables";
 import { SyncJobsDashboard } from "@/components/dashboard/SyncJobsDashboard";
 import { SystemHealthCard } from "@/components/dashboard/SystemHealthCard";
+import { DashboardWidgetWrapper } from "@/components/dashboard/DashboardWidgetWrapper";
+import { WidgetConfigPanel } from "@/components/dashboard/WidgetConfigPanel";
+import { useDashboardLayout } from "@/hooks/use-dashboard-layout";
 import type { OverviewRpcData, IndexingStats } from "@/components/overview/types";
 
 export default function Overview() {
   const { user } = useAuth();
   const [currentProjectId, setCurrentProjectId] = useState(localStorage.getItem("rankito_current_project"));
+  const { widgets, isEditing, updateWidgets, resetLayout, toggleEdit, moveWidget, isVisible } = useDashboardLayout();
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   // === Project selection ===
   const { data: projects = [] } = useQuery({
@@ -156,56 +161,100 @@ export default function Overview() {
     pending: serverOverview.indexing.total_urls - serverOverview.indexing.submitted,
   } : null;
 
+  // Widget render map
+  const widgetMap: Record<string, React.ReactNode> = {
+    welcome: (
+      <OverviewWelcomeBanner
+        user={user}
+        project={projects[0] || null}
+        overview={serverOverview ?? null}
+        hasGscLive={!!gscLive}
+        hasGa4={!!ga4Overview}
+      />
+    ),
+    kpis: (
+      <OverviewKpiGrid
+        isLoading={isLoading}
+        overview={serverOverview ?? null}
+        trendData={trendData}
+        clicksChange={clicksChange}
+        impressionsChange={impressionsChange}
+        prevClicks={prevClicks}
+        prevImpressions={prevImpressions}
+        prevAvgCtr={prevAvgCtr}
+        prevAvgPosition={prevAvgPosition}
+        prevTotalPages={prevPageMetrics.length}
+        prevTotalQueries={prevQueryMetrics.length}
+      />
+    ),
+    indexing: <OverviewIndexingCard stats={indexingStats} />,
+    ga4: (
+      <OverviewGa4Row
+        ga4Overview={ga4Overview}
+        ga4Users={ga4Users}
+        ga4Sessions={ga4Sessions}
+        totalConversions={conversions.length}
+      />
+    ),
+    trend: <OverviewTrendChart isLoading={isLoading} trendData={trendData} />,
+    devices: (
+      <OverviewDevicesCountries
+        devices={serverOverview?.devices || []}
+        countries={serverOverview?.countries || []}
+      />
+    ),
+    tables: (
+      <OverviewTopTables
+        isLoading={isLoading}
+        topPages={serverOverview?.top_pages || []}
+        topQueries={serverOverview?.top_queries || []}
+      />
+    ),
+    sync: projectId ? <SyncJobsDashboard projectId={projectId} /> : null,
+    health: projectId ? <SystemHealthCard projectId={projectId} /> : null,
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("widget-id");
+    if (sourceId && sourceId !== targetId) {
+      moveWidget(sourceId, targetId);
+    }
+    setDraggingId(null);
+  };
+
   return (
     <>
-      <TopBar title="Visão Geral" subtitle="Resumo de performance do seu projeto" />
+      <TopBar
+        title="Visão Geral"
+        subtitle="Resumo de performance do seu projeto"
+        extra={
+          <WidgetConfigPanel
+            widgets={widgets}
+            onUpdate={updateWidgets}
+            onReset={resetLayout}
+            isEditing={isEditing}
+            onToggleEdit={toggleEdit}
+          />
+        }
+      />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-auto">
-        <OverviewWelcomeBanner
-          user={user}
-          project={projects[0] || null}
-          overview={serverOverview ?? null}
-          hasGscLive={!!gscLive}
-          hasGa4={!!ga4Overview}
-        />
-
-        <OverviewKpiGrid
-          isLoading={isLoading}
-          overview={serverOverview ?? null}
-          trendData={trendData}
-          clicksChange={clicksChange}
-          impressionsChange={impressionsChange}
-          prevClicks={prevClicks}
-          prevImpressions={prevImpressions}
-          prevAvgCtr={prevAvgCtr}
-          prevAvgPosition={prevAvgPosition}
-          prevTotalPages={prevPageMetrics.length}
-          prevTotalQueries={prevQueryMetrics.length}
-        />
-
-        <OverviewIndexingCard stats={indexingStats} />
-
-        <OverviewGa4Row
-          ga4Overview={ga4Overview}
-          ga4Users={ga4Users}
-          ga4Sessions={ga4Sessions}
-          totalConversions={conversions.length}
-        />
-
-        <OverviewTrendChart isLoading={isLoading} trendData={trendData} />
-
-        <OverviewDevicesCountries
-          devices={serverOverview?.devices || []}
-          countries={serverOverview?.countries || []}
-        />
-
-        <OverviewTopTables
-          isLoading={isLoading}
-          topPages={serverOverview?.top_pages || []}
-          topQueries={serverOverview?.top_queries || []}
-        />
-
-        {projectId && <SyncJobsDashboard projectId={projectId} />}
-        {projectId && <SystemHealthCard projectId={projectId} />}
+        {widgets.filter(w => w.visible).map(w => (
+          <DashboardWidgetWrapper
+            key={w.id}
+            id={w.id}
+            title={w.title}
+            isEditing={isEditing}
+            isDragging={draggingId === w.id}
+            colSpan={w.colSpan}
+            onDragStart={() => setDraggingId(w.id)}
+            onDragEnd={() => setDraggingId(null)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => handleDrop(e, w.id)}
+          >
+            {widgetMap[w.id]}
+          </DashboardWidgetWrapper>
+        ))}
       </div>
     </>
   );
