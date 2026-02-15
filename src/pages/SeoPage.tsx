@@ -35,6 +35,7 @@ import { CannibalizationTab } from "@/components/seo/CannibalizationTab";
 import { IndexCoverageTab } from "@/components/seo/IndexCoverageTab";
 import { PositionHistoryTab } from "@/components/seo/PositionHistoryTab";
 import { UrlGroupingTab } from "@/components/seo/UrlGroupingTab";
+import { AiInsightsTab } from "@/components/seo/AiInsightsTab";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
@@ -764,6 +765,7 @@ export default function SeoPage() {
                        <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
                        <TabsTrigger value="history" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
                        <TabsTrigger value="grouping" className="text-xs gap-1"><FolderTree className="h-3 w-3" />Agrupamento</TabsTrigger>
+                       <TabsTrigger value="ai-insights" className="text-xs gap-1.5 border border-primary/30 bg-primary/5 text-primary"><Sparkles className="h-3 w-3" />IA Insights</TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -919,6 +921,25 @@ export default function SeoPage() {
 
                   <TabsContent value="grouping" className="mt-0">
                     <UrlGroupingTab projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="ai-insights" className="mt-0">
+                    <AiInsightsTab
+                      projectId={projectId}
+                      kpis={{
+                        totalClicks,
+                        totalImpressions,
+                        avgCtr,
+                        avgPosition,
+                        prevClicks,
+                        prevImpressions,
+                        prevAvgCtr: prevAvgCtr,
+                        prevAvgPosition: prevAvgPosition,
+                      }}
+                      topQueries={queryRows}
+                      topPages={pageRows}
+                      dateRange={dateRange}
+                    />
                   </TabsContent>
                 </Tabs>
               </AnimatedContainer>
