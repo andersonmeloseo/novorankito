@@ -420,7 +420,7 @@ export function AllEventsTab() {
               null,
               e.page_url || null,
               e.referrer || null,
-              null,
+              e.cta_text || e.cta_selector || null,
               null,
               null,
               e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : null,
