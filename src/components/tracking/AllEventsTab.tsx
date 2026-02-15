@@ -28,23 +28,19 @@ function SparkKpi({ label, value, change, suffix, color, icon: Icon, hideBadge, 
   hideBadge?: boolean; smallValue?: boolean;
 }) {
   return (
-    <Card className="p-3.5 card-hover group relative overflow-hidden">
+    <Card className="p-4 sm:p-5 card-hover group relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="relative">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-          </div>
-          {!hideBadge && change !== undefined && (
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${change >= 0 ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
-              {change >= 0 ? "+" : ""}{change}%
-            </span>
-          )}
+      <div className="relative flex flex-col items-center text-center gap-1.5">
+        <div className="flex items-center gap-1.5">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
         </div>
-        <div className="flex items-end justify-between gap-2">
-          <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-xs" : "text-xl"}`}>{value}{suffix}</span>
-        </div>
+        {!hideBadge && change !== undefined && (
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${change >= 0 ? "text-success bg-success/10" : "text-warning bg-warning/10"}`}>
+            {change >= 0 ? "+" : ""}{change}%
+          </span>
+        )}
+        <span className={`font-bold text-foreground font-display tracking-tight ${smallValue ? "text-sm" : "text-2xl"}`}>{value}{suffix}</span>
       </div>
     </Card>
   );
