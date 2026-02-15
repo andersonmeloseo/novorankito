@@ -97,20 +97,30 @@ serve(async (req) => {
       });
     }
 
-    // Get client IP for geolocation
-    const clientIP =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("cf-connecting-ip") ||
-      req.headers.get("x-real-ip") ||
-      null;
-
-    // Fetch geolocation (only if no location already provided in first event)
+    // --- Geolocation: prioritize client-sent > Cloudflare headers > IP API ---
     const firstEvent = events[0];
     const needsGeo = !firstEvent?.country && !firstEvent?.city;
     let geo: { country: string | null; city: string | null; state: string | null } | null = null;
 
-    if (needsGeo && clientIP) {
-      geo = await getGeoFromIP(clientIP);
+    if (needsGeo) {
+      // Try Cloudflare headers first (most reliable in edge environments)
+      const cfCountry = req.headers.get("cf-ipcountry");
+      const cfCity = req.headers.get("cf-ipcity");
+      const cfRegion = req.headers.get("cf-region");
+
+      if (cfCountry && cfCountry !== "XX") {
+        geo = { country: cfCountry, city: cfCity || null, state: cfRegion || null };
+      } else {
+        // Fallback to IP geolocation API
+        const clientIP =
+          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          req.headers.get("cf-connecting-ip") ||
+          req.headers.get("x-real-ip") ||
+          null;
+        if (clientIP) {
+          geo = await getGeoFromIP(clientIP);
+        }
+      }
     }
 
     const ALLOWED_EVENT_TYPES = [
