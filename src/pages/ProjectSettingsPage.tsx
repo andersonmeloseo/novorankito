@@ -530,7 +530,7 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
         {!adding && !editingId && (
           <div className="flex items-center gap-1.5">
             <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
-              <BookOpen className="h-3 w-3" /> Tutorial
+              <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
             </Button>
             <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setAdding(true)}>
               <Search className="h-3 w-3" /> Adicionar Conta
@@ -675,7 +675,7 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
             <Search className="h-3 w-3" /> Conectar Google Search Console
           </Button>
           <Button size="sm" variant="outline" className="w-full text-xs gap-1.5" onClick={() => setShowTutorial(true)}>
-            <BookOpen className="h-3 w-3" /> Ver tutorial passo a passo
+            <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
           </Button>
         </div>
       )}
@@ -891,7 +891,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
           </Button>
         ) : (
           <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
-            <BookOpen className="h-3 w-3" /> Tutorial
+            <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
           </Button>
         )}
       </div>
