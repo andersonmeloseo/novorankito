@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AllEventsTab } from "@/components/tracking/AllEventsTab";
 import { EcommerceTrackingTab } from "@/components/tracking/EcommerceTrackingTab";
-
 import { AdsUtmTrackingTab } from "@/components/tracking/AdsUtmTrackingTab";
 import { SessionsTab } from "@/components/tracking/SessionsTab";
-import { Activity, ShoppingCart, Zap, Target, Users } from "lucide-react";
+import { InstallScriptTab } from "@/components/tracking/InstallScriptTab";
+import { Activity, ShoppingCart, Zap, Target, Users, Code } from "lucide-react";
 
 export default function TrackingPage() {
   return (
@@ -37,6 +37,9 @@ export default function TrackingPage() {
             <TabsTrigger value="sessions" className="text-xs gap-1.5">
               <Users className="h-3.5 w-3.5" /> Sessões
             </TabsTrigger>
+            <TabsTrigger value="install" className="text-xs gap-1.5">
+              <Code className="h-3.5 w-3.5" /> Instalar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all-events" className="mt-4">
@@ -54,6 +57,10 @@ export default function TrackingPage() {
 
           <TabsContent value="sessions" className="mt-4">
             <SessionsTab />
+          </TabsContent>
+
+          <TabsContent value="install" className="mt-4">
+            <InstallScriptTab />
           </TabsContent>
         </Tabs>
       </div>

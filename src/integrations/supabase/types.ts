@@ -1513,6 +1513,131 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_events: {
+        Row: {
+          browser: string | null
+          cart_value: number | null
+          city: string | null
+          country: string | null
+          created_at: string
+          cta_selector: string | null
+          cta_text: string | null
+          device: string | null
+          event_type: string
+          fbclid: string | null
+          form_id: string | null
+          gclid: string | null
+          id: string
+          language: string | null
+          metadata: Json | null
+          os: string | null
+          page_title: string | null
+          page_url: string | null
+          platform: string | null
+          product_id: string | null
+          product_name: string | null
+          product_price: number | null
+          project_id: string
+          referrer: string | null
+          screen_height: number | null
+          screen_width: number | null
+          scroll_depth: number | null
+          session_id: string | null
+          state: string | null
+          time_on_page: number | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          browser?: string | null
+          cart_value?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          cta_selector?: string | null
+          cta_text?: string | null
+          device?: string | null
+          event_type?: string
+          fbclid?: string | null
+          form_id?: string | null
+          gclid?: string | null
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          os?: string | null
+          page_title?: string | null
+          page_url?: string | null
+          platform?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          project_id: string
+          referrer?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          scroll_depth?: number | null
+          session_id?: string | null
+          state?: string | null
+          time_on_page?: number | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          browser?: string | null
+          cart_value?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          cta_selector?: string | null
+          cta_text?: string | null
+          device?: string | null
+          event_type?: string
+          fbclid?: string | null
+          form_id?: string | null
+          gclid?: string | null
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          os?: string | null
+          page_title?: string | null
+          page_url?: string | null
+          platform?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          project_id?: string
+          referrer?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          scroll_depth?: number | null
+          session_id?: string | null
+          state?: string | null
+          time_on_page?: number | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
