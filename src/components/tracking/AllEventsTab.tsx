@@ -330,60 +330,78 @@ export function AllEventsTab() {
         <Card className="p-5">
           <ChartHeader title="Eventos Detalhados" subtitle="Filtre por tipo de evento, dispositivo, navegador, cidade e plataforma" />
           <div className="flex flex-wrap gap-2 mb-4">
-            <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-              <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Tipos</SelectItem>
-                {eventTypes.map(t => (
-                  <SelectItem key={t} value={t}>{EVENT_EMOJI[t] || "⚡"} {EVENT_LABELS[t] || t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
-              <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {devices.map(d => (
-                  <SelectItem key={d} value={d!}>{DEVICE_EMOJI[d!] || "💻"} {d!.charAt(0).toUpperCase() + d!.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={browserFilter} onValueChange={setBrowserFilter}>
-              <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {browsers.map(b => (
-                  <SelectItem key={b} value={b!}>{BROWSER_EMOJI[b!] || "🌐"} {b}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {cities.map(c => (
-                  <SelectItem key={c} value={c!}>📍 {c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Plataforma" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {platforms.map(p => (
-                  <SelectItem key={p} value={p!}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={referrerFilter} onValueChange={setReferrerFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-[11px]"><SelectValue placeholder="Referrer" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Referrers</SelectItem>
-                {referrers.map(r => (
-                  <SelectItem key={r} value={r!}>🔗 {r!.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Tipo:</span>
+              <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Tipos</SelectItem>
+                  {eventTypes.map(t => (
+                    <SelectItem key={t} value={t}>{EVENT_EMOJI[t] || "⚡"} {EVENT_LABELS[t] || t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Dispositivo:</span>
+              <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {devices.map(d => (
+                    <SelectItem key={d} value={d!}>{DEVICE_EMOJI[d!] || "💻"} {d!.charAt(0).toUpperCase() + d!.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Browser:</span>
+              <Select value={browserFilter} onValueChange={setBrowserFilter}>
+                <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {browsers.map(b => (
+                    <SelectItem key={b} value={b!}>{BROWSER_EMOJI[b!] || "🌐"} {b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Cidade:</span>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {cities.map(c => (
+                    <SelectItem key={c} value={c!}>📍 {c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Plataforma:</span>
+              <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Plataforma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {platforms.map(p => (
+                    <SelectItem key={p} value={p!}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">Referrer:</span>
+              <Select value={referrerFilter} onValueChange={setReferrerFilter}>
+                <SelectTrigger className="w-[160px] h-8 text-[11px]"><SelectValue placeholder="Referrer" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos Referrers</SelectItem>
+                  {referrers.map(r => (
+                    <SelectItem key={r} value={r!}>🔗 {r!.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <AnalyticsDataTable
             columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
@@ -396,6 +414,16 @@ export function AllEventsTab() {
               `${DEVICE_EMOJI[e.device || ""] || "💻"} ${(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}`,
               `${BROWSER_EMOJI[e.browser || ""] || "🌐"} ${e.browser || "?"}`,
               `📍 ${e.city || "?"}, ${e.state || "?"}`,
+            ])}
+            tooltips={filteredEvents.map(e => [
+              null,
+              null,
+              e.page_url || null,
+              e.referrer || null,
+              null,
+              null,
+              null,
+              e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : null,
             ])}
             pageSize={15}
           />
