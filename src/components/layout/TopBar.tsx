@@ -1,10 +1,10 @@
-import { Search, Calendar, Download, Wifi, WifiOff } from "lucide-react";
+import { Search, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { NotificationBell } from "./NotificationBell";
+
 import { Separator } from "@/components/ui/separator";
 
 function getGreeting(): string {
@@ -73,16 +73,6 @@ export function TopBar({ title, subtitle, extra }: TopBarProps) {
             <Input placeholder="Buscar…" className="h-8 w-44 pl-8 text-xs bg-muted/40 border-transparent focus:border-primary/30 rounded-full" />
           </div>
 
-          <Button variant="ghost" size="sm" className="h-8 text-[11px] gap-1.5 hidden sm:flex text-muted-foreground hover:text-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            30 dias
-          </Button>
-
-          <NotificationBell />
-
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <Download className="h-3.5 w-3.5" />
-          </Button>
         </div>
       </div>
     </header>
