@@ -694,7 +694,7 @@ export type Database = {
           {
             foreignKeyName: "gsc_connections_project_id_fkey"
             columns: ["project_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1911,7 +1911,7 @@ export type Database = {
           {
             foreignKeyName: "gsc_connections_project_id_fkey"
             columns: ["project_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
