@@ -287,7 +287,7 @@ export function SessionsTab() {
     <div className="space-y-4 sm:space-y-5">
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <SparkKpi label="Total Sessões" value={totalSessions} color="hsl(var(--primary))" icon={Users} smallValue />
+        <SparkKpi label="Total Sessões" value={totalSessions} color="hsl(var(--primary))" icon={Users} />
         <SparkKpi label="Referrer" value={lastSession ? lastSession.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : "—"} color="hsl(var(--success))" icon={Globe} smallValue />
         <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} color="hsl(var(--info))" icon={Clock} />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} color="hsl(var(--warning))" icon={Flame} smallValue />
