@@ -15,7 +15,7 @@ const TUTORIAL_STEPS = [
     details: [
       "Acesse console.cloud.google.com",
       "Use a mesma conta Google que tem acesso ao GA4",
-      "Selecione o mesmo projeto criado para o GSC (ou crie um novo)",
+      "Selecione um projeto existente ou crie um novo (ex: 'Rankito CRM')",
     ],
   },
   {
@@ -40,12 +40,37 @@ const TUTORIAL_STEPS = [
     ],
   },
   {
-    title: "Usar a Service Account existente",
-    description: "Use a mesma Service Account já criada para o GSC.",
+    title: "Criar ou usar uma Service Account",
+    description: "Crie uma conta de serviço (ou reutilize uma existente).",
+    link: "https://console.cloud.google.com/iam-admin/serviceaccounts/create",
+    linkLabel: "Criar Service Account",
     details: [
-      "Se você já criou uma Service Account para o GSC, pode reutilizá-la",
-      "Caso contrário, crie uma nova em IAM e Admin > Contas de Serviço",
-      "Copie o email da Service Account (formato: nome@projeto.iam.gserviceaccount.com)",
+      "Se já criou uma Service Account para o GSC, pode reutilizá-la",
+      "Caso contrário, acesse IAM e Admin > Contas de Serviço",
+      "Clique em '+ Criar Conta de Serviço'",
+      "Dê o nome de 'Rankito CRM'",
+      "Clique em 'Criar e Continuar' e depois em 'Concluído'",
+    ],
+  },
+  {
+    title: "Gerar chave JSON da Service Account",
+    description: "Baixe o arquivo de credenciais em formato JSON.",
+    details: [
+      "Na lista de contas de serviço, clique nos 3 pontinhos no final da linha",
+      "Selecione 'Gerenciar Chaves'",
+      "Clique em 'Adicionar Chave' > 'Criar nova chave'",
+      "Selecione 'JSON' e clique em 'Criar'",
+      "Salve o arquivo baixado em local seguro",
+      "⚠️ Este arquivo contém credenciais sensíveis!",
+    ],
+  },
+  {
+    title: "Copiar email da Service Account",
+    description: "Você precisará do email da Service Account para o próximo passo.",
+    details: [
+      "Volte em 'Contas de Serviço'",
+      "Passe o mouse sobre o email e clique no ícone de copiar",
+      "O email terá formato: nome@projeto.iam.gserviceaccount.com",
     ],
   },
   {
