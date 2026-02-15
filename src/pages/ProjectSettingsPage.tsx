@@ -529,7 +529,7 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
         </div>
         {!adding && !editingId && (
           <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+            <Button size="sm" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
               <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
             </Button>
             <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setAdding(true)}>
@@ -674,7 +674,7 @@ function GscIntegrationCard({ projectId }: { projectId: string }) {
           <Button size="sm" className="w-full text-xs gap-1.5" onClick={() => setAdding(true)}>
             <Search className="h-3 w-3" /> Conectar Google Search Console
           </Button>
-          <Button size="sm" variant="outline" className="w-full text-xs gap-1.5" onClick={() => setShowTutorial(true)}>
+          <Button size="sm" className="w-full text-xs gap-1.5" onClick={() => setShowTutorial(true)}>
             <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
           </Button>
         </div>
@@ -865,7 +865,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setEditing(true)}>
             <Pencil className="h-3 w-3" /> Editar
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+          <Button size="sm" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
             <BookOpen className="h-3 w-3" /> Tutorial
           </Button>
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={deleting}>
@@ -894,7 +894,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
             Cancelar
           </Button>
         ) : (
-          <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
+          <Button size="sm" className="text-xs h-7 gap-1" onClick={() => setShowTutorial(true)}>
             <BookOpen className="h-3 w-3" /> Veja como fazer a Configuração e conexão
           </Button>
         )}
