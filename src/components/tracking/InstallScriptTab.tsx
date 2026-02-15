@@ -290,7 +290,7 @@ export function InstallScriptTab() {
   function send(ev){
     ev.session_id=SID;ev.visitor_id=VID;
     Q.push(ev);
-    if(Q.length>=10||ev.event_type==='page_exit'){flush();}
+    if(Q.length>=10||ev.event_type==='page_exit'||ev.event_type==='page_view'){flush();}else{clearTimeout(w._rkTimer);w._rkTimer=setTimeout(flush,2000);}
   }
 
   function flush(){
