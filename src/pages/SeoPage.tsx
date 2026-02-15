@@ -24,6 +24,7 @@ import {
   Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy, Shield,
   History, FolderTree,
 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
 import { SitemapsTab } from "@/components/seo/SitemapsTab";
 import { LinksTab } from "@/components/seo/LinksTab";
@@ -437,6 +438,7 @@ export default function SeoPage() {
     <>
       <TopBar title="SEO" subtitle="Performance completa via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <FeatureBanner icon={Search} title="SEO & Search Console" description={<>Analise <strong>posições</strong>, <strong>cliques</strong>, <strong>impressões</strong>, <strong>CTR</strong> e oportunidades de otimização com dados reais do Google Search Console.</>} />
         {/* Sync bar */}
         {gscConnection && (
           <AnimatedContainer>

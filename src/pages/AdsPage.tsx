@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { mockAdsCampaigns } from "@/lib/mock-data";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
+import { BarChart3 } from "lucide-react";
 
 export default function AdsPage() {
   const totalCost = mockAdsCampaigns.reduce((s, c) => s + c.cost, 0);
@@ -14,6 +16,7 @@ export default function AdsPage() {
     <>
       <TopBar title="Ads" subtitle="Performance das suas campanhas de mídia paga" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <FeatureBanner icon={BarChart3} title="Ads & Mídia Paga" description={<>Acompanhe o <strong>investimento</strong>, <strong>conversões</strong>, <strong>CPA</strong> e <strong>ROAS</strong> das suas campanhas de mídia paga em todas as plataformas.</>} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label="Investimento Total" value={totalCost} change={-4.2} prefix="R$" />
           <KpiCard label="Conversões" value={totalConversions} change={12.8} />

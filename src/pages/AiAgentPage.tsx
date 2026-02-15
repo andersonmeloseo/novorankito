@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Globe, Calendar } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -258,6 +259,7 @@ export default function AiAgentPage() {
     <>
       <TopBar title="Agentes IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureBanner icon={Bot} title="Agentes de IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
         {/* Project Selector */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">

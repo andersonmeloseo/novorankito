@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ArrowRight, Target } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
 import { KpiSkeleton, TableSkeleton } from "@/components/ui/page-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -55,6 +56,7 @@ export default function ConversionsPage() {
     <>
       <TopBar title="Conversões" subtitle="Acompanhe suas metas, funis e taxas de conversão" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <FeatureBanner icon={Target} title="Conversões" description={<>Acompanhe suas <strong>metas</strong>, <strong>funis de conversão</strong> e <strong>taxas</strong> com visualizações detalhadas por tipo de evento e receita.</>} />
         {isLoading ? (
           <>
             <KpiSkeleton />

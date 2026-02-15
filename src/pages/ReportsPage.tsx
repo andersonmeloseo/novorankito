@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Calendar, Mail, Webhook, Loader2, CheckCircle2 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -135,6 +136,7 @@ export default function ReportsPage() {
     <>
       <TopBar title="Relatórios" subtitle="Crie, exporte e agende relatórios personalizados" />
       <div className="p-4 sm:p-6 space-y-5">
+        <FeatureBanner icon={FileText} title="Relatórios" description={<>Crie, exporte e agende <strong>relatórios personalizados</strong> em PDF com dados de SEO, crescimento, conversões e mídia paga.</>} />
         {/* Templates */}
         <AnimatedContainer>
           <div>

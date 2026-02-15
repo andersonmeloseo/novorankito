@@ -17,6 +17,7 @@ import {
   Treemap, ScatterChart, Scatter, ZAxis, CartesianGrid,
 } from "recharts";
 import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, TrendingUp, Activity, Zap, Globe, Smartphone, Monitor, BarChart3 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -349,6 +350,7 @@ export function EventsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <FeatureBanner icon={Activity} title="Eventos em Tempo Real" description={<>Acompanhe <strong>todos os eventos</strong> capturados pelo Pixel Rankito com filtros avançados, heatmaps de horário e análise por tipo de evento.</>} />
       {/* Period selector */}
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">

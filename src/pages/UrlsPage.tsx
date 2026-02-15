@@ -23,8 +23,9 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   Search, Download, Tag, ExternalLink, Plus, Trash2, Filter,
-  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, Eye, Loader2,
+  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, Eye, Loader2, Globe,
 } from "lucide-react";
+import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
@@ -216,6 +217,7 @@ export default function UrlsPage() {
     <>
       <TopBar title="URLs" subtitle="Inventário completo de páginas, meta tags e prioridades de otimização" />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureBanner icon={Globe} title="Inventário de URLs" description={<>Gerencie o inventário completo de <strong>páginas</strong>, <strong>meta tags</strong>, <strong>prioridades</strong> e <strong>grupos de URL</strong> do seu projeto.</>} />
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="relative flex-1 w-full">
