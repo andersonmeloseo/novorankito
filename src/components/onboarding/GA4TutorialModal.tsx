@@ -106,7 +106,7 @@ export function GA4TutorialModal({ open, onOpenChange }: GA4TutorialModalProps) 
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">
-            Tutorial: Conectar Google Analytics 4
+            Veja como fazer a Configuração e conexão — Google Analytics 4
           </DialogTitle>
         </DialogHeader>
 
