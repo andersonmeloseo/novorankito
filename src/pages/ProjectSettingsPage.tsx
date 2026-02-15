@@ -19,6 +19,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { toast as shadToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
+import { WhiteLabelSettings } from "@/components/settings/WhiteLabelSettings";
+import { ApiKeysSettings } from "@/components/settings/ApiKeysSettings";
+import { WebhooksSettings } from "@/components/settings/WebhooksSettings";
 
 export default function ProjectSettingsPage() {
   const { user } = useAuth();
@@ -131,6 +134,8 @@ export default function ProjectSettingsPage() {
             <TabsTrigger value="tracking" className="text-xs">Tracking</TabsTrigger>
             <TabsTrigger value="goals" className="text-xs">Metas & Alertas</TabsTrigger>
             <TabsTrigger value="team" className="text-xs">Equipe</TabsTrigger>
+            <TabsTrigger value="api" className="text-xs">API & Webhooks</TabsTrigger>
+            <TabsTrigger value="whitelabel" className="text-xs">White-Label</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4 space-y-4">
@@ -324,6 +329,15 @@ export default function ProjectSettingsPage() {
                 ))
               )}
             </Card>
+          </TabsContent>
+
+          <TabsContent value="api" className="mt-4 space-y-4">
+            <ApiKeysSettings projectId={project.id} />
+            <WebhooksSettings projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="whitelabel" className="mt-4 space-y-4">
+            <WhiteLabelSettings projectId={project.id} />
           </TabsContent>
         </Tabs>
       </div>
