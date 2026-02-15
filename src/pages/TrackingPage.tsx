@@ -7,7 +7,8 @@ import { EcommerceTrackingTab } from "@/components/tracking/EcommerceTrackingTab
 import { AdsUtmTrackingTab } from "@/components/tracking/AdsUtmTrackingTab";
 import { SessionsTab } from "@/components/tracking/SessionsTab";
 import { InstallScriptTab } from "@/components/tracking/InstallScriptTab";
-import { Activity, ShoppingCart, Zap, Target, Users, Code } from "lucide-react";
+import { UserJourneyTab } from "@/components/tracking/UserJourneyTab";
+import { Activity, ShoppingCart, Zap, Target, Users, Code, Footprints } from "lucide-react";
 
 export default function TrackingPage() {
   return (
@@ -37,6 +38,9 @@ export default function TrackingPage() {
             <TabsTrigger value="sessions" className="text-xs gap-1.5">
               <Users className="h-3.5 w-3.5" /> Sessões
             </TabsTrigger>
+            <TabsTrigger value="journey" className="text-xs gap-1.5">
+              <Footprints className="h-3.5 w-3.5" /> Jornada
+            </TabsTrigger>
             <TabsTrigger value="install" className="text-xs gap-1.5">
               <Code className="h-3.5 w-3.5" /> Instalar
             </TabsTrigger>
@@ -50,13 +54,16 @@ export default function TrackingPage() {
             <EcommerceTrackingTab />
           </TabsContent>
 
-
           <TabsContent value="ads-utm" className="mt-4">
             <AdsUtmTrackingTab />
           </TabsContent>
 
           <TabsContent value="sessions" className="mt-4">
             <SessionsTab />
+          </TabsContent>
+
+          <TabsContent value="journey" className="mt-4">
+            <UserJourneyTab />
           </TabsContent>
 
           <TabsContent value="install" className="mt-4">
