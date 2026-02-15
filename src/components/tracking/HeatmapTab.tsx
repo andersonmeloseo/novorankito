@@ -13,6 +13,7 @@ import {
   RefreshCw, Camera, Download, History, Trash2, Clock, Move,
   ArrowLeft, Globe,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -282,6 +283,9 @@ export function HeatmapTab() {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [heatmapMode, setHeatmapMode] = useState<"click" | "scroll" | "move">("click");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
+  const [listDeviceFilter, setListDeviceFilter] = useState<string>("all");
+  const [listSortBy, setListSortBy] = useState<string>("relevance");
+  const [listSearch, setListSearch] = useState("");
   const [opacity] = useState(0.65);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshots, setSnapshots] = useState<HeatmapSnapshot[]>(loadSnapshots);
@@ -512,34 +516,98 @@ export function HeatmapTab() {
           </AnimatedContainer>
         )}
 
+        {/* Filters */}
+        <AnimatedContainer delay={0.02}>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Buscar Página</label>
+                <Input
+                  placeholder="Filtrar por URL..."
+                  value={listSearch}
+                  onChange={(e) => setListSearch(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Dispositivo</label>
+                <div className="flex gap-1">
+                  {[
+                    { value: "all", icon: Layers, label: "Todos" },
+                    { value: "desktop", icon: Monitor, label: "Desktop" },
+                    { value: "tablet", icon: Tablet, label: "Tablet" },
+                    { value: "mobile", icon: Smartphone, label: "Mobile" },
+                  ].map((d) => (
+                    <Button key={d.value} size="sm" variant={listDeviceFilter === d.value ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => setListDeviceFilter(d.value)}>
+                      <d.icon className="h-3.5 w-3.5" />{d.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Ordenar por</label>
+                <Select value={listSortBy} onValueChange={setListSortBy}>
+                  <SelectTrigger className="h-9 text-xs w-[140px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevance" className="text-xs">Relevância</SelectItem>
+                    <SelectItem value="clicks" className="text-xs">Mais Cliques</SelectItem>
+                    <SelectItem value="views" className="text-xs">Mais Views</SelectItem>
+                    <SelectItem value="visitors" className="text-xs">Mais Visitantes</SelectItem>
+                    <SelectItem value="scroll" className="text-xs">Maior Scroll</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
+        </AnimatedContainer>
+
         {/* Page cards */}
-        {urlOptions.length > 0 ? (
-          <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {urlOptions.map((opt) => (
-              <PageCard
-                key={opt.url}
-                url={opt.url}
-                clicks={opt.clicks}
-                exits={opt.exits}
-                views={opt.views}
-                visitors={opt.visitors}
-                avgScroll={opt.avgScroll}
-                moveCount={opt.moveCount}
-                onClick={() => setSelectedUrl(opt.url)}
-              />
-            ))}
-          </StaggeredGrid>
-        ) : (
-          <AnimatedContainer delay={0.06}>
-            <Card className="p-8 text-center">
-              <Flame className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-              <h4 className="text-sm font-bold text-foreground mb-1">Nenhum dado de heatmap ainda</h4>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Instale o Pixel Rankito v3.3.0 no seu site para capturar cliques, scroll e movimento do mouse automaticamente.
-              </p>
-            </Card>
-          </AnimatedContainer>
-        )}
+        {(() => {
+          let filtered = urlOptions.filter((opt) => {
+            if (listSearch && !opt.url.toLowerCase().includes(listSearch.toLowerCase())) return false;
+            if (listDeviceFilter !== "all") {
+              const deviceEvents = allEvents.filter(e => e.page_url === opt.url && e.device === listDeviceFilter);
+              if (deviceEvents.length === 0) return false;
+            }
+            return true;
+          });
+          if (listSortBy === "clicks") filtered.sort((a, b) => b.clicks - a.clicks);
+          else if (listSortBy === "views") filtered.sort((a, b) => b.views - a.views);
+          else if (listSortBy === "visitors") filtered.sort((a, b) => b.visitors - a.visitors);
+          else if (listSortBy === "scroll") filtered.sort((a, b) => b.avgScroll - a.avgScroll);
+
+          return filtered.length > 0 ? (
+            <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filtered.map((opt) => (
+                <PageCard
+                  key={opt.url}
+                  url={opt.url}
+                  clicks={opt.clicks}
+                  exits={opt.exits}
+                  views={opt.views}
+                  visitors={opt.visitors}
+                  avgScroll={opt.avgScroll}
+                  moveCount={opt.moveCount}
+                  onClick={() => setSelectedUrl(opt.url)}
+                />
+              ))}
+            </StaggeredGrid>
+          ) : (
+            <AnimatedContainer delay={0.06}>
+              <Card className="p-8 text-center">
+                <Flame className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <h4 className="text-sm font-bold text-foreground mb-1">
+                  {urlOptions.length === 0 ? "Nenhum dado de heatmap ainda" : "Nenhuma página encontrada"}
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                  {urlOptions.length === 0
+                    ? "Instale o Pixel Rankito v3.3.0 no seu site para capturar cliques, scroll e movimento do mouse automaticamente."
+                    : "Tente ajustar os filtros de busca ou dispositivo."}
+                </p>
+              </Card>
+            </AnimatedContainer>
+          );
+        })()}
       </div>
     );
   }
