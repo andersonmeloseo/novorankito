@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.track-event]
 verify_jwt = false
+
+[functions.sync-google-ads]
+verify_jwt = false
+
+[functions.sync-meta-ads]
+verify_jwt = false
