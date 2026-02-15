@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,14 +10,18 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid,
 } from "recharts";
-import { ShoppingCart, Package, CreditCard, TrendingUp, Search, DollarSign, Loader2 } from "lucide-react";
+import {
+  ShoppingCart, Package, CreditCard, TrendingUp, Search, DollarSign, Loader2,
+  Eye, ArrowDownRight, ExternalLink, ChevronDown, ChevronRight, Tag, BarChart3,
+  Clock, Globe, Smartphone, Monitor, ShoppingBag, Receipt, Percent,
+} from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, LineGlowGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
   FunnelStep, PipelineVisual,
 } from "@/components/analytics/ChartPrimitives";
-import { EmptyState } from "@/components/ui/empty-state";
 
+/* ── Spark KPI card ── */
 function SparkKpi({ label, value, prefix, suffix, color, icon: Icon }: {
   label: string; value: string | number; prefix?: string; suffix?: string;
   color: string; icon?: React.ElementType;
@@ -45,50 +49,111 @@ const ECOM_COLORS: Record<string, string> = {
   search: "hsl(var(--chart-9))",
 };
 
+const ECOM_LABELS: Record<string, string> = {
+  product_view: "Visualização Produto",
+  add_to_cart: "Adicionar ao Carrinho",
+  remove_from_cart: "Remover do Carrinho",
+  begin_checkout: "Início Checkout",
+  purchase: "Compra",
+  search: "Busca",
+};
+
+function fmt(n: number) {
+  return n.toLocaleString("pt-BR");
+}
+function fmtCurrency(n: number) {
+  return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+}
+
 export function EcommerceTrackingTab() {
   const projectId = localStorage.getItem("rankito_current_project");
   const { data: allEvents = [], isLoading } = useTrackingEvents(projectId);
+  const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
 
   const ecomEvents = useMemo(() => allEvents.filter(e => EVENT_CATEGORIES.ecommerce.includes(e.event_type)), [allEvents]);
 
+  /* ── KPI calculations ── */
   const totalViews = ecomEvents.filter(e => e.event_type === "product_view").length;
   const totalAddToCart = ecomEvents.filter(e => e.event_type === "add_to_cart").length;
+  const totalRemoveFromCart = ecomEvents.filter(e => e.event_type === "remove_from_cart").length;
   const totalCheckout = ecomEvents.filter(e => e.event_type === "begin_checkout").length;
   const totalPurchases = ecomEvents.filter(e => e.event_type === "purchase").length;
-  const totalRevenue = ecomEvents.filter(e => e.event_type === "purchase").reduce((s, e) => s + (e.cart_value || 0), 0);
+  const totalRevenue = ecomEvents.filter(e => e.event_type === "purchase").reduce((s, e) => s + (e.cart_value || e.product_price || 0), 0);
   const totalSearches = ecomEvents.filter(e => e.event_type === "search").length;
-  const cartToCheckout = totalAddToCart > 0 ? ((totalCheckout / totalAddToCart) * 100).toFixed(1) : "0";
-  const checkoutToPurchase = totalCheckout > 0 ? ((totalPurchases / totalCheckout) * 100).toFixed(1) : "0";
+  const avgTicket = totalPurchases > 0 ? totalRevenue / totalPurchases : 0;
+  const cartToCheckout = totalAddToCart > 0 ? ((totalCheckout / totalAddToCart) * 100) : 0;
+  const checkoutToPurchase = totalCheckout > 0 ? ((totalPurchases / totalCheckout) * 100) : 0;
+  const overallConversion = totalViews > 0 ? ((totalPurchases / totalViews) * 100) : 0;
+  const cartAbandonment = totalAddToCart > 0 ? (((totalAddToCart - totalPurchases) / totalAddToCart) * 100) : 0;
 
+  /* ── Funnel ── */
   const ecommerceFunnelTotals = [
-    { label: "Visualização", value: totalViews, color: "hsl(var(--info))" },
-    { label: "Carrinho", value: totalAddToCart, color: "hsl(var(--primary))" },
-    { label: "Checkout", value: totalCheckout, color: "hsl(var(--warning))" },
-    { label: "Compra", value: totalPurchases, color: "hsl(var(--success))" },
+    { label: "Visualização", value: totalViews, color: "#3b82f6" },
+    { label: "Carrinho", value: totalAddToCart, color: "#8b5cf6" },
+    { label: "Checkout", value: totalCheckout, color: "#f59e0b" },
+    { label: "Compra", value: totalPurchases, color: "#22c55e" },
   ];
 
+  /* ── Product performance ── */
+  const productPerformance = useMemo(() => {
+    const map = new Map<string, { views: number; addToCart: number; purchases: number; revenue: number; lastPrice: number }>();
+    ecomEvents.forEach(e => {
+      const name = e.product_name || "Desconhecido";
+      const entry = map.get(name) || { views: 0, addToCart: 0, purchases: 0, revenue: 0, lastPrice: 0 };
+      if (e.event_type === "product_view") entry.views++;
+      if (e.event_type === "add_to_cart") entry.addToCart++;
+      if (e.event_type === "purchase") {
+        entry.purchases++;
+        entry.revenue += e.cart_value || e.product_price || 0;
+      }
+      if (e.product_price) entry.lastPrice = e.product_price;
+      map.set(name, entry);
+    });
+    return Array.from(map.entries()).map(([name, v]) => ({
+      name, ...v,
+      conversionRate: v.views > 0 ? Number(((v.purchases / v.views) * 100).toFixed(1)) : 0,
+    })).sort((a, b) => b.revenue - a.revenue || b.views - a.views);
+  }, [ecomEvents]);
+
+  /* ── URL-level analytics ── */
+  const urlAnalytics = useMemo(() => {
+    const map = new Map<string, {
+      url: string; totalEvents: number; views: number; addToCart: number;
+      checkout: number; purchases: number; revenue: number; searches: number;
+      events: TrackingEvent[];
+    }>();
+    ecomEvents.forEach(e => {
+      const url = e.page_url || "(sem URL)";
+      const entry = map.get(url) || { url, totalEvents: 0, views: 0, addToCart: 0, checkout: 0, purchases: 0, revenue: 0, searches: 0, events: [] };
+      entry.totalEvents++;
+      entry.events.push(e);
+      if (e.event_type === "product_view") entry.views++;
+      if (e.event_type === "add_to_cart") entry.addToCart++;
+      if (e.event_type === "begin_checkout") entry.checkout++;
+      if (e.event_type === "purchase") { entry.purchases++; entry.revenue += e.cart_value || e.product_price || 0; }
+      if (e.event_type === "search") entry.searches++;
+      map.set(url, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => b.totalEvents - a.totalEvents);
+  }, [ecomEvents]);
+
+  /* ── Search terms ── */
   const searchTerms = useMemo(() => {
     const map = new Map<string, number>();
     ecomEvents.filter(e => e.event_type === "search" && e.cta_text).forEach(e => map.set(e.cta_text!, (map.get(e.cta_text!) || 0) + 1));
     return Array.from(map.entries()).map(([term, count]) => ({ term, count })).sort((a, b) => b.count - a.count);
   }, [ecomEvents]);
 
-  const productPerformance = useMemo(() => {
-    const map = new Map<string, { views: number; addToCart: number; purchases: number; revenue: number }>();
-    ecomEvents.forEach(e => {
-      const name = e.product_name || "Desconhecido";
-      const entry = map.get(name) || { views: 0, addToCart: 0, purchases: 0, revenue: 0 };
-      if (e.event_type === "product_view") entry.views++;
-      if (e.event_type === "add_to_cart") entry.addToCart++;
-      if (e.event_type === "purchase") { entry.purchases++; entry.revenue += e.cart_value || 0; }
-      map.set(name, entry);
-    });
-    return Array.from(map.entries()).map(([name, v]) => ({
-      name, ...v,
-      conversionRate: v.views > 0 ? Number(((v.purchases / v.views) * 100).toFixed(1)) : 0,
-    })).sort((a, b) => b.views - a.views);
-  }, [ecomEvents]);
+  /* ── Revenue donut ── */
+  const revenueDonut = useMemo(() => {
+    return productPerformance.filter(p => p.revenue > 0).slice(0, 8).map((p, i) => ({
+      name: p.name.length > 20 ? p.name.substring(0, 18) + "…" : p.name,
+      value: p.revenue,
+      fill: CHART_COLORS[i % CHART_COLORS.length],
+    }));
+  }, [productPerformance]);
 
+  /* ── Events by day ── */
   const ecommerceFunnelByDay = useMemo(() => {
     const map = new Map<string, Record<string, number>>();
     ecomEvents.forEach(e => {
@@ -100,37 +165,69 @@ export function EcommerceTrackingTab() {
     return Array.from(map.entries()).map(([date, v]) => ({ date, ...v }));
   }, [ecomEvents]);
 
-  const productPie = productPerformance.slice(0, 8).map((p, i) => ({ name: p.name, value: p.views, fill: CHART_COLORS[i % CHART_COLORS.length] }));
+  /* ── Revenue by day ── */
+  const revenueByDay = useMemo(() => {
+    const map = new Map<string, { date: string; revenue: number; purchases: number }>();
+    ecomEvents.filter(e => e.event_type === "purchase").forEach(e => {
+      const day = new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+      const entry = map.get(day) || { date: day, revenue: 0, purchases: 0 };
+      entry.revenue += e.cart_value || e.product_price || 0;
+      entry.purchases++;
+      map.set(day, entry);
+    });
+    return Array.from(map.values());
+  }, [ecomEvents]);
+
+  /* ── Device breakdown ── */
+  const deviceBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    ecomEvents.filter(e => e.event_type === "purchase").forEach(e => {
+      const device = e.device || "Desconhecido";
+      map.set(device, (map.get(device) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [ecomEvents]);
+
+  /* ── Recent events log ── */
+  const recentEvents = ecomEvents.slice(0, 30);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (ecomEvents.length === 0) {
-    return <EmptyState title="Nenhum evento de e-commerce" description="Instale o snippet WooCommerce ou Shopify para capturar eventos de e-commerce." />;
-  }
+  const hasData = ecomEvents.length > 0;
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      {/* ── Banner ── */}
       <FeatureBanner
         icon={ShoppingCart}
         title="E-commerce Tracking"
         description={<>Acompanhe o <strong>funil de e-commerce completo</strong>: visualizações de produto, adições ao carrinho, checkouts e compras. O Pixel Rankito captura automaticamente receita, taxas de conversão e drop-offs entre cada etapa.</>}
       />
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-        <SparkKpi label="Visualizações" value={totalViews} color="hsl(var(--info))" icon={Package} />
-        <SparkKpi label="Add Carrinho" value={totalAddToCart} color="hsl(var(--primary))" icon={ShoppingCart} />
-        <SparkKpi label="Checkouts" value={totalCheckout} color="hsl(var(--warning))" icon={CreditCard} />
-        <SparkKpi label="Compras" value={totalPurchases} color="hsl(var(--success))" icon={TrendingUp} />
-        <SparkKpi label="Receita" value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`} color="hsl(var(--success))" icon={DollarSign} />
-        <SparkKpi label="Cart→Checkout" value={cartToCheckout} suffix="%" color="hsl(var(--primary))" />
-        <SparkKpi label="Checkout→Compra" value={checkoutToPurchase} suffix="%" color="hsl(var(--success))" />
+
+      {/* ── KPI Grid ── */}
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <SparkKpi label="Receita Total" value={fmtCurrency(totalRevenue)} color="hsl(var(--success))" icon={DollarSign} />
+        <SparkKpi label="Compras" value={fmt(totalPurchases)} color="hsl(var(--success))" icon={Receipt} />
+        <SparkKpi label="Ticket Médio" value={fmtCurrency(avgTicket)} color="hsl(var(--chart-7))" icon={Tag} />
+        <SparkKpi label="Taxa Conversão" value={overallConversion.toFixed(1)} suffix="%" color="hsl(var(--primary))" icon={Percent} />
+        <SparkKpi label="Abandono Carrinho" value={cartAbandonment.toFixed(1)} suffix="%" color="hsl(var(--warning))" icon={ShoppingCart} />
       </StaggeredGrid>
 
-      {/* Visual Funnel */}
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <SparkKpi label="Visualizações" value={fmt(totalViews)} color="hsl(var(--info))" icon={Eye} />
+        <SparkKpi label="Add Carrinho" value={fmt(totalAddToCart)} color="hsl(var(--primary))" icon={ShoppingCart} />
+        <SparkKpi label="Removidos" value={fmt(totalRemoveFromCart)} color="hsl(var(--warning))" icon={ArrowDownRight} />
+        <SparkKpi label="Checkouts" value={fmt(totalCheckout)} color="hsl(var(--chart-5))" icon={CreditCard} />
+        <SparkKpi label="Cart→Checkout" value={cartToCheckout.toFixed(1)} suffix="%" color="hsl(var(--primary))" icon={TrendingUp} />
+        <SparkKpi label="Checkout→Compra" value={checkoutToPurchase.toFixed(1)} suffix="%" color="hsl(var(--success))" icon={TrendingUp} />
+      </StaggeredGrid>
+
+      {/* ── Visual Funnel ── */}
       <AnimatedContainer>
         <Card className="p-5">
-          <ChartHeader title="Funil de E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
+          <ChartHeader title="Funil de Conversão E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
           <div className="flex flex-col items-center py-4 gap-0">
             {ecommerceFunnelTotals.map((step, i) => {
               const fixedWidths = [90, 65, 50, 30];
@@ -149,57 +246,175 @@ export function EcommerceTrackingTab() {
                     }}>
                     <div className="flex items-center gap-2 z-10">
                       <span className="text-xs font-bold text-white drop-shadow-sm">{step.label}</span>
-                      <span className="text-white/80 text-[10px] font-semibold">{step.value.toLocaleString("pt-BR")}</span>
+                      <span className="text-white/80 text-[10px] font-semibold">{fmt(step.value)}</span>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+          {!hasData && <p className="text-center text-xs text-muted-foreground mt-2">Instale o Pixel Rankito para começar a capturar dados do funil.</p>}
         </Card>
       </AnimatedContainer>
 
-      {/* E-commerce stacked area */}
-      {ecommerceFunnelByDay.length > 0 && (
+      {/* ── Revenue Trend + Stacked Area ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatedContainer delay={0.05}>
           <Card className="p-5">
-            <ChartHeader title="Eventos E-commerce ao Longo do Tempo" subtitle="Stacked area — composição por tipo de evento" />
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={ecommerceFunnelByDay}>
-                  <defs>
-                    {Object.entries(ECOM_COLORS).map(([key, color]) => (
-                      <LineGlowGradient key={key} id={`ecom-${key}`} color={color} />
-                    ))}
-                  </defs>
-                  <CartesianGrid {...GRID_STYLE} />
-                  <XAxis dataKey="date" {...AXIS_STYLE} />
-                  <YAxis {...AXIS_STYLE} />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                  <Legend {...LEGEND_STYLE} />
-                  <Area type="monotone" dataKey="product_view" stackId="1" stroke={ECOM_COLORS.product_view} fill="url(#ecom-product_view)" strokeWidth={1.5} name="Visualização" />
-                  <Area type="monotone" dataKey="add_to_cart" stackId="1" stroke={ECOM_COLORS.add_to_cart} fill="url(#ecom-add_to_cart)" strokeWidth={1.5} name="Add Carrinho" />
-                  <Area type="monotone" dataKey="begin_checkout" stackId="1" stroke={ECOM_COLORS.begin_checkout} fill="url(#ecom-begin_checkout)" strokeWidth={1.5} name="Checkout" />
-                  <Area type="monotone" dataKey="purchase" stackId="1" stroke={ECOM_COLORS.purchase} fill="url(#ecom-purchase)" strokeWidth={1.5} name="Compra" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <ChartHeader title="Receita ao Longo do Tempo" subtitle="Evolução diária de receita e número de compras" />
+            <div className="h-[280px]">
+              {revenueByDay.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueByDay}>
+                    <defs>
+                      <LineGlowGradient id="revTrend" color="hsl(var(--success))" />
+                    </defs>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <XAxis dataKey="date" {...AXIS_STYLE} />
+                    <YAxis {...AXIS_STYLE} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [name === "revenue" ? fmtCurrency(v) : v, name === "revenue" ? "Receita" : "Compras"]} />
+                    <Legend {...LEGEND_STYLE} />
+                    <Area type="monotone" dataKey="revenue" name="Receita" stroke="hsl(var(--success))" fill="url(#revTrend)" strokeWidth={2.5} dot={{ r: 2.5, fill: "hsl(var(--success))" }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem dados de receita ainda</div>
+              )}
             </div>
           </Card>
         </AnimatedContainer>
-      )}
 
-      {/* Product Performance + Pipeline */}
+        <AnimatedContainer delay={0.1}>
+          <Card className="p-5">
+            <ChartHeader title="Eventos E-commerce por Dia" subtitle="Composição por tipo de evento ao longo do tempo" />
+            <div className="h-[280px]">
+              {ecommerceFunnelByDay.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={ecommerceFunnelByDay}>
+                    <defs>
+                      {Object.entries(ECOM_COLORS).map(([key, color]) => (
+                        <LineGlowGradient key={key} id={`ecom-${key}`} color={color} />
+                      ))}
+                    </defs>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <XAxis dataKey="date" {...AXIS_STYLE} />
+                    <YAxis {...AXIS_STYLE} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                    <Legend {...LEGEND_STYLE} />
+                    <Area type="monotone" dataKey="product_view" stackId="1" stroke={ECOM_COLORS.product_view} fill="url(#ecom-product_view)" strokeWidth={1.5} name="Visualização" />
+                    <Area type="monotone" dataKey="add_to_cart" stackId="1" stroke={ECOM_COLORS.add_to_cart} fill="url(#ecom-add_to_cart)" strokeWidth={1.5} name="Add Carrinho" />
+                    <Area type="monotone" dataKey="begin_checkout" stackId="1" stroke={ECOM_COLORS.begin_checkout} fill="url(#ecom-begin_checkout)" strokeWidth={1.5} name="Checkout" />
+                    <Area type="monotone" dataKey="purchase" stackId="1" stroke={ECOM_COLORS.purchase} fill="url(#ecom-purchase)" strokeWidth={1.5} name="Compra" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem dados de eventos ainda</div>
+              )}
+            </div>
+          </Card>
+        </AnimatedContainer>
+      </div>
+
+      {/* ── Product Performance Table ── */}
+      <AnimatedContainer delay={0.15}>
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-primary" /> Performance por Produto
+              </h3>
+              <p className="text-[10px] text-muted-foreground">Conversão, receita e métricas por produto rastreado</p>
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{productPerformance.length} produtos</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Produto</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Preço</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Views</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Carrinho</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Compras</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Receita</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Conv.</th>
+                  <th className="px-4 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productPerformance.length > 0 ? productPerformance.map(p => (
+                  <tr key={p.name} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-2.5 text-xs font-medium text-foreground max-w-[200px] truncate" title={p.name}>{p.name}</td>
+                    <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{p.lastPrice > 0 ? fmtCurrency(p.lastPrice) : "—"}</td>
+                    <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(p.views)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(p.addToCart)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right font-medium text-success">{fmt(p.purchases)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right font-semibold text-foreground">{fmtCurrency(p.revenue)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right">
+                      <Badge variant={p.conversionRate > 10 ? "default" : "secondary"} className="text-[9px]">{p.conversionRate}%</Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      {p.purchases > 0 ? (
+                        <Badge className="text-[9px] bg-success/15 text-success border-success/30">Vendido</Badge>
+                      ) : p.addToCart > 0 ? (
+                        <Badge className="text-[9px] bg-warning/15 text-warning border-warning/30">No Carrinho</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[9px]">Apenas Visto</Badge>
+                      )}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum produto rastreado ainda. Configure o Pixel Rankito no seu e-commerce.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ── Revenue Donut + Pipeline ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {productPerformance.length > 0 && (
-          <AnimatedContainer delay={0.1}>
-            <Card className="p-5">
-              <ChartHeader title="Performance por Produto" subtitle="Visualizações, Add Carrinho, Compras" />
-              <div className="h-[280px]">
+        <AnimatedContainer delay={0.2}>
+          <Card className="p-5">
+            <ChartHeader title="Receita por Produto" subtitle="Distribuição de receita entre os produtos mais vendidos" />
+            <div className="h-[260px]">
+              {revenueDonut.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={revenueDonut} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} strokeWidth={2} stroke="hsl(var(--card))" animationDuration={900}>
+                      {revenueDonut.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmtCurrency(v)} />
+                    <Legend {...LEGEND_STYLE} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem receita registrada</div>
+              )}
+            </div>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={0.25}>
+          <Card className="p-5">
+            <ChartHeader title="Pipeline Visual" subtitle="Barras verticais proporcionais por etapa do funil" />
+            <PipelineVisual steps={ecommerceFunnelTotals} />
+          </Card>
+        </AnimatedContainer>
+      </div>
+
+      {/* ── Product Bar Chart + Devices/Search ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <AnimatedContainer delay={0.3} className="lg:col-span-2">
+          <Card className="p-5">
+            <ChartHeader title="Top Produtos — Views vs Compras" subtitle="Compare engajamento e conversão dos principais produtos" />
+            <div className="h-[280px]">
+              {productPerformance.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={productPerformance.slice(0, 8)} layout="vertical" margin={{ left: 10 }}>
                     <CartesianGrid {...GRID_STYLE} />
                     <XAxis type="number" {...AXIS_STYLE} />
-                    <YAxis dataKey="name" type="category" width={120} {...AXIS_STYLE} />
+                    <YAxis dataKey="name" type="category" width={120} {...AXIS_STYLE} tick={{ fontSize: 10 }} />
                     <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                     <Legend {...LEGEND_STYLE} />
                     <Bar dataKey="views" fill="hsl(var(--info))" radius={[0, 4, 4, 0]} name="Views" />
@@ -207,106 +422,242 @@ export function EcommerceTrackingTab() {
                     <Bar dataKey="purchases" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} name="Compras" />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </Card>
-          </AnimatedContainer>
-        )}
-        <AnimatedContainer delay={0.15}>
-          <Card className="p-5">
-            <ChartHeader title="Pipeline Visual E-commerce" subtitle="Barras verticais proporcionais por etapa" />
-            <PipelineVisual steps={ecommerceFunnelTotals} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem dados de produtos</div>
+              )}
+            </div>
           </Card>
         </AnimatedContainer>
-      </div>
 
-      {/* Donut + Search terms */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {productPie.length > 0 && (
-          <AnimatedContainer delay={0.2}>
-            <Card className="p-5">
-              <ChartHeader title="Distribuição por Produto" subtitle="Donut chart de visualizações" />
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={productPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} strokeWidth={2} stroke="hsl(var(--card))">
-                      {productPie.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                    </Pie>
-                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                    <Legend {...LEGEND_STYLE} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </AnimatedContainer>
-        )}
-
-        {searchTerms.length > 0 && (
-          <AnimatedContainer delay={0.25}>
-            <Card className="p-5">
-              <ChartHeader title="Termos de Busca" subtitle="Palavras buscadas no site" />
-              <div className="space-y-2">
-                {searchTerms.slice(0, 8).map((t, i) => (
-                  <div key={t.term} className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-5 text-right">{i + 1}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-foreground">{t.term}</span>
-                        <Badge variant="secondary" className="text-[9px]">{t.count}×</Badge>
+        <AnimatedContainer delay={0.35}>
+          <Card className="p-5 space-y-5">
+            {/* Device breakdown */}
+            <div>
+              <ChartHeader title="Compras por Dispositivo" subtitle="De onde vêm suas vendas" />
+              {deviceBreakdown.length > 0 ? (
+                <div className="space-y-2 mt-3">
+                  {deviceBreakdown.map((d, i) => {
+                    const total = deviceBreakdown.reduce((s, x) => s + x.value, 0);
+                    const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : "0";
+                    const DevIcon = d.name.toLowerCase().includes("mobile") ? Smartphone : Monitor;
+                    return (
+                      <div key={d.name} className="flex items-center gap-2">
+                        <DevIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[11px] font-medium text-foreground">{d.name}</span>
+                            <span className="text-[10px] text-muted-foreground">{d.value} ({pct}%)</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                            <div className="h-full rounded-full" style={{
+                              width: `${pct}%`,
+                              background: CHART_COLORS[i % CHART_COLORS.length],
+                            }} />
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{
-                          width: `${(t.count / (searchTerms[0]?.count || 1)) * 100}%`,
-                          background: `linear-gradient(90deg, ${CHART_COLORS[i % CHART_COLORS.length]}88, ${CHART_COLORS[i % CHART_COLORS.length]})`,
-                        }} />
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-3">Sem dados</p>
+              )}
+            </div>
+
+            {/* Search terms */}
+            <div>
+              <ChartHeader title="Termos de Busca" subtitle="Palavras buscadas no seu site" />
+              {searchTerms.length > 0 ? (
+                <div className="space-y-2 mt-3">
+                  {searchTerms.slice(0, 6).map((t, i) => (
+                    <div key={t.term} className="flex items-center gap-2">
+                      <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-[11px] font-medium text-foreground truncate" title={t.term}>{t.term}</span>
+                          <Badge variant="secondary" className="text-[9px] shrink-0">{t.count}×</Badge>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{
+                            width: `${(t.count / (searchTerms[0]?.count || 1)) * 100}%`,
+                            background: CHART_COLORS[i % CHART_COLORS.length],
+                          }} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </AnimatedContainer>
-        )}
-      </div>
-
-      {/* Revenue table */}
-      {productPerformance.length > 0 && (
-        <AnimatedContainer delay={0.3}>
-          <Card className="overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-medium text-foreground">Receita por Produto</h3>
-              <p className="text-[10px] text-muted-foreground">Dados capturados automaticamente pelo plugin</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Produto</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Views</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Carrinho</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Compras</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Receita</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Conv. %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productPerformance.map((p) => (
-                    <tr key={p.name} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-2.5 text-xs font-medium text-foreground">{p.name}</td>
-                      <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{p.views}</td>
-                      <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{p.addToCart}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-medium text-success">{p.purchases}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-medium text-foreground">R$ {p.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2.5 text-xs text-right">
-                        <Badge variant={p.conversionRate > 10 ? "default" : "secondary"} className="text-[9px]">{p.conversionRate}%</Badge>
-                      </td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-3">Nenhuma busca registrada</p>
+              )}
             </div>
           </Card>
         </AnimatedContainer>
-      )}
+      </div>
+
+      {/* ── URL-Level Analytics ── */}
+      <AnimatedContainer delay={0.4}>
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" /> Análise por URL
+              </h3>
+              <p className="text-[10px] text-muted-foreground">Detalhamento de eventos e-commerce por página — clique para expandir</p>
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{urlAnalytics.length} URLs</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase w-8"></th>
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">URL</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Eventos</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Views</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Carrinho</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Compras</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Receita</th>
+                  <th className="px-4 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase">Conversão</th>
+                </tr>
+              </thead>
+              <tbody>
+                {urlAnalytics.length > 0 ? urlAnalytics.map(u => {
+                  const isExpanded = expandedUrl === u.url;
+                  const convRate = u.views > 0 ? ((u.purchases / u.views) * 100).toFixed(1) : "0.0";
+                  return (
+                    <>
+                      <tr key={u.url} className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setExpandedUrl(isExpanded ? null : u.url)}>
+                        <td className="px-4 py-2.5 text-muted-foreground">
+                          {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs font-medium text-foreground max-w-[300px] truncate" title={u.url}>
+                          <span className="flex items-center gap-1.5">
+                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                            {u.url}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(u.totalEvents)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(u.views)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(u.addToCart)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right font-medium text-success">{fmt(u.purchases)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right font-semibold text-foreground">{fmtCurrency(u.revenue)}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {u.purchases > 0 ? (
+                            <Badge className="text-[9px] bg-success/15 text-success border-success/30">{convRate}%</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[9px]">{convRate}%</Badge>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={`${u.url}-detail`}>
+                          <td colSpan={99} className="bg-muted/10 px-6 py-3 border-b border-border/50">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-2">Últimos eventos nesta URL</p>
+                            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                              {u.events.slice(0, 15).map(ev => (
+                                <div key={ev.id} className="flex items-center gap-3 text-[11px]">
+                                  <span className="text-muted-foreground shrink-0 w-[110px]">{new Date(ev.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                                  <Badge
+                                    className="text-[9px] shrink-0"
+                                    style={{
+                                      backgroundColor: `color-mix(in srgb, ${ECOM_COLORS[ev.event_type] || "hsl(var(--muted))"} 15%, transparent)`,
+                                      color: ECOM_COLORS[ev.event_type] || "hsl(var(--muted-foreground))",
+                                      borderColor: `color-mix(in srgb, ${ECOM_COLORS[ev.event_type] || "hsl(var(--muted))"} 30%, transparent)`,
+                                    }}
+                                  >
+                                    {ECOM_LABELS[ev.event_type] || ev.event_type}
+                                  </Badge>
+                                  {ev.product_name && <span className="text-foreground font-medium truncate" title={ev.product_name}>{ev.product_name}</span>}
+                                  {(ev.cart_value || ev.product_price) ? <span className="text-success font-semibold shrink-0">{fmtCurrency(ev.cart_value || ev.product_price || 0)}</span> : null}
+                                  {ev.device && <span className="text-muted-foreground shrink-0">· {ev.device}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                }) : (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma URL com eventos de e-commerce registrada.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* ── Recent Events Log ── */}
+      <AnimatedContainer delay={0.45}>
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" /> Log de Eventos E-commerce
+              </h3>
+              <p className="text-[10px] text-muted-foreground">Últimos 30 eventos de e-commerce capturados em tempo real</p>
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{ecomEvents.length} total</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Data/Hora</th>
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Evento</th>
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Produto</th>
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">URL</th>
+                  <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Valor</th>
+                  <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Dispositivo</th>
+                  <th className="px-4 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase">Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentEvents.length > 0 ? recentEvents.map(ev => (
+                  <tr key={ev.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-2.5 text-[11px] text-muted-foreground whitespace-nowrap">
+                      <Clock className="h-3 w-3 inline mr-1" />
+                      {new Date(ev.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge
+                        className="text-[9px]"
+                        style={{
+                          backgroundColor: `color-mix(in srgb, ${ECOM_COLORS[ev.event_type] || "hsl(var(--muted))"} 15%, transparent)`,
+                          color: ECOM_COLORS[ev.event_type] || "hsl(var(--muted-foreground))",
+                          borderColor: `color-mix(in srgb, ${ECOM_COLORS[ev.event_type] || "hsl(var(--muted))"} 30%, transparent)`,
+                        }}
+                      >
+                        {ECOM_LABELS[ev.event_type] || ev.event_type}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-foreground max-w-[160px] truncate" title={ev.product_name || "—"}>{ev.product_name || "—"}</td>
+                    <td className="px-4 py-2.5 text-[11px] text-muted-foreground max-w-[200px] truncate" title={ev.page_url || "—"}>{ev.page_url || "—"}</td>
+                    <td className="px-4 py-2.5 text-xs text-right font-medium">
+                      {(ev.cart_value || ev.product_price) ? (
+                        <span className="text-success">{fmtCurrency(ev.cart_value || ev.product_price || 0)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-[11px] text-muted-foreground">{ev.device || "—"}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      {ev.event_type === "purchase" ? (
+                        <Badge className="text-[9px] bg-success/15 text-success border-success/30">Venda</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[9px]">E-commerce</Badge>
+                      )}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum evento de e-commerce capturado ainda.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </AnimatedContainer>
     </div>
   );
 }
