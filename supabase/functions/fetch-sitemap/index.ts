@@ -1,24 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, validateBody, jsonResponse, errorResponse } from "../_shared/utils.ts";
 
 interface SitemapUrl {
   loc: string;
   lastmod?: string;
-  changefreq?: string;
-  priority?: string;
 }
 
 function extractTagContent(xml: string, tag: string): string[] {
   const regex = new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, "gi");
   const matches: string[] = [];
   let match;
-  while ((match = regex.exec(xml)) !== null) {
-    matches.push(match[1].trim());
-  }
+  while ((match = regex.exec(xml)) !== null) matches.push(match[1].trim());
   return matches;
 }
 
@@ -32,11 +24,7 @@ function parseUrlsFromSitemap(xml: string): SitemapUrl[] {
   for (const block of urlBlocks) {
     const locs = extractTagContent(block, "loc");
     if (locs.length > 0) {
-      const lastmods = extractTagContent(block, "lastmod");
-      urls.push({
-        loc: locs[0],
-        lastmod: lastmods[0] || undefined,
-      });
+      urls.push({ loc: locs[0], lastmod: extractTagContent(block, "lastmod")[0] || undefined });
     }
   }
   return urls;
@@ -44,19 +32,18 @@ function parseUrlsFromSitemap(xml: string): SitemapUrl[] {
 
 function parseSitemapIndexUrls(xml: string): string[] {
   const sitemapBlocks = xml.match(/<sitemap[^>]*>[\s\S]*?<\/sitemap>/gi) || [];
-  const urls: string[] = [];
-  for (const block of sitemapBlocks) {
-    const locs = extractTagContent(block, "loc");
-    if (locs.length > 0) urls.push(locs[0]);
-  }
-  return urls;
+  return sitemapBlocks.flatMap(block => extractTagContent(block, "loc"));
 }
 
 async function fetchSitemapContent(url: string): Promise<string | null> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     const resp = await fetch(url, {
       headers: { "User-Agent": "RankitoCRM/1.0 Sitemap Parser" },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!resp.ok) return null;
     return await resp.text();
   } catch {
@@ -65,17 +52,24 @@ async function fetchSitemapContent(url: string): Promise<string | null> {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { url } = await req.json();
-    if (!url) {
-      return new Response(JSON.stringify({ error: "URL is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const body = await req.json();
+
+    const validationErr = validateBody(body, ["url"], cors);
+    if (validationErr) return validationErr;
+
+    const { url } = body;
+
+    if (typeof url !== "string" || url.length > 2000) {
+      return errorResponse("URL must be a string under 2000 characters", cors, 400);
+    }
+
+    // Validate URL format
+    try { new URL(url); } catch {
+      return errorResponse("Invalid URL format", cors, 400);
     }
 
     const allUrls: SitemapUrl[] = [];
@@ -95,28 +89,14 @@ serve(async (req) => {
       sitemapsProcessed.push(currentUrl);
 
       if (isSitemapIndex(content)) {
-        const childSitemaps = parseSitemapIndexUrls(content);
-        queue.push(...childSitemaps);
+        queue.push(...parseSitemapIndexUrls(content));
       } else {
-        const urls = parseUrlsFromSitemap(content);
-        allUrls.push(...urls);
+        allUrls.push(...parseUrlsFromSitemap(content));
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        urls: allUrls,
-        total: allUrls.length,
-        sitemaps_processed: sitemapsProcessed,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ urls: allUrls, total: allUrls.length, sitemaps_processed: sitemapsProcessed }, cors);
+  } catch (err: unknown) {
+    return errorResponse(err instanceof Error ? err.message : "Unknown error", cors);
   }
 });

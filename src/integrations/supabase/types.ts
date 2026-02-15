@@ -1465,9 +1465,108 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ga4_connections_decrypted: {
+        Row: {
+          client_email: string | null
+          connection_name: string | null
+          created_at: string | null
+          id: string | null
+          last_sync_at: string | null
+          owner_id: string | null
+          private_key: string | null
+          project_id: string | null
+          property_id: string | null
+          property_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_email?: string | null
+          connection_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_sync_at?: string | null
+          owner_id?: string | null
+          private_key?: never
+          project_id?: string | null
+          property_id?: string | null
+          property_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_email?: string | null
+          connection_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_sync_at?: string | null
+          owner_id?: string | null
+          private_key?: never
+          project_id?: string | null
+          property_id?: string | null
+          property_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ga4_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gsc_connections_decrypted: {
+        Row: {
+          client_email: string | null
+          connection_name: string | null
+          created_at: string | null
+          id: string | null
+          last_sync_at: string | null
+          owner_id: string | null
+          private_key: string | null
+          project_id: string | null
+          site_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_email?: string | null
+          connection_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_sync_at?: string | null
+          owner_id?: string | null
+          private_key?: never
+          project_id?: string | null
+          site_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_email?: string | null
+          connection_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_sync_at?: string | null
+          owner_id?: string | null
+          private_key?: never
+          project_id?: string | null
+          site_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gsc_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      decrypt_sensitive: { Args: { encrypted_text: string }; Returns: string }
+      encrypt_sensitive: { Args: { plain_text: string }; Returns: string }
+      get_project_overview: { Args: { p_project_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
