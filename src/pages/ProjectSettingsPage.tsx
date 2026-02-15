@@ -701,7 +701,7 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
     setTesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("verify-ga4", {
-        body: { credentials: { client_email: conn.client_email, private_key: conn.private_key } },
+        body: { project_id: projectId },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error);
