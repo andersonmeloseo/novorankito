@@ -295,7 +295,7 @@ export function InstallScriptTab() {
   const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`;
   const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const mainScript = `<!-- Rankito Analytics v4.0.0 — Advanced Pixel -->
+  const mainScript = `<!-- Rankito Analytics v4.1.0 — Advanced Pixel -->
 <script>
 (function(w,d){
   var P="${projectId || 'SEU_PROJECT_ID'}";
@@ -317,7 +317,7 @@ export function InstallScriptTab() {
   var base={device:getDevice(),browser:getBrowser(),os:getOS(),screen_width:screen.width,screen_height:screen.height,language:navigator.language,referrer:d.referrer||null,page_url:location.href,page_title:d.title};
   var utm=getUTM();Object.assign(base,utm);
   var geo={country:null,city:null,state:null};
-  log('Script carregado v4.0.0',{project_id:P,endpoint:E});
+  log('Script carregado v4.1.0',{project_id:P,endpoint:E});
 
   // Fetch geolocation client-side (more accurate than server IP)
   fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(4000)})
@@ -808,7 +808,7 @@ export function InstallScriptTab() {
   })
   .catch(function(e){log('Erro ao carregar custom events',e);});
 
-  log('Pronto! v4.0.0 — Pixel avançado com rage clicks, dead clicks, JS errors, Web Vitals, SPA nav. Use ?rankito_debug=1 para ver logs.');
+  log('Pronto! v4.1.0 — Pixel avançado com rage clicks, dead clicks, JS errors, Web Vitals, SPA nav. Use ?rankito_debug=1 para ver logs.');
 })(window,document);
 </script>`;
 
@@ -877,7 +877,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
             <h4 className="text-sm font-bold font-display">Script Principal</h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Pixel avançado v4.0 com <strong>rage clicks</strong>, <strong>dead clicks</strong>, <strong>JS errors</strong>, 
+            Pixel avançado v4.1 com <strong>rage clicks</strong>, <strong>dead clicks</strong>, <strong>JS errors</strong>, 
             <strong> Web Vitals (LCP/CLS/INP)</strong>, <strong>SPA navigation</strong>, <strong>session recording</strong>, 
             <strong> e-commerce completo</strong> e <strong>heatmap visual</strong>.
           </p>
@@ -960,7 +960,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="WooCommerce — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>view_item</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.1.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>view_item</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -1006,7 +1006,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="Shopify — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>view_item</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.1.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>view_item</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
