@@ -27,7 +27,7 @@ export default function SemanticGraphPage() {
         title="Grafo Semântico"
         subtitle="Construa o ecossistema de entidades do seu negócio para SEO semântico"
       />
-      <div className="p-4 sm:p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4 flex flex-col min-h-0 overflow-auto">
         <FeatureBanner
           title="Semantic Graph Engine"
           description="Transforme seu negócio em um ecossistema de entidades compreendido pelo Google. Crie entidades, defina relações ontológicas e gere Schema.org automaticamente."

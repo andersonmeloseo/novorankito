@@ -1,7 +1,6 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   Building2, Package, Briefcase, MapPin, User, Globe, Star, Store,
@@ -39,6 +38,8 @@ export type EntityNodeData = {
   onDelete?: (nodeId: string) => void;
 };
 
+const handleStyle = "!w-3 !h-3 !border-2 !border-background !bg-primary hover:!scale-150 transition-transform";
+
 function EntityNode({ id, data, selected }: NodeProps) {
   const nodeData = data as EntityNodeData;
   const Icon = ENTITY_ICONS[nodeData.entityType] || Globe;
@@ -53,16 +54,19 @@ function EntityNode({ id, data, selected }: NodeProps) {
       `}
       style={{ borderColor: color }}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!w-3 !h-3 !border-2 !border-background !bg-primary"
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-3 !h-3 !border-2 !border-background !bg-primary"
-      />
+      {/* All 4 handles are both source AND target for maximum flexibility */}
+      <Handle type="source" position={Position.Top} id="top-source" className={handleStyle} style={{ top: -6 }} />
+      <Handle type="target" position={Position.Top} id="top-target" className={`${handleStyle} !opacity-0`} style={{ top: -6 }} />
+
+      <Handle type="source" position={Position.Bottom} id="bottom-source" className={handleStyle} style={{ bottom: -6 }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-target" className={`${handleStyle} !opacity-0`} style={{ bottom: -6 }} />
+
+      <Handle type="source" position={Position.Left} id="left-source" className={handleStyle} style={{ left: -6 }} />
+      <Handle type="target" position={Position.Left} id="left-target" className={`${handleStyle} !opacity-0`} style={{ left: -6 }} />
+
+      <Handle type="source" position={Position.Right} id="right-source" className={handleStyle} style={{ right: -6 }} />
+      <Handle type="target" position={Position.Right} id="right-target" className={`${handleStyle} !opacity-0`} style={{ right: -6 }} />
+
       <div className="flex items-center gap-2 mb-1">
         <div
           className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
@@ -93,16 +97,6 @@ function EntityNode({ id, data, selected }: NodeProps) {
           {nodeData.schemaType}
         </Badge>
       )}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!w-3 !h-3 !border-2 !border-background !bg-primary"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !border-2 !border-background !bg-primary"
-      />
     </div>
   );
 }
