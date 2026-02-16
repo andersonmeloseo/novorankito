@@ -237,39 +237,29 @@
   }
 }
 
-/* ─── Rotating gradient border for active tabs ─── */
-@property --tab-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
+/* ─── Animated gradient for active tabs ─── */
+@property --tab-gradient-pos {
+  syntax: '<percentage>';
+  initial-value: 0%;
   inherits: false;
 }
 
-@keyframes tab-border-spin {
-  to { --tab-angle: 360deg; }
+@keyframes tab-gradient-shift {
+  0% { --tab-gradient-pos: 0%; }
+  50% { --tab-gradient-pos: 100%; }
+  100% { --tab-gradient-pos: 0%; }
 }
 
 [data-state="active"].tab-glow {
   position: relative;
   z-index: 1;
-  overflow: visible;
-}
-[data-state="active"].tab-glow::before {
-  content: '';
-  position: absolute;
-  inset: -1.5px;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--tab-angle),
-    hsl(var(--primary)) 0%,
-    hsl(var(--primary-glow)) 25%,
-    hsl(var(--success)) 50%,
-    hsl(var(--primary-glow)) 75%,
-    hsl(var(--primary)) 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: tab-border-spin 3s linear infinite;
-  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.12) var(--tab-gradient-pos),
+    hsl(var(--primary-glow) / 0.18) calc(var(--tab-gradient-pos) + 30%),
+    hsl(var(--success) / 0.10) calc(var(--tab-gradient-pos) + 60%)
+  ) !important;
+  border: 1.5px solid hsl(var(--primary) / 0.4);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.15), inset 0 1px 0 hsl(var(--primary) / 0.1);
+  animation: tab-gradient-shift 4s ease-in-out infinite;
 }
