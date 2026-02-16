@@ -228,7 +228,7 @@ export default function IndexingPage() {
     let items = inventory.filter(u => {
       if (searchFilter && !u.url.toLowerCase().includes(searchFilter.toLowerCase()) && !(u.meta_title || "").toLowerCase().includes(searchFilter.toLowerCase())) return false;
       if (verdictFilter === "indexed" && u.verdict !== "PASS") return false;
-      if (verdictFilter === "not_indexed" && u.verdict !== "FAIL" && u.verdict !== "PARTIAL") return false;
+      if (verdictFilter === "not_indexed" && (!u.verdict || u.verdict === "PASS")) return false;
       if (verdictFilter === "unknown" && u.verdict && u.verdict !== "NEUTRAL" && u.verdict !== "VERDICT_UNSPECIFIED") return false;
       if (verdictFilter === "never_sent" && u.last_request_status) return false;
       if (priorityFilter !== "all" && u.priority !== priorityFilter) return false;
