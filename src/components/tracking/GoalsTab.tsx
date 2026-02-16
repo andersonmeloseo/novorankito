@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useTrackingGoals, GOAL_TYPES, SCROLL_THRESHOLDS, TIME_PRESETS, TrackingGoal, GoalConfig } from "@/hooks/use-tracking-goals";
 import { useTrackingEvents, EVENT_LABELS, PLUGIN_EVENT_TYPES } from "@/hooks/use-tracking-events";
 import { supabase } from "@/integrations/supabase/client";
+import { GoalProjectSelector } from "./GoalProjectSelector";
 
 /* ─── Helpers ─── */
 function useProjectAndUser() {
@@ -671,14 +672,20 @@ function WizardStep3({ data, onChange }: { data: WizardData; onChange: (d: Parti
 /* ─── Main Component ─── */
 export function GoalsTab() {
   const { projectId, userId } = useProjectAndUser();
-  const { data: goals = [], isLoading, createGoal, updateGoal, deleteGoal, toggleGoal } = useTrackingGoals(projectId);
+  const { data: allGoals = [], isLoading, createGoal, updateGoal, deleteGoal, toggleGoal } = useTrackingGoals(projectId);
   const { data: events = [] } = useTrackingEvents(projectId);
   const detectedCTAs = useDetectedCTAs(events);
 
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardData, setWizardData] = useState<WizardData>(EMPTY_WIZARD);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const goals = useMemo(() => {
+    if (!selectedProject) return allGoals;
+    return allGoals.filter(g => (g as any).goal_project_id === selectedProject);
+  }, [allGoals, selectedProject]);
 
   const completedGoals = goals.filter(g => g.enabled && calcGoalProgress(g, events).completed);
   const totalValue = goals.reduce((sum, g) => {
@@ -703,7 +710,7 @@ export function GoalsTab() {
     if (!wizardData.name.trim()) { toast.error("Preencha o nome da meta."); return; }
     if (!projectId || !userId) { toast.error("Projeto ou usuário não encontrado."); return; }
 
-    const payload = {
+    const payload: any = {
       project_id: projectId, owner_id: userId,
       name: wizardData.name, description: wizardData.description || null,
       goal_type: wizardData.goalType,
@@ -712,6 +719,7 @@ export function GoalsTab() {
       target_events: [],
       currency_value: Number(wizardData.currencyValue) || 0,
       config: wizardData.config, enabled: true,
+      goal_project_id: selectedProject || null,
     };
 
     try {
@@ -746,6 +754,9 @@ export function GoalsTab() {
         title="Metas Personalizadas"
         description={<>Defina conversões por <strong>CTA</strong>, <strong>página de destino</strong>, <strong>padrão de URL</strong>, <strong>scroll</strong>, <strong>tempo na página</strong> ou <strong>combine múltiplos critérios</strong>. Cada conversão tem um valor monetário.</>}
       />
+
+      {/* Goal Projects */}
+      <GoalProjectSelector projectId={projectId} module="goals" selected={selectedProject} onSelect={setSelectedProject} />
 
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">

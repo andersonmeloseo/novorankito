@@ -509,6 +509,7 @@ export type Database = {
           created_at: string
           device: string | null
           event_type: string
+          goal_project_id: string | null
           id: string
           lead_email: string | null
           lead_name: string | null
@@ -527,6 +528,7 @@ export type Database = {
           created_at?: string
           device?: string | null
           event_type?: string
+          goal_project_id?: string | null
           id?: string
           lead_email?: string | null
           lead_name?: string | null
@@ -545,6 +547,7 @@ export type Database = {
           created_at?: string
           device?: string | null
           event_type?: string
+          goal_project_id?: string | null
           id?: string
           lead_email?: string | null
           lead_name?: string | null
@@ -558,6 +561,13 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversions_goal_project_id_fkey"
+            columns: ["goal_project_id"]
+            isOneToOne: false
+            referencedRelation: "goal_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversions_project_id_fkey"
             columns: ["project_id"]
@@ -704,6 +714,50 @@ export type Database = {
             foreignKeyName: "ga4_connections_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_projects: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          module: string
+          name: string
+          owner_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string
+          name: string
+          owner_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string
+          name?: string
+          owner_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1763,6 +1817,7 @@ export type Database = {
           currency_value: number | null
           description: string | null
           enabled: boolean
+          goal_project_id: string | null
           goal_type: string
           id: string
           name: string
@@ -1779,6 +1834,7 @@ export type Database = {
           currency_value?: number | null
           description?: string | null
           enabled?: boolean
+          goal_project_id?: string | null
           goal_type?: string
           id?: string
           name: string
@@ -1795,6 +1851,7 @@ export type Database = {
           currency_value?: number | null
           description?: string | null
           enabled?: boolean
+          goal_project_id?: string | null
           goal_type?: string
           id?: string
           name?: string
@@ -1806,6 +1863,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tracking_goals_goal_project_id_fkey"
+            columns: ["goal_project_id"]
+            isOneToOne: false
+            referencedRelation: "goal_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tracking_goals_project_id_fkey"
             columns: ["project_id"]
