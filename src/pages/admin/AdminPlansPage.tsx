@@ -7,7 +7,7 @@ import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-conta
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Plus, Crown, Zap, Infinity, Package } from "lucide-react";
 import { useAdminPlans } from "@/hooks/use-plans";
-import { useAdminBilling } from "@/hooks/use-admin";
+import { useAdminBilling, useAdminProfiles } from "@/hooks/use-admin";
 import { PlanCard } from "@/components/admin/plans/PlanCard";
 import { PlanEditor } from "@/components/admin/plans/PlanEditor";
 import { CreatePlanDialog } from "@/components/admin/plans/CreatePlanDialog";
@@ -18,6 +18,7 @@ import type { PlanFeature } from "@/hooks/use-plans";
 export default function AdminPlansPage() {
   const { data: plans = [], isLoading } = useAdminPlans();
   const { data: billing = [] } = useAdminBilling();
+  const { data: profiles = [] } = useAdminProfiles();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -38,6 +39,20 @@ export default function AdminPlansPage() {
     });
     return counts;
   }, [plans, billing]);
+
+  const getSubscribers = (planSlug: string) => {
+    return billing
+      .filter((b: any) => b.plan === planSlug)
+      .map((b: any) => {
+        const profile = profiles.find((p: any) => p.user_id === b.user_id);
+        return {
+          user_id: b.user_id,
+          display_name: profile?.display_name || null,
+          status: b.status,
+          mrr: Number(b.mrr || 0),
+        };
+      });
+  };
 
   const totalSubscribers = Object.values(subscriberCounts).reduce((a, b) => a + b, 0);
   const activePlans = plans.filter(p => p.is_active).length;
@@ -156,6 +171,7 @@ export default function AdminPlansPage() {
                 key={selectedPlan.id}
                 plan={selectedPlan}
                 subscriberCount={subscriberCounts[selectedPlan.slug] || 0}
+                subscribers={getSubscribers(selectedPlan.slug)}
                 onDeleted={() => setSelectedPlanId(null)}
               />
             )}
