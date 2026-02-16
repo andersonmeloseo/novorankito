@@ -24,6 +24,7 @@ import { useTrackingGoals, GOAL_TYPES, SCROLL_THRESHOLDS, TIME_PRESETS, Tracking
 import { useTrackingEvents, EVENT_LABELS, PLUGIN_EVENT_TYPES } from "@/hooks/use-tracking-events";
 import { supabase } from "@/integrations/supabase/client";
 import { GoalProjectSelector } from "./GoalProjectSelector";
+import { useGoalProjects } from "@/hooks/use-goal-projects";
 
 /* ─── Helpers ─── */
 function useProjectAndUser() {
@@ -301,12 +302,14 @@ type WizardData = {
   targetValue: string;
   currencyValue: string;
   config: GoalConfig;
+  goalProjectId: string | null;
 };
 
 const EMPTY_WIZARD: WizardData = {
   name: "", description: "", goalType: "cta_click",
   targetValue: "1", currencyValue: "0",
   config: { cta_text_patterns: [], cta_selectors: [], cta_match_mode: "partial", destination_urls: [], url_match_mode: "contains", link_url_patterns: [], link_text_patterns: [], scroll_threshold: 75, min_seconds: 60, conditions: [] },
+  goalProjectId: null,
 };
 
 /* ─── Wizard Step 1 — Type Selection ─── */
@@ -638,7 +641,9 @@ function WizardStep2({ data, onChange, detectedCTAs }: {
 }
 
 /* ─── Wizard Step 3 — Identity & Value ─── */
-function WizardStep3({ data, onChange }: { data: WizardData; onChange: (d: Partial<WizardData>) => void }) {
+function WizardStep3({ data, onChange, projectId }: { data: WizardData; onChange: (d: Partial<WizardData>) => void; projectId: string | null }) {
+  const { data: goalProjects = [] } = useGoalProjects(projectId, "goals");
+
   return (
     <div className="space-y-4">
       <div className="text-center mb-2">
@@ -654,6 +659,26 @@ function WizardStep3({ data, onChange }: { data: WizardData; onChange: (d: Parti
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Descrição (opcional)</label>
           <Textarea value={data.description} onChange={e => onChange({ description: e.target.value })} className="text-xs min-h-[50px]" placeholder="Descreva o objetivo desta meta..." />
         </div>
+        {goalProjects.length > 0 && (
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Projeto de Metas</label>
+            <Select value={data.goalProjectId || "_none"} onValueChange={v => onChange({ goalProjectId: v === "_none" ? null : v })}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Sem projeto" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none" className="text-xs">Sem projeto</SelectItem>
+                {goalProjects.map(p => (
+                  <SelectItem key={p.id} value={p.id} className="text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                      {p.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[9px] text-muted-foreground">Vincule esta meta a um projeto para organização.</p>
+          </div>
+        )}
         <div className="space-y-1">
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Conversões alvo</label>
           <Input type="number" min="1" value={data.targetValue} onChange={e => onChange({ targetValue: e.target.value })} className="h-9 text-xs" />
@@ -694,13 +719,14 @@ export function GoalsTab() {
     return sum + (progress.current * g.currency_value);
   }, 0);
 
-  const openCreate = () => { setEditingId(null); setWizardData(EMPTY_WIZARD); setWizardStep(1); setWizardOpen(true); };
+  const openCreate = () => { setEditingId(null); setWizardData({ ...EMPTY_WIZARD, goalProjectId: selectedProject }); setWizardStep(1); setWizardOpen(true); };
   const openEdit = (g: TrackingGoal) => {
     setEditingId(g.id);
     setWizardData({
       name: g.name, description: g.description || "", goalType: g.goal_type,
       targetValue: String(g.target_value), currencyValue: String(g.currency_value),
       config: { ...EMPTY_WIZARD.config, ...g.config },
+      goalProjectId: (g as any).goal_project_id || null,
     });
     setWizardStep(1); setWizardOpen(true);
   };
@@ -719,7 +745,7 @@ export function GoalsTab() {
       target_events: [],
       currency_value: Number(wizardData.currencyValue) || 0,
       config: wizardData.config, enabled: true,
-      goal_project_id: selectedProject || null,
+      goal_project_id: wizardData.goalProjectId || null,
     };
 
     try {
@@ -824,7 +850,7 @@ export function GoalsTab() {
 
             {wizardStep === 1 && <WizardStep1 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} />}
             {wizardStep === 2 && <WizardStep2 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} detectedCTAs={detectedCTAs} />}
-            {wizardStep === 3 && <WizardStep3 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} />}
+            {wizardStep === 3 && <WizardStep3 data={wizardData} onChange={d => setWizardData(prev => ({ ...prev, ...d }))} projectId={projectId} />}
 
             <div className="flex justify-between pt-2">
               {wizardStep > 1 ? (
