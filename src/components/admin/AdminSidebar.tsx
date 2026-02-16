@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, CreditCard, FolderOpen,
   Plug, ShieldCheck, ScrollText, Settings, Bell, Flag,
   ArrowLeft, Search, ChevronDown, Plus, Activity,
-  Megaphone, FlaskConical, BarChart3, Key
+  Megaphone, FlaskConical, BarChart3, Key, Crown
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ const adminSections = [
   {
     label: "Negócio",
     items: [
+      { title: "Gestão de Planos", url: "/admin/plans", icon: Crown },
       { title: "Planos & Billing", url: "/admin/billing", icon: CreditCard },
       { title: "Projetos / Workspaces", url: "/admin/projects", icon: FolderOpen },
       { title: "Uso & Limites", url: "/admin/usage", icon: BarChart3 },

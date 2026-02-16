@@ -1,0 +1,180 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+export interface Plan {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  billing_interval: string;
+  projects_limit: number;
+  events_limit: number;
+  ai_requests_limit: number;
+  members_limit: number;
+  indexing_daily_limit: number;
+  is_active: boolean;
+  is_default: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanFeature {
+  id: string;
+  plan_id: string;
+  feature_key: string;
+  feature_name: string;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface PlanUsage {
+  id: string;
+  user_id: string;
+  period: string;
+  ai_requests_used: number;
+  events_used: number;
+}
+
+export interface PlanLimit {
+  allowed: boolean;
+  limit: number;
+  used: number;
+  remaining: number;
+  plan: string;
+}
+
+// ─── Admin hooks ───
+
+export function useAdminPlans() {
+  return useQuery({
+    queryKey: ["admin-plans"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data as Plan[];
+    },
+  });
+}
+
+export function useAdminPlanFeatures(planId?: string) {
+  return useQuery({
+    queryKey: ["admin-plan-features", planId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plan_features")
+        .select("*")
+        .eq("plan_id", planId!)
+        .order("feature_key");
+      if (error) throw error;
+      return data as PlanFeature[];
+    },
+    enabled: !!planId,
+  });
+}
+
+export function useUpdatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Plan> & { id: string }) => {
+      const { error } = await supabase.from("plans").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+}
+
+export function useTogglePlanFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ featureId, enabled }: { featureId: string; enabled: boolean }) => {
+      const { error } = await supabase.from("plan_features").update({ enabled }).eq("id", featureId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
+    },
+  });
+}
+
+// ─── User-facing hooks ───
+
+export function useCurrentPlan() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["current-plan", user?.id],
+    queryFn: async () => {
+      // Get user's subscription plan slug
+      const { data: sub } = await supabase
+        .from("billing_subscriptions")
+        .select("plan")
+        .eq("user_id", user!.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const planSlug = sub?.plan || "free";
+
+      // Get plan details
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("slug", planSlug)
+        .single();
+
+      // Get features
+      const { data: features } = await supabase
+        .from("plan_features")
+        .select("*")
+        .eq("plan_id", plan?.id || "");
+
+      return {
+        plan: plan as Plan | null,
+        features: (features || []) as PlanFeature[],
+        slug: planSlug,
+      };
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCheckPlanLimit(limitType: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["plan-limit", user?.id, limitType],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("check_plan_limit", {
+        _user_id: user!.id,
+        _limit_type: limitType,
+      });
+      if (error) throw error;
+      return data as unknown as PlanLimit;
+    },
+    enabled: !!user,
+  });
+}
+
+export function usePlanHasFeature(featureKey: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["plan-feature", user?.id, featureKey],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("plan_has_feature", {
+        _user_id: user!.id,
+        _feature_key: featureKey,
+      });
+      if (error) throw error;
+      return data as boolean;
+    },
+    enabled: !!user,
+  });
+}
