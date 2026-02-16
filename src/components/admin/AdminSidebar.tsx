@@ -16,7 +16,7 @@ const adminSections = [
     label: "Principal",
     items: [
       { title: "Visão Geral", url: "/admin", icon: LayoutDashboard, end: true },
-      { title: "Clientes / Tenants", url: "/admin/clients", icon: Building2 },
+      { title: "Clientes", url: "/admin/clients", icon: Building2 },
       { title: "Usuários", url: "/admin/users", icon: Users },
     ],
   },
