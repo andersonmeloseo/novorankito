@@ -51,12 +51,24 @@ export default function AdminClientsPage() {
   const clients = useMemo(() => {
     return profiles.map((profile: any) => {
       const userBilling = getUserBilling(profile.user_id);
+      const startedAt = userBilling?.started_at || profile.created_at;
+      const now = new Date();
+      const start = new Date(startedAt);
+      const diffMs = now.getTime() - start.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const months = Math.floor(diffDays / 30);
+      const days = diffDays % 30;
+      const tempoAtivo = months > 0 ? `${months}m ${days}d` : `${days}d`;
+
       return {
         ...profile,
         projectsCount: getUserProjects(profile.user_id).length,
         plan: userBilling?.plan || "free",
         status: userBilling?.status || "active",
         mrr: Number(userBilling?.mrr || 0),
+        pagamentoEmDia: userBilling ? userBilling.status === "active" : false,
+        ultimoAcesso: profile.updated_at || profile.created_at,
+        tempoAtivo,
       };
     });
   }, [profiles, projects, billing]);
@@ -75,6 +87,9 @@ export default function AdminClientsPage() {
       switch (sortCol) {
         case "name": valA = (a.display_name || "").toLowerCase(); valB = (b.display_name || "").toLowerCase(); break;
         case "plan": valA = a.plan; valB = b.plan; break;
+        case "pagamento": valA = a.pagamentoEmDia ? 1 : 0; valB = b.pagamentoEmDia ? 1 : 0; break;
+        case "ultimo_acesso": valA = a.ultimoAcesso; valB = b.ultimoAcesso; break;
+        case "tempo_ativo": valA = new Date(a.ultimoAcesso).getTime() - new Date(a.created_at).getTime(); valB = new Date(b.ultimoAcesso).getTime() - new Date(b.created_at).getTime(); break;
         case "projects": valA = a.projectsCount; valB = b.projectsCount; break;
         case "mrr": valA = a.mrr; valB = b.mrr; break;
         case "status": valA = a.status; valB = b.status; break;
@@ -260,6 +275,9 @@ export default function AdminClientsPage() {
                 {[
                   { label: "Cliente", key: "name" },
                   { label: "Plano", key: "plan" },
+                  { label: "Pagamento", key: "pagamento" },
+                  { label: "Último Acesso", key: "ultimo_acesso" },
+                  { label: "Tempo Ativo", key: "tempo_ativo" },
                   { label: "Projetos", key: "projects" },
                   { label: "MRR", key: "mrr" },
                   { label: "Status", key: "status" },
@@ -284,7 +302,7 @@ export default function AdminClientsPage() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-xs text-muted-foreground">Nenhum cliente encontrado</td></tr>
+                <tr><td colSpan={11} className="px-4 py-12 text-center text-xs text-muted-foreground">Nenhum cliente encontrado</td></tr>
               ) : filtered.map(client => (
                 <tr key={client.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
@@ -302,6 +320,15 @@ export default function AdminClientsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3"><Badge variant="outline" className="text-[10px] capitalize">{client.plan}</Badge></td>
+                  <td className="px-4 py-3">
+                    <Badge variant={client.pagamentoEmDia ? "default" : "destructive"} className="text-[10px]">
+                      {client.pagamentoEmDia ? "Em dia" : "Pendente"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-[10px] text-muted-foreground">
+                    {format(new Date(client.ultimoAcesso), "dd/MM/yy HH:mm")}
+                  </td>
+                  <td className="px-4 py-3 text-xs">{client.tempoAtivo}</td>
                   <td className="px-4 py-3 text-xs">{client.projectsCount}</td>
                   <td className="px-4 py-3 text-xs">R$ {client.mrr.toLocaleString("pt-BR")}</td>
                   <td className="px-4 py-3">
