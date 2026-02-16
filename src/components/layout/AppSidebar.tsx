@@ -22,11 +22,11 @@ import { cn } from "@/lib/utils";
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
-  { title: "SEO", url: "/seo", icon: Search },
+  { title: "SEO", url: "/seo", icon: Search, tourId: "seo" },
   { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Indexação", url: "/indexing", icon: Database },
-  { title: "Rankito IA", url: "/rankito-ai", icon: Bot },
-  { title: "Analítica Rankito", url: "/analitica-rankito", icon: MousePointerClick },
+  { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
+  { title: "Analítica Rankito", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
 ];
@@ -46,7 +46,7 @@ const accountNav = [
   { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
 ];
 
-function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType }; end?: boolean }) {
+function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean }) {
   const { pathname } = useLocation();
   const isActive = end ? pathname === item.url : pathname.startsWith(item.url);
 
@@ -56,6 +56,7 @@ function NavItem({ item, end }: { item: { title: string; url: string; icon: Reac
         <NavLink
           to={item.url}
           end={end}
+          data-tour={item.tourId}
           className={cn(
             "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative",
             isActive && "sidebar-active-glow"
@@ -156,7 +157,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen }} end />
+              <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

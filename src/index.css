@@ -294,3 +294,17 @@
   animation: sidebar-border-rotate 3s linear infinite;
   box-shadow: 0 0 12px hsl(var(--primary) / 0.15), inset 0 0 0 1px hsl(var(--primary) / 0.05);
 }
+
+/* Tour highlight */
+[data-tour-highlight="true"] {
+  position: relative;
+  z-index: 10000;
+  box-shadow: 0 0 0 2px hsl(var(--primary)), 0 0 16px hsl(var(--primary) / 0.3);
+  border-radius: 0.5rem;
+  animation: tour-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(var(--primary)), 0 0 16px hsl(var(--primary) / 0.3); }
+  50% { box-shadow: 0 0 0 3px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.5); }
+}
