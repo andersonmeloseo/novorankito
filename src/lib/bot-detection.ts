@@ -91,15 +91,45 @@ const BOT_PATTERNS: BotPattern[] = [
 
 /**
  * Detect if a user-agent or browser string belongs to a known bot.
- * Pass any combination of browser name and user-agent.
+ * Also uses heuristic signals: known bot datacenter cities + OS/device combos.
  */
-export function detectBot(browser?: string | null, userAgent?: string | null): BotInfo {
+export function detectBot(
+  browser?: string | null,
+  userAgent?: string | null,
+  context?: { city?: string | null; os?: string | null; device?: string | null; referrer?: string | null }
+): BotInfo {
   const haystack = `${browser || ""} ${userAgent || ""}`.trim();
-  if (!haystack) return { isBot: false, botName: null, botCategory: null, botEmoji: null };
 
-  for (const bp of BOT_PATTERNS) {
-    if (bp.pattern.test(haystack)) {
-      return { isBot: true, botName: bp.name, botCategory: bp.category, botEmoji: bp.emoji };
+  // Pattern-based detection first
+  if (haystack) {
+    for (const bp of BOT_PATTERNS) {
+      if (bp.pattern.test(haystack)) {
+        return { isBot: true, botName: bp.name, botCategory: bp.category, botEmoji: bp.emoji };
+      }
+    }
+  }
+
+  // Heuristic detection: known bot datacenter locations
+  if (context) {
+    const city = (context.city || "").toLowerCase();
+    const os = (context.os || "").toLowerCase();
+    const referrer = context.referrer;
+
+    // Google bots: Chrome on Linux/Android from Mountain View with no referrer
+    if (city === "mountain view" && os === "linux" && !referrer) {
+      return { isBot: true, botName: "Googlebot (heurístico)", botCategory: "search", botEmoji: "🔍" };
+    }
+    // Bing bots: from Redmond / Quincy / Boydton (Microsoft datacenters)
+    if ((city === "redmond" || city === "quincy" || city === "boydton") && !referrer) {
+      return { isBot: true, botName: "Bingbot (heurístico)", botCategory: "search", botEmoji: "🔎" };
+    }
+    // Meta bots: from Menlo Park
+    if (city === "menlo park" && !referrer) {
+      return { isBot: true, botName: "Meta Bot (heurístico)", botCategory: "social", botEmoji: "📘" };
+    }
+    // OpenAI / ChatGPT: from San Francisco datacenters
+    if ((city === "san francisco" || city === "iowa") && os === "linux" && !referrer) {
+      return { isBot: true, botName: "AI Bot (heurístico)", botCategory: "ai", botEmoji: "🤖" };
     }
   }
 

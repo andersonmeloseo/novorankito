@@ -63,7 +63,7 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
     const duration_sec = Math.round((new Date(last.created_at).getTime() - new Date(first.created_at).getTime()) / 1000);
     const pages = new Set(evts.map(e => e.page_url).filter(Boolean));
     const exitEvent = evts.find(e => e.event_type === "page_exit");
-    const bot = detectBot(first.browser, first.platform);
+    const bot = detectBot(first.browser, first.platform, { city: first.city, os: first.os, device: first.device, referrer: first.referrer });
     return {
       session_id,
       started_at: first.created_at,
