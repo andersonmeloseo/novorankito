@@ -4,15 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, Search, Globe, AlertTriangle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Plus, Trash2, Search, Globe, AlertTriangle, X, Code2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   BackgroundVariant,
+  useNodesState,
+  useEdgesState,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -23,6 +27,14 @@ interface SchemaResult {
   domain: string;
   schemas: Array<{ type: string; properties: Record<string, unknown> }>;
   error?: string;
+}
+
+interface SchemaNodeMeta {
+  type: string;
+  domain: string;
+  url: string;
+  properties: Record<string, unknown>;
+  isDomain?: boolean;
 }
 
 // Domain color palette
@@ -43,10 +55,52 @@ function getDomainColor(index: number) {
   return DOMAIN_COLORS[index % DOMAIN_COLORS.length];
 }
 
+function GraphCanvas({
+  initialNodes,
+  initialEdges,
+  nodeMetaMap,
+  onNodeClick,
+}: {
+  initialNodes: Node[];
+  initialEdges: Edge[];
+  nodeMetaMap: Map<string, SchemaNodeMeta>;
+  onNodeClick: (meta: SchemaNodeMeta) => void;
+}) {
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+
+  const handleNodeClick = useCallback(
+    (_: any, node: Node) => {
+      const meta = nodeMetaMap.get(node.id);
+      if (meta) onNodeClick(meta);
+    },
+    [nodeMetaMap, onNodeClick],
+  );
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onNodeClick={handleNodeClick}
+      fitView
+      proOptions={{ hideAttribution: true }}
+      nodesDraggable
+      nodesConnectable={false}
+    >
+      <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="opacity-30" />
+      <Controls className="!bg-card !border-border !rounded-lg" />
+      <MiniMap className="!bg-card !border-border !rounded-lg" />
+    </ReactFlow>
+  );
+}
+
 export function CompetitorAnalysisTab() {
   const [urls, setUrls] = useState<string[]>([""]);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SchemaResult[]>([]);
+  const [selectedSchema, setSelectedSchema] = useState<SchemaNodeMeta | null>(null);
 
   const addUrl = () => {
     if (urls.length >= 10) return;
@@ -68,17 +122,15 @@ export function CompetitorAnalysisTab() {
       return;
     }
 
-    // Basic URL validation
     for (const u of validUrls) {
-      try {
-        new URL(u);
-      } catch {
+      try { new URL(u); } catch {
         toast({ title: `URL inválida: ${u}`, variant: "destructive" });
         return;
       }
     }
 
     setLoading(true);
+    setSelectedSchema(null);
     try {
       const { data, error } = await supabase.functions.invoke("extract-competitor-schema", {
         body: { urls: validUrls },
@@ -109,22 +161,22 @@ export function CompetitorAnalysisTab() {
     return map;
   }, [results]);
 
-  // Build comparative graph
-  const { graphNodes, graphEdges } = useMemo(() => {
-    if (results.length === 0) return { graphNodes: [], graphEdges: [] };
+  // Build comparative graph + meta map for click inspection
+  const { graphNodes, graphEdges, nodeMetaMap } = useMemo(() => {
+    if (results.length === 0) return { graphNodes: [], graphEdges: [], nodeMetaMap: new Map<string, SchemaNodeMeta>() };
 
     const nodes: Node[] = [];
     const edges: Edge[] = [];
-    const schemaTypeMap = new Map<string, { domains: string[]; nodeId: string }>();
+    const metaMap = new Map<string, SchemaNodeMeta>();
+    const schemaTypeMap = new Map<string, { domains: string[]; nodeId: string; urls: string[] }>();
     let nodeIndex = 0;
 
-    // Create domain center nodes
     const domainNodes = new Map<string, string>();
     results.forEach((r) => {
       if (domainNodes.has(r.domain)) return;
       const domainIdx = domainMap.get(r.domain) ?? 0;
       const color = getDomainColor(domainIdx);
-      const angle = (2 * Math.PI * domainIdx) / Math.max(results.length, 1);
+      const angle = (2 * Math.PI * domainIdx) / Math.max(domainMap.size, 1);
       const cx = 500 + 350 * Math.cos(angle);
       const cy = 400 + 350 * Math.sin(angle);
       const id = `domain-${nodeIndex++}`;
@@ -143,17 +195,25 @@ export function CompetitorAnalysisTab() {
           fontWeight: 700,
           fontSize: "13px",
           boxShadow: `0 0 20px ${color.bg}40`,
+          cursor: "pointer",
         },
       });
 
-      // Create schema type nodes for this domain
+      metaMap.set(id, {
+        type: r.domain,
+        domain: r.domain,
+        url: r.url,
+        properties: { schemas_count: r.schemas.length, url: r.url },
+        isDomain: true,
+      });
+
       r.schemas.forEach((schema) => {
         const typeKey = schema.type;
         if (schemaTypeMap.has(typeKey)) {
-          // Schema exists, just add edge
           const existing = schemaTypeMap.get(typeKey)!;
           if (!existing.domains.includes(r.domain)) {
             existing.domains.push(r.domain);
+            existing.urls.push(r.url);
             edges.push({
               id: `edge-${nodeIndex++}`,
               source: id,
@@ -163,7 +223,6 @@ export function CompetitorAnalysisTab() {
             });
           }
         } else {
-          // New schema type node
           const schemaId = `schema-${nodeIndex++}`;
           const schemaAngle = angle + (Math.random() - 0.5) * 1.2;
           const schemaRadius = 150 + Math.random() * 100;
@@ -183,10 +242,18 @@ export function CompetitorAnalysisTab() {
               padding: "6px 12px",
               fontSize: "11px",
               fontWeight: 500,
+              cursor: "pointer",
             },
           });
 
-          schemaTypeMap.set(typeKey, { domains: [r.domain], nodeId: schemaId });
+          metaMap.set(schemaId, {
+            type: typeKey,
+            domain: r.domain,
+            url: r.url,
+            properties: schema.properties,
+          });
+
+          schemaTypeMap.set(typeKey, { domains: [r.domain], nodeId: schemaId, urls: [r.url] });
 
           edges.push({
             id: `edge-${nodeIndex++}`,
@@ -199,7 +266,7 @@ export function CompetitorAnalysisTab() {
       });
     });
 
-    // Highlight shared schemas (connected to multiple domains) 
+    // Highlight shared schemas
     schemaTypeMap.forEach((info) => {
       if (info.domains.length > 1) {
         const node = nodes.find((n) => n.id === info.nodeId);
@@ -211,11 +278,20 @@ export function CompetitorAnalysisTab() {
             boxShadow: "0 0 12px hsl(var(--primary) / 0.3)",
             fontWeight: 700,
           };
+          // Update meta with all domains info
+          const existingMeta = metaMap.get(info.nodeId);
+          if (existingMeta) {
+            existingMeta.properties = {
+              ...existingMeta.properties,
+              shared_between: info.domains.join(", "),
+              source_urls: info.urls.join(", "),
+            };
+          }
         }
       }
     });
 
-    return { graphNodes: nodes, graphEdges: edges };
+    return { graphNodes: nodes, graphEdges: edges, nodeMetaMap: metaMap };
   }, [results, domainMap]);
 
   // Stats
@@ -231,14 +307,12 @@ export function CompetitorAnalysisTab() {
       });
     });
 
-    // Shared schemas
     const shared = [...allTypes].filter((t) => {
       let count = 0;
       domainTypes.forEach((types) => { if (types.has(t)) count++; });
       return count > 1;
     });
 
-    // Exclusive schemas per domain
     const exclusive = new Map<string, string[]>();
     domainTypes.forEach((types, domain) => {
       const exc = [...types].filter((t) => {
@@ -251,6 +325,15 @@ export function CompetitorAnalysisTab() {
 
     return { totalTypes: allTypes.size, shared, exclusive, domainTypes };
   }, [results]);
+
+  // Render a property value nicely
+  const renderValue = (val: unknown): string => {
+    if (val === null || val === undefined) return "—";
+    if (typeof val === "string") return val.length > 120 ? val.slice(0, 120) + "…" : val;
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    if (Array.isArray(val)) return val.map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v))).join(", ");
+    return JSON.stringify(val);
+  };
 
   return (
     <div className="space-y-6">
@@ -359,27 +442,121 @@ export function CompetitorAnalysisTab() {
             </Card>
           )}
 
-          {/* Comparative Graph */}
+          {/* Comparative Graph + Detail Panel */}
           <Card className="overflow-hidden">
             <div className="p-3 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Grafo Comparativo de Schemas</h3>
               <p className="text-[11px] text-muted-foreground">
-                Nodes com borda brilhante = schemas compartilhados entre domínios
+                Arraste os nodes para reorganizar • Clique em um schema para ver suas propriedades
               </p>
             </div>
-            <div className="h-[550px]">
-              <ReactFlow
-                nodes={graphNodes}
-                edges={graphEdges}
-                fitView
-                proOptions={{ hideAttribution: true }}
-                nodesDraggable
-                nodesConnectable={false}
-              >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="opacity-30" />
-                <Controls className="!bg-card !border-border !rounded-lg" />
-                <MiniMap className="!bg-card !border-border !rounded-lg" />
-              </ReactFlow>
+            <div className="flex">
+              <div className={`transition-all duration-300 ${selectedSchema ? "w-[60%]" : "w-full"}`}>
+                <div className="h-[550px]">
+                  <ReactFlowProvider>
+                    <GraphCanvas
+                      initialNodes={graphNodes}
+                      initialEdges={graphEdges}
+                      nodeMetaMap={nodeMetaMap}
+                      onNodeClick={setSelectedSchema}
+                    />
+                  </ReactFlowProvider>
+                </div>
+              </div>
+
+              {/* Schema Detail Panel */}
+              {selectedSchema && (
+                <div className="w-[40%] border-l border-border bg-muted/30">
+                  <div className="p-3 border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Code2 className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {selectedSchema.type}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => setSelectedSchema(null)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  <ScrollArea className="h-[504px]">
+                    <div className="p-3 space-y-3">
+                      {/* Source info */}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Fonte</Label>
+                        <div className="text-xs text-foreground">{selectedSchema.domain}</div>
+                        <div className="text-[10px] text-muted-foreground truncate" title={selectedSchema.url}>
+                          {selectedSchema.url}
+                        </div>
+                      </div>
+
+                      {selectedSchema.isDomain ? (
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Resumo do Domínio</Label>
+                          <div className="text-xs text-muted-foreground">
+                            Este é um node de domínio. Clique em um dos schemas conectados para ver suas propriedades.
+                          </div>
+                          <div className="text-xs">
+                            <span className="font-medium text-foreground">Schemas:</span>{" "}
+                            {String(selectedSchema.properties.schemas_count)}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Properties table */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              Propriedades ({Object.keys(selectedSchema.properties).length})
+                            </Label>
+                            <div className="rounded-lg border border-border overflow-hidden">
+                              <table className="w-full text-[11px]">
+                                <thead>
+                                  <tr className="bg-muted/50">
+                                    <th className="text-left px-2.5 py-1.5 font-medium text-muted-foreground">Propriedade</th>
+                                    <th className="text-left px-2.5 py-1.5 font-medium text-muted-foreground">Valor</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(selectedSchema.properties).map(([key, val]) => (
+                                    <tr key={key} className="border-t border-border hover:bg-muted/30">
+                                      <td className="px-2.5 py-1.5 font-medium text-foreground align-top whitespace-nowrap">
+                                        {key}
+                                      </td>
+                                      <td
+                                        className="px-2.5 py-1.5 text-muted-foreground break-all"
+                                        title={typeof val === "string" ? val : undefined}
+                                      >
+                                        {renderValue(val)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* JSON-LD preview */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">JSON-LD</Label>
+                            <pre className="bg-muted/50 rounded-lg p-2.5 text-[10px] text-foreground overflow-x-auto whitespace-pre-wrap font-mono border border-border">
+{JSON.stringify(
+  { "@context": "https://schema.org", "@type": selectedSchema.type, ...selectedSchema.properties },
+  null,
+  2,
+)}
+                            </pre>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
             </div>
           </Card>
 
