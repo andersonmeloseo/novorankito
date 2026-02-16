@@ -85,37 +85,120 @@ export function useTrackingEvents(projectId: string | null | undefined) {
   });
 }
 
-// Re-export constants (not mock data, just labels)
+// ── Standard event types recognized by GA4, GSC, Meta Ads, Google Ads ──
 export const PLUGIN_EVENT_TYPES = [
-  "page_view", "page_exit", "whatsapp_click", "phone_click", "email_click",
-  "button_click", "form_submit", "product_view", "add_to_cart", "remove_from_cart",
-  "begin_checkout", "purchase", "search", "heatmap_click",
+  // GA4 — Automatically collected
+  "page_view", "first_visit", "session_start", "user_engagement",
+  "scroll", "click", "file_download", "video_start", "video_progress", "video_complete",
+  "view_search_results",
+  // GA4 — E-commerce (recommended)
+  "view_item", "view_item_list", "select_item", "add_to_cart", "remove_from_cart",
+  "view_cart", "begin_checkout", "add_shipping_info", "add_payment_info", "purchase", "refund",
+  // GA4 — Engagement (recommended)
+  "sign_up", "login", "share", "search", "select_content", "select_promotion", "view_promotion",
+  "generate_lead", "earn_virtual_currency", "spend_virtual_currency",
+  // Google Ads — Conversion actions
+  "conversion", "enhanced_conversion",
+  // Meta Ads (Facebook Pixel) — Standard events
+  "PageView", "Lead", "CompleteRegistration", "AddToCart", "InitiateCheckout",
+  "Purchase", "AddPaymentInfo", "AddToWishlist", "ViewContent", "Search",
+  "Contact", "CustomizeProduct", "Donate", "FindLocation", "Schedule",
+  "StartTrial", "SubmitApplication", "Subscribe",
+  // Rankito custom (CTA tracking)
+  "whatsapp_click", "phone_click", "email_click", "button_click", "form_submit",
+  "page_exit", "heatmap_click",
 ] as const;
 
 export type PluginEventType = typeof PLUGIN_EVENT_TYPES[number];
 
 export const EVENT_LABELS: Record<string, string> = {
-  page_view: "Visualização de Página",
-  page_exit: "Saída da Página",
+  // GA4 — Auto
+  page_view: "Page View",
+  first_visit: "First Visit",
+  session_start: "Session Start",
+  user_engagement: "User Engagement",
+  scroll: "Scroll",
+  click: "Click",
+  file_download: "File Download",
+  video_start: "Video Start",
+  video_progress: "Video Progress",
+  video_complete: "Video Complete",
+  view_search_results: "View Search Results",
+  // GA4 — E-commerce
+  view_item: "View Item",
+  view_item_list: "View Item List",
+  select_item: "Select Item",
+  add_to_cart: "Add to Cart",
+  remove_from_cart: "Remove from Cart",
+  view_cart: "View Cart",
+  begin_checkout: "Begin Checkout",
+  add_shipping_info: "Add Shipping Info",
+  add_payment_info: "Add Payment Info",
+  purchase: "Purchase",
+  refund: "Refund",
+  // GA4 — Engagement
+  sign_up: "Sign Up",
+  login: "Login",
+  share: "Share",
+  search: "Search",
+  select_content: "Select Content",
+  select_promotion: "Select Promotion",
+  view_promotion: "View Promotion",
+  generate_lead: "Generate Lead",
+  earn_virtual_currency: "Earn Virtual Currency",
+  spend_virtual_currency: "Spend Virtual Currency",
+  // Google Ads
+  conversion: "Conversion (Google Ads)",
+  enhanced_conversion: "Enhanced Conversion",
+  // Meta Ads (Facebook Pixel)
+  PageView: "PageView (Meta)",
+  Lead: "Lead (Meta)",
+  CompleteRegistration: "Complete Registration (Meta)",
+  AddToCart: "AddToCart (Meta)",
+  InitiateCheckout: "Initiate Checkout (Meta)",
+  Purchase: "Purchase (Meta)",
+  AddPaymentInfo: "Add Payment Info (Meta)",
+  AddToWishlist: "Add to Wishlist (Meta)",
+  ViewContent: "View Content (Meta)",
+  Search: "Search (Meta)",
+  Contact: "Contact (Meta)",
+  CustomizeProduct: "Customize Product (Meta)",
+  Donate: "Donate (Meta)",
+  FindLocation: "Find Location (Meta)",
+  Schedule: "Schedule (Meta)",
+  StartTrial: "Start Trial (Meta)",
+  SubmitApplication: "Submit Application (Meta)",
+  Subscribe: "Subscribe (Meta)",
+  // Rankito CTA tracking
   whatsapp_click: "Clique WhatsApp",
   phone_click: "Clique Telefone",
   email_click: "Clique Email",
   button_click: "Clique Botão",
   form_submit: "Envio Formulário",
-  product_view: "Visualização Produto",
-  add_to_cart: "Adicionar ao Carrinho",
-  remove_from_cart: "Remover do Carrinho",
-  begin_checkout: "Início Checkout",
-  purchase: "Compra",
-  search: "Busca",
-  click: "Clique",
+  page_exit: "Page Exit",
   heatmap_click: "Clique (Heatmap)",
 };
 
 export const EVENT_CATEGORIES = {
-  tracking: ["page_view", "page_exit", "button_click", "click"],
-  conversions: ["whatsapp_click", "phone_click", "email_click", "form_submit"],
-  ecommerce: ["product_view", "add_to_cart", "remove_from_cart", "begin_checkout", "purchase", "search"],
+  tracking: [
+    "page_view", "first_visit", "session_start", "user_engagement",
+    "scroll", "click", "file_download", "page_exit",
+    "video_start", "video_progress", "video_complete", "view_search_results",
+  ],
+  conversions: [
+    "whatsapp_click", "phone_click", "email_click", "form_submit", "button_click",
+    "generate_lead", "sign_up", "login", "share", "select_content",
+    "conversion", "enhanced_conversion",
+    "Lead", "CompleteRegistration", "Contact", "Schedule",
+    "StartTrial", "SubmitApplication", "Subscribe", "Donate",
+  ],
+  ecommerce: [
+    "view_item", "view_item_list", "select_item", "add_to_cart", "remove_from_cart",
+    "view_cart", "begin_checkout", "add_shipping_info", "add_payment_info", "purchase", "refund",
+    "search", "select_promotion", "view_promotion",
+    "PageView", "AddToCart", "InitiateCheckout", "Purchase", "AddPaymentInfo",
+    "AddToWishlist", "ViewContent", "Search", "CustomizeProduct", "FindLocation",
+  ],
 };
 
 // Helper: derive heatmap from events

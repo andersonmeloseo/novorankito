@@ -6,35 +6,59 @@ function randomFrom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ── All Plugin Event Types ──
+// ── All Plugin Event Types (GA4 + Meta Ads + Google Ads + Rankito) ──
 export const PLUGIN_EVENT_TYPES = [
-  "page_view", "page_exit", "whatsapp_click", "phone_click", "email_click",
-  "button_click", "form_submit", "product_view", "add_to_cart", "remove_from_cart",
-  "begin_checkout", "purchase", "search",
+  "page_view", "page_exit", "first_visit", "session_start", "user_engagement",
+  "scroll", "click", "file_download",
+  "whatsapp_click", "phone_click", "email_click",
+  "button_click", "form_submit", "generate_lead", "sign_up", "login",
+  "view_item", "view_item_list", "select_item", "add_to_cart", "remove_from_cart",
+  "view_cart", "begin_checkout", "add_shipping_info", "add_payment_info", "purchase", "refund",
+  "search", "select_promotion", "view_promotion",
+  "conversion", "enhanced_conversion",
 ] as const;
 
 export type PluginEventType = typeof PLUGIN_EVENT_TYPES[number];
 
 export const EVENT_LABELS: Record<PluginEventType, string> = {
-  page_view: "Visualização de Página",
-  page_exit: "Saída da Página",
+  page_view: "Page View",
+  page_exit: "Page Exit",
+  first_visit: "First Visit",
+  session_start: "Session Start",
+  user_engagement: "User Engagement",
+  scroll: "Scroll",
+  click: "Click",
+  file_download: "File Download",
   whatsapp_click: "Clique WhatsApp",
   phone_click: "Clique Telefone",
   email_click: "Clique Email",
   button_click: "Clique Botão",
   form_submit: "Envio Formulário",
-  product_view: "Visualização Produto",
-  add_to_cart: "Adicionar ao Carrinho",
-  remove_from_cart: "Remover do Carrinho",
-  begin_checkout: "Início Checkout",
-  purchase: "Compra",
-  search: "Busca",
+  generate_lead: "Generate Lead",
+  sign_up: "Sign Up",
+  login: "Login",
+  view_item: "View Item",
+  view_item_list: "View Item List",
+  select_item: "Select Item",
+  add_to_cart: "Add to Cart",
+  remove_from_cart: "Remove from Cart",
+  view_cart: "View Cart",
+  begin_checkout: "Begin Checkout",
+  add_shipping_info: "Add Shipping Info",
+  add_payment_info: "Add Payment Info",
+  purchase: "Purchase",
+  refund: "Refund",
+  search: "Search",
+  select_promotion: "Select Promotion",
+  view_promotion: "View Promotion",
+  conversion: "Conversion (Google Ads)",
+  enhanced_conversion: "Enhanced Conversion",
 };
 
 export const EVENT_CATEGORIES = {
-  tracking: ["page_view", "page_exit", "button_click"] as PluginEventType[],
-  conversions: ["whatsapp_click", "phone_click", "email_click", "form_submit"] as PluginEventType[],
-  ecommerce: ["product_view", "add_to_cart", "remove_from_cart", "begin_checkout", "purchase", "search"] as PluginEventType[],
+  tracking: ["page_view", "page_exit", "first_visit", "session_start", "user_engagement", "scroll", "click", "file_download", "button_click"] as PluginEventType[],
+  conversions: ["whatsapp_click", "phone_click", "email_click", "form_submit", "generate_lead", "sign_up", "login", "conversion", "enhanced_conversion"] as PluginEventType[],
+  ecommerce: ["view_item", "view_item_list", "select_item", "add_to_cart", "remove_from_cart", "view_cart", "begin_checkout", "add_shipping_info", "add_payment_info", "purchase", "refund", "search", "select_promotion", "view_promotion"] as PluginEventType[],
 };
 
 // ── Platforms ──
@@ -168,7 +192,7 @@ export const ecommerceFunnelByDay = (() => {
   const map = new Map<string, Record<string, number>>();
   pluginEvents.filter(e => EVENT_CATEGORIES.ecommerce.includes(e.event_type)).forEach(e => {
     const day = new Date(e.timestamp).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-    const entry = map.get(day) || { product_view: 0, add_to_cart: 0, remove_from_cart: 0, begin_checkout: 0, purchase: 0, search: 0 };
+    const entry = map.get(day) || { view_item: 0, add_to_cart: 0, remove_from_cart: 0, begin_checkout: 0, purchase: 0, search: 0 };
     entry[e.event_type] = (entry[e.event_type] || 0) + 1;
     map.set(day, entry);
   });
@@ -178,7 +202,7 @@ export const ecommerceFunnelByDay = (() => {
 // ── Derived: E-commerce funnel totals ──
 export const ecommerceFunnelTotals = (() => {
   const steps: { type: PluginEventType; label: string; color: string }[] = [
-    { type: "product_view", label: "Visualização", color: "#3b82f6" },
+    { type: "view_item", label: "View Item", color: "#3b82f6" },
     { type: "add_to_cart", label: "Add Carrinho", color: "#8b5cf6" },
     { type: "begin_checkout", label: "Checkout", color: "#f59e0b" },
     { type: "purchase", label: "Compra", color: "#22c55e" },
@@ -287,7 +311,7 @@ export const productPerformance = (() => {
   const map = new Map<string, { views: number; addToCart: number; purchases: number; revenue: number }>();
   pluginEvents.filter(e => e.product_name).forEach(e => {
     const entry = map.get(e.product_name!) || { views: 0, addToCart: 0, purchases: 0, revenue: 0 };
-    if (e.event_type === "product_view") entry.views++;
+    if (e.event_type === "view_item") entry.views++;
     if (e.event_type === "add_to_cart") entry.addToCart++;
     if (e.event_type === "purchase") { entry.purchases++; entry.revenue += e.revenue || 0; }
     map.set(e.product_name!, entry);

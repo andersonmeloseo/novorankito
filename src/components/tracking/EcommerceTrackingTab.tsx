@@ -41,21 +41,33 @@ function SparkKpi({ label, value, prefix, suffix, color, icon: Icon }: {
 }
 
 const ECOM_COLORS: Record<string, string> = {
-  product_view: "hsl(var(--info))",
+  view_item: "hsl(var(--info))",
   add_to_cart: "hsl(var(--primary))",
   remove_from_cart: "hsl(var(--warning))",
+  view_cart: "hsl(var(--chart-3))",
   begin_checkout: "hsl(var(--chart-5))",
+  add_shipping_info: "hsl(var(--chart-7))",
+  add_payment_info: "hsl(var(--chart-8))",
   purchase: "hsl(var(--success))",
+  refund: "hsl(var(--destructive))",
   search: "hsl(var(--chart-9))",
 };
 
 const ECOM_LABELS: Record<string, string> = {
-  product_view: "Visualização Produto",
-  add_to_cart: "Adicionar ao Carrinho",
-  remove_from_cart: "Remover do Carrinho",
-  begin_checkout: "Início Checkout",
-  purchase: "Compra",
-  search: "Busca",
+  view_item: "View Item",
+  view_item_list: "View Item List",
+  select_item: "Select Item",
+  add_to_cart: "Add to Cart",
+  remove_from_cart: "Remove from Cart",
+  view_cart: "View Cart",
+  begin_checkout: "Begin Checkout",
+  add_shipping_info: "Add Shipping Info",
+  add_payment_info: "Add Payment Info",
+  purchase: "Purchase",
+  refund: "Refund",
+  search: "Search",
+  select_promotion: "Select Promotion",
+  view_promotion: "View Promotion",
 };
 
 function fmt(n: number) {
@@ -73,7 +85,7 @@ export function EcommerceTrackingTab() {
   const ecomEvents = useMemo(() => allEvents.filter(e => EVENT_CATEGORIES.ecommerce.includes(e.event_type)), [allEvents]);
 
   /* ── KPI calculations ── */
-  const totalViews = ecomEvents.filter(e => e.event_type === "product_view").length;
+  const totalViews = ecomEvents.filter(e => e.event_type === "view_item").length;
   const totalAddToCart = ecomEvents.filter(e => e.event_type === "add_to_cart").length;
   const totalRemoveFromCart = ecomEvents.filter(e => e.event_type === "remove_from_cart").length;
   const totalCheckout = ecomEvents.filter(e => e.event_type === "begin_checkout").length;
@@ -136,7 +148,7 @@ export function EcommerceTrackingTab() {
     ecomEvents.forEach(e => {
       const name = e.product_name || "Desconhecido";
       const entry = map.get(name) || { views: 0, addToCart: 0, purchases: 0, revenue: 0, lastPrice: 0 };
-      if (e.event_type === "product_view") entry.views++;
+      if (e.event_type === "view_item") entry.views++;
       if (e.event_type === "add_to_cart") entry.addToCart++;
       if (e.event_type === "purchase") {
         entry.purchases++;
@@ -163,7 +175,7 @@ export function EcommerceTrackingTab() {
       const entry = map.get(url) || { url, totalEvents: 0, views: 0, addToCart: 0, checkout: 0, purchases: 0, revenue: 0, searches: 0, events: [] };
       entry.totalEvents++;
       entry.events.push(e);
-      if (e.event_type === "product_view") entry.views++;
+      if (e.event_type === "view_item") entry.views++;
       if (e.event_type === "add_to_cart") entry.addToCart++;
       if (e.event_type === "begin_checkout") entry.checkout++;
       if (e.event_type === "purchase") { entry.purchases++; entry.revenue += e.cart_value || e.product_price || 0; }
@@ -194,7 +206,7 @@ export function EcommerceTrackingTab() {
     const map = new Map<string, Record<string, number>>();
     ecomEvents.forEach(e => {
       const day = new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-      const entry = map.get(day) || { product_view: 0, add_to_cart: 0, begin_checkout: 0, purchase: 0 };
+      const entry = map.get(day) || { view_item: 0, add_to_cart: 0, begin_checkout: 0, purchase: 0 };
       if (entry[e.event_type] !== undefined) entry[e.event_type]++;
       map.set(day, entry);
     });
@@ -437,7 +449,7 @@ export function EcommerceTrackingTab() {
                     <YAxis {...AXIS_STYLE} />
                     <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                     <Legend {...LEGEND_STYLE} />
-                    <Area type="monotone" dataKey="product_view" stackId="1" stroke={ECOM_COLORS.product_view} fill="url(#ecom-product_view)" strokeWidth={1.5} name="Visualização" />
+                    <Area type="monotone" dataKey="view_item" stackId="1" stroke={ECOM_COLORS.view_item} fill="url(#ecom-view_item)" strokeWidth={1.5} name="View Item" />
                     <Area type="monotone" dataKey="add_to_cart" stackId="1" stroke={ECOM_COLORS.add_to_cart} fill="url(#ecom-add_to_cart)" strokeWidth={1.5} name="Add Carrinho" />
                     <Area type="monotone" dataKey="begin_checkout" stackId="1" stroke={ECOM_COLORS.begin_checkout} fill="url(#ecom-begin_checkout)" strokeWidth={1.5} name="Checkout" />
                     <Area type="monotone" dataKey="purchase" stackId="1" stroke={ECOM_COLORS.purchase} fill="url(#ecom-purchase)" strokeWidth={1.5} name="Compra" />
