@@ -328,6 +328,17 @@ export default function IndexingPage() {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <FeatureBanner icon={Send} title="Indexação de Páginas" description={<>Gerencie a <strong>indexação</strong> das suas páginas no Google com submissão em lote, sitemaps, agendamentos e monitoramento em tempo real.</>} />
 
+        {/* No GSC Connection Warning */}
+        {!gscLoading && gscConnections.length === 0 && (
+          <EmptyState
+            icon={WifiOff}
+            title="Google Search Console não conectado"
+            description="Para usar o módulo de indexação, conecte uma conta de serviço do Google Search Console nas configurações do projeto."
+            onAction={() => window.location.href = "/settings"}
+            actionLabel="Ir para Configurações"
+          />
+        )}
+
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
