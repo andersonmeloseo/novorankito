@@ -34,6 +34,7 @@ const AdminOverviewPage = lazy(() => import("@/pages/admin/AdminOverviewPage"));
 const AdminClientsPage = lazy(() => import("@/pages/admin/AdminClientsPage"));
 const AdminUsersPageAdmin = lazy(() => import("@/pages/admin/AdminUsersPage"));
 const AdminBillingPageAdmin = lazy(() => import("@/pages/admin/AdminBillingPage"));
+const AdminPlansPage = lazy(() => import("@/pages/admin/AdminPlansPage"));
 const AdminProjectsPageAdmin = lazy(() => import("@/pages/admin/AdminProjectsPage"));
 const AdminUsagePage = lazy(() => import("@/pages/admin/AdminUsagePage"));
 const AdminIntegrationsPage = lazy(() => import("@/pages/admin/AdminIntegrationsPage"));
@@ -120,6 +121,7 @@ const App = () => (
                   <Route path="/admin/clients" element={<AdminClientsPage />} />
                   <Route path="/admin/users" element={<AdminUsersPageAdmin />} />
                   <Route path="/admin/billing" element={<AdminBillingPageAdmin />} />
+                  <Route path="/admin/plans" element={<AdminPlansPage />} />
                   <Route path="/admin/projects" element={<AdminProjectsPageAdmin />} />
                   <Route path="/admin/usage" element={<AdminUsagePage />} />
                   <Route path="/admin/integrations" element={<AdminIntegrationsPage />} />

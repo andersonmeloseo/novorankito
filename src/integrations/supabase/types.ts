@@ -1029,6 +1029,131 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_features: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          feature_name: string
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          feature_name: string
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_usage: {
+        Row: {
+          ai_requests_used: number
+          created_at: string
+          events_used: number
+          id: string
+          period: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_requests_used?: number
+          created_at?: string
+          events_used?: number
+          id?: string
+          period: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_requests_used?: number
+          created_at?: string
+          events_used?: number
+          id?: string
+          period?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          ai_requests_limit: number
+          billing_interval: string
+          created_at: string
+          currency: string
+          description: string | null
+          events_limit: number
+          id: string
+          indexing_daily_limit: number
+          is_active: boolean
+          is_default: boolean
+          members_limit: number
+          name: string
+          price: number
+          projects_limit: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          ai_requests_limit?: number
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          events_limit?: number
+          id?: string
+          indexing_daily_limit?: number
+          is_active?: boolean
+          is_default?: boolean
+          members_limit?: number
+          name: string
+          price?: number
+          projects_limit?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_requests_limit?: number
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          events_limit?: number
+          id?: string
+          indexing_daily_limit?: number
+          is_active?: boolean
+          is_default?: boolean
+          members_limit?: number
+          name?: string
+          price?: number
+          projects_limit?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2285,6 +2410,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_plan_limit: {
+        Args: { _limit_type: string; _user_id: string }
+        Returns: Json
+      }
       check_rate_limit: {
         Args: {
           p_key: string
@@ -2306,6 +2435,10 @@ export type Database = {
       }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      plan_has_feature: {
+        Args: { _feature_key: string; _user_id: string }
         Returns: boolean
       }
     }
