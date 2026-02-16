@@ -466,29 +466,6 @@ export function IndexingDashboard({ stats, inventory, requests, sitemaps }: Prop
         </Card>
       )}
 
-      {/* ─── Row 4: Quota Card ─── */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Zap className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Quota de Indexação Diária</div>
-              <div className="text-lg font-bold text-foreground tabular-nums">{stats.sentToday} / {stats.dailyLimit}</div>
-            </div>
-          </div>
-          <div className="w-40">
-            <Progress value={Math.min(100, Math.round((stats.sentToday / stats.dailyLimit) * 100))} className="h-2.5" />
-            <div className="text-[9px] text-muted-foreground text-right mt-1">
-              {Math.max(0, stats.dailyLimit - stats.sentToday)} restantes hoje
-            </div>
-          </div>
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          O Google permite ~200 notificações de indexação por dia por propriedade. Este contador reseta à meia-noite (UTC).
-        </p>
-      </Card>
     </div>
   );
 }
