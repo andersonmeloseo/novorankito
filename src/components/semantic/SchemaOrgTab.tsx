@@ -1403,6 +1403,53 @@ const SCHEMA_SAMPLES: SchemaSample[] = [
   },
 ];
 
+// ── Didactic descriptions for explorer ──
+const SCHEMA_DIDACTICS: Record<string, string> = {
+  Thing: "Tipo raiz de todos os schemas. Use como base genérica quando nenhum tipo específico se aplica.",
+  CreativeWork: "Qualquer obra criativa: artigos, vídeos, livros, músicas. Use para conteúdo autoral.",
+  Article: "Artigos e publicações editoriais. Use para posts de blog, notícias e artigos técnicos.",
+  BlogPosting: "Post de blog. Use para conteúdo em formato blog com autor e data.",
+  NewsArticle: "Artigo jornalístico. Use para notícias e conteúdo editorial de veículos de mídia.",
+  WebPage: "Página web genérica. Use para representar qualquer página do seu site.",
+  WebSite: "Representa o site inteiro. Use para ativar o Sitelinks Search Box no Google.",
+  FAQPage: "Página de perguntas frequentes. Gera Rich Results de FAQ diretamente no Google.",
+  HowTo: "Tutorial passo a passo. Gera Rich Results de 'Como fazer' no Google.",
+  Review: "Avaliação de produto ou serviço. Gera estrelas de avaliação nos resultados.",
+  Recipe: "Receita culinária. Gera Rich Results com foto, ingredientes e tempo de preparo.",
+  VideoObject: "Vídeo publicado online. Gera miniatura de vídeo nos resultados de busca.",
+  ImageObject: "Imagem com metadados. Use para otimizar imagens na busca por imagens do Google.",
+  Product: "Produto à venda. Gera Rich Results com preço, disponibilidade e avaliações.",
+  Offer: "Oferta comercial vinculada a um produto. Define preço, moeda e disponibilidade.",
+  Organization: "Empresa ou instituição. Alimenta o Knowledge Panel e dados de negócio.",
+  Corporation: "Empresa de capital aberto. Use quando a empresa tem ações na bolsa.",
+  LocalBusiness: "Negócio com endereço físico. Fundamental para SEO local e Google Maps.",
+  Restaurant: "Restaurante, bar ou café. Ativa Rich Results de restaurante com cardápio.",
+  Store: "Loja física. Use para comércios com localização e horários de funcionamento.",
+  MedicalBusiness: "Clínica, consultório ou hospital. Para negócios de saúde com especialidades.",
+  Person: "Pessoa identificável. Use para autores, fundadores e especialistas do seu nicho.",
+  Event: "Evento com data e local. Gera Rich Results de eventos com ingressos.",
+  MusicEvent: "Show ou festival musical. Inclui artistas, local e venda de ingressos.",
+  Course: "Curso ou treinamento. Gera Rich Results com provedor e preço do curso.",
+  JobPosting: "Vaga de emprego. Gera Rich Results com salário, local e tipo de contrato.",
+  Place: "Lugar genérico. Use como base para locais físicos sem tipo específico.",
+  PostalAddress: "Endereço postal estruturado. Use dentro de Organization ou LocalBusiness.",
+  GeoCoordinates: "Coordenadas geográficas (lat/long). Ajuda o Google Maps a localizar o negócio.",
+  BreadcrumbList: "Lista de breadcrumbs de navegação. Melhora rastreamento e exibe caminho no Google.",
+  ItemList: "Lista ordenada de itens. Gera Carousel Rich Results com múltiplos resultados.",
+  SoftwareApplication: "App mobile ou web. Gera Rich Results com nota e preço.",
+  Brand: "Marca comercial. Use dentro de Product para identificar o fabricante.",
+  ContactPoint: "Ponto de contato (telefone, e-mail). Use dentro de Organization.",
+  Action: "Ação que pode ser realizada. Base para SearchAction, BuyAction, etc.",
+  SearchAction: "Ação de busca interna. Ativa o Sitelinks Search Box no Google.",
+  Intangible: "Conceito abstrato. Base para ofertas, serviços e valores intangíveis.",
+  Service: "Serviço prestado. Use para descrever serviços profissionais com área de atuação.",
+  AggregateRating: "Nota média de avaliações. Gera estrelas nos resultados de busca.",
+  Dataset: "Conjunto de dados. Use para dados públicos, pesquisas e estatísticas.",
+  SpeakableSpecification: "Trecho de texto otimizado para assistentes de voz (Google Assistant).",
+  CollectionPage: "Página que agrupa itens. Use para páginas de categorias ou listagens.",
+  ProfilePage: "Página de perfil de pessoa ou organização. Ajuda na associação de autoria.",
+};
+
 // ── Hierarchical tree — uses full registry ──
 
 
@@ -1612,46 +1659,57 @@ export function SchemaOrgTab({ projectId }: Props) {
     const hasSchema = FULL_CATALOG.find((s) => s.type === node.name);
     const inUse = entitySchemaTypes.has(node.name);
 
+    const schemaDesc = hasSchema?.description || SCHEMA_DIDACTICS[node.name];
+
     return (
       <div key={node.name}>
         <div
-          className={`group flex items-center gap-1.5 py-1.5 px-2 rounded-md text-xs cursor-pointer transition-colors hover:bg-muted/60 ${inUse ? "bg-primary/5" : ""}`}
+          className={`group flex items-start gap-1.5 py-2 px-2 rounded-md text-xs cursor-pointer transition-colors hover:bg-muted/60 ${inUse ? "bg-primary/5" : ""}`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
           onClick={() => {
             if (hasChildren) toggleTreeNode(node.name);
             if (hasSchema) { setSelectedType(hasSchema); setInnerTab("catalog"); }
           }}
         >
-          {hasChildren ? (
-            <button onClick={(e) => { e.stopPropagation(); toggleTreeNode(node.name); }}>
-              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </button>
-          ) : (
-            <Minus className="h-3 w-3 text-muted-foreground/40" />
-          )}
-          <span className={`${hasSchema ? "font-medium text-foreground" : "text-muted-foreground"}`}>{node.name}</span>
-          {hasSchema?.googleFeature && (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-              <Sparkles className="h-2 w-2 mr-0.5" />
-              {hasSchema.googleFeature.split(",")[0]}
-            </Badge>
-          )}
-          {inUse && <CheckCircle2 className="h-3 w-3 text-primary" />}
-          {hasSchema && (
-            <button
-              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-primary font-medium flex items-center gap-0.5 hover:underline"
-              onClick={(e) => { e.stopPropagation(); startBuilder(hasSchema); }}
-            >
-              <Wrench className="h-2.5 w-2.5" />
-              Construir
-            </button>
-          )}
-          {node.googleFeature && !hasSchema?.googleFeature && (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 ml-auto">
-              <Sparkles className="h-2 w-2 mr-0.5" />
-              Google
-            </Badge>
-          )}
+          <div className="mt-0.5 shrink-0">
+            {hasChildren ? (
+              <button onClick={(e) => { e.stopPropagation(); toggleTreeNode(node.name); }}>
+                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+            ) : (
+              <Minus className="h-3 w-3 text-muted-foreground/40" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`${hasSchema ? "font-medium text-foreground" : "text-muted-foreground"}`}>{node.name}</span>
+              {hasSchema?.googleFeature && (
+                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                  <Sparkles className="h-2 w-2 mr-0.5" />
+                  {hasSchema.googleFeature.split(",")[0]}
+                </Badge>
+              )}
+              {inUse && <CheckCircle2 className="h-3 w-3 text-primary" />}
+              {hasSchema && (
+                <button
+                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-primary font-medium flex items-center gap-0.5 hover:underline shrink-0"
+                  onClick={(e) => { e.stopPropagation(); startBuilder(hasSchema); }}
+                >
+                  <Wrench className="h-2.5 w-2.5" />
+                  Construir
+                </button>
+              )}
+              {node.googleFeature && !hasSchema?.googleFeature && (
+                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 ml-auto">
+                  <Sparkles className="h-2 w-2 mr-0.5" />
+                  Google
+                </Badge>
+              )}
+            </div>
+            {schemaDesc && (
+              <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{schemaDesc}</p>
+            )}
+          </div>
         </div>
         {hasChildren && isExpanded && node.children.map((c) => renderTreeNode(c, depth + 1))}
       </div>
