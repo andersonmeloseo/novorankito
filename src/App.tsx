@@ -55,7 +55,7 @@ const RRFinancialPage = lazy(() => import("@/pages/rank-rent/RRFinancialPage"));
 const RRAvailabilityPage = lazy(() => import("@/pages/rank-rent/RRAvailabilityPage"));
 const RRPerformancePage = lazy(() => import("@/pages/rank-rent/RRPerformancePage"));
 const RRProjectMonetizationPage = lazy(() => import("@/pages/rank-rent/RRProjectMonetizationPage"));
-
+const SemanticGraphPage = lazy(() => import("@/pages/SemanticGraphPage"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -114,6 +114,8 @@ const App = () => (
                   <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
                   <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
                   <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
+                  {/* Semantic Graph */}
+                  <Route path="/semantic-graph" element={<SemanticGraphPage />} />
                 </Route>
                 {/* Admin — protected by role check */}
                 <Route element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>

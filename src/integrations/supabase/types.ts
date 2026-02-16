@@ -1538,6 +1538,123 @@ export type Database = {
           },
         ]
       }
+      semantic_entities: {
+        Row: {
+          created_at: string
+          description: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          name: string
+          owner_id: string
+          position_x: number | null
+          position_y: number | null
+          project_id: string
+          schema_properties: Json | null
+          schema_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          owner_id: string
+          position_x?: number | null
+          position_y?: number | null
+          project_id: string
+          schema_properties?: Json | null
+          schema_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          owner_id?: string
+          position_x?: number | null
+          position_y?: number | null
+          project_id?: string
+          schema_properties?: Json | null
+          schema_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_entities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      semantic_relations: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          object_id: string
+          owner_id: string
+          predicate: string
+          project_id: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          object_id: string
+          owner_id: string
+          predicate: string
+          project_id: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          object_id?: string
+          owner_id?: string
+          predicate?: string
+          project_id?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_relations_object_id_fkey"
+            columns: ["object_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semantic_relations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semantic_relations_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_metrics: {
         Row: {
           clicks: number

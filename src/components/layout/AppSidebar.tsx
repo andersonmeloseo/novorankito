@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
-  Layers, DollarSign, Store, TrendingUp, Plus
+  Layers, DollarSign, Store, TrendingUp, Plus, Network
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,6 +39,10 @@ const rankRentNav = [
   { title: "Financeiro", url: "/rank-rent/financial", icon: DollarSign },
   { title: "Performance", url: "/rank-rent/performance", icon: TrendingUp },
   { title: "Disponibilidade", url: "/rank-rent/availability", icon: Store },
+];
+
+const semanticNav = [
+  { title: "Grafo Semântico", url: "/semantic-graph", icon: Network },
 ];
 
 const accountNav = [
@@ -187,6 +191,19 @@ export function AppSidebar() {
             <SidebarMenu>
               {rankRentNav.map((item) => (
                 <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+            🧠 SEO Semântico
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {semanticNav.map((item) => (
+                <NavItem key={item.url} item={item} end />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
