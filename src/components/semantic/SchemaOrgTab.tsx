@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/collapsible";
 import {
   FULL_SCHEMA_TYPES, buildFullSchemaTree, getAllSchemaTypeNames, getSchemaTypeCount,
-  type SchemaTreeNode,
+  buildFullCatalog, getAllCategories,
+  type SchemaTreeNode, type AutoSchemaTypeDef,
 } from "./schema-registry";
 
 // ═══════════════════════════════════════════════════════════════
@@ -1105,7 +1106,31 @@ const SCHEMA_CATALOG: SchemaTypeDef[] = [
   },
 ];
 
-const CATEGORIES = [...new Set(SCHEMA_CATALOG.map((s) => s.category))];
+// Merge explicit catalog with auto-generated entries from registry
+const EXPLICIT_TYPE_NAMES = new Set(SCHEMA_CATALOG.map((s) => s.type));
+const AUTO_GENERATED = buildFullCatalog(EXPLICIT_TYPE_NAMES);
+
+// Full merged catalog: explicit first, then auto-generated
+const FULL_CATALOG: SchemaTypeDef[] = [
+  ...SCHEMA_CATALOG,
+  ...AUTO_GENERATED.map((a) => ({
+    type: a.type,
+    category: a.category,
+    description: a.description,
+    googleFeature: a.googleFeature,
+    parent: a.parent,
+    properties: a.properties.map((p) => ({
+      name: p.name,
+      required: p.required,
+      description: p.description,
+      example: p.example,
+      inputType: p.inputType,
+    })),
+    relatedTypes: undefined,
+  })),
+];
+
+const CATEGORIES = [...new Set(FULL_CATALOG.map((s) => s.category))].sort();
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Organizações": Building2,
@@ -1124,6 +1149,12 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Saúde": Plus,
   "Educação": BookOpen,
   "Imóveis": Building2,
+  "Ações": Play,
+  "Viagens": Globe,
+  "Enumerações": Hash,
+  "Tipos de Dados": Code2,
+  "Valores Estruturados": Layers,
+  "Outros": Puzzle,
 };
 
 // ── Pre-built sample schemas ──
@@ -1313,9 +1344,9 @@ export function SchemaOrgTab({ projectId }: Props) {
     })();
   }, [projectId]);
 
-  // Filter catalog
+  // Filter catalog — use FULL_CATALOG instead of SCHEMA_CATALOG
   const filteredCatalog = useMemo(() => {
-    let items = SCHEMA_CATALOG;
+    let items = FULL_CATALOG;
     if (selectedCategory) items = items.filter((s) => s.category === selectedCategory);
     if (search) {
       const q = search.toLowerCase();
@@ -1472,7 +1503,7 @@ export function SchemaOrgTab({ projectId }: Props) {
   const renderTreeNode = (node: SchemaTreeNode, depth: number = 0): React.ReactNode => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedTreeNodes.has(node.name);
-    const hasSchema = SCHEMA_CATALOG.find((s) => s.type === node.name);
+    const hasSchema = FULL_CATALOG.find((s) => s.type === node.name);
     const inUse = entitySchemaTypes.has(node.name);
 
     return (
@@ -1516,7 +1547,7 @@ export function SchemaOrgTab({ projectId }: Props) {
             <span className="text-xs font-medium">Tipos no Catálogo</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{getSchemaTypeCount()}</p>
-          <p className="text-[10px] text-muted-foreground">{CATEGORIES.length} categorias · {SCHEMA_CATALOG.length} c/ builder</p>
+          <p className="text-[10px] text-muted-foreground">{CATEGORIES.length} categorias · {FULL_CATALOG.length} c/ builder</p>
         </Card>
         <Card className="p-4 space-y-1">
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -1584,7 +1615,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                 </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {SCHEMA_CATALOG.filter((s) => s.googleFeature).slice(0, 16).map((schema) => {
+                {FULL_CATALOG.filter((s) => s.googleFeature).slice(0, 16).map((schema) => {
                   const CatIcon = CATEGORY_ICONS[schema.category] || Globe;
                   return (
                     <Card
@@ -1808,7 +1839,7 @@ export function SchemaOrgTab({ projectId }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {SCHEMA_SAMPLES.map((sample) => {
                 const SampleIcon = sample.icon;
-                const typeDef = SCHEMA_CATALOG.find((s) => s.type === sample.type);
+                const typeDef = FULL_CATALOG.find((s) => s.type === sample.type);
                 const sampleJson = JSON.stringify({ "@context": "https://schema.org", ...Object.fromEntries(
                   Object.entries(sample.values).map(([k, v]) => {
                     try { return [k, JSON.parse(v)]; } catch { return [k, v]; }
@@ -1875,7 +1906,7 @@ export function SchemaOrgTab({ projectId }: Props) {
             </div>
             <div className="flex gap-1.5 flex-wrap">
               <Badge variant={selectedCategory === null ? "default" : "outline"} className="cursor-pointer text-[10px]" onClick={() => setSelectedCategory(null)}>
-                Todos ({SCHEMA_CATALOG.length})
+                Todos ({FULL_CATALOG.length})
               </Badge>
               {CATEGORIES.map((cat) => {
                 const CatIcon = CATEGORY_ICONS[cat] || Globe;
@@ -1961,7 +1992,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                         <h4 className="text-sm font-semibold flex items-center gap-2"><Puzzle className="h-4 w-4" />Tipos Relacionados</h4>
                         <div className="flex gap-2 flex-wrap">
                           {selectedType.relatedTypes.map((rt) => {
-                            const found = SCHEMA_CATALOG.find((s) => s.type === rt);
+                            const found = FULL_CATALOG.find((s) => s.type === rt);
                             return (
                               <Badge key={rt} variant="outline" className="cursor-pointer hover:bg-primary/10 gap-1 text-xs" onClick={() => found && setSelectedType(found)}>
                                 <ChevronRight className="h-3 w-3" />{rt}
@@ -2060,7 +2091,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                   const Icon = ENTITY_ICONS[entity.entity_type] || Globe;
                   const color = ENTITY_COLORS[entity.entity_type] || "hsl(250 85% 60%)";
                   const schemaType = entity.schema_type;
-                  const catalogEntry = SCHEMA_CATALOG.find((s) => s.type === schemaType);
+                  const catalogEntry = FULL_CATALOG.find((s) => s.type === schemaType);
                   const props = entity.schema_properties as Record<string, string> | null;
                   const filledCount = props ? Object.values(props).filter(Boolean).length : 0;
                   const totalProps = catalogEntry?.properties.length || 0;
@@ -2068,7 +2099,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                   const filledRequired = requiredProps.filter((p) => props?.[p.name]);
                   const reqPct = requiredProps.length > 0 ? Math.round((filledRequired.length / requiredProps.length) * 100) : 0;
                   const suggestions = !schemaType
-                    ? (SCHEMA_TYPES[entity.entity_type] || []).map((t) => SCHEMA_CATALOG.find((s) => s.type === t)).filter(Boolean) as SchemaTypeDef[]
+                    ? (SCHEMA_TYPES[entity.entity_type] || []).map((t) => FULL_CATALOG.find((s) => s.type === t)).filter(Boolean) as SchemaTypeDef[]
                     : [];
 
                   return (

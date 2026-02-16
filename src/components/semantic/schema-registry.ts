@@ -1037,3 +1037,245 @@ export function getAllSchemaTypeNames(): string[] {
 export function getSchemaTypeCount(): number {
   return FULL_SCHEMA_TYPES.length;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Auto-category mapping from parent hierarchy
+// ═══════════════════════════════════════════════════════════════
+
+function getAncestors(name: string): string[] {
+  const map = new Map<string, string>();
+  FULL_SCHEMA_TYPES.forEach((t) => { if (t.parent) map.set(t.name, t.parent); });
+  const ancestors: string[] = [];
+  let current = name;
+  while (map.has(current)) {
+    current = map.get(current)!;
+    ancestors.push(current);
+  }
+  return ancestors;
+}
+
+const ANCESTOR_CATEGORY_MAP: Record<string, string> = {
+  Organization: "Organizações",
+  LocalBusiness: "Negócios Especializados",
+  Store: "Negócios Especializados",
+  FoodEstablishment: "Negócios Especializados",
+  HealthAndBeautyBusiness: "Negócios Especializados",
+  HomeAndConstructionBusiness: "Negócios Especializados",
+  EntertainmentBusiness: "Negócios Especializados",
+  SportsActivityLocation: "Negócios Especializados",
+  LodgingBusiness: "Negócios Especializados",
+  MedicalBusiness: "Negócios Especializados",
+  AutomotiveBusiness: "Negócios Especializados",
+  EmergencyService: "Negócios Especializados",
+  FinancialService: "Negócios Especializados",
+  Product: "Produtos",
+  Vehicle: "Produtos",
+  CreativeWork: "Conteúdo",
+  Article: "Conteúdo",
+  MediaObject: "Conteúdo",
+  WebPage: "Web",
+  WebPageElement: "Web",
+  WebSite: "Web",
+  Event: "Eventos",
+  Person: "Pessoas",
+  Place: "Locais",
+  Accommodation: "Imóveis",
+  CivicStructure: "Locais",
+  Landform: "Locais",
+  AdministrativeArea: "Locais",
+  Action: "Ações",
+  Service: "Serviços",
+  FinancialProduct: "Serviços",
+  BroadcastService: "Serviços",
+  Offer: "Comércio",
+  Order: "Comércio",
+  Invoice: "Comércio",
+  ItemList: "Listas",
+  Rating: "Avaliações",
+  Review: "Avaliações",
+  MedicalEntity: "Saúde",
+  Substance: "Saúde",
+  AnatomicalStructure: "Saúde",
+  BioChemEntity: "Saúde",
+  EducationalOrganization: "Educação",
+  Reservation: "Comércio",
+  Trip: "Viagens",
+  Brand: "Comércio",
+  Enumeration: "Enumerações",
+  DataType: "Tipos de Dados",
+  StructuredValue: "Valores Estruturados",
+  Intangible: "Outros",
+};
+
+function inferCategory(typeName: string): string {
+  // Direct match
+  if (ANCESTOR_CATEGORY_MAP[typeName]) return ANCESTOR_CATEGORY_MAP[typeName];
+  // Check ancestors
+  const ancestors = getAncestors(typeName);
+  for (const a of ancestors) {
+    if (ANCESTOR_CATEGORY_MAP[a]) return ANCESTOR_CATEGORY_MAP[a];
+  }
+  return "Outros";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Base properties per category for auto-generated types
+// ═══════════════════════════════════════════════════════════════
+
+interface AutoProp {
+  name: string;
+  required: boolean;
+  description: string;
+  example: string;
+  inputType?: "text" | "url" | "date" | "number" | "json" | "boolean" | "textarea";
+}
+
+const BASE_PROPS_BY_ANCESTOR: Record<string, AutoProp[]> = {
+  Organization: [
+    { name: "name", required: true, description: "Nome", example: "Nome da Organização" },
+    { name: "url", required: false, description: "Site", example: "https://example.com", inputType: "url" },
+    { name: "logo", required: false, description: "Logo URL", example: "https://example.com/logo.png", inputType: "url" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição da organização", inputType: "textarea" },
+    { name: "address", required: false, description: "Endereço", example: "Rua Principal, 123" },
+    { name: "telephone", required: false, description: "Telefone", example: "+55 11 9999-0000" },
+    { name: "sameAs", required: false, description: "Redes sociais (JSON)", example: '["https://facebook.com/..."]', inputType: "json" },
+  ],
+  LocalBusiness: [
+    { name: "name", required: true, description: "Nome do negócio", example: "Nome do Estabelecimento" },
+    { name: "image", required: false, description: "Foto", example: "https://example.com/foto.jpg", inputType: "url" },
+    { name: "address", required: true, description: "Endereço (JSON PostalAddress)", example: '{"@type":"PostalAddress","streetAddress":"Rua A, 123","addressLocality":"São Paulo","addressRegion":"SP"}', inputType: "json" },
+    { name: "telephone", required: false, description: "Telefone", example: "+55 11 3333-4444" },
+    { name: "url", required: false, description: "Site", example: "https://example.com", inputType: "url" },
+    { name: "priceRange", required: false, description: "Faixa de preço", example: "$$" },
+    { name: "openingHoursSpecification", required: false, description: "Horários (JSON)", example: '{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday"],"opens":"08:00","closes":"18:00"}', inputType: "json" },
+    { name: "geo", required: false, description: "Coordenadas (JSON)", example: '{"@type":"GeoCoordinates","latitude":"-23.55","longitude":"-46.63"}', inputType: "json" },
+  ],
+  Product: [
+    { name: "name", required: true, description: "Nome do produto", example: "Nome do Produto" },
+    { name: "image", required: false, description: "Imagem", example: "https://example.com/img.jpg", inputType: "url" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição do produto", inputType: "textarea" },
+    { name: "brand", required: false, description: "Marca (JSON)", example: '{"@type":"Brand","name":"Marca"}', inputType: "json" },
+    { name: "offers", required: false, description: "Oferta (JSON)", example: '{"@type":"Offer","price":"99","priceCurrency":"BRL"}', inputType: "json" },
+    { name: "sku", required: false, description: "SKU", example: "SKU-001" },
+  ],
+  CreativeWork: [
+    { name: "name", required: true, description: "Título", example: "Título da obra" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição do conteúdo", inputType: "textarea" },
+    { name: "author", required: false, description: "Autor (JSON Person)", example: '{"@type":"Person","name":"Autor"}', inputType: "json" },
+    { name: "datePublished", required: false, description: "Data de publicação", example: "2025-01-01", inputType: "date" },
+    { name: "url", required: false, description: "URL", example: "https://example.com", inputType: "url" },
+    { name: "inLanguage", required: false, description: "Idioma", example: "pt-BR" },
+  ],
+  Event: [
+    { name: "name", required: true, description: "Nome do evento", example: "Nome do Evento" },
+    { name: "startDate", required: true, description: "Data de início", example: "2025-06-15", inputType: "date" },
+    { name: "endDate", required: false, description: "Data de término", example: "2025-06-17", inputType: "date" },
+    { name: "location", required: false, description: "Local (JSON Place)", example: '{"@type":"Place","name":"Local","address":"Endereço"}', inputType: "json" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição do evento", inputType: "textarea" },
+    { name: "organizer", required: false, description: "Organizador (JSON)", example: '{"@type":"Organization","name":"Org"}', inputType: "json" },
+    { name: "offers", required: false, description: "Ingressos (JSON)", example: '{"@type":"Offer","price":"100","priceCurrency":"BRL"}', inputType: "json" },
+  ],
+  Person: [
+    { name: "name", required: true, description: "Nome completo", example: "Nome da Pessoa" },
+    { name: "jobTitle", required: false, description: "Cargo", example: "Profissão" },
+    { name: "url", required: false, description: "Site pessoal", example: "https://example.com", inputType: "url" },
+    { name: "image", required: false, description: "Foto", example: "https://example.com/foto.jpg", inputType: "url" },
+    { name: "sameAs", required: false, description: "Redes sociais (JSON)", example: '["https://linkedin.com/in/..."]', inputType: "json" },
+  ],
+  Place: [
+    { name: "name", required: true, description: "Nome do local", example: "Nome do Local" },
+    { name: "address", required: false, description: "Endereço", example: "Endereço completo" },
+    { name: "geo", required: false, description: "Coordenadas (JSON)", example: '{"@type":"GeoCoordinates","latitude":"-23.55","longitude":"-46.63"}', inputType: "json" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição do local", inputType: "textarea" },
+    { name: "image", required: false, description: "Foto", example: "https://example.com/foto.jpg", inputType: "url" },
+  ],
+  Action: [
+    { name: "name", required: false, description: "Nome da ação", example: "Nome" },
+    { name: "target", required: false, description: "Alvo da ação", example: "https://example.com", inputType: "url" },
+    { name: "object", required: false, description: "Objeto (JSON)", example: '{"@type":"Thing","name":"Item"}', inputType: "json" },
+  ],
+  Service: [
+    { name: "name", required: true, description: "Nome do serviço", example: "Nome do Serviço" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição do serviço", inputType: "textarea" },
+    { name: "provider", required: false, description: "Provedor (JSON)", example: '{"@type":"Organization","name":"Empresa"}', inputType: "json" },
+    { name: "areaServed", required: false, description: "Área atendida", example: "Brasil" },
+    { name: "url", required: false, description: "URL", example: "https://example.com", inputType: "url" },
+  ],
+  MedicalEntity: [
+    { name: "name", required: true, description: "Nome", example: "Nome" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição médica", inputType: "textarea" },
+    { name: "code", required: false, description: "Código médico (JSON)", example: '{"@type":"MedicalCode","codeValue":"I10","codingSystem":"ICD-10"}', inputType: "json" },
+    { name: "url", required: false, description: "Referência URL", example: "https://example.com", inputType: "url" },
+  ],
+  Intangible: [
+    { name: "name", required: true, description: "Nome", example: "Nome" },
+    { name: "description", required: false, description: "Descrição", example: "Descrição", inputType: "textarea" },
+    { name: "url", required: false, description: "URL", example: "https://example.com", inputType: "url" },
+  ],
+};
+
+// Fallback base props for any type
+const FALLBACK_PROPS: AutoProp[] = [
+  { name: "name", required: true, description: "Nome", example: "Nome" },
+  { name: "description", required: false, description: "Descrição", example: "Descrição", inputType: "textarea" },
+  { name: "url", required: false, description: "URL", example: "https://example.com", inputType: "url" },
+];
+
+function getBaseProps(typeName: string): AutoProp[] {
+  if (BASE_PROPS_BY_ANCESTOR[typeName]) return BASE_PROPS_BY_ANCESTOR[typeName];
+  const ancestors = getAncestors(typeName);
+  for (const a of ancestors) {
+    if (BASE_PROPS_BY_ANCESTOR[a]) return BASE_PROPS_BY_ANCESTOR[a];
+  }
+  return FALLBACK_PROPS;
+}
+
+export interface AutoSchemaTypeDef {
+  type: string;
+  category: string;
+  description: string;
+  googleFeature?: string;
+  parent?: string;
+  properties: AutoProp[];
+  isAutoGenerated: boolean;
+}
+
+/**
+ * Builds the FULL catalog: explicit entries (from SchemaOrgTab) + auto-generated ones
+ * for every registry type that doesn't have an explicit entry.
+ */
+export function buildFullCatalog(explicitTypes: Set<string>): AutoSchemaTypeDef[] {
+  const result: AutoSchemaTypeDef[] = [];
+
+  FULL_SCHEMA_TYPES.forEach((t) => {
+    if (t.name === "Thing") return; // Skip root
+    if (explicitTypes.has(t.name)) return; // Already has explicit entry
+
+    const category = inferCategory(t.name);
+    const baseProps = getBaseProps(t.name);
+
+    result.push({
+      type: t.name,
+      category,
+      description: t.description || `Tipo Schema.org: ${t.name}`,
+      googleFeature: t.googleFeature,
+      parent: t.parent,
+      properties: [
+        { name: "@type", required: true, description: "Tipo Schema.org", example: t.name },
+        ...baseProps,
+      ],
+      isAutoGenerated: true,
+    });
+  });
+
+  return result;
+}
+
+// Get all unique categories from the full registry
+export function getAllCategories(): string[] {
+  const cats = new Set<string>();
+  FULL_SCHEMA_TYPES.forEach((t) => {
+    if (t.name !== "Thing") cats.add(inferCategory(t.name));
+  });
+  return [...cats].sort();
+}
