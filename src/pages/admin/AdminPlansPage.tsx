@@ -22,12 +22,14 @@ import {
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
   free: Zap,
+  start: Zap,
   growth: Crown,
   unlimited: Infinity,
 };
 
 const PLAN_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground border-border",
+  start: "bg-muted text-muted-foreground border-border",
   growth: "bg-primary/10 text-primary border-primary/20",
   unlimited: "bg-chart-4/10 text-chart-4 border-chart-4/20",
 };
