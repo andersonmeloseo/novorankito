@@ -75,6 +75,7 @@ export function AllEventsTab() {
     // Rankito
     page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
     email_click: "✉️", button_click: "🖱️", form_submit: "📝", heatmap_click: "🔥",
+    web_vitals: "📊",
   };
 
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
@@ -111,7 +112,7 @@ export function AllEventsTab() {
   const uniquePages = new Set(events.map(e => e.page_url)).size;
   const lastEvent = events.length > 0 ? events[0] : null; // already sorted desc
   const lastReferrer = lastEvent ? (lastEvent.referrer || "").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || "direto" : "—";
-  const lastCta = lastEvent ? (lastEvent.cta_text || lastEvent.event_type.replace(/_/g, " ")) : "—";
+  const lastCta = lastEvent ? (lastEvent.cta_text || lastEvent.cta_selector || "—") : "—";
   const peakInfo = (() => {
     let maxVal = 0, peakDay = "", peakHour = 0;
     heatmapData.forEach(row => {
@@ -434,7 +435,7 @@ export function AllEventsTab() {
                 `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type] || e.event_type}`,
                 (e.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
                 `🔗 ${(e.referrer || "direto").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`,
-                e.cta_text || e.event_type.replace(/_/g, " "),
+                e.cta_text || e.cta_selector || "—",
                 `${DEVICE_EMOJI[e.device || ""] || "💻"} ${(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}`,
                 `${BROWSER_EMOJI[e.browser || ""] || "🌐"} ${e.browser || "?"}`,
                 `📍 ${e.city || "?"}, ${e.state || "?"}`,

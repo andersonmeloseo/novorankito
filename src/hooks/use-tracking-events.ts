@@ -106,7 +106,7 @@ export const PLUGIN_EVENT_TYPES = [
   "StartTrial", "SubmitApplication", "Subscribe",
   // Rankito custom (CTA tracking)
   "whatsapp_click", "phone_click", "email_click", "button_click", "form_submit",
-  "page_exit", "heatmap_click",
+  "page_exit", "heatmap_click", "web_vitals",
 ] as const;
 
 export type PluginEventType = typeof PLUGIN_EVENT_TYPES[number];
@@ -177,6 +177,7 @@ export const EVENT_LABELS: Record<string, string> = {
   form_submit: "Envio Formulário",
   page_exit: "Page Exit",
   heatmap_click: "Clique (Heatmap)",
+  web_vitals: "Web Vitals",
 };
 
 export const EVENT_CATEGORIES = {
@@ -184,6 +185,7 @@ export const EVENT_CATEGORIES = {
     "page_view", "first_visit", "session_start", "user_engagement",
     "scroll", "click", "file_download", "page_exit",
     "video_start", "video_progress", "video_complete", "view_search_results",
+    "web_vitals",
   ],
   conversions: [
     "whatsapp_click", "phone_click", "email_click", "form_submit", "button_click",
