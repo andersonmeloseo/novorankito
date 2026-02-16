@@ -92,6 +92,35 @@ export function useUpdatePlan() {
   });
 }
 
+export function useCreatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (plan: { slug: string; name: string; description?: string; price?: number; sort_order?: number }) => {
+      const { error } = await supabase.from("plans").insert(plan);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+}
+
+export function useDeletePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete features first
+      await supabase.from("plan_features").delete().eq("plan_id", id);
+      const { error } = await supabase.from("plans").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
+    },
+  });
+}
+
 export function useTogglePlanFeature() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -99,7 +128,33 @@ export function useTogglePlanFeature() {
       const { error } = await supabase.from("plan_features").update({ enabled }).eq("id", featureId);
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
+    },
+  });
+}
+
+export function useCreatePlanFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (feature: { plan_id: string; feature_key: string; feature_name: string; enabled?: boolean }) => {
+      const { error } = await supabase.from("plan_features").insert(feature);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
+    },
+  });
+}
+
+export function useDeletePlanFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("plan_features").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
     },
   });
@@ -112,7 +167,6 @@ export function useCurrentPlan() {
   return useQuery({
     queryKey: ["current-plan", user?.id],
     queryFn: async () => {
-      // Get user's subscription plan slug
       const { data: sub } = await supabase
         .from("billing_subscriptions")
         .select("plan")
@@ -122,16 +176,14 @@ export function useCurrentPlan() {
         .limit(1)
         .maybeSingle();
 
-      const planSlug = sub?.plan || "free";
+      const planSlug = sub?.plan || "start";
 
-      // Get plan details
       const { data: plan } = await supabase
         .from("plans")
         .select("*")
         .eq("slug", planSlug)
         .single();
 
-      // Get features
       const { data: features } = await supabase
         .from("plan_features")
         .select("*")
