@@ -134,7 +134,14 @@ export function AllEventsTab() {
   const heatmapData = useMemo(() => buildHeatmap(events), [events]);
   const allEventsByDay = useMemo(() => buildEventsByDay(events), [events]);
   const typeTotals = useMemo(() => buildEventTypeTotals(events), [events]);
-  const platformDistribution = useMemo(() => distributionBy(events, "platform"), [events]);
+  const platformDistribution = useMemo(() => {
+    const all = distributionBy(events, "platform");
+    if (all.length <= 5) return all;
+    const top = all.slice(0, 4);
+    const othersValue = all.slice(4).reduce((s, d) => s + d.value, 0);
+    if (othersValue > 0) top.push({ name: "Outros", value: othersValue });
+    return top;
+  }, [events]);
   const eventsByDevice = useMemo(() => distributionBy(events, "device"), [events]);
   const eventsByBrowser = useMemo(() => {
     const d = distributionBy(events, "browser");
@@ -169,7 +176,7 @@ export function AllEventsTab() {
     events.forEach(e => { const url = e.page_url || "/"; map.set(url, (map.get(url) || 0) + 1); });
     return Array.from(map.entries())
       .map(([name, size], i) => ({ name: name.replace(/^https?:\/\/[^/]+/, "").replace(/^\//, "") || "home", size, fill: CHART_COLORS[i % CHART_COLORS.length] }))
-      .sort((a, b) => b.size - a.size).slice(0, 10);
+      .sort((a, b) => b.size - a.size).slice(0, 6);
   }, [events]);
 
   const cohortData = useMemo(() => {
