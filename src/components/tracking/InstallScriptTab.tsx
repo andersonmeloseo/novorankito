@@ -380,8 +380,19 @@ export function InstallScriptTab() {
     return false;
   }
 
+  var INTERACTIVE_SEL='a,button,input[type=submit],input[type=button],[data-rk-track],[role=button],[tabindex],[onclick]';
   d.addEventListener('click',function(e){
-    var t=e.target.closest('a,button,[data-rk-track]');if(!t)return;
+    var t=e.target.closest(INTERACTIVE_SEL);
+    // Fallback: if no match, check if element or parent has cursor:pointer (widgets like Leadster, chatbots)
+    if(!t){
+      var el=e.target;
+      for(var i=0;i<5&&el&&el!==d;i++){
+        var cs=w.getComputedStyle(el);
+        if(cs&&cs.cursor==='pointer'){t=el;break;}
+        el=el.parentElement;
+      }
+    }
+    if(!t)return;
     var ev=Object.assign({event_type:'click',cta_text:(t.textContent||'').trim().substring(0,100),cta_selector:t.tagName.toLowerCase()+(t.id?'#'+t.id:'')+(t.className?'.'+String(t.className).split(' ')[0]:'')},base);
     // Capture click coordinates for visual heatmap
     var rect=t.getBoundingClientRect();
@@ -390,7 +401,7 @@ export function InstallScriptTab() {
     if(href.indexOf('wa.me')>-1||href.indexOf('whatsapp')>-1)ev.event_type='whatsapp_click';
     else if(href.indexOf('tel:')===0)ev.event_type='phone_click';
     else if(href.indexOf('mailto:')===0)ev.event_type='email_click';
-    else if(t.tagName==='BUTTON'||t.getAttribute('type')==='submit')ev.event_type='button_click';
+    else if(t.tagName==='BUTTON'||t.getAttribute('type')==='submit'||t.getAttribute('role')==='button')ev.event_type='button_click';
     send(ev);
 
     // Check for rage click
@@ -402,7 +413,11 @@ export function InstallScriptTab() {
 
   // Capture ALL clicks (not just interactive elements) for heatmap density + dead click
   d.addEventListener('click',function(e){
-    if(e.target.closest('a,button,[data-rk-track]'))return; // already captured above
+    if(e.target.closest(INTERACTIVE_SEL))return; // already captured above
+    // Also skip if cursor:pointer (already captured above)
+    var el2=e.target;var skip=false;
+    for(var j=0;j<5&&el2&&el2!==d;j++){var cs2=w.getComputedStyle(el2);if(cs2&&cs2.cursor==='pointer'){skip=true;break;}el2=el2.parentElement;}
+    if(skip)return;
     var meta={click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight,tag:e.target.tagName.toLowerCase(),selector:e.target.tagName.toLowerCase()+(e.target.id?'#'+e.target.id:'')};
     send(Object.assign({event_type:'heatmap_click',metadata:meta},base));
 
