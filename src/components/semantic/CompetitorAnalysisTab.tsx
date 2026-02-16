@@ -118,7 +118,12 @@ function GraphCanvas({
       style: {
         ...n.style,
         ...(selectedNodeId === n.id
-          ? { boxShadow: "0 0 0 3px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.5)", transform: "scale(1.05)" }
+          ? { 
+              boxShadow: "0 0 0 3px hsl(var(--primary)), 0 0 28px hsl(var(--primary) / 0.5)",
+              background: "hsl(var(--primary))",
+              color: "hsl(var(--primary-foreground))",
+              border: "2px solid hsl(var(--primary))",
+            }
           : {}),
       },
     })),
@@ -378,16 +383,16 @@ export function CompetitorAnalysisTab() {
             },
             data: { label: `${typeKey}  ·  ${propCount} props` },
             style: {
-              background: "hsl(var(--card))",
-              color: "hsl(var(--card-foreground))",
-              border: `2px solid color-mix(in srgb, ${color.bg} 40%, transparent)`,
+              background: "hsl(var(--popover))",
+              color: "hsl(var(--popover-foreground))",
+              border: `2px solid ${color.bg}`,
               borderRadius: "10px",
               padding: "8px 14px",
               fontSize: "10px",
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.25s ease",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+              boxShadow: `0 2px 16px ${color.bg}20`,
               minWidth: "90px",
               textAlign: "center" as const,
             },
@@ -414,9 +419,10 @@ export function CompetitorAnalysisTab() {
         if (node) {
           node.style = {
             ...node.style,
-            background: "hsl(var(--primary) / 0.15)",
+            background: "hsl(var(--primary))",
+            color: "hsl(var(--primary-foreground))",
             border: "2px solid hsl(var(--primary))",
-            boxShadow: "0 0 20px hsl(var(--primary) / 0.3), 0 4px 16px rgba(0,0,0,0.1)",
+            boxShadow: "0 0 24px hsl(var(--primary) / 0.4), 0 4px 16px rgba(0,0,0,0.2)",
             fontWeight: 700,
           };
           node.data = { label: `⭐ ${(node.data as any).label}` };
