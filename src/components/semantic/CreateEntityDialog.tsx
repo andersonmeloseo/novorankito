@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
-const ENTITY_TYPES = [
+export const ENTITY_TYPES = [
   { value: "empresa", label: "Empresa" },
   { value: "produto", label: "Produto" },
   { value: "servico", label: "Serviço" },
@@ -21,7 +21,7 @@ const ENTITY_TYPES = [
   { value: "avaliacao", label: "Avaliação" },
 ];
 
-const SCHEMA_TYPES: Record<string, string[]> = {
+export const SCHEMA_TYPES: Record<string, string[]> = {
   empresa: ["Organization", "Corporation", "LocalBusiness"],
   produto: ["Product", "IndividualProduct", "ProductGroup"],
   servico: ["Service", "ProfessionalService"],
@@ -32,30 +32,44 @@ const SCHEMA_TYPES: Record<string, string[]> = {
   avaliacao: ["Review", "AggregateRating"],
 };
 
+export interface EntityFormData {
+  name: string;
+  entityType: string;
+  schemaType: string;
+  description: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (entity: {
-    name: string;
-    entityType: string;
-    schemaType: string;
-    description: string;
-  }) => void;
+  onSubmit: (entity: EntityFormData) => void;
+  initialData?: EntityFormData | null;
+  mode?: "create" | "edit";
 }
 
-export function CreateEntityDialog({ open, onOpenChange, onSubmit }: Props) {
+export function CreateEntityDialog({ open, onOpenChange, onSubmit, initialData, mode = "create" }: Props) {
   const [name, setName] = useState("");
   const [entityType, setEntityType] = useState("empresa");
   const [schemaType, setSchemaType] = useState("");
   const [description, setDescription] = useState("");
 
+  useEffect(() => {
+    if (open && initialData) {
+      setName(initialData.name);
+      setEntityType(initialData.entityType);
+      setSchemaType(initialData.schemaType);
+      setDescription(initialData.description);
+    } else if (open && !initialData) {
+      setName("");
+      setEntityType("empresa");
+      setSchemaType("");
+      setDescription("");
+    }
+  }, [open, initialData]);
+
   const handleSubmit = () => {
     if (!name.trim()) return;
     onSubmit({ name: name.trim(), entityType, schemaType, description });
-    setName("");
-    setEntityType("empresa");
-    setSchemaType("");
-    setDescription("");
     onOpenChange(false);
   };
 
@@ -65,8 +79,10 @@ export function CreateEntityDialog({ open, onOpenChange, onSubmit }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nova Entidade</DialogTitle>
-          <DialogDescription>Adicione um nó ao grafo semântico do seu negócio.</DialogDescription>
+          <DialogTitle>{mode === "edit" ? "Editar Entidade" : "Nova Entidade"}</DialogTitle>
+          <DialogDescription>
+            {mode === "edit" ? "Altere os dados da entidade." : "Adicione um nó ao grafo semântico do seu negócio."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -114,7 +130,9 @@ export function CreateEntityDialog({ open, onOpenChange, onSubmit }: Props) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={!name.trim()}>Criar Entidade</Button>
+          <Button onClick={handleSubmit} disabled={!name.trim()}>
+            {mode === "edit" ? "Salvar" : "Criar Entidade"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
