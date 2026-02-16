@@ -30,6 +30,10 @@ import { SCHEMA_TYPES, ENTITY_TYPES } from "./CreateEntityDialog";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  FULL_SCHEMA_TYPES, buildFullSchemaTree, getAllSchemaTypeNames, getSchemaTypeCount,
+  type SchemaTreeNode,
+} from "./schema-registry";
 
 // ═══════════════════════════════════════════════════════════════
 // Schema.org Type Definitions — Full Catalog
@@ -659,34 +663,8 @@ const SCHEMA_SAMPLES: SchemaSample[] = [
   },
 ];
 
-// ── Hierarchical tree ──
-interface TreeNode {
-  name: string;
-  count: number;
-  children: TreeNode[];
-  schemaType?: SchemaTypeDef;
-}
+// ── Hierarchical tree — uses full registry ──
 
-function buildSchemaTree(): TreeNode {
-  const root: TreeNode = { name: "Thing", count: SCHEMA_CATALOG.length, children: [] };
-  const nodeMap: Record<string, TreeNode> = { Thing: root };
-
-  // Build parent nodes
-  const parentNames = new Set(SCHEMA_CATALOG.map((s) => s.parent).filter(Boolean));
-  parentNames.forEach((p) => {
-    if (!nodeMap[p!]) nodeMap[p!] = { name: p!, count: 0, children: [] };
-  });
-
-  SCHEMA_CATALOG.forEach((s) => {
-    const child: TreeNode = { name: s.type, count: s.properties.length, children: [], schemaType: s };
-    nodeMap[s.type] = child;
-    const parentKey = s.parent || "Thing";
-    if (!nodeMap[parentKey]) nodeMap[parentKey] = { name: parentKey, count: 0, children: [] };
-    nodeMap[parentKey].children.push(child);
-  });
-
-  return root;
-}
 
 // ═══════════════════════════════════════════════════════════════
 // Component
@@ -714,7 +692,7 @@ export function SchemaOrgTab({ projectId }: Props) {
 
   // Tree state
   const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set(["Thing"]));
-  const tree = useMemo(buildSchemaTree, []);
+  const tree = useMemo(buildFullSchemaTree, []);
 
   // Load entities
   useEffect(() => {
@@ -884,7 +862,7 @@ export function SchemaOrgTab({ projectId }: Props) {
     });
   };
 
-  const renderTreeNode = (node: TreeNode, depth: number = 0): React.ReactNode => {
+  const renderTreeNode = (node: SchemaTreeNode, depth: number = 0): React.ReactNode => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedTreeNodes.has(node.name);
     const hasSchema = SCHEMA_CATALOG.find((s) => s.type === node.name);
@@ -909,7 +887,7 @@ export function SchemaOrgTab({ projectId }: Props) {
           )}
           <span className={`${hasSchema ? "font-medium text-foreground" : "text-muted-foreground"}`}>{node.name}</span>
           {inUse && <CheckCircle2 className="h-3 w-3 text-primary ml-auto" />}
-          {hasSchema?.googleFeature && (
+          {node.googleFeature && (
             <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 ml-auto">
               <Sparkles className="h-2 w-2 mr-0.5" />
               Google
@@ -930,8 +908,8 @@ export function SchemaOrgTab({ projectId }: Props) {
             <Layers className="h-4 w-4" />
             <span className="text-xs font-medium">Tipos no Catálogo</span>
           </div>
-          <p className="text-2xl font-bold text-foreground">{SCHEMA_CATALOG.length}</p>
-          <p className="text-[10px] text-muted-foreground">{CATEGORIES.length} categorias</p>
+          <p className="text-2xl font-bold text-foreground">{getSchemaTypeCount()}</p>
+          <p className="text-[10px] text-muted-foreground">{CATEGORIES.length} categorias · {SCHEMA_CATALOG.length} c/ builder</p>
         </Card>
         <Card className="p-4 space-y-1">
           <div className="flex items-center gap-2 text-muted-foreground">
