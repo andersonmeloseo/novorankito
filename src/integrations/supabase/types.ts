@@ -502,6 +502,50 @@ export type Database = {
         }
         Relationships: []
       }
+      competitor_analyses: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          project_id: string
+          results: Json
+          schemas_count: number
+          updated_at: string
+          urls: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id: string
+          project_id: string
+          results?: Json
+          schemas_count?: number
+          updated_at?: string
+          urls?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          project_id?: string
+          results?: Json
+          schemas_count?: number
+          updated_at?: string
+          urls?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversions: {
         Row: {
           campaign: string | null
