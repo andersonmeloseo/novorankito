@@ -33,6 +33,7 @@ interface DerivedSession {
   started_at: string;
   duration_sec: number;
   pages_viewed: number;
+  clicks: number;
   landing_page: string;
   exit_page: string;
   referrer: string;
@@ -62,6 +63,8 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
     const last = evts[evts.length - 1];
     const duration_sec = Math.round((new Date(last.created_at).getTime() - new Date(first.created_at).getTime()) / 1000);
     const pages = new Set(evts.map(e => e.page_url).filter(Boolean));
+    const CLICK_TYPES = ["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"];
+    const clicks = evts.filter(e => CLICK_TYPES.includes(e.event_type)).length;
     const exitEvent = evts.find(e => e.event_type === "page_exit");
     const bot = detectBot(first.browser, first.platform, { city: first.city, os: first.os, device: first.device, referrer: first.referrer });
     return {
@@ -69,6 +72,7 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
       started_at: first.created_at,
       duration_sec: exitEvent?.time_on_page || duration_sec,
       pages_viewed: Math.max(pages.size, 1),
+      clicks,
       landing_page: (first.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
       exit_page: ((exitEvent || last).page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
       referrer: first.referrer || "direto",
@@ -134,6 +138,7 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "started_at", label: "Início" },
   { key: "duration_sec", label: "Duração" },
   { key: "pages_viewed", label: "Páginas" },
+  { key: "clicks", label: "Cliques" },
   { key: "landing_page", label: "Landing Page" },
   { key: "exit_page", label: "Saída" },
   { key: "referrer", label: "Referrer" },
@@ -560,6 +565,7 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(s.started_at), "dd/MM HH:mm")}</td>
                       <td className="px-3 py-2 text-[11px] font-medium text-foreground">{formatDuration(s.duration_sec)}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground text-center">{s.pages_viewed}</td>
+                      <td className="px-3 py-2 text-[11px] text-foreground text-center font-semibold">{s.clicks > 0 ? s.clicks : "—"}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.landing_page}>{s.landing_page}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.exit_page}>{s.exit_page}</td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={s.referrer}>🔗 {s.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</td>
