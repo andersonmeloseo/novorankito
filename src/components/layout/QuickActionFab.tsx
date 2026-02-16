@@ -20,7 +20,7 @@ export function QuickActionFab() {
   const navigate = useNavigate();
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-1.5">
+    <div className="fixed bottom-20 right-5 z-50 flex flex-col items-end gap-1.5">
       <AnimatePresence>
         {open && (
           <motion.div
