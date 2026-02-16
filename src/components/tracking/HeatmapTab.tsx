@@ -220,8 +220,8 @@ const TRAIL_COLORS = [
 ];
 
 /* ── Page Row for table listing view ── */
-function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, topCountry, onClick, onDelete }: {
-  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; topCountry: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
+function PageRow({ url, clicks, views, visitors, avgScroll, topCity, topCountry, topBrowser, topReferrer, devices, lastEvent, onClick, onDelete }: {
+  url: string; clicks: number; views: number; visitors: number; avgScroll: number; topCity: string; topCountry: string; topBrowser: string; topReferrer: string; devices: string[]; lastEvent: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
 }) {
   let pathname = url;
   try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
@@ -232,6 +232,9 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
   };
 
   const location = [topCity, topCountry].filter(Boolean).join(", ");
+  const deviceLabel = devices.length > 0 ? devices.map(d => d === "desktop" ? "🖥" : d === "mobile" ? "📱" : "📟").join(" ") : "—";
+  let referrerShort = topReferrer || "—";
+  try { if (topReferrer) referrerShort = new URL(topReferrer).hostname.replace("www.", ""); } catch { /* keep as is */ }
 
   return (
     <tr className="group table-row-hover cursor-pointer border-b border-border/50 last:border-0" onClick={onClick}>
@@ -241,8 +244,8 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
             <Globe className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground truncate max-w-[300px]" title={url}>{pathname}</p>
-            <p className="text-[10px] text-muted-foreground truncate max-w-[300px]" title={url}>{url}</p>
+            <p className="text-sm font-semibold text-foreground truncate max-w-[260px]" title={url}>{pathname}</p>
+            <p className="text-[10px] text-muted-foreground truncate max-w-[260px]" title={url}>{url}</p>
           </div>
         </div>
       </td>
@@ -258,8 +261,17 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
       <td className="py-3 px-3 text-center hidden lg:table-cell">
         <p className="text-xs font-bold text-foreground">{avgScroll}%</p>
       </td>
+      <td className="py-3 px-3 text-center hidden lg:table-cell">
+        <p className="text-[10px] text-muted-foreground" title={devices.join(", ")}>{deviceLabel}</p>
+      </td>
+      <td className="py-3 px-3 hidden xl:table-cell">
+        <p className="text-[10px] text-muted-foreground truncate max-w-[80px]" title={topBrowser}>{topBrowser || "—"}</p>
+      </td>
       <td className="py-3 px-3 hidden md:table-cell">
-        <p className="text-[10px] text-muted-foreground truncate max-w-[120px]" title={location}>{location || "—"}</p>
+        <p className="text-[10px] text-muted-foreground truncate max-w-[100px]" title={location}>{location || "—"}</p>
+      </td>
+      <td className="py-3 px-3 hidden xl:table-cell">
+        <p className="text-[10px] text-muted-foreground truncate max-w-[100px]" title={topReferrer}>{referrerShort}</p>
       </td>
       <td className="py-3 px-3 text-right hidden md:table-cell">
         <p className="text-[10px] text-muted-foreground">{fmtDate(lastEvent)}</p>
@@ -279,7 +291,6 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
     </tr>
   );
 }
-
 /* ── Sortable Table Header ── */
 function SortHeader({ label, field, current, onSort, className = "" }: { label: string; field: string; current: string; onSort: (f: string) => void; className?: string }) {
   const isActive = current === field || current === `-${field}`;
@@ -650,12 +661,12 @@ export function HeatmapTab() {
 
   // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { rawUrls: Set<string>; clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number>; countries: Map<string, number>; devices: Set<string> }>();
+    const map = new Map<string, { rawUrls: Set<string>; clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number>; countries: Map<string, number>; devices: Set<string>; browsers: Map<string, number>; referrers: Map<string, number> }>();
     allEvents.forEach((e) => {
       const rawUrl = e.page_url;
       if (!rawUrl) return;
       const url = normalizeUrl(rawUrl);
-      const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>(), countries: new Map<string, number>(), devices: new Set<string>() };
+      const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>(), countries: new Map<string, number>(), devices: new Set<string>(), browsers: new Map<string, number>(), referrers: new Map<string, number>() };
       entry.rawUrls.add(rawUrl);
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
@@ -669,6 +680,8 @@ export function HeatmapTab() {
       if (e.city) entry.cities.set(e.city, (entry.cities.get(e.city) || 0) + 1);
       if (e.country) entry.countries.set(e.country, (entry.countries.get(e.country) || 0) + 1);
       if (e.device) entry.devices.add(e.device);
+      if (e.browser) entry.browsers.set(e.browser, (entry.browsers.get(e.browser) || 0) + 1);
+      if (e.referrer) entry.referrers.set(e.referrer, (entry.referrers.get(e.referrer) || 0) + 1);
       if (e.created_at < entry.firstEvent) entry.firstEvent = e.created_at;
       if (e.created_at > entry.lastEvent) entry.lastEvent = e.created_at;
       map.set(url, entry);
@@ -681,6 +694,12 @@ export function HeatmapTab() {
         let topCountry = "";
         let maxCountryCount = 0;
         s.countries.forEach((count, country) => { if (count > maxCountryCount) { maxCountryCount = count; topCountry = country; } });
+        let topBrowser = "";
+        let maxBrowserCount = 0;
+        s.browsers.forEach((count, browser) => { if (count > maxBrowserCount) { maxBrowserCount = count; topBrowser = browser; } });
+        let topReferrer = "";
+        let maxRefCount = 0;
+        s.referrers.forEach((count, ref) => { if (count > maxRefCount) { maxRefCount = count; topReferrer = ref; } });
         return {
           url, rawUrls: Array.from(s.rawUrls), clicks: s.clicks, exits: s.exits, views: s.views,
           visitors: s.visitors.size,
@@ -688,7 +707,7 @@ export function HeatmapTab() {
           moveCount: s.moveSessions,
           firstEvent: s.firstEvent,
           lastEvent: s.lastEvent,
-          topCity, topCountry,
+          topCity, topCountry, topBrowser, topReferrer,
           devices: Array.from(s.devices),
         };
       })
@@ -987,7 +1006,10 @@ export function HeatmapTab() {
                           <SortHeader label="Cliques" field="clicks" current={listSortBy} onSort={setListSortBy} className="text-center" />
                           <SortHeader label="Visitantes" field="visitors" current={listSortBy} onSort={setListSortBy} className="text-center" />
                           <SortHeader label="Scroll" field="scroll" current={listSortBy} onSort={setListSortBy} className="text-center hidden lg:table-cell" />
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center hidden lg:table-cell">Dispositivo</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground hidden xl:table-cell">Navegador</th>
                           <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground hidden md:table-cell">Localização</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground hidden xl:table-cell">Origem</th>
                           <SortHeader label="Último evento" field="recent" current={listSortBy} onSort={setListSortBy} className="text-right hidden md:table-cell" />
                           <th className="py-2.5 px-2 w-[60px]"></th>
                         </tr>
@@ -998,15 +1020,15 @@ export function HeatmapTab() {
                             key={opt.url}
                             url={opt.url}
                             clicks={opt.clicks}
-                            exits={opt.exits}
                             views={opt.views}
                             visitors={opt.visitors}
                             avgScroll={opt.avgScroll}
-                            moveCount={opt.moveCount}
-                            firstEvent={opt.firstEvent}
                             lastEvent={opt.lastEvent}
                             topCity={opt.topCity}
                             topCountry={opt.topCountry}
+                            topBrowser={opt.topBrowser}
+                            topReferrer={opt.topReferrer}
+                            devices={opt.devices}
                             onClick={() => setSelectedUrl(opt.url)}
                             onDelete={async (e) => {
                               e.stopPropagation();
