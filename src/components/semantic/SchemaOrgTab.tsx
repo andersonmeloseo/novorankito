@@ -2037,18 +2037,21 @@ export function SchemaOrgTab({ projectId }: Props) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar tipo, categoria ou recurso Google..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
             </div>
-            <div className="flex gap-1.5 flex-wrap">
-              <Badge variant={selectedCategory === null ? "default" : "outline"} className="cursor-pointer text-[10px]" onClick={() => setSelectedCategory(null)}>
-                Todos ({FULL_CATALOG.length})
-              </Badge>
-              {CATEGORIES.map((cat) => {
-                const CatIcon = CATEGORY_ICONS[cat] || Globe;
-                return (
-                  <Badge key={cat} variant={selectedCategory === cat ? "default" : "outline"} className="cursor-pointer text-[10px] gap-1" onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}>
-                    <CatIcon className="h-3 w-3" />{cat}
-                  </Badge>
-                );
-              })}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Categorias</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <Badge variant={selectedCategory === null ? "default" : "outline"} className="cursor-pointer text-[10px]" onClick={() => setSelectedCategory(null)}>
+                  Todos ({FULL_CATALOG.length})
+                </Badge>
+                {CATEGORIES.map((cat) => {
+                  const CatIcon = CATEGORY_ICONS[cat] || Globe;
+                  return (
+                    <Badge key={cat} variant={selectedCategory === cat ? "default" : "outline"} className="cursor-pointer text-[10px] gap-1" onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}>
+                      <CatIcon className="h-3 w-3" />{cat}
+                    </Badge>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
