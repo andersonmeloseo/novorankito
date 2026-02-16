@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2, Plus, Trash2, Search, Globe, AlertTriangle, X, Code2,
-  Save, History, Clock, ChevronRight, Sparkles,
+  Save, History, Clock, ChevronRight, Sparkles, ExternalLink, Copy, Eye,
+  ChevronDown, ChevronUp, Layers,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SchemaResult {
   url: string;
@@ -69,7 +71,23 @@ function getDomainColor(index: number) {
   return DOMAIN_COLORS[index % DOMAIN_COLORS.length];
 }
 
-/* ── Inner Graph component (uses hooks that need ReactFlowProvider) ── */
+/* ── Custom Node Components ── */
+function DomainNodeContent({ label, schemasCount, color }: { label: string; schemasCount: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-black uppercase"
+        style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+        {label.charAt(0)}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[11px] font-bold leading-tight">{label}</span>
+        <span className="text-[9px] opacity-75">{schemasCount} schemas</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Inner Graph component ── */
 function GraphCanvas({
   initialNodes,
   initialEdges,
@@ -80,7 +98,7 @@ function GraphCanvas({
   initialNodes: Node[];
   initialEdges: Edge[];
   nodeMetaMap: Map<string, SchemaNodeMeta>;
-  onNodeClick: (meta: SchemaNodeMeta) => void;
+  onNodeClick: (meta: SchemaNodeMeta, nodeId: string) => void;
   selectedNodeId: string | null;
 }) {
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
@@ -89,19 +107,18 @@ function GraphCanvas({
   const handleNodeClick = useCallback(
     (_: any, node: Node) => {
       const meta = nodeMetaMap.get(node.id);
-      if (meta) onNodeClick(meta);
+      if (meta) onNodeClick(meta, node.id);
     },
     [nodeMetaMap, onNodeClick],
   );
 
-  // Highlight selected node
   const styledNodes = useMemo(() =>
     nodes.map((n) => ({
       ...n,
       style: {
         ...n.style,
         ...(selectedNodeId === n.id
-          ? { boxShadow: "0 0 0 3px hsl(var(--primary)), 0 0 20px hsl(var(--primary) / 0.4)" }
+          ? { boxShadow: "0 0 0 3px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.5)", transform: "scale(1.05)" }
           : {}),
       },
     })),
@@ -157,13 +174,13 @@ export function CompetitorAnalysisTab() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [savingHistory, setSavingHistory] = useState(false);
   const [analysisName, setAnalysisName] = useState("");
+  const [showJsonLd, setShowJsonLd] = useState(false);
 
   // History
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Load history
   const fetchHistory = useCallback(async () => {
     if (!projectId || !user) return;
     setLoadingHistory(true);
@@ -189,11 +206,10 @@ export function CompetitorAnalysisTab() {
   const removeUrl = (index: number) => setUrls((prev) => prev.filter((_, i) => i !== index));
   const updateUrl = (index: number, value: string) => setUrls((prev) => prev.map((u, i) => (i === index ? value : u)));
 
-  const handleNodeClick = useCallback((meta: SchemaNodeMeta) => {
+  const handleNodeClick = useCallback((meta: SchemaNodeMeta, nodeId: string) => {
     setSelectedSchema(meta);
-    // Find node id from meta
-    const key = meta.isDomain ? `domain-${meta.domain}` : `schema-${meta.type}-${meta.domain}`;
-    setSelectedNodeId(key);
+    setSelectedNodeId(nodeId);
+    setShowJsonLd(false);
   }, []);
 
   const analyze = useCallback(async () => {
@@ -234,7 +250,6 @@ export function CompetitorAnalysisTab() {
     }
   }, [urls]);
 
-  // Save analysis
   const saveAnalysis = useCallback(async () => {
     if (!projectId || !user || results.length === 0) return;
     setSavingHistory(true);
@@ -260,7 +275,6 @@ export function CompetitorAnalysisTab() {
     setSavingHistory(false);
   }, [projectId, user, results, urls, analysisName, fetchHistory]);
 
-  // Load from history
   const loadAnalysis = useCallback((analysis: SavedAnalysis) => {
     setUrls(analysis.urls.length > 0 ? analysis.urls : [""]);
     setResults(analysis.results);
@@ -270,7 +284,6 @@ export function CompetitorAnalysisTab() {
     toast({ title: "Análise carregada", description: analysis.name });
   }, []);
 
-  // Delete from history
   const deleteAnalysis = useCallback(async (id: string) => {
     await supabase.from("competitor_analyses").delete().eq("id", id);
     setHistory((prev) => prev.filter((h) => h.id !== id));
@@ -286,7 +299,7 @@ export function CompetitorAnalysisTab() {
     return map;
   }, [results]);
 
-  // Build graph + meta
+  // Build graph + meta with improved node styling
   const { graphNodes, graphEdges, nodeMetaMap } = useMemo(() => {
     if (results.length === 0) return { graphNodes: [], graphEdges: [], nodeMetaMap: new Map<string, SchemaNodeMeta>() };
 
@@ -302,26 +315,28 @@ export function CompetitorAnalysisTab() {
       const domainIdx = domainMap.get(r.domain) ?? 0;
       const color = getDomainColor(domainIdx);
       const angle = (2 * Math.PI * domainIdx) / Math.max(domainMap.size, 1);
-      const cx = 500 + 350 * Math.cos(angle);
-      const cy = 400 + 350 * Math.sin(angle);
+      const cx = 500 + 400 * Math.cos(angle);
+      const cy = 400 + 400 * Math.sin(angle);
       const id = `domain-${r.domain}`;
       domainNodes.set(r.domain, id);
 
       nodes.push({
         id,
         position: { x: cx, y: cy },
-        data: { label: r.domain },
+        data: { label: `🌐 ${r.domain}` },
         style: {
-          background: color.bg,
+          background: `linear-gradient(135deg, ${color.bg}, ${color.bg}dd)`,
           color: color.text,
-          border: `2px solid ${color.bg}`,
-          borderRadius: "12px",
-          padding: "10px 16px",
+          border: "none",
+          borderRadius: "14px",
+          padding: "10px 18px",
           fontWeight: 700,
           fontSize: "12px",
-          boxShadow: `0 4px 20px ${color.bg}30`,
+          boxShadow: `0 8px 32px ${color.bg}40, 0 2px 8px rgba(0,0,0,0.15)`,
           cursor: "pointer",
-          transition: "box-shadow 0.2s",
+          transition: "all 0.25s ease",
+          minWidth: "120px",
+          textAlign: "center" as const,
         },
       });
 
@@ -345,13 +360,15 @@ export function CompetitorAnalysisTab() {
               source: id,
               target: existing.nodeId,
               animated: true,
-              style: { stroke: color.bg, strokeWidth: 2, opacity: 0.6 },
+              style: { stroke: color.bg, strokeWidth: 2, opacity: 0.5 },
             });
           }
         } else {
           const schemaId = `schema-${typeKey}-${r.domain}`;
           const schemaAngle = angle + (Math.random() - 0.5) * 1.2;
-          const schemaRadius = 150 + Math.random() * 100;
+          const schemaRadius = 160 + Math.random() * 120;
+
+          const propCount = Object.keys(schema.properties).length;
 
           nodes.push({
             id: schemaId,
@@ -359,17 +376,20 @@ export function CompetitorAnalysisTab() {
               x: Number(cx) + schemaRadius * Math.cos(schemaAngle),
               y: Number(cy) + schemaRadius * Math.sin(schemaAngle),
             },
-            data: { label: typeKey },
+            data: { label: `${typeKey}  ·  ${propCount} props` },
             style: {
               background: "hsl(var(--card))",
               color: "hsl(var(--card-foreground))",
-              border: `2px solid ${color.bg}50`,
-              borderRadius: "8px",
-              padding: "5px 10px",
+              border: `2px solid color-mix(in srgb, ${color.bg} 40%, transparent)`,
+              borderRadius: "10px",
+              padding: "8px 14px",
               fontSize: "10px",
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
-              transition: "box-shadow 0.2s, border-color 0.2s",
+              transition: "all 0.25s ease",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+              minWidth: "90px",
+              textAlign: "center" as const,
             },
           });
 
@@ -380,24 +400,26 @@ export function CompetitorAnalysisTab() {
             id: `edge-${edgeIdx++}`,
             source: id,
             target: schemaId,
-            animated: true,
-            style: { stroke: color.bg, strokeWidth: 2, opacity: 0.6 },
+            animated: false,
+            style: { stroke: color.bg, strokeWidth: 1.5, opacity: 0.4 },
           });
         }
       });
     });
 
+    // Highlight shared schemas
     schemaTypeMap.forEach((info) => {
       if (info.domains.length > 1) {
         const node = nodes.find((n) => n.id === info.nodeId);
         if (node) {
           node.style = {
             ...node.style,
-            background: "hsl(var(--primary) / 0.12)",
+            background: "hsl(var(--primary) / 0.15)",
             border: "2px solid hsl(var(--primary))",
-            boxShadow: "0 0 16px hsl(var(--primary) / 0.25)",
+            boxShadow: "0 0 20px hsl(var(--primary) / 0.3), 0 4px 16px rgba(0,0,0,0.1)",
             fontWeight: 700,
           };
+          node.data = { label: `⭐ ${(node.data as any).label}` };
           const existingMeta = metaMap.get(info.nodeId);
           if (existingMeta) {
             existingMeta.properties = {
@@ -442,12 +464,23 @@ export function CompetitorAnalysisTab() {
     return JSON.stringify(val);
   };
 
+  const copyJsonLd = () => {
+    if (!selectedSchema) return;
+    const json = JSON.stringify(
+      { "@context": "https://schema.org", "@type": selectedSchema.type, ...selectedSchema.properties },
+      null,
+      2,
+    );
+    navigator.clipboard.writeText(json);
+    toast({ title: "JSON-LD copiado!" });
+  };
+
   return (
     <div className="space-y-5">
       {/* Header row: Input + History toggle */}
       <div className="flex gap-3 items-start">
-        {/* URL Input */}
         <Card className="p-4 space-y-3 flex-1">
+          {/* URL input header */}
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -627,109 +660,156 @@ export function CompetitorAnalysisTab() {
             </Card>
           )}
 
-          {/* ═══ Comparative Graph + Detail Panel ═══ */}
+          {/* ═══ Comparative Graph (full width, no side panel) ═══ */}
           <Card className="overflow-hidden rounded-xl border-border">
             <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-semibold text-foreground">Grafo Comparativo</h3>
                 <p className="text-[10px] text-muted-foreground">
-                  Clique em um node para inspecionar • Nodes brilhantes = compartilhados
+                  Clique em um node para inspecionar abaixo • ⭐ = compartilhado entre domínios
                 </p>
               </div>
               {selectedSchema && (
-                <Badge variant="secondary" className="text-[10px]">
-                  <Code2 className="h-3 w-3 mr-1" />
-                  {selectedSchema.type}
-                </Badge>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="text-[10px] h-7"
+                  onClick={() => {
+                    setSelectedSchema(null);
+                    setSelectedNodeId(null);
+                  }}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Fechar inspeção
+                </Button>
               )}
             </div>
 
-            <div className="flex" style={{ height: 580 }}>
-              {/* Graph */}
-              <div className={`transition-all duration-300 ease-in-out ${selectedSchema ? "w-[58%]" : "w-full"}`}>
-                <div className="h-full">
-                  <ReactFlowProvider>
-                    <GraphCanvas
-                      initialNodes={graphNodes}
-                      initialEdges={graphEdges}
-                      nodeMetaMap={nodeMetaMap}
-                      onNodeClick={handleNodeClick}
-                      selectedNodeId={selectedNodeId}
-                    />
-                  </ReactFlowProvider>
-                </div>
-              </div>
+            <div style={{ height: 520 }}>
+              <ReactFlowProvider>
+                <GraphCanvas
+                  initialNodes={graphNodes}
+                  initialEdges={graphEdges}
+                  nodeMetaMap={nodeMetaMap}
+                  onNodeClick={handleNodeClick}
+                  selectedNodeId={selectedNodeId}
+                />
+              </ReactFlowProvider>
+            </div>
+          </Card>
 
-              {/* Detail Panel */}
-              {selectedSchema && (
-                <div className="w-[42%] border-l border-border bg-card/50 backdrop-blur-sm flex flex-col">
-                  <div className="px-3 py-2.5 border-b border-border flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Code2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <span className="text-xs font-semibold text-foreground truncate">
-                        {selectedSchema.type}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 shrink-0"
-                      onClick={() => { setSelectedSchema(null); setSelectedNodeId(null); }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-
-                  <ScrollArea className="flex-1">
-                    <div className="p-3 space-y-3">
-                      {/* Source */}
-                      <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Fonte</Label>
-                        <div className="flex items-center gap-1.5">
+          {/* ═══ Detail Panel (below graph, structured layout) ═══ */}
+          <AnimatePresence>
+            {selectedSchema && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="overflow-hidden rounded-xl border-primary/20">
+                  {/* Detail Header */}
+                  <div className="px-4 py-3 border-b border-border bg-primary/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        {selectedSchema.isDomain ? (
+                          <Globe className="h-4.5 w-4.5 text-primary" />
+                        ) : (
+                          <Code2 className="h-4.5 w-4.5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-foreground truncate">
+                          {selectedSchema.type}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-0.5">
                           <div
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            className="h-2 w-2 rounded-full shrink-0"
                             style={{ backgroundColor: getDomainColor(domainMap.get(selectedSchema.domain) ?? 0).bg }}
                           />
-                          <span className="text-[11px] font-medium text-foreground">{selectedSchema.domain}</span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground truncate" title={selectedSchema.url}>
-                          {selectedSchema.url}
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {selectedSchema.domain} — {selectedSchema.url}
+                          </span>
                         </div>
                       </div>
+                    </div>
 
-                      {selectedSchema.isDomain ? (
-                        <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-                          <p className="text-[11px] text-muted-foreground">
-                            Node de domínio. Clique em um schema conectado para ver as propriedades.
-                          </p>
-                          <div className="text-xs">
-                            <span className="font-medium text-foreground">{String(selectedSchema.properties.schemas_count)}</span>
-                            <span className="text-muted-foreground"> schemas encontrados</span>
-                          </div>
-                        </div>
-                      ) : (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!selectedSchema.isDomain && (
                         <>
-                          {/* Properties */}
-                          <div className="space-y-1.5">
-                            <Label className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
-                              Propriedades ({Object.keys(selectedSchema.properties).length})
-                            </Label>
-                            <div className="rounded-lg border border-border overflow-hidden">
-                              <table className="w-full text-[10px]">
-                                <thead>
-                                  <tr className="bg-muted/50">
-                                    <th className="text-left px-2 py-1 font-medium text-muted-foreground">Campo</th>
-                                    <th className="text-left px-2 py-1 font-medium text-muted-foreground">Valor</th>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[10px] h-7"
+                            onClick={copyJsonLd}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copiar JSON-LD
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[10px] h-7"
+                            onClick={() => setShowJsonLd(!showJsonLd)}
+                          >
+                            <Code2 className="h-3 w-3 mr-1" />
+                            {showJsonLd ? "Ocultar" : "Ver"} Código
+                            {showJsonLd ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => { setSelectedSchema(null); setSelectedNodeId(null); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Detail Content */}
+                  <div className="p-4">
+                    {selectedSchema.isDomain ? (
+                      <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/40">
+                        <Layers className="h-8 w-8 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {String(selectedSchema.properties.schemas_count)} schemas encontrados
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Clique em um dos nodes de schema conectados ao domínio para ver as propriedades detalhadas.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Properties Table */}
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2 block">
+                            Propriedades ({Object.keys(selectedSchema.properties).length})
+                          </Label>
+                          <div className="rounded-lg border border-border overflow-hidden">
+                            <div className="max-h-[300px] overflow-y-auto">
+                              <table className="w-full text-[11px]">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="bg-muted">
+                                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground w-[200px]">Campo</th>
+                                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Valor</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {Object.entries(selectedSchema.properties).map(([key, val]) => (
-                                    <tr key={key} className="border-t border-border hover:bg-muted/30 transition-colors">
-                                      <td className="px-2 py-1 font-medium text-foreground align-top whitespace-nowrap">
-                                        {key}
+                                  {Object.entries(selectedSchema.properties).map(([key, val], i) => (
+                                    <tr
+                                      key={key}
+                                      className={`border-t border-border hover:bg-muted/30 transition-colors ${i % 2 === 0 ? 'bg-card' : 'bg-muted/10'}`}
+                                    >
+                                      <td className="px-3 py-1.5 font-medium text-foreground align-top whitespace-nowrap">
+                                        <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground">{key}</code>
                                       </td>
                                       <td
-                                        className="px-2 py-1 text-muted-foreground break-all"
+                                        className="px-3 py-1.5 text-muted-foreground break-all"
                                         title={typeof val === "string" ? val : undefined}
                                       >
                                         {renderValue(val)}
@@ -740,26 +820,38 @@ export function CompetitorAnalysisTab() {
                               </table>
                             </div>
                           </div>
+                        </div>
 
-                          {/* JSON-LD */}
-                          <div className="space-y-1.5">
-                            <Label className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">JSON-LD</Label>
-                            <pre className="bg-muted/40 rounded-lg p-2 text-[9px] text-foreground overflow-x-auto whitespace-pre-wrap font-mono border border-border leading-relaxed">
+                        {/* JSON-LD (collapsible) */}
+                        <AnimatePresence>
+                          {showJsonLd && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2 block">
+                                JSON-LD Gerado
+                              </Label>
+                              <pre className="bg-muted/40 rounded-lg p-3 text-[10px] text-foreground overflow-x-auto whitespace-pre-wrap font-mono border border-border leading-relaxed max-h-[300px] overflow-y-auto">
 {JSON.stringify(
   { "@context": "https://schema.org", "@type": selectedSchema.type, ...selectedSchema.properties },
   null,
   2,
 )}
-                            </pre>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-            </div>
-          </Card>
+                              </pre>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Shared schemas */}
           {stats.shared.length > 0 && (
