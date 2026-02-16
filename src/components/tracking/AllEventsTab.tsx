@@ -14,7 +14,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid,
   Treemap,
 } from "recharts";
-import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2 } from "lucide-react";
+import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2, Bot } from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
@@ -22,6 +22,7 @@ import {
 } from "@/components/analytics/ChartPrimitives";
 import { AnalyticsDataTable } from "@/components/analytics/AnalyticsDataTable";
 import { EmptyState } from "@/components/ui/empty-state";
+import { detectBot, BOT_CATEGORY_LABELS, BOT_CATEGORY_STYLES } from "@/lib/bot-detection";
 
 function SparkKpi({ label, value, change, suffix, color, icon: Icon, hideBadge, smallValue }: {
   label: string; value: string | number; change?: number; suffix?: string;
@@ -88,6 +89,8 @@ export function AllEventsTab() {
   }, [events]);
 
   const totalEvents = events.length;
+  const botEvents = useMemo(() => events.filter(e => detectBot(e.browser, e.platform).isBot), [events]);
+  const botCount = botEvents.length;
   const uniquePages = new Set(events.map(e => e.page_url)).size;
   const lastEvent = events.length > 0 ? events[0] : null; // already sorted desc
   const lastReferrer = lastEvent ? (lastEvent.referrer || "").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || "direto" : "—";
@@ -152,8 +155,8 @@ export function AllEventsTab() {
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Eventos" value={totalEvents} color="hsl(var(--primary))" icon={Activity} hideBadge />
+        <SparkKpi label="🤖 Bots Detectados" value={botCount} color="hsl(var(--chart-5))" icon={Bot} hideBadge />
         <SparkKpi label="Referrer" value={lastReferrer} color="hsl(var(--info))" icon={Globe} hideBadge smallValue />
-        <SparkKpi label="CTA/Elemento" value={lastCta} color="hsl(var(--chart-5))" icon={Layers} hideBadge smallValue />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} color="hsl(var(--warning))" icon={Flame} hideBadge smallValue />
         <SparkKpi label="Último Evento" value={lastEventLabel} color="hsl(var(--warning))" icon={Zap} hideBadge smallValue />
         <SparkKpi label="Última Localização" value={lastLocation} color="hsl(var(--chart-8))" icon={MapPin} hideBadge smallValue />
@@ -406,27 +409,35 @@ export function AllEventsTab() {
             </div>
           </div>
           <AnalyticsDataTable
-            columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização"]}
-            rows={filteredEvents.map(e => [
-              new Date(e.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-              `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type] || e.event_type}`,
-              (e.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
-              `🔗 ${(e.referrer || "direto").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`,
-              e.cta_text || e.event_type.replace(/_/g, " "),
-              `${DEVICE_EMOJI[e.device || ""] || "💻"} ${(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}`,
-              `${BROWSER_EMOJI[e.browser || ""] || "🌐"} ${e.browser || "?"}`,
-              `📍 ${e.city || "?"}, ${e.state || "?"}`,
-            ])}
-            tooltips={filteredEvents.map(e => [
-              null,
-              null,
-              e.page_url || null,
-              e.referrer || null,
-              e.cta_text || e.cta_selector || null,
-              null,
-              null,
-              e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : null,
-            ])}
+            columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização", "Bot"]}
+            rows={filteredEvents.map(e => {
+              const bot = detectBot(e.browser, e.platform);
+              return [
+                new Date(e.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+                `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type] || e.event_type}`,
+                (e.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
+                `🔗 ${(e.referrer || "direto").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`,
+                e.cta_text || e.event_type.replace(/_/g, " "),
+                `${DEVICE_EMOJI[e.device || ""] || "💻"} ${(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}`,
+                `${BROWSER_EMOJI[e.browser || ""] || "🌐"} ${e.browser || "?"}`,
+                `📍 ${e.city || "?"}, ${e.state || "?"}`,
+                bot.isBot ? `${bot.botEmoji} ${bot.botName}` : "—",
+              ];
+            })}
+            tooltips={filteredEvents.map(e => {
+              const bot = detectBot(e.browser, e.platform);
+              return [
+                null,
+                null,
+                e.page_url || null,
+                e.referrer || null,
+                e.cta_text || e.cta_selector || null,
+                null,
+                null,
+                e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : null,
+                bot.isBot ? `${bot.botName} (${BOT_CATEGORY_LABELS[bot.botCategory || "other"]})` : null,
+              ];
+            })}
             pageSize={15}
           />
         </Card>
