@@ -47,16 +47,22 @@ const accountNav = [
 ];
 
 function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType }; end?: boolean }) {
+  const { pathname } = useLocation();
+  const isActive = end ? pathname === item.url : pathname.startsWith(item.url);
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild>
         <NavLink
           to={item.url}
           end={end}
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
-          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[inset_3px_0_0_hsl(var(--sidebar-primary))]"
+          className={cn(
+            "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative",
+            isActive && "sidebar-active-glow"
+          )}
+          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
         >
-          <item.icon className="h-4 w-4 shrink-0 opacity-70" />
+          <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
           <span>{item.title}</span>
         </NavLink>
       </SidebarMenuButton>
