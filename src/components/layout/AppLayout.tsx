@@ -1,6 +1,7 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { QuickActionFab } from "./QuickActionFab";
+import { GuidedTour } from "@/components/onboarding/GuidedTour";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +27,7 @@ export function AppLayout() {
           </AnimatePresence>
         </main>
         <QuickActionFab />
+        <GuidedTour />
       </div>
     </SidebarProvider>
   );
