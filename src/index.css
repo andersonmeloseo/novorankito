@@ -308,3 +308,22 @@
   0%, 100% { box-shadow: 0 0 0 2px hsl(var(--primary)), 0 0 16px hsl(var(--primary) / 0.3); }
   50% { box-shadow: 0 0 0 3px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.5); }
 }
+
+/* ── Competitor Graph: animated edges & glowing nodes ── */
+.competitor-graph .react-flow__edge path {
+  stroke-dasharray: 8 4;
+  animation: competitor-edge-flow 1.5s linear infinite;
+}
+
+@keyframes competitor-edge-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+.competitor-graph .react-flow__node {
+  animation: competitor-node-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes competitor-node-glow {
+  0% { filter: brightness(1) drop-shadow(0 0 4px rgba(0,0,0,0.1)); }
+  100% { filter: brightness(1.08) drop-shadow(0 0 12px rgba(0,0,0,0.15)); }
+}

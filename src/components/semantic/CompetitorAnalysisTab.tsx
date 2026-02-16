@@ -376,18 +376,18 @@ export function CompetitorAnalysisTab() {
         position: { x: cx, y: cy },
         data: { label: `🌐  ${r.domain}  —  ${r.schemas.length} schemas` },
         style: {
-          background: `linear-gradient(135deg, ${color.bg}, ${color.bg}dd)`,
+          background: color.bg,
           color: color.text,
-          border: "none",
-          borderRadius: "16px",
-          padding: "14px 24px",
-          fontWeight: 700,
-          fontSize: "13px",
-          letterSpacing: "0.02em",
-          boxShadow: `0 8px 32px ${color.bg}40, 0 2px 8px rgba(0,0,0,0.2)`,
+          border: `3px solid ${color.bg}`,
+          borderRadius: "18px",
+          padding: "16px 28px",
+          fontWeight: 800,
+          fontSize: "14px",
+          letterSpacing: "0.03em",
+          boxShadow: `0 0 24px ${color.bg}50, 0 8px 32px rgba(0,0,0,0.25)`,
           cursor: "pointer",
-          transition: "all 0.25s ease",
-          minWidth: "180px",
+          transition: "all 0.3s ease",
+          minWidth: "220px",
           textAlign: "center" as const,
         },
       });
@@ -412,13 +412,13 @@ export function CompetitorAnalysisTab() {
               source: id,
               target: existing.nodeId,
               animated: true,
-              style: { stroke: color.bg, strokeWidth: 2, opacity: 0.5 },
+              style: { stroke: color.bg, strokeWidth: 2.5, opacity: 0.7 },
             });
           }
         } else {
           const schemaId = `schema-${typeKey}-${r.domain}`;
           const schemaAngle = angle + ((si + 1) / (r.schemas.length + 1) - 0.5) * 2.0;
-          const schemaRadius = 220 + (si % 2) * 80;
+          const schemaRadius = 250 + (si % 2) * 100;
 
           const propCount = Object.keys(schema.properties).length;
 
@@ -434,13 +434,13 @@ export function CompetitorAnalysisTab() {
               color: "hsl(var(--popover-foreground))",
               border: `2px solid ${color.bg}`,
               borderRadius: "12px",
-              padding: "10px 18px",
+              padding: "10px 20px",
               fontSize: "12px",
               fontWeight: 600,
               cursor: "pointer",
-              transition: "all 0.25s ease",
-              boxShadow: `0 3px 20px ${color.bg}25`,
-              minWidth: "140px",
+              transition: "all 0.3s ease",
+              boxShadow: `0 0 16px ${color.bg}20, 0 4px 12px rgba(0,0,0,0.15)`,
+              minWidth: "150px",
               textAlign: "center" as const,
             },
           });
@@ -452,8 +452,8 @@ export function CompetitorAnalysisTab() {
             id: `edge-${edgeIdx++}`,
             source: id,
             target: schemaId,
-            animated: false,
-            style: { stroke: color.bg, strokeWidth: 1.5, opacity: 0.4 },
+            animated: true,
+            style: { stroke: color.bg, strokeWidth: 2, opacity: 0.5 },
           });
         }
       });
