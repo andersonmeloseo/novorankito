@@ -75,7 +75,6 @@ export function AllEventsTab() {
     // Rankito
     page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
     email_click: "✉️", button_click: "🖱️", form_submit: "📝", heatmap_click: "🔥",
-    web_vitals: "📊",
   };
 
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
@@ -93,7 +92,7 @@ export function AllEventsTab() {
     if (cityFilter !== "all") data = data.filter(e => (e.city || "") === cityFilter);
     if (platformFilter !== "all") data = data.filter(e => (e.platform || "") === platformFilter);
     if (referrerFilter !== "all") data = data.filter(e => (e.referrer || "") === referrerFilter);
-    return data.slice(0, 200);
+    return data;
   }, [events, eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter, referrerFilter]);
 
   const heatmapData = useMemo(() => buildHeatmap(events), [events]);
@@ -456,7 +455,7 @@ export function AllEventsTab() {
                 bot.isBot ? `${bot.botName} (${BOT_CATEGORY_LABELS[bot.botCategory || "other"]})` : null,
               ];
             })}
-            pageSize={15}
+            pageSize={10}
           />
         </Card>
       </AnimatedContainer>

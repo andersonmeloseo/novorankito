@@ -126,7 +126,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 type SortKey = keyof DerivedSession;
 type SortDir = "asc" | "desc";
 
