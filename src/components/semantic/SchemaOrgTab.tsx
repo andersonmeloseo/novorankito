@@ -1299,6 +1299,108 @@ const SCHEMA_SAMPLES: SchemaSample[] = [
       employmentType: "FULL_TIME",
     },
   },
+  {
+    id: "recipe", title: "Receita Culinária", description: "Receita completa com ingredientes, passos e informações nutricionais.",
+    icon: Star, type: "Recipe",
+    values: {
+      "@type": "Recipe", name: "Bolo de Chocolate Fácil",
+      image: "https://www.exemplo.com/bolo-chocolate.jpg",
+      author: '{"@type":"Person","name":"Chef Ana Paula"}',
+      prepTime: "PT20M", cookTime: "PT40M", recipeYield: "10 porções",
+      recipeIngredient: '["3 xícaras de farinha de trigo","2 xícaras de açúcar","1 xícara de chocolate em pó","3 ovos","1 xícara de óleo","1 xícara de leite quente"]',
+      recipeInstructions: '[{"@type":"HowToStep","position":"1","text":"Misture todos os ingredientes secos."},{"@type":"HowToStep","position":"2","text":"Adicione os ovos, óleo e leite quente e bata por 3 minutos."},{"@type":"HowToStep","position":"3","text":"Asse em forno pré-aquecido a 180°C por 40 minutos."}]',
+      nutrition: '{"@type":"NutritionInformation","calories":"350 cal","fatContent":"12g","carbohydrateContent":"48g"}',
+    },
+  },
+  {
+    id: "breadcrumb", title: "BreadcrumbList", description: "Navegação breadcrumb para melhorar rastreamento e Rich Results.",
+    icon: ArrowRight, type: "BreadcrumbList",
+    values: {
+      "@type": "BreadcrumbList",
+      itemListElement: '[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.exemplo.com"},{"@type":"ListItem","position":2,"name":"Produtos","item":"https://www.exemplo.com/produtos"},{"@type":"ListItem","position":3,"name":"Smartphones","item":"https://www.exemplo.com/produtos/smartphones"}]',
+    },
+  },
+  {
+    id: "blog-posting", title: "Blog Post", description: "Post de blog otimizado para Article Rich Results.",
+    icon: FileCode, type: "BlogPosting",
+    values: {
+      "@type": "BlogPosting", headline: "Guia Completo de SEO Técnico para 2025",
+      image: "https://www.exemplo.com/seo-tecnico.jpg",
+      author: '{"@type":"Person","name":"Carlos Silva","url":"https://www.exemplo.com/autor/carlos"}',
+      datePublished: "2025-01-15", dateModified: "2025-02-10",
+      publisher: '{"@type":"Organization","name":"Blog de Marketing Digital","logo":{"@type":"ImageObject","url":"https://www.exemplo.com/logo.png"}}',
+      wordCount: "3200",
+    },
+  },
+  {
+    id: "music-event", title: "Show / Festival", description: "Evento musical com artistas, local e ingressos.",
+    icon: Zap, type: "MusicEvent",
+    values: {
+      "@type": "MusicEvent", name: "Rock in Rio 2025",
+      startDate: "2025-09-19T16:00", endDate: "2025-09-19T23:00",
+      location: '{"@type":"Place","name":"Cidade do Rock","address":{"@type":"PostalAddress","addressLocality":"Rio de Janeiro","addressRegion":"RJ","addressCountry":"BR"}}',
+      performer: '[{"@type":"MusicGroup","name":"Foo Fighters"},{"@type":"MusicGroup","name":"Iron Maiden"}]',
+      offers: '{"@type":"Offer","price":"695","priceCurrency":"BRL","availability":"https://schema.org/InStock","url":"https://rockinrio.com/ingressos"}',
+    },
+  },
+  {
+    id: "organization", title: "Organização / Empresa", description: "Schema completo para empresas com Knowledge Panel.",
+    icon: Building2, type: "Organization",
+    values: {
+      "@type": "Organization", name: "TechBrasil SA",
+      url: "https://www.techbrasil.com.br",
+      logo: "https://www.techbrasil.com.br/logo.png",
+      description: "Líder em soluções de tecnologia e inovação no Brasil.",
+      foundingDate: "2010-03-15", numberOfEmployees: "500-1000",
+      sameAs: '["https://www.linkedin.com/company/techbrasil","https://www.facebook.com/techbrasil","https://twitter.com/techbrasil"]',
+      contactPoint: '{"@type":"ContactPoint","telephone":"+55-11-3000-4000","contactType":"customer service","availableLanguage":"Portuguese"}',
+      address: "Av. Paulista, 1000, São Paulo - SP",
+    },
+  },
+  {
+    id: "software-app", title: "App / Software", description: "Para aplicativos mobile ou web com avaliações.",
+    icon: Package, type: "SoftwareApplication",
+    values: {
+      "@type": "SoftwareApplication", name: "Rankito SEO",
+      operatingSystem: "Web, Android, iOS",
+      applicationCategory: "BusinessApplication",
+      offers: '{"@type":"Offer","price":"0","priceCurrency":"BRL"}',
+      aggregateRating: '{"@type":"AggregateRating","ratingValue":"4.8","reviewCount":"1250"}',
+    },
+  },
+  {
+    id: "medical-business", title: "Clínica / Consultório", description: "Negócio de saúde com especialidades e horários.",
+    icon: Plus, type: "MedicalBusiness",
+    values: {
+      "@type": "MedicalBusiness", name: "Clínica Saúde Integral",
+      medicalSpecialty: "Cardiologia, Dermatologia, Ortopedia",
+      address: "Rua dos Médicos, 500, São Paulo - SP",
+      telephone: "+55 11 3333-4444",
+      openingHoursSpecification: '{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"07:00","closes":"19:00"}',
+      isAcceptingNewPatients: "true",
+    },
+  },
+  {
+    id: "itemlist-carousel", title: "Lista / Carrossel", description: "Lista ordenada para Carousel Rich Results no Google.",
+    icon: ListChecks, type: "ItemList",
+    values: {
+      "@type": "ItemList", name: "Top 5 Restaurantes Japoneses em SP",
+      itemListElement: '[{"@type":"ListItem","position":1,"name":"Sushi Leblon","url":"https://www.exemplo.com/sushi-leblon"},{"@type":"ListItem","position":2,"name":"Temakeria Tokyo","url":"https://www.exemplo.com/temakeria-tokyo"},{"@type":"ListItem","position":3,"name":"Akami Sushi","url":"https://www.exemplo.com/akami-sushi"},{"@type":"ListItem","position":4,"name":"Jiro Dreams","url":"https://www.exemplo.com/jiro-dreams"},{"@type":"ListItem","position":5,"name":"Nagoya House","url":"https://www.exemplo.com/nagoya-house"}]',
+      numberOfItems: "5",
+    },
+  },
+  {
+    id: "review-snippet", title: "Review / Avaliação", description: "Avaliação individual para Review Rich Results.",
+    icon: Star, type: "Review",
+    values: {
+      "@type": "Review",
+      reviewBody: "Excelente serviço! A equipe é muito profissional e atenciosa. Recomendo a todos que buscam qualidade e bom atendimento.",
+      author: '{"@type":"Person","name":"Maria Oliveira"}',
+      reviewRating: '{"@type":"Rating","ratingValue":"5","bestRating":"5"}',
+      itemReviewed: '{"@type":"LocalBusiness","name":"Studio Beleza Premium","address":"Rua da Beleza, 42, SP"}',
+      datePublished: "2025-01-28",
+    },
+  },
 ];
 
 // ── Hierarchical tree — uses full registry ──
@@ -1329,7 +1431,10 @@ export function SchemaOrgTab({ projectId }: Props) {
   const [addedExtraProps, setAddedExtraProps] = useState<string[]>([]);
 
   // Tree state
-  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set(["Thing"]));
+  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set([
+    "Thing", "CreativeWork", "Organization", "LocalBusiness", "Event",
+    "Intangible", "Place", "Action", "Product",
+  ]));
   const tree = useMemo(buildFullSchemaTree, []);
 
   // Load entities
@@ -1509,7 +1614,7 @@ export function SchemaOrgTab({ projectId }: Props) {
     return (
       <div key={node.name}>
         <div
-          className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-xs cursor-pointer transition-colors hover:bg-muted/60 ${inUse ? "bg-primary/5" : ""}`}
+          className={`group flex items-center gap-1.5 py-1.5 px-2 rounded-md text-xs cursor-pointer transition-colors hover:bg-muted/60 ${inUse ? "bg-primary/5" : ""}`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
           onClick={() => {
             if (hasChildren) toggleTreeNode(node.name);
@@ -1524,8 +1629,23 @@ export function SchemaOrgTab({ projectId }: Props) {
             <Minus className="h-3 w-3 text-muted-foreground/40" />
           )}
           <span className={`${hasSchema ? "font-medium text-foreground" : "text-muted-foreground"}`}>{node.name}</span>
-          {inUse && <CheckCircle2 className="h-3 w-3 text-primary ml-auto" />}
-          {node.googleFeature && (
+          {hasSchema?.googleFeature && (
+            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+              <Sparkles className="h-2 w-2 mr-0.5" />
+              {hasSchema.googleFeature.split(",")[0]}
+            </Badge>
+          )}
+          {inUse && <CheckCircle2 className="h-3 w-3 text-primary" />}
+          {hasSchema && (
+            <button
+              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-primary font-medium flex items-center gap-0.5 hover:underline"
+              onClick={(e) => { e.stopPropagation(); startBuilder(hasSchema); }}
+            >
+              <Wrench className="h-2.5 w-2.5" />
+              Construir
+            </button>
+          )}
+          {node.googleFeature && !hasSchema?.googleFeature && (
             <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 ml-auto">
               <Sparkles className="h-2 w-2 mr-0.5" />
               Google
@@ -2167,13 +2287,26 @@ export function SchemaOrgTab({ projectId }: Props) {
         {/* ═══════ EXPLORER TAB ═══════ */}
         <TabsContent value="explorer" className="mt-4">
           <Card className="overflow-hidden">
-            <div className="p-4 border-b bg-muted/30">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderTree className="h-5 w-5 text-primary" />
                 <div>
                   <h4 className="font-semibold text-sm">Explorador Hierárquico de Schema Types</h4>
-                  <p className="text-[11px] text-muted-foreground">Explore a árvore de tipos Schema.org disponíveis no catálogo</p>
+                  <p className="text-[11px] text-muted-foreground">Clique para ver detalhes no catálogo · Hover para construir JSON-LD</p>
                 </div>
+              </div>
+              <div className="flex gap-1.5">
+                <Button size="sm" variant="outline" className="text-[10px] h-7 gap-1" onClick={() => {
+                  const allNames = getAllSchemaTypeNames();
+                  setExpandedTreeNodes(new Set(allNames));
+                }}>
+                  <ChevronDown className="h-3 w-3" /> Expandir Tudo
+                </Button>
+                <Button size="sm" variant="outline" className="text-[10px] h-7 gap-1" onClick={() => {
+                  setExpandedTreeNodes(new Set(["Thing"]));
+                }}>
+                  <ChevronUp className="h-3 w-3" /> Recolher
+                </Button>
               </div>
             </div>
             <ScrollArea className="h-[calc(100vh-520px)] min-h-[400px]">
