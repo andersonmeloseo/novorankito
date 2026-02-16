@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,12 @@ const TABS = [
 
 export default function SemanticGraphPage() {
   const [activeTab, setActiveTab] = useState("graph");
+
+  useEffect(() => {
+    const handler = (e: Event) => setActiveTab((e as CustomEvent).detail);
+    window.addEventListener("switch-semantic-tab", handler);
+    return () => window.removeEventListener("switch-semantic-tab", handler);
+  }, []);
 
   return (
     <>

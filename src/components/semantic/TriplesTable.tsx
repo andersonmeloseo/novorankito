@@ -11,8 +11,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  GitBranch, Search, ArrowRight, Trash2, Filter, Loader2, Network,
+  GitBranch, Search, ArrowRight, Trash2, Filter, Loader2, Network, Plus,
 } from "lucide-react";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV, exportXML } from "@/lib/export-utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -158,7 +160,11 @@ export function TriplesTable() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
+        <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "graph" }))}>
+          <Plus className="h-3.5 w-3.5" />
+          Novo Triple
+        </Button>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -180,6 +186,10 @@ export function TriplesTable() {
             ))}
           </SelectContent>
         </Select>
+        <ExportMenu
+          onExportCSV={() => exportCSV(filtered.map(t => ({ Sujeito: t.subjectName, Tipo_Sujeito: t.subjectType, Predicado: t.predicate, Objeto: t.objectName, Tipo_Objeto: t.objectType, Confiança: t.confidence ?? "" })), "triples")}
+          onExportXML={() => exportXML(filtered.map(t => ({ Sujeito: t.subjectName, Tipo_Sujeito: t.subjectType, Predicado: t.predicate, Objeto: t.objectName, Tipo_Objeto: t.objectType, Confiança: t.confidence ?? "" })), "triples", "triples", "triple")}
+        />
       </div>
 
       {/* Table */}
@@ -195,7 +205,7 @@ export function TriplesTable() {
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          <ScrollArea className="max-h-[500px]">
+          <ScrollArea className="h-[calc(100vh-480px)] min-h-[300px]">
             <Table>
               <TableHeader>
                 <TableRow>
