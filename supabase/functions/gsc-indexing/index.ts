@@ -177,7 +177,7 @@ serve(async (req) => {
       });
     }
 
-    // ─── Action: "submit" — submit URLs to Google Indexing API ───
+    // ─── Action: "submit" — submit URLs to Google Indexing API (round-robin across all connections) ───
     if (action === "submit") {
       if (!urls || !Array.isArray(urls) || urls.length === 0) {
         return new Response(JSON.stringify({ error: "urls array is required" }), {
@@ -186,33 +186,53 @@ serve(async (req) => {
       }
 
       const type = request_type || "URL_UPDATED";
-      const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key }, "https://www.googleapis.com/auth/indexing");
       const ownerId = conn.owner_id;
+      const maxPerBatch = 200 * totalConnections; // total limit across all accounts
+      const batch = urls.slice(0, Math.min(urls.length, maxPerBatch));
 
-      const results: { url: string; status: string; response_code?: number; response_message?: string; fail_reason?: string }[] = [];
-      const batch = urls.slice(0, 50);
+      // Get access tokens for all connections
+      const connTokens: { conn: any; token: string }[] = [];
+      for (const c of allConns!) {
+        try {
+          const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
+          connTokens.push({ conn: c, token });
+        } catch (e) {
+          console.error(`Failed to get token for ${c.client_email}:`, e);
+        }
+      }
 
-      for (const url of batch) {
+      if (connTokens.length === 0) {
+        return new Response(JSON.stringify({ error: "Failed to authenticate with any GSC connection" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const results: { url: string; status: string; response_code?: number; response_message?: string; fail_reason?: string; account?: string }[] = [];
+
+      for (let i = 0; i < batch.length; i++) {
+        const url = batch[i];
+        // Round-robin: distribute URLs across connections
+        const ct = connTokens[i % connTokens.length];
         try {
           const res = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
             method: "POST",
-            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            headers: { Authorization: `Bearer ${ct.token}`, "Content-Type": "application/json" },
             body: JSON.stringify({ url, type }),
           });
 
           const body = await res.json();
 
           if (res.ok) {
-            results.push({ url, status: "success", response_code: res.status, response_message: body.urlNotificationMetadata?.latestUpdate?.type || type });
+            results.push({ url, status: "success", response_code: res.status, response_message: body.urlNotificationMetadata?.latestUpdate?.type || type, account: ct.conn.client_email });
           } else if (res.status === 429) {
-            results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: "Quota exceeded. Try again later." });
+            results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: "Quota exceeded for " + ct.conn.client_email, account: ct.conn.client_email });
           } else {
-            results.push({ url, status: "failed", response_code: res.status, fail_reason: body.error?.message || `HTTP ${res.status}` });
+            results.push({ url, status: "failed", response_code: res.status, fail_reason: body.error?.message || `HTTP ${res.status}`, account: ct.conn.client_email });
           }
 
           await new Promise(r => setTimeout(r, 150));
         } catch (e) {
-          results.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown error" });
+          results.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown error", account: ct.conn.client_email });
         }
       }
 
@@ -238,6 +258,7 @@ serve(async (req) => {
         failed: results.filter(r => r.status === "failed").length,
         quota_exceeded: results.filter(r => r.status === "quota_exceeded").length,
         total: results.length,
+        connections_used: connTokens.length,
         results,
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -291,7 +312,7 @@ serve(async (req) => {
       });
     }
 
-    // ─── Action: "inspect" — batch URL inspection via URL Inspection API ───
+    // ─── Action: "inspect" — batch URL inspection via URL Inspection API (round-robin across connections) ───
     if (action === "inspect") {
       if (!urls || !Array.isArray(urls) || urls.length === 0) {
         return new Response(JSON.stringify({ error: "urls array is required" }), {
@@ -299,21 +320,36 @@ serve(async (req) => {
         });
       }
 
-      const accessToken = await getAccessToken(
-        { client_email: conn.client_email, private_key: conn.private_key },
-        "https://www.googleapis.com/auth/webmasters.readonly"
-      );
+      // Get tokens for all connections (inspection uses webmasters.readonly scope)
+      const inspectTokens: { conn: any; token: string }[] = [];
+      for (const c of allConns!) {
+        try {
+          const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/webmasters.readonly");
+          inspectTokens.push({ conn: c, token });
+        } catch (e) {
+          console.error(`Failed to get inspect token for ${c.client_email}:`, e);
+        }
+      }
+
+      if (inspectTokens.length === 0) {
+        return new Response(JSON.stringify({ error: "Failed to authenticate with any GSC connection" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       const results: any[] = [];
       let errors = 0;
-      const batch = urls.slice(0, 20);
+      const maxInspect = 2000 * inspectTokens.length; // 2000 per account/day
+      const batch = urls.slice(0, Math.min(urls.length, maxInspect));
 
-      for (const url of batch) {
+      for (let i = 0; i < batch.length; i++) {
+        const url = batch[i];
+        const ct = inspectTokens[i % inspectTokens.length];
         try {
           const inspectRes = await fetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
             method: "POST",
-            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ inspectionUrl: url, siteUrl: conn.site_url }),
+            headers: { Authorization: `Bearer ${ct.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ inspectionUrl: url, siteUrl: ct.conn.site_url }),
           });
 
           if (!inspectRes.ok) { errors++; continue; }
@@ -323,7 +359,7 @@ serve(async (req) => {
 
           results.push({
             project_id,
-            owner_id: conn.owner_id,
+            owner_id: ct.conn.owner_id,
             url,
             verdict: inspection.verdict || "VERDICT_UNSPECIFIED",
             coverage_state: inspection.coverageState || null,
@@ -353,6 +389,7 @@ serve(async (req) => {
         inspected: results.length,
         errors,
         remaining: urls.length - batch.length,
+        connections_used: inspectTokens.length,
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
