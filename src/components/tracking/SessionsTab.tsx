@@ -14,7 +14,8 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   CartesianGrid,
 } from "recharts";
-import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, Users, Clock, Globe, Loader2 } from "lucide-react";
+import { Download, Search, Flame, ArrowUpDown, ChevronLeft, ChevronRight, FileJson, FileSpreadsheet, Users, Clock, Globe, Loader2, Bot } from "lucide-react";
+import { detectBot, BOT_CATEGORY_LABELS, BOT_CATEGORY_STYLES } from "@/lib/bot-detection";
 import { format } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -41,6 +42,9 @@ interface DerivedSession {
   browser: string;
   city: string;
   is_bounce: boolean;
+  bot_name: string;
+  bot_emoji: string;
+  bot_category: string;
 }
 
 function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
@@ -59,6 +63,7 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
     const duration_sec = Math.round((new Date(last.created_at).getTime() - new Date(first.created_at).getTime()) / 1000);
     const pages = new Set(evts.map(e => e.page_url).filter(Boolean));
     const exitEvent = evts.find(e => e.event_type === "page_exit");
+    const bot = detectBot(first.browser, first.platform);
     return {
       session_id,
       started_at: first.created_at,
@@ -73,6 +78,9 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
       browser: first.browser || "Other",
       city: first.city || "Desconhecido",
       is_bounce: pages.size <= 1 && duration_sec < 10,
+      bot_name: bot.botName || "",
+      bot_emoji: bot.botEmoji || "",
+      bot_category: bot.botCategory || "",
     };
   }).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
 }
@@ -133,6 +141,7 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "device", label: "Dispositivo" },
   { key: "browser", label: "Browser" },
   { key: "city", label: "Cidade" },
+  { key: "bot_name", label: "Bot" },
 ];
 
 export function SessionsTab() {
@@ -297,7 +306,7 @@ export function SessionsTab() {
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Total Sessões" value={totalSessions} color="hsl(var(--primary))" icon={Users} />
-        <SparkKpi label="Referrer" value={lastSession ? lastSession.referrer.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : "—"} color="hsl(var(--success))" icon={Globe} smallValue />
+        <SparkKpi label="🤖 Bots" value={filtered.filter(s => s.bot_name).length} color="hsl(var(--chart-5))" icon={Bot} />
         <SparkKpi label="Duração Média" value={formatDuration(avgDuration)} color="hsl(var(--info))" icon={Clock} />
         <SparkKpi label="Pico de Atividade" value={`${peakInfo.label} (${peakInfo.count})`} color="hsl(var(--warning))" icon={Flame} smallValue />
         <SparkKpi label="Cidade" value={lastSession ? lastSession.city : "—"} color="hsl(var(--info))" icon={Globe} smallValue />
@@ -552,6 +561,15 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device === "mobile" ? "📱" : s.device === "desktop" ? "🖥️" : "📟"} {s.device}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">{s.browser === "Chrome" ? "🌐" : s.browser === "Firefox" ? "🦊" : s.browser === "Safari" ? "🧭" : "🌐"} {s.browser}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">📍 {s.city}</td>
+                      <td className="px-3 py-2">
+                        {s.bot_name ? (
+                          <Badge variant="outline" className={`text-[9px] gap-1 ${BOT_CATEGORY_STYLES[s.bot_category] || ""}`}>
+                            {s.bot_emoji} {s.bot_name}
+                          </Badge>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className={`text-[9px] ${STATUS_BADGE[status] || ""}`}>{statusLabel[status]}</Badge>
                       </td>
