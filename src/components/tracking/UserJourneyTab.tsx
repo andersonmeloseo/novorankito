@@ -250,102 +250,97 @@ function JourneyTimeline({ steps, isExpanded }: { steps: JourneyStep[]; isExpand
   );
 }
 
-// ─── Journey Card ───
-function JourneyCard({ journey, index }: { journey: Journey; index: number }) {
+// ─── Sortable Table Header ───
+function SortTh({
+  label, field, current, onSort, className = "",
+}: {
+  label: string; field: string; current: string; onSort: (f: string) => void; className?: string;
+}) {
+  const isActive = current === field || current === `-${field}`;
+  const isDesc = current === field;
+  return (
+    <th
+      className={`px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground select-none whitespace-nowrap ${className}`}
+      onClick={() => onSort(isActive && isDesc ? `-${field}` : field)}
+    >
+      {label} {isActive && (isDesc ? "↓" : "↑")}
+    </th>
+  );
+}
+
+// ─── Journey Table Row ───
+function JourneyTableRow({ journey }: { journey: Journey }) {
   const [expanded, setExpanded] = useState(false);
   const DeviceIcon = journey.device === "mobile" ? Smartphone : journey.device === "tablet" ? Tablet : Monitor;
+  const entryPage = journey.steps[0]?.page || "/";
+  const exitPage = journey.steps[journey.steps.length - 1]?.page || "/";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
-    >
-      <Card className={`p-4 card-hover group relative overflow-hidden ${journey.converted ? "ring-1 ring-success/30" : ""}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        {journey.converted && (
-          <div className="absolute top-2 right-2">
-            <div className="h-7 w-7 rounded-full bg-success/15 flex items-center justify-center" title="Conversão realizada!">
-              <Trophy className="h-4 w-4 text-success" />
-            </div>
+    <>
+      <tr
+        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors text-xs"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="px-2 py-2 whitespace-nowrap">
+          <div className="flex items-center gap-1.5">
+            <Footprints className="h-3 w-3 text-primary shrink-0" />
+            <span className="font-medium text-foreground">{journey.visitor_id}</span>
           </div>
-        )}
-        <div className="relative">
-          <div className="flex items-center justify-between mb-3 pr-8">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-info/20 flex items-center justify-center">
-                <Footprints className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-bold text-foreground">{journey.visitor_id}</p>
-                  <span className="text-[9px] font-mono text-muted-foreground/60">{journey.session_id.slice(0, 8)}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  {format(new Date(journey.started_at), "dd/MM · HH:mm", { locale: ptBR })}
-                </p>
-              </div>
-            </div>
-            {journey.converted && (
-              <Badge className="text-[9px] bg-success/15 text-success border-success/30 gap-1">
-                <Target className="h-2.5 w-2.5" /> R$ {journey.conversion_value.toFixed(0)}
-              </Badge>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><DeviceIcon className="h-2.5 w-2.5" /> {journey.device}</span>
-            <span className="flex items-center gap-1"><Laptop className="h-2.5 w-2.5" /> {journey.os}</span>
-            <span>{journey.browser}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" /> {journey.source}/{journey.medium}</span>
-            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {journey.city}, {journey.country}</span>
-            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDuration(journey.total_duration_sec)}</span>
-            <span className="flex items-center gap-1"><Route className="h-2.5 w-2.5" /> {journey.steps.length} páginas</span>
-          </div>
-          <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-none pb-1">
-            {journey.steps.map((step, si) => (
-              <div key={si} className="flex items-center gap-1 shrink-0">
-                <span
-                  className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${
-                    step.cta_clicked ? "bg-success/15 text-success border border-success/30" : "bg-muted/60 text-foreground"
-                  }`}
-                  title={`${step.page} — ${formatDuration(step.duration_sec)} — ${step.action}`}
-                >
-                  {step.page === "/" ? "Home" : (step.page.split("/").pop() || step.page).slice(0, 20)}
-                  {step.cta_clicked && " 🎯"}
-                </span>
-                {si < journey.steps.length - 1 && <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />}
-              </div>
-            ))}
-          </div>
-          <AnimatePresence>
-            {expanded && (
+          <span className="text-[9px] font-mono text-muted-foreground/60">{journey.session_id.slice(0, 8)}</span>
+        </td>
+        <td className="px-2 py-2 whitespace-nowrap text-muted-foreground">
+          {format(new Date(journey.started_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+        </td>
+        <td className="px-2 py-2 whitespace-nowrap text-center">{journey.steps.length}</td>
+        <td className="px-2 py-2 whitespace-nowrap text-center">{formatDuration(journey.total_duration_sec)}</td>
+        <td className="px-2 py-2">
+          <span className="text-[10px] text-foreground break-all" title={entryPage}>{entryPage}</span>
+        </td>
+        <td className="px-2 py-2">
+          <span className="text-[10px] text-foreground break-all" title={exitPage}>{exitPage}</span>
+        </td>
+        <td className="px-2 py-2 whitespace-nowrap">
+          <span className="flex items-center gap-1"><DeviceIcon className="h-3 w-3" /> {journey.device}</span>
+        </td>
+        <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">{journey.browser}</td>
+        <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">{journey.os}</td>
+        <td className="px-2 py-2 whitespace-nowrap">
+          <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {journey.city}, {journey.country}</span>
+        </td>
+        <td className="px-2 py-2 whitespace-nowrap hidden md:table-cell">{journey.source}/{journey.medium}</td>
+        <td className="px-2 py-2 whitespace-nowrap text-center">
+          {journey.converted ? (
+            <Badge className="text-[9px] bg-success/15 text-success border-success/30 gap-1">
+              <Trophy className="h-2.5 w-2.5" /> R$ {journey.conversion_value.toFixed(0)}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </td>
+        <td className="px-2 py-2 text-center">
+          {expanded ? <ChevronUp className="h-3 w-3 text-muted-foreground inline" /> : <ChevronDown className="h-3 w-3 text-muted-foreground inline" />}
+        </td>
+      </tr>
+      <AnimatePresence>
+        {expanded && (
+          <tr>
+            <td colSpan={99} className="p-0">
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="overflow-hidden"
+                className="overflow-hidden bg-muted/20 border-b border-border/30"
               >
-                <div className="pt-2 pb-1 border-t border-border/50">
+                <div className="p-4">
                   <JourneyTimeline steps={journey.steps} isExpanded />
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="w-full mt-1 h-7 text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            {expanded ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
-            {expanded ? "Recolher" : "Ver jornada completa"}
-          </Button>
-        </div>
-      </Card>
-    </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -356,7 +351,7 @@ export function UserJourneyTab() {
   const [search, setSearch] = useState("");
   const [device, setDevice] = useState("all");
   const [convFilter, setConvFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<"recent" | "duration" | "pages">("recent");
+  const [sortBy, setSortBy] = useState<string>("recent");
   const [page, setPage] = useState(1);
 
   const journeys = useMemo(() => buildJourneys(allEvents || []), [allEvents]);
@@ -379,9 +374,20 @@ export function UserJourneyTab() {
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
-    if (sortBy === "duration") arr.sort((a, b) => b.total_duration_sec - a.total_duration_sec);
-    else if (sortBy === "pages") arr.sort((a, b) => b.steps.length - a.steps.length);
-    else arr.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+    const desc = !sortBy.startsWith("-");
+    const field = sortBy.replace(/^-/, "");
+    const cmp = (a: Journey, b: Journey): number => {
+      switch (field) {
+        case "duration": return b.total_duration_sec - a.total_duration_sec;
+        case "pages": return b.steps.length - a.steps.length;
+        case "visitor": return a.visitor_id.localeCompare(b.visitor_id);
+        case "device": return a.device.localeCompare(b.device);
+        case "city": return a.city.localeCompare(b.city);
+        case "conversion": return (b.converted ? b.conversion_value + 1 : 0) - (a.converted ? a.conversion_value + 1 : 0);
+        default: return new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
+      }
+    };
+    arr.sort((a, b) => desc ? cmp(a, b) : -cmp(a, b));
     return arr;
   }, [filtered, sortBy]);
 
@@ -547,17 +553,6 @@ export function UserJourneyTab() {
                   <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CONVERSION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Ordenar</label>
-                <Select value={sortBy} onValueChange={(v: any) => { setSortBy(v); setPage(1); }}>
-                  <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recent">Mais recentes</SelectItem>
-                    <SelectItem value="duration">Maior duração</SelectItem>
-                    <SelectItem value="pages">Mais páginas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -763,7 +758,7 @@ export function UserJourneyTab() {
             </AnimatedContainer>
           </div>
 
-          {/* Journey Cards */}
+          {/* Journey Table */}
           <AnimatedContainer delay={0.1}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -773,11 +768,34 @@ export function UserJourneyTab() {
               <span className="text-[10px] text-muted-foreground">{sorted.length} resultados</span>
             </div>
             {paged.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {paged.map((journey, i) => (
-                  <JourneyCard key={journey.session_id} journey={journey} index={i} />
-                ))}
-              </div>
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-muted/40 border-b border-border/50">
+                      <tr>
+                        <SortTh label="Visitante" field="visitor" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
+                        <SortTh label="Início" field="recent" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
+                        <SortTh label="Páginas" field="pages" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
+                        <SortTh label="Duração" field="duration" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
+                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Entrada</th>
+                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Saída</th>
+                        <SortTh label="Device" field="device" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
+                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Navegador</th>
+                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">OS</th>
+                        <SortTh label="Local" field="city" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
+                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Origem</th>
+                        <SortTh label="Conversão" field="conversion" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
+                        <th className="px-2 py-2 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paged.map((journey) => (
+                        <JourneyTableRow key={journey.session_id} journey={journey} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             ) : (
               <EmptyState icon={Footprints} title="Nenhuma jornada" description="Ajuste os filtros para ver as jornadas dos visitantes." />
             )}
