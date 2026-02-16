@@ -43,7 +43,8 @@ serve(async (req) => {
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: conn, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).single();
+    const { data: conns, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).order("created_at", { ascending: true }).limit(1);
+    const conn = conns?.[0];
     if (connErr || !conn || !conn.site_url) {
       return new Response(JSON.stringify({ error: "No GSC connection found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },

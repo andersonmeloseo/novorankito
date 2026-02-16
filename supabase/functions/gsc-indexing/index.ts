@@ -44,8 +44,9 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get GSC connection
-    const { data: conn, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).single();
+    // Get GSC connection (support multiple connections per project)
+    const { data: conns, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).order("created_at", { ascending: true }).limit(1);
+    const conn = conns?.[0];
     if (connErr || !conn) {
       return new Response(JSON.stringify({ error: "No GSC connection found. Connect Google Search Console first." }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
