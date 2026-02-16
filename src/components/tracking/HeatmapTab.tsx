@@ -219,8 +219,8 @@ const TRAIL_COLORS = [
   "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
 ];
 
-/* ── Page Card for listing view ── */
-function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick, onDelete }: {
+/* ── Page Row for table listing view ── */
+function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick, onDelete }: {
   url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
 }) {
   let pathname = url;
@@ -232,85 +232,51 @@ function PageCard({ url, clicks, exits, views, visitors, avgScroll, moveCount, f
   };
 
   return (
-    <Card className="card-hover cursor-pointer group transition-all hover:border-primary/40 relative" onClick={onClick}>
-      {/* Delete button on hover */}
-      <button
-        className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-background border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 hover:border-destructive/30"
-        onClick={onDelete}
-        title="Excluir dados desta página"
-      >
-        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-      </button>
-      <div className="p-4 space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+    <tr className="group table-row-hover cursor-pointer border-b border-border/50 last:border-0" onClick={onClick}>
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
             <Globe className="h-4 w-4 text-primary" />
           </div>
-          <div className="flex-1 min-w-0 pr-6">
-            <p className="text-sm font-semibold text-foreground truncate" title={url}>{pathname}</p>
-            <p className="text-[10px] text-muted-foreground truncate" title={url}>{url}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground truncate max-w-[300px]" title={url}>{pathname}</p>
+            <p className="text-[10px] text-muted-foreground truncate max-w-[300px]" title={url}>{url}</p>
           </div>
+        </div>
+      </td>
+      <td className="py-3 px-3 text-center">
+        <p className="text-xs font-bold text-foreground">{views.toLocaleString("pt-BR")}</p>
+      </td>
+      <td className="py-3 px-3 text-center">
+        <p className="text-xs font-bold text-foreground">{clicks.toLocaleString("pt-BR")}</p>
+      </td>
+      <td className="py-3 px-3 text-center">
+        <p className="text-xs font-bold text-foreground">{visitors.toLocaleString("pt-BR")}</p>
+      </td>
+      <td className="py-3 px-3 text-center hidden lg:table-cell">
+        <p className="text-xs font-bold text-foreground">{avgScroll}%</p>
+      </td>
+      <td className="py-3 px-3 text-center hidden xl:table-cell">
+        <p className="text-xs font-bold text-foreground">{moveCount}</p>
+      </td>
+      <td className="py-3 px-3 text-right hidden md:table-cell">
+        <p className="text-[10px] text-muted-foreground">{fmtDate(lastEvent)}</p>
+      </td>
+      <td className="py-3 px-2 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            className="h-7 w-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10"
+            onClick={onDelete}
+            title="Excluir dados desta página"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </button>
           <ArrowLeft className="h-4 w-4 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
-
-        {/* Date & city info */}
-        <div className="flex items-center gap-3 text-[9px] text-muted-foreground flex-wrap">
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>Primeiro: <strong className="text-foreground">{fmtDate(firstEvent)}</strong></span>
-          </div>
-          <span className="text-muted-foreground/40">•</span>
-          <div className="flex items-center gap-1">
-            <span>Último: <strong className="text-foreground">{fmtDate(lastEvent)}</strong></span>
-          </div>
-          {topCity && (
-            <>
-              <span className="text-muted-foreground/40">•</span>
-              <div className="flex items-center gap-1">
-                <Globe className="h-3 w-3" />
-                <span>Cidade: <strong className="text-foreground">{topCity}</strong></span>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{views.toLocaleString("pt-BR")}</p>
-            <p className="text-[9px] text-muted-foreground">Views</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{clicks.toLocaleString("pt-BR")}</p>
-            <p className="text-[9px] text-muted-foreground">Cliques</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{visitors.toLocaleString("pt-BR")}</p>
-            <p className="text-[9px] text-muted-foreground">Visitantes</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{avgScroll}%</p>
-            <p className="text-[9px] text-muted-foreground">Scroll</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{exits.toLocaleString("pt-BR")}</p>
-            <p className="text-[9px] text-muted-foreground">Saídas</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-bold text-foreground">{moveCount}</p>
-            <p className="text-[9px] text-muted-foreground">Trilhas</p>
-          </div>
-        </div>
-
-        <div className="flex gap-1.5">
-          <Badge variant="outline" className="text-[8px] gap-1"><MousePointer2 className="h-2.5 w-2.5" /> Click Map</Badge>
-          <Badge variant="outline" className="text-[8px] gap-1"><ArrowDownFromLine className="h-2.5 w-2.5" /> Scroll Map</Badge>
-          <Badge variant="outline" className="text-[8px] gap-1"><Move className="h-2.5 w-2.5" /> Movement</Badge>
-        </div>
-      </div>
-    </Card>
+      </td>
+    </tr>
   );
 }
-
 /* ── Data Availability Indicator ── */
 function DataAvailabilityBadge({ available, count, label, icon: Icon }: { available: boolean; count: number; label: string; icon: React.ElementType }) {
   return (
@@ -979,37 +945,57 @@ export function HeatmapTab() {
 
           return filtered.length > 0 ? (
             <div className="space-y-4">
-              <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {paginated.map((opt) => (
-                  <PageCard
-                    key={opt.url}
-                    url={opt.url}
-                    clicks={opt.clicks}
-                    exits={opt.exits}
-                    views={opt.views}
-                    visitors={opt.visitors}
-                    avgScroll={opt.avgScroll}
-                    moveCount={opt.moveCount}
-                    firstEvent={opt.firstEvent}
-                    lastEvent={opt.lastEvent}
-                    topCity={opt.topCity}
-                    onClick={() => setSelectedUrl(opt.url)}
-                    onDelete={async (e) => {
-                      e.stopPropagation();
-                      if (!projectId) return;
-                      if (!window.confirm(`Excluir todos os dados de heatmap da página "${(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}"?`)) return;
-                      const { error } = await supabase
-                        .from("tracking_events")
-                        .delete()
-                        .eq("project_id", projectId)
-                        .eq("page_url", opt.url);
-                      if (error) { toast.error("Erro ao excluir: " + error.message); return; }
-                      toast.success("Dados da página excluídos!");
-                      queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
-                    }}
-                  />
-                ))}
-              </StaggeredGrid>
+              <AnimatedContainer delay={0.04}>
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                          <th className="py-2.5 px-4 text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Página</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Views</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Cliques</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Visitantes</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center hidden lg:table-cell">Scroll</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center hidden xl:table-cell">Trilhas</th>
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-right hidden md:table-cell">Último evento</th>
+                          <th className="py-2.5 px-2 w-[60px]"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginated.map((opt) => (
+                          <PageRow
+                            key={opt.url}
+                            url={opt.url}
+                            clicks={opt.clicks}
+                            exits={opt.exits}
+                            views={opt.views}
+                            visitors={opt.visitors}
+                            avgScroll={opt.avgScroll}
+                            moveCount={opt.moveCount}
+                            firstEvent={opt.firstEvent}
+                            lastEvent={opt.lastEvent}
+                            topCity={opt.topCity}
+                            onClick={() => setSelectedUrl(opt.url)}
+                            onDelete={async (e) => {
+                              e.stopPropagation();
+                              if (!projectId) return;
+                              if (!window.confirm(`Excluir todos os dados de heatmap da página "${(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}"?`)) return;
+                              const { error } = await supabase
+                                .from("tracking_events")
+                                .delete()
+                                .eq("project_id", projectId)
+                                .eq("page_url", opt.url);
+                              if (error) { toast.error("Erro ao excluir: " + error.message); return; }
+                              toast.success("Dados da página excluídos!");
+                              queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
+                            }}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </AnimatedContainer>
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2">
                   <Button size="sm" variant="outline" className="h-8 text-xs" disabled={safePage === 0} onClick={() => setListPage(safePage - 1)}>
