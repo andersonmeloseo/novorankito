@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Search, Download, Trash2, Pencil, Filter, Building2, Ban, CreditCard, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Search, Download, Trash2, Pencil, Filter, Building2, Ban, CreditCard, ArrowUpDown, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import { useAdminProfiles, useAdminProjects, useAdminBilling, useAdminRoles } from "@/hooks/use-admin";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ClientEditDialog } from "@/components/admin/clients/ClientEditDialog";
+import { CreateClientDialog } from "@/components/admin/clients/CreateClientDialog";
 import { exportCSV } from "@/lib/export-utils";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -29,6 +30,7 @@ export default function AdminClientsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [bulkAction, setBulkAction] = useState(false);
   const [bulkPlan, setBulkPlan] = useState("starter");
   const [showBulkPlan, setShowBulkPlan] = useState(false);
@@ -208,7 +210,11 @@ export default function AdminClientsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader title="Clientes" description="Gestão completa de clientes — editar, remover e gerenciar acessos" />
+      <PageHeader title="Clientes" description="Gestão completa de clientes — editar, remover e gerenciar acessos">
+        <Button size="sm" className="gap-1.5" onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4" /> Adicionar Cliente
+        </Button>
+      </PageHeader>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -440,6 +446,13 @@ export default function AdminClientsPage() {
           onDeleted={handleRefresh}
         />
       )}
+
+      {/* Create Dialog */}
+      <CreateClientDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreated={handleRefresh}
+      />
     </div>
   );
 }
