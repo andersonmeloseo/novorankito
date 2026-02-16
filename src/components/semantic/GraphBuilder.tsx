@@ -7,6 +7,8 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   type Connection,
   type Node,
   type Edge,
@@ -16,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Plus, ZoomIn, Loader2, Wand2 } from "lucide-react";
+import { Plus, Loader2, Wand2 } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -32,7 +34,6 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -43,9 +44,10 @@ const PREDICATES = [
   "avalia", "relacionado_a", "parte_de", "criou",
 ];
 
-export function GraphBuilder() {
+function GraphBuilderInner() {
   const { user } = useAuth();
   const projectId = localStorage.getItem("rankito_current_project");
+  const { screenToFlowPosition } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -66,6 +68,14 @@ export function GraphBuilder() {
   // Connection predicate dialog
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
   const [connectionPredicate, setConnectionPredicate] = useState(PREDICATES[0]);
+
+  // "Create from handle" state: when user drags from a handle to empty space
+  const [createFromHandle, setCreateFromHandle] = useState<{
+    sourceNodeId: string;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [createFromPredicate, setCreateFromPredicate] = useState(PREDICATES[0]);
+  const connectingNodeId = useRef<string | null>(null);
 
   const nodeTypes = useMemo(() => ({ entity: EntityNode }), []);
   const edgeTypes = useMemo(() => ({ relation: RelationEdge }), []);
@@ -133,7 +143,7 @@ export function GraphBuilder() {
     toast({ title: "Relação removida" });
   }, [setEdges]);
 
-  // Inject callbacks into node data + edge data
+  // Inject callbacks
   const nodesWithCallbacks = useMemo(() =>
     nodes.map((n) => ({
       ...n,
@@ -181,12 +191,10 @@ export function GraphBuilder() {
   // ── Auto-save position on drag end ──
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
-
     const positionChanges = changes.filter((c) => c.type === "position" && !("dragging" in c && (c as any).dragging));
     if (positionChanges.length > 0) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        // Save positions
         positionChanges.forEach(async (c) => {
           if (c.type === "position" && c.position) {
             await supabase
@@ -199,11 +207,14 @@ export function GraphBuilder() {
     }
   }, [onNodesChange]);
 
-  // ── Create entity ──
+  // ── Create entity (standalone) ──
   const handleCreateEntity = useCallback(
     async (entity: EntityFormData) => {
       if (!projectId || !user) return;
       setSaving(true);
+      const posX = createFromHandle?.position.x ?? 200 + Math.random() * 400;
+      const posY = createFromHandle?.position.y ?? 100 + Math.random() * 300;
+
       const { data, error } = await supabase.from("semantic_entities").insert({
         project_id: projectId,
         owner_id: user.id,
@@ -211,12 +222,12 @@ export function GraphBuilder() {
         entity_type: entity.entityType,
         schema_type: entity.schemaType || null,
         description: entity.description || null,
-        position_x: 200 + Math.random() * 400,
-        position_y: 100 + Math.random() * 300,
+        position_x: posX,
+        position_y: posY,
       }).select().single();
-      setSaving(false);
 
       if (error || !data) {
+        setSaving(false);
         toast({ title: "Erro ao criar entidade", variant: "destructive" });
         return;
       }
@@ -234,9 +245,39 @@ export function GraphBuilder() {
         } satisfies EntityNodeData,
       };
       setNodes((nds) => [...nds, newNode]);
-      toast({ title: "Entidade criada", description: entity.name });
+
+      // If created from handle drag, also create the relation
+      if (createFromHandle) {
+        const { data: relData, error: relError } = await supabase.from("semantic_relations").insert({
+          project_id: projectId,
+          owner_id: user.id,
+          subject_id: createFromHandle.sourceNodeId,
+          object_id: data.id,
+          predicate: createFromPredicate,
+        }).select().single();
+
+        if (!relError && relData) {
+          const edge: Edge = {
+            id: relData.id,
+            source: relData.subject_id,
+            target: relData.object_id,
+            type: "relation",
+            data: { predicate: relData.predicate },
+            animated: true,
+          };
+          setEdges((eds) => addEdge(edge, eds));
+          toast({ title: "Entidade e relação criadas", description: `${entity.name} — ${createFromPredicate}` });
+        } else {
+          toast({ title: "Entidade criada (erro na relação)", variant: "destructive" });
+        }
+        setCreateFromHandle(null);
+        setCreateFromPredicate(PREDICATES[0]);
+      } else {
+        toast({ title: "Entidade criada", description: entity.name });
+      }
+      setSaving(false);
     },
-    [projectId, user, setNodes],
+    [projectId, user, setNodes, setEdges, createFromHandle, createFromPredicate],
   );
 
   // ── Edit entity ──
@@ -270,7 +311,6 @@ export function GraphBuilder() {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteNodeId) return;
     setSaving(true);
-    // Delete relations first
     await supabase.from("semantic_relations").delete().or(`subject_id.eq.${deleteNodeId},object_id.eq.${deleteNodeId}`);
     await supabase.from("semantic_entities").delete().eq("id", deleteNodeId);
     setSaving(false);
@@ -281,10 +321,53 @@ export function GraphBuilder() {
     toast({ title: "Entidade excluída" });
   }, [deleteNodeId, setNodes, setEdges]);
 
-  // ── Connect with predicate picker ──
+  // ── Connect: node-to-node ──
+  const onConnectStart = useCallback((_: any, params: any) => {
+    connectingNodeId.current = params.nodeId;
+  }, []);
+
   const onConnect = useCallback((connection: Connection) => {
+    connectingNodeId.current = null;
     setPendingConnection(connection);
     setConnectionPredicate(PREDICATES[0]);
+  }, []);
+
+  // ── Connect end: if dropped on empty pane, open "create from handle" flow ──
+  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!connectingNodeId.current) return;
+
+    const target = event.target as HTMLElement;
+    // Check if dropped on the pane (not on another node)
+    const targetIsPane = target.classList.contains("react-flow__pane");
+    if (!targetIsPane) {
+      connectingNodeId.current = null;
+      return;
+    }
+
+    // Get position
+    const clientX = "changedTouches" in event ? event.changedTouches[0].clientX : (event as MouseEvent).clientX;
+    const clientY = "changedTouches" in event ? event.changedTouches[0].clientY : (event as MouseEvent).clientY;
+    const position = screenToFlowPosition({ x: clientX, y: clientY });
+
+    setCreateFromHandle({
+      sourceNodeId: connectingNodeId.current,
+      position,
+    });
+    setCreateFromPredicate(PREDICATES[0]);
+    connectingNodeId.current = null;
+  }, [screenToFlowPosition]);
+
+  // Handle the "create from handle" predicate dialog → opens entity dialog
+  const handleConfirmCreateFromHandle = useCallback(() => {
+    // createFromHandle is already set, now open the entity dialog
+    setEditNodeId(null);
+    setEditData(null);
+    setDialogOpen(true);
+  }, []);
+
+  const handleCancelCreateFromHandle = useCallback(() => {
+    setCreateFromHandle(null);
+    setCreateFromPredicate(PREDICATES[0]);
   }, []);
 
   const handleConfirmConnection = useCallback(async () => {
@@ -318,18 +401,16 @@ export function GraphBuilder() {
     toast({ title: "Relação criada", description: connectionPredicate });
   }, [pendingConnection, connectionPredicate, projectId, user, setEdges]);
 
-  // ── Wizard: generate full graph from niche template ──
+  // ── Wizard ──
   const handleWizardGenerate = useCallback(async (
     template: NicheTemplate, businessName: string, locationName: string,
   ) => {
     if (!projectId || !user) return;
     setWizardGenerating(true);
 
-    // Layout: radial around center
     const cx = 500, cy = 350, radius = 280;
     const angleStep = (2 * Math.PI) / template.entities.length;
 
-    // Prepare entity rows
     const entityRows = template.entities.map((e, i) => {
       const angle = angleStep * i - Math.PI / 2;
       let name = e.name;
@@ -347,7 +428,6 @@ export function GraphBuilder() {
       };
     });
 
-    // Insert entities
     const { data: insertedEntities, error: entError } = await supabase
       .from("semantic_entities")
       .insert(entityRows)
@@ -359,7 +439,6 @@ export function GraphBuilder() {
       return;
     }
 
-    // Insert relations
     const relationRows = template.relations.map((r) => ({
       project_id: projectId,
       owner_id: user!.id,
@@ -377,7 +456,6 @@ export function GraphBuilder() {
       toast({ title: "Entidades criadas, mas houve erro nas relações", variant: "destructive" });
     }
 
-    // Build nodes + edges
     const newNodes: Node[] = insertedEntities.map((e) => ({
       id: e.id,
       type: "entity",
@@ -439,6 +517,8 @@ export function GraphBuilder() {
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -460,7 +540,7 @@ export function GraphBuilder() {
           className="!bg-card !border !border-border !rounded-lg !shadow-md"
         />
         <Panel position="top-left" className="flex gap-2">
-          <Button size="sm" onClick={() => { setEditNodeId(null); setEditData(null); setDialogOpen(true); }}>
+          <Button size="sm" onClick={() => { setEditNodeId(null); setEditData(null); setCreateFromHandle(null); setDialogOpen(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" />
             Entidade
           </Button>
@@ -497,7 +577,18 @@ export function GraphBuilder() {
       {/* Create / Edit dialog */}
       <CreateEntityDialog
         open={dialogOpen}
-        onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditNodeId(null); setEditData(null); } }}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) {
+            setEditNodeId(null);
+            setEditData(null);
+            // If canceling create-from-handle, clear that state too
+            if (createFromHandle) {
+              setCreateFromHandle(null);
+              setCreateFromPredicate(PREDICATES[0]);
+            }
+          }
+        }}
         onSubmit={editNodeId ? handleEditSubmit : handleCreateEntity}
         initialData={editData}
         mode={editNodeId ? "edit" : "create"}
@@ -521,7 +612,7 @@ export function GraphBuilder() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Predicate picker on connection */}
+      {/* Predicate picker on node-to-node connection */}
       <Dialog open={!!pendingConnection} onOpenChange={(o) => { if (!o) setPendingConnection(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -546,6 +637,36 @@ export function GraphBuilder() {
         </DialogContent>
       </Dialog>
 
+      {/* Predicate picker when dragging handle to empty space → create new node */}
+      <Dialog open={!!createFromHandle && !dialogOpen} onOpenChange={(o) => { if (!o) handleCancelCreateFromHandle(); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Criar Entidade Conectada</DialogTitle>
+            <DialogDescription>
+              Escolha o tipo de relação e depois defina a nova entidade.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Predicado da conexão</Label>
+            <Select value={createFromPredicate} onValueChange={setCreateFromPredicate}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PREDICATES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCreateFromHandle}>Cancelar</Button>
+            <Button onClick={handleConfirmCreateFromHandle}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Criar Entidade
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Niche Graph Wizard */}
       <NicheGraphWizard
         open={wizardOpen}
@@ -565,5 +686,13 @@ export function GraphBuilder() {
         allEdges={detailAllEdges}
       />
     </div>
+  );
+}
+
+export function GraphBuilder() {
+  return (
+    <ReactFlowProvider>
+      <GraphBuilderInner />
+    </ReactFlowProvider>
   );
 }
