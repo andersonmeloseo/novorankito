@@ -616,13 +616,27 @@ export function HeatmapTab() {
   const [iframeError, setIframeError] = useState(false);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
 
+  // Normalize URL to group pages that are effectively the same
+  const normalizeUrl = useCallback((raw: string): string => {
+    try {
+      const u = new URL(raw);
+      // Remove trailing slash, hash, and common tracking params
+      let path = u.pathname.replace(/\/+$/, "") || "/";
+      return u.origin + path;
+    } catch {
+      return raw.split("?")[0].split("#")[0].replace(/\/+$/, "") || raw;
+    }
+  }, []);
+
   // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number> }>();
+    const map = new Map<string, { rawUrls: Set<string>; clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number> }>();
     allEvents.forEach((e) => {
-      const url = e.page_url;
-      if (!url) return;
-      const entry = map.get(url) || { clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>() };
+      const rawUrl = e.page_url;
+      if (!rawUrl) return;
+      const url = normalizeUrl(rawUrl);
+      const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>() };
+      entry.rawUrls.add(rawUrl);
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
         entry.exits++;
@@ -643,7 +657,7 @@ export function HeatmapTab() {
         let maxCityCount = 0;
         s.cities.forEach((count, city) => { if (count > maxCityCount) { maxCityCount = count; topCity = city; } });
         return {
-          url, clicks: s.clicks, exits: s.exits, views: s.views,
+          url, rawUrls: Array.from(s.rawUrls), clicks: s.clicks, exits: s.exits, views: s.views,
           visitors: s.visitors.size,
           avgScroll: s.scrollCount > 0 ? Math.round(s.scrollSum / s.scrollCount) : 0,
           moveCount: s.moveSessions,
@@ -653,16 +667,17 @@ export function HeatmapTab() {
         };
       })
       .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
-  }, [allEvents]);
+  }, [allEvents, normalizeUrl]);
 
   const filteredEvents = useMemo(() => {
     if (!selectedUrl) return [];
     return allEvents.filter((e) => {
-      if (e.page_url !== selectedUrl) return false;
+      if (!e.page_url) return false;
+      if (normalizeUrl(e.page_url) !== selectedUrl) return false;
       if (deviceFilter !== "all" && e.device !== deviceFilter) return false;
       return true;
     });
-  }, [allEvents, selectedUrl, deviceFilter]);
+  }, [allEvents, selectedUrl, deviceFilter, normalizeUrl]);
 
   const clickPoints = useMemo((): ClickPoint[] => {
     return filteredEvents
@@ -980,11 +995,12 @@ export function HeatmapTab() {
                               e.stopPropagation();
                               if (!projectId) return;
                               if (!window.confirm(`Excluir todos os dados de heatmap da página "${(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}"?`)) return;
+                              // Delete all raw URL variants that normalized to this URL
                               const { error } = await supabase
                                 .from("tracking_events")
                                 .delete()
                                 .eq("project_id", projectId)
-                                .eq("page_url", opt.url);
+                                .in("page_url", opt.rawUrls);
                               if (error) { toast.error("Erro ao excluir: " + error.message); return; }
                               toast.success("Dados da página excluídos!");
                               queryClient.invalidateQueries({ queryKey: ["tracking-events", projectId] });
