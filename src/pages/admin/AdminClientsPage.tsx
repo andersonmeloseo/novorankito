@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Loader2, Search, Download, Trash2, Pencil, Filter, Building2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Loader2, Search, Download, Trash2, Pencil, Filter, Building2, Ban, CreditCard } from "lucide-react";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import { useAdminProfiles, useAdminProjects, useAdminBilling, useAdminRoles } from "@/hooks/use-admin";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +15,7 @@ import { exportCSV } from "@/lib/export-utils";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminClientsPage() {
   const { data: profiles = [], isLoading } = useAdminProfiles();
@@ -27,6 +29,9 @@ export default function AdminClientsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [bulkAction, setBulkAction] = useState(false);
+  const [bulkPlan, setBulkPlan] = useState("starter");
+  const [showBulkPlan, setShowBulkPlan] = useState(false);
 
   const getUserProjects = (userId: string) => projects.filter((p: any) => p.owner_id === userId);
   const getUserBilling = (userId: string) => billing.find((b: any) => b.user_id === userId);
@@ -89,6 +94,62 @@ export default function AdminClientsPage() {
     queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
     queryClient.invalidateQueries({ queryKey: ["admin-billing"] });
     queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
+    setSelected(new Set());
+  };
+
+  // Bulk: Suspend selected
+  const handleBulkSuspend = async () => {
+    const userIds = Array.from(selected);
+    try {
+      for (const uid of userIds) {
+        const b = getUserBilling(uid);
+        if (b) {
+          await supabase.from("billing_subscriptions").update({ status: "suspended" }).eq("id", b.id);
+        }
+      }
+      toast({ title: "Suspensos", description: `${userIds.length} cliente(s) suspenso(s)` });
+      handleRefresh();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
+  // Bulk: Delete selected
+  const handleBulkDelete = async () => {
+    const userIds = Array.from(selected);
+    try {
+      for (const uid of userIds) {
+        await supabase.from("billing_subscriptions").delete().eq("user_id", uid);
+        await supabase.from("user_roles").delete().eq("user_id", uid);
+        await supabase.from("profiles").delete().eq("user_id", uid);
+      }
+      toast({ title: "Excluídos", description: `${userIds.length} cliente(s) removido(s)` });
+      handleRefresh();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
+  // Bulk: Change plan
+  const handleBulkChangePlan = async () => {
+    const userIds = Array.from(selected);
+    try {
+      for (const uid of userIds) {
+        const b = getUserBilling(uid);
+        if (b) {
+          await supabase.from("billing_subscriptions").update({ plan: bulkPlan }).eq("id", b.id);
+        } else {
+          await supabase.from("billing_subscriptions").insert({
+            user_id: uid, plan: bulkPlan, status: "active", mrr: 0, events_limit: 1000, projects_limit: 1,
+          });
+        }
+      }
+      toast({ title: "Plano alterado", description: `${userIds.length} cliente(s) alterado(s) para "${bulkPlan}"` });
+      setShowBulkPlan(false);
+      handleRefresh();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
   };
 
   const editProfile = editUserId ? profiles.find((p: any) => p.user_id === editUserId) : null;
@@ -203,7 +264,7 @@ export default function AdminClientsPage() {
                     {format(new Date(client.created_at), "dd/MM/yy")}
                   </td>
                   <td className="px-4 py-3">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditUserId(client.user_id)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditUserId(client.user_id)} title="Editar cliente">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -213,13 +274,80 @@ export default function AdminClientsPage() {
           </table>
         </div>
 
-        {/* Bulk */}
+        {/* Bulk Actions Bar */}
         {selected.size > 0 && (
-          <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{selected.size} selecionados:</span>
-            <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive border-destructive/30 hover:bg-destructive/5">
-              <Trash2 className="h-3 w-3" /> Suspender
-            </Button>
+          <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-medium">{selected.size} selecionado(s):</span>
+
+            {/* Bulk Suspend */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1">
+                  <Ban className="h-3 w-3" /> Suspender
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Suspender {selected.size} cliente(s)?</AlertDialogTitle>
+                  <AlertDialogDescription>Os clientes selecionados terão seu status alterado para "Suspenso".</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkSuspend}>Suspender</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Change Plan */}
+            <AlertDialog open={showBulkPlan} onOpenChange={setShowBulkPlan}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1">
+                  <CreditCard className="h-3 w-3" /> Alterar Plano
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alterar plano de {selected.size} cliente(s)</AlertDialogTitle>
+                  <AlertDialogDescription>Selecione o novo plano para todos os clientes selecionados.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <Select value={bulkPlan} onValueChange={setBulkPlan}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Gratuito</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkChangePlan}>Alterar Plano</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Delete */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1 text-destructive border-destructive/30 hover:bg-destructive/5">
+                  <Trash2 className="h-3 w-3" /> Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir {selected.size} cliente(s)?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Isso irá remover permanentemente os perfis, papéis e assinaturas dos clientes selecionados. Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir Permanentemente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </Card>
