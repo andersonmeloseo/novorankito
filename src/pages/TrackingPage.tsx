@@ -33,14 +33,14 @@ export default function TrackingPage() {
             <TabsTrigger value="all-events" className="text-xs gap-1.5">
               <Activity className="h-3.5 w-3.5" /> Eventos
             </TabsTrigger>
+            <TabsTrigger value="sessions" className="text-xs gap-1.5">
+              <Users className="h-3.5 w-3.5" /> Sessões
+            </TabsTrigger>
             <TabsTrigger value="ecommerce" className="text-xs gap-1.5">
               <ShoppingCart className="h-3.5 w-3.5" /> E-commerce
             </TabsTrigger>
             <TabsTrigger value="ads-utm" className="text-xs gap-1.5">
               <Target className="h-3.5 w-3.5" /> Ads & UTM
-            </TabsTrigger>
-            <TabsTrigger value="sessions" className="text-xs gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Sessões
             </TabsTrigger>
             <TabsTrigger value="journey" className="text-xs gap-1.5">
               <Footprints className="h-3.5 w-3.5" /> Jornada do Usuário
@@ -66,16 +66,16 @@ export default function TrackingPage() {
             <AllEventsTab />
           </TabsContent>
 
+          <TabsContent value="sessions" className="mt-4">
+            <SessionsTab />
+          </TabsContent>
+
           <TabsContent value="ecommerce" className="mt-4">
             <EcommerceTrackingTab />
           </TabsContent>
 
           <TabsContent value="ads-utm" className="mt-4">
             <AdsUtmTrackingTab />
-          </TabsContent>
-
-          <TabsContent value="sessions" className="mt-4">
-            <SessionsTab />
           </TabsContent>
 
           <TabsContent value="journey" className="mt-4">
