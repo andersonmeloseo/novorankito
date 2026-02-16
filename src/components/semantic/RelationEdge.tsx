@@ -6,6 +6,7 @@ import {
 } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { useState } from "react";
 
 export type RelationEdgeData = {
   predicate: string;
@@ -25,6 +26,7 @@ export default function RelationEdge({
   selected,
 }: EdgeProps) {
   const edgeData = data as RelationEdgeData | undefined;
+  const [hovered, setHovered] = useState(false);
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -47,10 +49,12 @@ export default function RelationEdge({
       {edgeData?.predicate && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-auto absolute group/edge"
+            className="nodrag nopan pointer-events-auto absolute"
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
           >
             <Badge
               variant="outline"
@@ -60,11 +64,17 @@ export default function RelationEdge({
             >
               {edgeData.predicate}
               <button
-                className="ml-0.5 p-0.5 rounded-full opacity-0 group-hover/edge:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-all"
+                className={`ml-0.5 p-0.5 rounded-full hover:bg-destructive/20 hover:text-destructive transition-all ${
+                  hovered || selected ? "opacity-100" : "opacity-0"
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  edgeData.onDeleteEdge?.(id);
+                  e.preventDefault();
+                  if (edgeData.onDeleteEdge) {
+                    edgeData.onDeleteEdge(id);
+                  }
                 }}
+                onMouseDown={(e) => e.stopPropagation()}
                 title="Desconectar"
               >
                 <X className="h-2.5 w-2.5" />
