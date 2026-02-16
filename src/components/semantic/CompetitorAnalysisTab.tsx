@@ -101,8 +101,12 @@ function GraphCanvas({
   onNodeClick: (meta: SchemaNodeMeta, nodeId: string) => void;
   selectedNodeId: string | null;
 }) {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
 
   const handleNodeClick = useCallback(
     (_: any, node: Node) => {
@@ -112,13 +116,45 @@ function GraphCanvas({
     [nodeMetaMap, onNodeClick],
   );
 
+  const reorganize = useCallback(() => {
+    setNodes((prev) => {
+      const domains = prev.filter((n) => n.id.startsWith("domain-"));
+      const schemas = prev.filter((n) => !n.id.startsWith("domain-"));
+      const updated: Node[] = [];
+
+      domains.forEach((d, di) => {
+        const col = di;
+        updated.push({ ...d, position: { x: col * 600, y: 0 } });
+
+        const children = schemas.filter((s) => {
+          return initialEdges.some((e) => e.target === s.id && e.source === d.id);
+        });
+        children.forEach((child, ci) => {
+          const row = Math.floor(ci / 2);
+          const colOff = ci % 2;
+          updated.push({
+            ...child,
+            position: { x: col * 600 + colOff * 280, y: 140 + row * 120 },
+          });
+        });
+      });
+
+      const placed = new Set(updated.map((n) => n.id));
+      schemas.filter((s) => !placed.has(s.id)).forEach((s, i) => {
+        updated.push({ ...s, position: { x: i * 280, y: (domains.length + 1) * 200 } });
+      });
+
+      return updated;
+    });
+  }, [setNodes, initialEdges]);
+
   const styledNodes = useMemo(() =>
     nodes.map((n) => ({
       ...n,
       style: {
         ...n.style,
         ...(selectedNodeId === n.id
-          ? { 
+          ? {
               boxShadow: "0 0 0 3px hsl(var(--primary)), 0 0 28px hsl(var(--primary) / 0.5)",
               background: "hsl(var(--primary))",
               color: "hsl(var(--primary-foreground))",
@@ -138,6 +174,7 @@ function GraphCanvas({
       onEdgesChange={onEdgesChange}
       onNodeClick={handleNodeClick}
       fitView
+      fitViewOptions={{ padding: 0.25 }}
       proOptions={{ hideAttribution: true }}
       nodesDraggable
       nodesConnectable={false}
@@ -158,9 +195,18 @@ function GraphCanvas({
         maskColor="hsl(var(--background) / 0.7)"
       />
       <Panel position="top-right" className="flex gap-1.5">
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-[10px] h-7 bg-card/90 backdrop-blur-sm border-border shadow-sm"
+          onClick={reorganize}
+        >
+          <Layers className="h-3 w-3 mr-1" />
+          Reorganizar
+        </Button>
         <Badge variant="outline" className="text-[10px] bg-card/80 backdrop-blur-sm border-border">
           <Sparkles className="h-3 w-3 mr-1 text-primary" />
-          Arraste para reorganizar
+          Arraste para mover
         </Badge>
       </Panel>
     </ReactFlow>
@@ -320,27 +366,28 @@ export function CompetitorAnalysisTab() {
       const domainIdx = domainMap.get(r.domain) ?? 0;
       const color = getDomainColor(domainIdx);
       const angle = (2 * Math.PI * domainIdx) / Math.max(domainMap.size, 1);
-      const cx = 500 + 400 * Math.cos(angle);
-      const cy = 400 + 400 * Math.sin(angle);
+      const cx = 500 + 500 * Math.cos(angle);
+      const cy = 400 + 500 * Math.sin(angle);
       const id = `domain-${r.domain}`;
       domainNodes.set(r.domain, id);
 
       nodes.push({
         id,
         position: { x: cx, y: cy },
-        data: { label: `🌐 ${r.domain}` },
+        data: { label: `🌐  ${r.domain}  —  ${r.schemas.length} schemas` },
         style: {
           background: `linear-gradient(135deg, ${color.bg}, ${color.bg}dd)`,
           color: color.text,
           border: "none",
-          borderRadius: "14px",
-          padding: "10px 18px",
+          borderRadius: "16px",
+          padding: "14px 24px",
           fontWeight: 700,
-          fontSize: "12px",
-          boxShadow: `0 8px 32px ${color.bg}40, 0 2px 8px rgba(0,0,0,0.15)`,
+          fontSize: "13px",
+          letterSpacing: "0.02em",
+          boxShadow: `0 8px 32px ${color.bg}40, 0 2px 8px rgba(0,0,0,0.2)`,
           cursor: "pointer",
           transition: "all 0.25s ease",
-          minWidth: "120px",
+          minWidth: "180px",
           textAlign: "center" as const,
         },
       });
@@ -353,7 +400,7 @@ export function CompetitorAnalysisTab() {
         isDomain: true,
       });
 
-      r.schemas.forEach((schema) => {
+      r.schemas.forEach((schema, si) => {
         const typeKey = schema.type;
         if (schemaTypeMap.has(typeKey)) {
           const existing = schemaTypeMap.get(typeKey)!;
@@ -370,8 +417,8 @@ export function CompetitorAnalysisTab() {
           }
         } else {
           const schemaId = `schema-${typeKey}-${r.domain}`;
-          const schemaAngle = angle + (Math.random() - 0.5) * 1.2;
-          const schemaRadius = 160 + Math.random() * 120;
+          const schemaAngle = angle + ((si + 1) / (r.schemas.length + 1) - 0.5) * 2.0;
+          const schemaRadius = 220 + (si % 2) * 80;
 
           const propCount = Object.keys(schema.properties).length;
 
@@ -386,14 +433,14 @@ export function CompetitorAnalysisTab() {
               background: "hsl(var(--popover))",
               color: "hsl(var(--popover-foreground))",
               border: `2px solid ${color.bg}`,
-              borderRadius: "10px",
-              padding: "8px 14px",
-              fontSize: "10px",
+              borderRadius: "12px",
+              padding: "10px 18px",
+              fontSize: "12px",
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.25s ease",
-              boxShadow: `0 2px 16px ${color.bg}20`,
-              minWidth: "90px",
+              boxShadow: `0 3px 20px ${color.bg}25`,
+              minWidth: "140px",
               textAlign: "center" as const,
             },
           });
