@@ -267,12 +267,30 @@ export default function IndexingPage() {
   // ─── Filtered History ───
   const filteredHistory = useMemo(() => {
     if (!requests) return [];
-    return requests.filter(r => {
+    let items = requests.filter(r => {
       if (historyStatusFilter !== "all" && r.status !== historyStatusFilter) return false;
       if (searchFilter && !r.url.toLowerCase().includes(searchFilter.toLowerCase())) return false;
       return true;
     });
-  }, [requests, historyStatusFilter, searchFilter]);
+    if (sortCol) {
+      items = [...items].sort((a, b) => {
+        let aVal: any, bVal: any;
+        switch (sortCol) {
+          case "hist_url": aVal = a.url; bVal = b.url; break;
+          case "hist_type": aVal = a.request_type; bVal = b.request_type; break;
+          case "hist_status": aVal = a.status; bVal = b.status; break;
+          case "hist_submitted": aVal = a.submitted_at || ""; bVal = b.submitted_at || ""; break;
+          case "hist_retries": aVal = a.retries; bVal = b.retries; break;
+          case "hist_reason": aVal = a.fail_reason || ""; bVal = b.fail_reason || ""; break;
+          default: return 0;
+        }
+        if (typeof aVal === "number" && typeof bVal === "number") return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+        const cmp = String(aVal).localeCompare(String(bVal), "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return items;
+  }, [requests, historyStatusFilter, searchFilter, sortCol, sortDir]);
 
   const histTotalPages = Math.max(1, Math.ceil(filteredHistory.length / INV_PAGE_SIZE));
   const safeHistPage = Math.min(histPage, histTotalPages - 1);
@@ -1016,12 +1034,29 @@ export default function IndexingPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">URL</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Tipo</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Enviado</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Tentativas</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Motivo</th>
+                        {[
+                          { key: "hist_url", label: "URL" },
+                          { key: "hist_type", label: "Tipo" },
+                          { key: "hist_status", label: "Status" },
+                          { key: "hist_submitted", label: "Enviado" },
+                          { key: "hist_retries", label: "Tentativas" },
+                          { key: "hist_reason", label: "Motivo" },
+                        ].map(col => (
+                          <th
+                            key={col.key}
+                            className="px-4 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors group"
+                            onClick={() => handleSort(col.key)}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {col.label}
+                              {sortCol === col.key ? (
+                                sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                              )}
+                            </span>
+                          </th>
+                        ))}
                         <th className="px-4 py-3 w-10" />
                       </tr>
                     </thead>
