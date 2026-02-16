@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, FolderPlus, Search, BarChart3, Bot, FileSearch, X,
+  Plus, FolderPlus, Search, BarChart3, Bot, FileSearch, X, MousePointerClick,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const ACTIONS = [
   { label: "Analytics", icon: BarChart3, path: "/ga4" },
   { label: "Indexação", icon: FileSearch, path: "/indexing" },
   { label: "Rankito IA", icon: Bot, path: "/rankito-ai" },
+  { label: "Analítica Rankito", icon: MousePointerClick, path: "/analitica-rankito" },
 ];
 
 export function QuickActionFab() {
@@ -49,14 +50,14 @@ export function QuickActionFab() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all",
+          "h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-all",
           "bg-primary text-primary-foreground hover:shadow-primary/30 hover:scale-105",
           open && "rotate-45"
         )}
         style={{ transition: "transform 0.2s, box-shadow 0.2s" }}
         aria-label="Ações rápidas"
       >
-        {open ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        {open ? <X className="h-5 w-5" /> : <Plus className="h-6 w-6" />}
       </button>
     </div>
   );
