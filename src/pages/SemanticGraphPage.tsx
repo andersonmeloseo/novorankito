@@ -8,6 +8,7 @@ import {
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { GraphBuilder } from "@/components/semantic/GraphBuilder";
 import { TriplesTable } from "@/components/semantic/TriplesTable";
+import { SchemaOrgTab } from "@/components/semantic/SchemaOrgTab";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
@@ -66,14 +67,7 @@ export default function SemanticGraphPage() {
 
           {/* Schema.org Tab */}
           <TabsContent value="schema" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-              <Code2 className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Integração Schema.org</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Para cada entidade, o sistema sugere automaticamente o tipo de Schema recomendado,
-                propriedades obrigatórias e opcionais, e um checklist de implementação.
-              </p>
-            </Card>
+            <SchemaOrgTab projectId={localStorage.getItem("rankito_current_project") || ""} />
           </TabsContent>
 
           {/* Dashboard Tab */}
