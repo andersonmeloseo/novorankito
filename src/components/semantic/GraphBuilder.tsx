@@ -21,6 +21,7 @@ import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
 import { NicheGraphWizard, type NicheTemplate } from "./NicheGraphWizard";
+import { EntityDetailPanel } from "./EntityDetailPanel";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,6 +58,10 @@ export function GraphBuilder() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardGenerating, setWizardGenerating] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Detail panel state
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
 
   // Connection predicate dialog
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
@@ -126,6 +131,34 @@ export function GraphBuilder() {
       data: { ...n.data, onEdit: handleEdit, onDelete: handleDeletePrompt },
     })),
     [nodes, handleEdit, handleDeletePrompt],
+  );
+
+  // Handle node click → open detail panel
+  const handleNodeClick = useCallback((_: any, node: Node) => {
+    setDetailNodeId(node.id);
+    setDetailOpen(true);
+  }, []);
+
+  // Get detail data for selected node
+  const detailEntityData = useMemo(() => {
+    if (!detailNodeId) return null;
+    const node = nodes.find((n) => n.id === detailNodeId);
+    return node ? (node.data as EntityNodeData) : null;
+  }, [detailNodeId, nodes]);
+
+  const detailAllNodes = useMemo(() =>
+    nodes.map((n) => ({ id: n.id, data: n.data as EntityNodeData })),
+    [nodes],
+  );
+
+  const detailAllEdges = useMemo(() =>
+    edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      data: e.data as { predicate?: string } | undefined,
+    })),
+    [edges],
   );
 
   // ── Auto-save position on drag end ──
@@ -389,6 +422,7 @@ export function GraphBuilder() {
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -501,6 +535,17 @@ export function GraphBuilder() {
         onOpenChange={setWizardOpen}
         onGenerate={handleWizardGenerate}
         generating={wizardGenerating}
+      />
+
+      {/* Entity Detail Panel */}
+      <EntityDetailPanel
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        entityId={detailNodeId}
+        entityData={detailEntityData}
+        projectId={projectId || ""}
+        allNodes={detailAllNodes}
+        allEdges={detailAllEdges}
       />
     </div>
   );

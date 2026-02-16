@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { GraphBuilder } from "@/components/semantic/GraphBuilder";
+import { TriplesTable } from "@/components/semantic/TriplesTable";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
@@ -54,14 +55,7 @@ export default function SemanticGraphPage() {
 
           {/* Triples Tab */}
           <TabsContent value="triples" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-              <GitBranch className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Motor de Triples</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Visualize, edite e filtre todas as relações ontológicas criadas no formato
-                Sujeito → Predicado → Objeto.
-              </p>
-            </Card>
+            <TriplesTable />
           </TabsContent>
 
           {/* Schema.org Tab */}
