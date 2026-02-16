@@ -129,6 +129,7 @@ serve(async (req) => {
       "scroll", "product_view", "add_to_cart", "remove_from_cart",
       "begin_checkout", "purchase", "search", "video_play", "file_download",
       "heatmap_click", "rage_click", "dead_click", "js_error", "text_copy",
+      "web_vitals",
     ];
 
     const sanitize = (val: unknown, maxLen = 500): string | null => {

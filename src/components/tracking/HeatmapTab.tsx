@@ -668,7 +668,7 @@ export function HeatmapTab() {
       const url = normalizeUrl(rawUrl);
       const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>(), countries: new Map<string, number>(), devices: new Set<string>(), browsers: new Map<string, number>(), referrers: new Map<string, number>() };
       entry.rawUrls.add(rawUrl);
-      if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
+      if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click", "dead_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
         entry.exits++;
         if (e.scroll_depth != null) { entry.scrollSum += e.scroll_depth; entry.scrollCount++; }

@@ -91,7 +91,7 @@ export function AllEventsTab() {
   const [evtSortDir, setEvtSortDir] = useState<"asc" | "desc">("desc");
   const EVT_PAGE_SIZE = 10;
 
-  const HIDDEN_EVENT_TYPES = ["heatmap_click", "dead_click", "custom"];
+  const HIDDEN_EVENT_TYPES = ["heatmap_click", "dead_click"];
   const filteredEvents = useMemo(() => {
     let data = events.filter(e => !HIDDEN_EVENT_TYPES.includes(e.event_type));
     if (eventTypeFilter !== "all") data = data.filter(e => e.event_type === eventTypeFilter);
