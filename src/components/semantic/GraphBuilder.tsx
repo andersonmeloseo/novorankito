@@ -16,10 +16,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Plus, ZoomIn, Save, Loader2 } from "lucide-react";
+import { Plus, ZoomIn, Loader2, Wand2 } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
+import { NicheGraphWizard, type NicheTemplate } from "./NicheGraphWizard";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +54,8 @@ export function GraphBuilder() {
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardGenerating, setWizardGenerating] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Connection predicate dialog
@@ -265,6 +268,98 @@ export function GraphBuilder() {
     toast({ title: "Relação criada", description: connectionPredicate });
   }, [pendingConnection, connectionPredicate, projectId, user, setEdges]);
 
+  // ── Wizard: generate full graph from niche template ──
+  const handleWizardGenerate = useCallback(async (
+    template: NicheTemplate, businessName: string, locationName: string,
+  ) => {
+    if (!projectId || !user) return;
+    setWizardGenerating(true);
+
+    // Layout: radial around center
+    const cx = 500, cy = 350, radius = 280;
+    const angleStep = (2 * Math.PI) / template.entities.length;
+
+    // Prepare entity rows
+    const entityRows = template.entities.map((e, i) => {
+      const angle = angleStep * i - Math.PI / 2;
+      let name = e.name;
+      if (i === 0) name = businessName;
+      if (e.type === "local" && !e.name) name = locationName || "Endereço";
+      return {
+        project_id: projectId,
+        owner_id: user!.id,
+        name,
+        entity_type: e.type,
+        schema_type: e.schema,
+        description: e.description,
+        position_x: Math.round(cx + radius * Math.cos(angle)),
+        position_y: Math.round(cy + radius * Math.sin(angle)),
+      };
+    });
+
+    // Insert entities
+    const { data: insertedEntities, error: entError } = await supabase
+      .from("semantic_entities")
+      .insert(entityRows)
+      .select();
+
+    if (entError || !insertedEntities) {
+      toast({ title: "Erro ao gerar entidades", variant: "destructive" });
+      setWizardGenerating(false);
+      return;
+    }
+
+    // Insert relations
+    const relationRows = template.relations.map((r) => ({
+      project_id: projectId,
+      owner_id: user!.id,
+      subject_id: insertedEntities[r.subjectIndex].id,
+      object_id: insertedEntities[r.objectIndex].id,
+      predicate: r.predicate,
+    }));
+
+    const { data: insertedRelations, error: relError } = await supabase
+      .from("semantic_relations")
+      .insert(relationRows)
+      .select();
+
+    if (relError) {
+      toast({ title: "Entidades criadas, mas houve erro nas relações", variant: "destructive" });
+    }
+
+    // Build nodes + edges
+    const newNodes: Node[] = insertedEntities.map((e) => ({
+      id: e.id,
+      type: "entity",
+      position: { x: e.position_x ?? 300, y: e.position_y ?? 200 },
+      data: {
+        label: e.name,
+        entityType: e.entity_type,
+        schemaType: e.schema_type || "",
+        description: e.description || "",
+        dbId: e.id,
+      } satisfies EntityNodeData,
+    }));
+
+    const newEdges: Edge[] = (insertedRelations || []).map((r) => ({
+      id: r.id,
+      source: r.subject_id,
+      target: r.object_id,
+      type: "relation",
+      data: { predicate: r.predicate },
+      animated: true,
+    }));
+
+    setNodes((prev) => [...prev, ...newNodes]);
+    setEdges((prev) => [...prev, ...newEdges]);
+    setWizardGenerating(false);
+    setWizardOpen(false);
+    toast({
+      title: "Grafo gerado com sucesso!",
+      description: `${insertedEntities.length} entidades e ${insertedRelations?.length ?? 0} relações criadas.`,
+    });
+  }, [projectId, user, setNodes, setEdges]);
+
   if (!projectId) {
     return (
       <div className="h-[600px] flex items-center justify-center text-muted-foreground">
@@ -318,14 +413,31 @@ export function GraphBuilder() {
             <Plus className="h-3.5 w-3.5 mr-1" />
             Entidade
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setWizardOpen(true)}>
+            <Wand2 className="h-3.5 w-3.5 mr-1" />
+            Wizard por Nicho
+          </Button>
         </Panel>
         {nodes.length === 0 && (
-          <Panel position="top-center" className="mt-32">
-            <div className="text-center space-y-3 p-6 rounded-xl bg-card/80 backdrop-blur border shadow-lg max-w-xs">
-              <ZoomIn className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Comece criando sua primeira entidade clicando em <strong>"+ Entidade"</strong>
-              </p>
+          <Panel position="top-center" className="mt-24">
+            <div className="text-center space-y-4 p-6 rounded-xl bg-card/80 backdrop-blur border shadow-lg max-w-sm">
+              <Wand2 className="h-10 w-10 mx-auto text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground mb-1">Grafo vazio</p>
+                <p className="text-xs text-muted-foreground">
+                  Crie entidades manualmente ou use o <strong>Wizard por Nicho</strong> para gerar um grafo completo automaticamente.
+                </p>
+              </div>
+              <div className="flex gap-2 justify-center">
+                <Button size="sm" variant="outline" onClick={() => { setEditNodeId(null); setEditData(null); setDialogOpen(true); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Manual
+                </Button>
+                <Button size="sm" onClick={() => setWizardOpen(true)}>
+                  <Wand2 className="h-3.5 w-3.5 mr-1" />
+                  Wizard
+                </Button>
+              </div>
             </div>
           </Panel>
         )}
@@ -382,6 +494,14 @@ export function GraphBuilder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Niche Graph Wizard */}
+      <NicheGraphWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        onGenerate={handleWizardGenerate}
+        generating={wizardGenerating}
+      />
     </div>
   );
 }
