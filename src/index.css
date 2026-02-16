@@ -236,3 +236,40 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1;
   }
 }
+
+/* ─── Rotating gradient border for active tabs ─── */
+@property --tab-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes tab-border-spin {
+  to { --tab-angle: 360deg; }
+}
+
+[data-state="active"].tab-glow {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+[data-state="active"].tab-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--tab-angle),
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary-glow)) 25%,
+    hsl(var(--success)) 50%,
+    hsl(var(--primary-glow)) 75%,
+    hsl(var(--primary)) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: tab-border-spin 3s linear infinite;
+  pointer-events: none;
+}
