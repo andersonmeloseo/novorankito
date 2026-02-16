@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdsPlatformCredentials } from "./AdsPlatformCredentials";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { GoalProjectSelector } from "./GoalProjectSelector";
+
 
 // ── Types ──
 interface OfflineConversion {
@@ -76,7 +76,7 @@ const QUALITY_OPTIONS = [
 const PAGE_SIZE = 12;
 
 // ── Registration Form ──
-function NewConversionDialog({ open, onOpenChange, projectId, goalProjectId }: { open: boolean; onOpenChange: (v: boolean) => void; projectId: string; goalProjectId: string | null }) {
+function NewConversionDialog({ open, onOpenChange, projectId }: { open: boolean; onOpenChange: (v: boolean) => void; projectId: string }) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -116,7 +116,7 @@ function NewConversionDialog({ open, onOpenChange, projectId, goalProjectId }: {
         medium: form.medium || null,
         campaign: form.campaign || null,
         location: form.location || null,
-        goal_project_id: goalProjectId || null,
+        goal_project_id: null,
       } as any);
       if (error) throw error;
       toast.success("Conversão registrada com sucesso!");
@@ -230,7 +230,7 @@ function MatchQualityScore({ conversion }: { conversion: OfflineConversion }) {
 export function OfflineConversionsTab() {
   const projectId = localStorage.getItem("rankito_current_project");
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  
 
   const { data: conversions = [], isLoading } = useQuery({
     queryKey: ["offline-conversions", projectId],
@@ -255,7 +255,7 @@ export function OfflineConversionsTab() {
 
   const filtered = useMemo(() => {
     let data = conversions;
-    if (selectedProject) data = data.filter(c => (c as any).goal_project_id === selectedProject);
+    
     if (typeFilter !== "all") data = data.filter(c => c.event_type === typeFilter);
     if (search) {
       const q = search.toLowerCase();
@@ -267,7 +267,7 @@ export function OfflineConversionsTab() {
       );
     }
     return data;
-  }, [conversions, selectedProject, typeFilter, search]);
+  }, [conversions, typeFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -353,10 +353,7 @@ export function OfflineConversionsTab() {
         description={<>Gerencie <strong>conversões offline</strong> (ligações, WhatsApp, e-mails) e envie de volta para Google Ads e Meta Ads. Avalie a qualidade de cada lead e sincronize com plataformas de anúncios para otimizar campanhas.</>}
       />
 
-      {/* Goal Projects */}
-      {projectId && <GoalProjectSelector projectId={projectId} module="conversions" selected={selectedProject} onSelect={setSelectedProject} />}
-
-      {projectId && <NewConversionDialog open={showNewDialog} onOpenChange={setShowNewDialog} projectId={projectId} goalProjectId={selectedProject} />}
+      {projectId && <NewConversionDialog open={showNewDialog} onOpenChange={setShowNewDialog} projectId={projectId} />}
 
       {/* Action bar */}
       <div className="flex items-center justify-between">
