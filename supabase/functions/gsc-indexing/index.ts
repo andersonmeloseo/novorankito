@@ -44,14 +44,15 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get GSC connection (support multiple connections per project)
-    const { data: conns, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).order("created_at", { ascending: true }).limit(1);
-    const conn = conns?.[0];
+    // Get all GSC connections for this project (limits accumulate: 200 per account)
+    const { data: allConns, error: connErr } = await supabase.from("gsc_connections").select("*").eq("project_id", project_id).order("created_at", { ascending: true });
+    const conn = allConns?.[0];
     if (connErr || !conn) {
       return new Response(JSON.stringify({ error: "No GSC connection found. Connect Google Search Console first." }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const totalConnections = allConns?.length || 1;
 
     // ─── Action: "inventory" — site_urls + index_coverage + last indexing request ───
     if (action === "inventory") {
@@ -156,7 +157,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         inventory,
-        stats: { totalUrls, indexed, notIndexed, unknown, sentToday, dailyLimit: 200 },
+        stats: { totalUrls, indexed, notIndexed, unknown, sentToday, dailyLimit: 200 * totalConnections },
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
