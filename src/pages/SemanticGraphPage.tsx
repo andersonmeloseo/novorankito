@@ -2,13 +2,11 @@ import { useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown,
-  Plus, BookOpen
 } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
+import { GraphBuilder } from "@/components/semantic/GraphBuilder";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
@@ -51,33 +49,7 @@ export default function SemanticGraphPage() {
 
           {/* Graph Builder Tab */}
           <TabsContent value="graph" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[500px] text-center space-y-4">
-              <div className="h-16 w-16 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
-                <Network className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground">Construtor Visual de Grafo</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Crie nós (entidades) e conecte-os com relações semânticas usando drag-and-drop.
-                Cada conexão representa uma triple: Sujeito → Predicado → Objeto.
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm">
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Criar Entidade
-                </Button>
-                <Button variant="outline" size="sm">
-                  <BookOpen className="h-3.5 w-3.5 mr-1" />
-                  Tutorial
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 w-full max-w-lg">
-                {["Empresa", "Produto", "Serviço", "Local", "Pessoa", "Site", "GBP", "Avaliação"].map((type) => (
-                  <Badge key={type} variant="secondary" className="justify-center py-1.5 text-xs cursor-pointer hover:bg-accent transition-colors">
-                    {type}
-                  </Badge>
-                ))}
-              </div>
-            </Card>
+            <GraphBuilder />
           </TabsContent>
 
           {/* Triples Tab */}
