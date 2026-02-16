@@ -55,9 +55,26 @@ export function AllEventsTab() {
   const DEVICE_EMOJI: Record<string, string> = { mobile: "📱", desktop: "🖥️", tablet: "📟" };
   const BROWSER_EMOJI: Record<string, string> = { Chrome: "🌐", Firefox: "🦊", Safari: "🧭", Edge: "🔷", Opera: "🔴", Samsung: "📱" };
   const EVENT_EMOJI: Record<string, string> = {
-    page_view: "👁️", page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
-    email_click: "✉️", button_click: "🖱️", form_submit: "📝", product_view: "🛍️",
-    add_to_cart: "🛒", remove_from_cart: "❌", begin_checkout: "💳", purchase: "💰", search: "🔍", click: "🖱️",
+    // GA4
+    page_view: "👁️", first_visit: "🆕", session_start: "▶️", user_engagement: "💡",
+    scroll: "📜", click: "🖱️", file_download: "📥", video_start: "🎬", video_progress: "⏩", video_complete: "🏁",
+    view_search_results: "🔍",
+    // GA4 E-commerce
+    view_item: "🛍️", view_item_list: "📋", select_item: "☑️", add_to_cart: "🛒", remove_from_cart: "❌",
+    view_cart: "🧺", begin_checkout: "💳", add_shipping_info: "📦", add_payment_info: "💰", purchase: "✅", refund: "↩️",
+    // GA4 Engagement
+    sign_up: "📝", login: "🔐", share: "📤", search: "🔍", select_content: "📄",
+    select_promotion: "🏷️", view_promotion: "📣", generate_lead: "🎯",
+    // Google Ads
+    conversion: "🎯", enhanced_conversion: "⚡",
+    // Meta Ads
+    PageView: "👁️", Lead: "🎯", CompleteRegistration: "✍️", AddToCart: "🛒",
+    InitiateCheckout: "💳", Purchase: "💰", AddPaymentInfo: "💳", AddToWishlist: "❤️",
+    ViewContent: "👀", Search: "🔍", Contact: "📞", Schedule: "📅",
+    StartTrial: "🧪", Subscribe: "🔔", Donate: "🎁",
+    // Rankito
+    page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
+    email_click: "✉️", button_click: "🖱️", form_submit: "📝", heatmap_click: "🔥",
   };
 
   const [eventTypeFilter, setEventTypeFilter] = useState("all");

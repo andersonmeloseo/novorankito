@@ -616,7 +616,7 @@ export function InstallScriptTab() {
       var pN=(d.querySelector('.product_title')||{}).textContent||'';
       var pP=(d.querySelector('.price .amount')||{}).textContent||'';
       var pId=d.querySelector('.product')&&d.querySelector('.product').getAttribute('data-product-id')||d.querySelector('input[name=product_id],button.single_add_to_cart_button')&&d.querySelector('button.single_add_to_cart_button').getAttribute('value')||'';
-      send(Object.assign({event_type:'product_view',product_name:pN.trim(),product_id:pId,product_price:parseFloat((pP).replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
+      send(Object.assign({event_type:'view_item',product_name:pN.trim(),product_id:pId,product_price:parseFloat((pP).replace(/[^0-9.,]/g,'').replace(',','.'))||0},base));
     }
     // Add to cart (AJAX — WooCommerce fires this jQuery event)
     $(d.body).on('added_to_cart',function(e,frags,hash,btn){
@@ -660,7 +660,7 @@ export function InstallScriptTab() {
     // Product view
     if(w.ShopifyAnalytics&&w.ShopifyAnalytics.meta&&w.ShopifyAnalytics.meta.product){
       var sp=w.ShopifyAnalytics.meta.product;
-      send(Object.assign({event_type:'product_view',product_id:String(sp.id||''),product_name:sp.type||d.querySelector('.product-single__title,.product__title,h1')&&d.querySelector('.product-single__title,.product__title,h1').textContent.trim()||'',product_price:sp.variants&&sp.variants[0]?parseFloat(sp.variants[0].price)||0:0},base));
+      send(Object.assign({event_type:'view_item',product_id:String(sp.id||''),product_name:sp.type||d.querySelector('.product-single__title,.product__title,h1')&&d.querySelector('.product-single__title,.product__title,h1').textContent.trim()||'',product_price:sp.variants&&sp.variants[0]?parseFloat(sp.variants[0].price)||0:0},base));
     }
     // Add to cart
     d.querySelectorAll('form[action*="/cart/add"]').forEach(function(f){
@@ -698,10 +698,10 @@ export function InstallScriptTab() {
       var nm=el.getAttribute('data-rk-product')||'';
       var pr=parseFloat(el.getAttribute('data-rk-price'))||0;
       var pid=el.getAttribute('data-rk-product-id')||'';
-      // Observe visibility for product_view
+      // Observe visibility for view_item
       var obs=new IntersectionObserver(function(entries){
         entries.forEach(function(en){
-          if(en.isIntersecting){send(Object.assign({event_type:'product_view',product_name:nm,product_id:pid,product_price:pr},base));obs.unobserve(en.target);}
+          if(en.isIntersecting){send(Object.assign({event_type:'view_item',product_name:nm,product_id:pid,product_price:pr},base));obs.unobserve(en.target);}
         });
       },{threshold:0.5});
       obs.observe(el);
@@ -807,7 +807,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
 
   const dataAttributeSnippet = `<!-- Para sites sem WooCommerce/Shopify, use data attributes: -->
 
-<!-- Produto (auto-detecta product_view ao ficar visível) -->
+<!-- Produto (auto-detecta view_item ao ficar visível) -->
 <div data-rk-product="Camiseta Premium" data-rk-price="89.90" data-rk-product-id="SKU-001">
   <h3>Camiseta Premium</h3>
   <p>R$ 89,90</p>
@@ -942,7 +942,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="WooCommerce — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>product_view</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o WooCommerce e captura <strong>view_item</strong>, <strong>add_to_cart</strong>, <strong>remove_from_cart</strong>, <strong>begin_checkout</strong> e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
@@ -988,7 +988,7 @@ window.rankitoTrack('search', { cta_text: 'termo buscado' });`;
               <InstructionCard icon={<ShoppingCart className="h-4 w-4 text-success" />} title="Shopify — Auto-detectado ✓">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>product_view</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
+                  <p className="text-[10px]">O script v4.0.0 <strong>detecta automaticamente</strong> o Shopify e captura <strong>view_item</strong>, <strong>add_to_cart</strong> (incluindo AJAX) e <strong>purchase</strong> sem snippets extras.</p>
                 </div>
               </InstructionCard>
             </TabsContent>
