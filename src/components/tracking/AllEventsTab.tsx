@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -14,13 +16,12 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid,
   Treemap,
 } from "recharts";
-import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2, Bot } from "lucide-react";
+import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2, Bot, Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
   FunnelStep, TreemapContent, PipelineVisual, CohortHeatmap, DonutCenterLabel,
 } from "@/components/analytics/ChartPrimitives";
-import { AnalyticsDataTable } from "@/components/analytics/AnalyticsDataTable";
 import { EmptyState } from "@/components/ui/empty-state";
 import { detectBot, BOT_CATEGORY_LABELS, BOT_CATEGORY_STYLES } from "@/lib/bot-detection";
 
@@ -84,6 +85,11 @@ export function AllEventsTab() {
   const [cityFilter, setCityFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [referrerFilter, setReferrerFilter] = useState("all");
+  const [evtSearch, setEvtSearch] = useState("");
+  const [evtPage, setEvtPage] = useState(1);
+  const [evtSortKey, setEvtSortKey] = useState<string>("created_at");
+  const [evtSortDir, setEvtSortDir] = useState<"asc" | "desc">("desc");
+  const EVT_PAGE_SIZE = 10;
 
   const filteredEvents = useMemo(() => {
     let data = events;
@@ -93,8 +99,37 @@ export function AllEventsTab() {
     if (cityFilter !== "all") data = data.filter(e => (e.city || "") === cityFilter);
     if (platformFilter !== "all") data = data.filter(e => (e.platform || "") === platformFilter);
     if (referrerFilter !== "all") data = data.filter(e => (e.referrer || "") === referrerFilter);
+    if (evtSearch.trim()) {
+      const q = evtSearch.toLowerCase();
+      data = data.filter(e =>
+        (e.event_type || "").toLowerCase().includes(q) ||
+        (e.page_url || "").toLowerCase().includes(q) ||
+        (e.cta_text || "").toLowerCase().includes(q) ||
+        (e.city || "").toLowerCase().includes(q) ||
+        (e.referrer || "").toLowerCase().includes(q)
+      );
+    }
     return data;
-  }, [events, eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter, referrerFilter]);
+  }, [events, eventTypeFilter, deviceFilter, browserFilter, cityFilter, platformFilter, referrerFilter, evtSearch]);
+
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      const av = (a as any)[evtSortKey] || "";
+      const bv = (b as any)[evtSortKey] || "";
+      const cmp = String(av).localeCompare(String(bv), "pt-BR");
+      return evtSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredEvents, evtSortKey, evtSortDir]);
+
+  const evtTotalPages = Math.max(1, Math.ceil(sortedEvents.length / EVT_PAGE_SIZE));
+  const evtSafePage = Math.min(evtPage, evtTotalPages);
+  const pagedEvents = sortedEvents.slice((evtSafePage - 1) * EVT_PAGE_SIZE, evtSafePage * EVT_PAGE_SIZE);
+
+  const handleEvtSort = useCallback((key: string) => {
+    if (evtSortKey === key) setEvtSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setEvtSortKey(key); setEvtSortDir("desc"); }
+    setEvtPage(1);
+  }, [evtSortKey]);
 
   const heatmapData = useMemo(() => buildHeatmap(events), [events]);
   const allEventsByDay = useMemo(() => buildEventsByDay(events), [events]);
@@ -351,11 +386,22 @@ export function AllEventsTab() {
       {/* Detailed Events Table */}
       <AnimatedContainer delay={0.4}>
         <Card className="p-5">
-          <ChartHeader title="Eventos Detalhados" subtitle="Filtre por tipo de evento, dispositivo, navegador, cidade e plataforma" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Eventos Detalhados</h3>
+              <p className="text-[11px] text-muted-foreground">
+                {Math.min((evtSafePage - 1) * EVT_PAGE_SIZE + 1, sortedEvents.length)}–{Math.min(evtSafePage * EVT_PAGE_SIZE, sortedEvents.length)} de {sortedEvents.length}
+              </p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar..." className="pl-8 h-8 text-xs w-[180px]" value={evtSearch} onChange={e => { setEvtSearch(e.target.value); setEvtPage(1); }} />
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2 mb-4">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Tipo:</span>
-              <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+              <Select value={eventTypeFilter} onValueChange={v => { setEventTypeFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[140px] h-8 text-[11px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Tipos</SelectItem>
@@ -367,7 +413,7 @@ export function AllEventsTab() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Dispositivo:</span>
-              <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <Select value={deviceFilter} onValueChange={v => { setDeviceFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Dispositivo" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
@@ -379,7 +425,7 @@ export function AllEventsTab() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Browser:</span>
-              <Select value={browserFilter} onValueChange={setBrowserFilter}>
+              <Select value={browserFilter} onValueChange={v => { setBrowserFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[120px] h-8 text-[11px]"><SelectValue placeholder="Browser" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
@@ -391,7 +437,7 @@ export function AllEventsTab() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Cidade:</span>
-              <Select value={cityFilter} onValueChange={setCityFilter}>
+              <Select value={cityFilter} onValueChange={v => { setCityFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
@@ -403,7 +449,7 @@ export function AllEventsTab() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Plataforma:</span>
-              <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <Select value={platformFilter} onValueChange={v => { setPlatformFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[130px] h-8 text-[11px]"><SelectValue placeholder="Plataforma" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
@@ -415,7 +461,7 @@ export function AllEventsTab() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground font-medium">Referrer:</span>
-              <Select value={referrerFilter} onValueChange={setReferrerFilter}>
+              <Select value={referrerFilter} onValueChange={v => { setReferrerFilter(v); setEvtPage(1); }}>
                 <SelectTrigger className="w-[160px] h-8 text-[11px]"><SelectValue placeholder="Referrer" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos Referrers</SelectItem>
@@ -426,38 +472,85 @@ export function AllEventsTab() {
               </Select>
             </div>
           </div>
-          <AnalyticsDataTable
-            columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização", "Bot"]}
-            rows={filteredEvents.map(e => {
-              const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
-              return [
-                new Date(e.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-                `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type] || e.event_type}`,
-                (e.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/",
-                `🔗 ${(e.referrer || "direto").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`,
-                e.cta_text || e.cta_selector || "—",
-                `${DEVICE_EMOJI[e.device || ""] || "💻"} ${(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}`,
-                `${BROWSER_EMOJI[e.browser || ""] || "🌐"} ${e.browser || "?"}`,
-                `📍 ${e.city || "?"}, ${e.state || "?"}`,
-                bot.isBot ? `${bot.botEmoji} ${bot.botName}` : "—",
-              ];
-            })}
-            tooltips={filteredEvents.map(e => {
-              const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
-              return [
-                null,
-                null,
-                e.page_url || null,
-                e.referrer || null,
-                e.cta_text || e.cta_selector || null,
-                null,
-                null,
-                e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : null,
-                bot.isBot ? `${bot.botName} (${BOT_CATEGORY_LABELS[bot.botCategory || "other"]})` : null,
-              ];
-            })}
-            pageSize={10}
-          />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  {([
+                    { key: "created_at", label: "Data/Hora" },
+                    { key: "event_type", label: "Tipo de Evento" },
+                    { key: "page_url", label: "Página" },
+                    { key: "referrer", label: "Referrer" },
+                    { key: "cta_text", label: "CTA / Elemento" },
+                    { key: "device", label: "Dispositivo" },
+                    { key: "browser", label: "Navegador" },
+                    { key: "city", label: "Localização" },
+                  ]).map(col => (
+                    <th key={col.key} className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap" onClick={() => handleEvtSort(col.key)}>
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        <ArrowUpDown className={`h-3 w-3 ${evtSortKey === col.key ? "text-primary" : "text-muted-foreground/40"}`} />
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">Bot</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedEvents.length === 0 ? (
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
+                ) : pagedEvents.map((e, i) => {
+                  const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
+                  return (
+                    <tr key={e.id || i} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                        {new Date(e.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] font-medium text-foreground whitespace-nowrap">
+                        {EVENT_EMOJI[e.event_type] || "⚡"} {EVENT_LABELS[e.event_type] || e.event_type}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={e.page_url || "/"}>
+                        {(e.page_url || "/").replace(/^https?:\/\/[^/]+/, "") || "/"}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[150px] truncate" title={e.referrer || "direto"}>
+                        🔗 {(e.referrer || "direto").replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[130px] truncate" title={e.cta_text || e.cta_selector || "—"}>
+                        {e.cta_text || e.cta_selector || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                        {DEVICE_EMOJI[e.device || ""] || "💻"} {(e.device || "?").charAt(0).toUpperCase() + (e.device || "?").slice(1)}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                        {BROWSER_EMOJI[e.browser || ""] || "🌐"} {e.browser || "?"}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap" title={e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : undefined}>
+                        📍 {e.city || "?"}, {e.state || "?"}
+                      </td>
+                      <td className="px-3 py-2 text-[11px]">
+                        {bot.isBot ? <Badge variant="outline" className="text-[9px]">{bot.botEmoji} {bot.botName}</Badge> : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          <div className="px-1 py-2.5 border-t border-border flex items-center justify-between mt-2">
+            <span className="text-[10px] text-muted-foreground">
+              {sortedEvents.length > 0 ? `${(evtSafePage - 1) * EVT_PAGE_SIZE + 1}–${Math.min(evtSafePage * EVT_PAGE_SIZE, sortedEvents.length)} de ${sortedEvents.length}` : "0 eventos"}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-6 w-6" disabled={evtSafePage <= 1} onClick={() => setEvtPage(p => p - 1)}>
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-[10px] text-muted-foreground px-1">{evtSafePage} / {evtTotalPages}</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6" disabled={evtSafePage >= evtTotalPages} onClick={() => setEvtPage(p => p + 1)}>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
         </Card>
       </AnimatedContainer>
     </div>
