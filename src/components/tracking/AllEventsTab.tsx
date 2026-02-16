@@ -89,7 +89,7 @@ export function AllEventsTab() {
   }, [events]);
 
   const totalEvents = events.length;
-  const botEvents = useMemo(() => events.filter(e => detectBot(e.browser, e.platform).isBot), [events]);
+  const botEvents = useMemo(() => events.filter(e => detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer }).isBot), [events]);
   const botCount = botEvents.length;
   const uniquePages = new Set(events.map(e => e.page_url)).size;
   const lastEvent = events.length > 0 ? events[0] : null; // already sorted desc
@@ -411,7 +411,7 @@ export function AllEventsTab() {
           <AnalyticsDataTable
             columns={["Data/Hora", "Tipo de Evento", "Página", "Referrer", "CTA / Elemento", "Dispositivo", "Navegador", "Localização", "Bot"]}
             rows={filteredEvents.map(e => {
-              const bot = detectBot(e.browser, e.platform);
+              const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
               return [
                 new Date(e.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
                 `${EVENT_EMOJI[e.event_type] || "⚡"} ${EVENT_LABELS[e.event_type] || e.event_type}`,
@@ -425,7 +425,7 @@ export function AllEventsTab() {
               ];
             })}
             tooltips={filteredEvents.map(e => {
-              const bot = detectBot(e.browser, e.platform);
+              const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
               return [
                 null,
                 null,
