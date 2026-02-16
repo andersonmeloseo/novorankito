@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Search, Download, Trash2, Pencil, Filter, Building2, Ban, CreditCard } from "lucide-react";
+import { Loader2, Search, Download, Trash2, Pencil, Filter, Building2, Ban, CreditCard, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import { useAdminProfiles, useAdminProjects, useAdminBilling, useAdminRoles } from "@/hooks/use-admin";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -32,6 +32,17 @@ export default function AdminClientsPage() {
   const [bulkAction, setBulkAction] = useState(false);
   const [bulkPlan, setBulkPlan] = useState("starter");
   const [showBulkPlan, setShowBulkPlan] = useState(false);
+  const [sortCol, setSortCol] = useState<string>("created_at");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const toggleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortAsc(prev => !prev);
+    } else {
+      setSortCol(col);
+      setSortAsc(true);
+    }
+  };
 
   const getUserProjects = (userId: string) => projects.filter((p: any) => p.owner_id === userId);
   const getUserBilling = (userId: string) => billing.find((b: any) => b.user_id === userId);
@@ -51,14 +62,32 @@ export default function AdminClientsPage() {
   }, [profiles, projects, billing]);
 
   const filtered = useMemo(() => {
-    return clients.filter(c => {
+    const list = clients.filter(c => {
       const matchSearch = (c.display_name || "").toLowerCase().includes(search.toLowerCase()) ||
         c.user_id.toLowerCase().includes(search.toLowerCase());
       const matchPlan = planFilter === "all" || c.plan === planFilter;
       const matchStatus = statusFilter === "all" || c.status === statusFilter;
       return matchSearch && matchPlan && matchStatus;
     });
-  }, [clients, search, planFilter, statusFilter]);
+
+    list.sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortCol) {
+        case "name": valA = (a.display_name || "").toLowerCase(); valB = (b.display_name || "").toLowerCase(); break;
+        case "plan": valA = a.plan; valB = b.plan; break;
+        case "projects": valA = a.projectsCount; valB = b.projectsCount; break;
+        case "mrr": valA = a.mrr; valB = b.mrr; break;
+        case "status": valA = a.status; valB = b.status; break;
+        case "created_at": valA = a.created_at; valB = b.created_at; break;
+        default: return 0;
+      }
+      if (valA < valB) return sortAsc ? -1 : 1;
+      if (valA > valB) return sortAsc ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [clients, search, planFilter, statusFilter, sortCol, sortAsc]);
 
   const activeClients = clients.filter(c => c.status === "active").length;
   const trialClients = clients.filter(c => c.status === "trial").length;
@@ -228,9 +257,29 @@ export default function AdminClientsPage() {
                 <th className="px-4 py-3 w-8">
                   <Checkbox checked={selected.size === filtered.length && filtered.length > 0} onCheckedChange={selectAll} />
                 </th>
-                {["Cliente", "Plano", "Projetos", "MRR", "Status", "Criado em", ""].map(col => (
-                  <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
+                {[
+                  { label: "Cliente", key: "name" },
+                  { label: "Plano", key: "plan" },
+                  { label: "Projetos", key: "projects" },
+                  { label: "MRR", key: "mrr" },
+                  { label: "Status", key: "status" },
+                  { label: "Criado em", key: "created_at" },
+                ].map(col => (
+                  <th key={col.key} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    <button
+                      onClick={() => toggleSort(col.key)}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      {col.label}
+                      {sortCol === col.key ? (
+                        sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      )}
+                    </button>
+                  </th>
                 ))}
+                <th className="px-4 py-3 w-10" />
               </tr>
             </thead>
             <tbody>
