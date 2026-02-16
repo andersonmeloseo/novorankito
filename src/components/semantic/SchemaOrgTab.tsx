@@ -20,6 +20,7 @@ import {
   User, Star, Store, Building2, ChevronDown, ChevronUp, FileJson,
   ListChecks, Puzzle, Target, TrendingUp, Plus, Trash2, Play, Wrench,
   TreePine, FolderTree, Hash, Minus, RotateCcw, Download, ClipboardPaste,
+  Save, ShieldCheck, FileDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -809,6 +810,71 @@ export function SchemaOrgTab({ projectId }: Props) {
     return { pct: req.length > 0 ? Math.round((filled.length / req.length) * 100) : 100, filled: filled.length, total: req.length };
   }, [builderType, builderValues]);
 
+  // ── Validation & Export helpers ──
+  const openGoogleValidator = useCallback(() => {
+    const encoded = encodeURIComponent(builderScriptTag);
+    window.open(`https://search.google.com/test/rich-results?code=${encoded}`, "_blank");
+  }, [builderScriptTag]);
+
+  const openSchemaOrgValidator = useCallback(() => {
+    window.open("https://validator.schema.org/", "_blank");
+    // Copy to clipboard so user can paste
+    navigator.clipboard.writeText(builderJsonLd);
+    toast({ title: "JSON-LD copiado!", description: "Cole no validador que acabou de abrir." });
+  }, [builderJsonLd]);
+
+  const downloadJsonFile = useCallback(() => {
+    if (!builderJsonLd || !builderType) return;
+    const blob = new Blob([builderJsonLd], { type: "application/ld+json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `schema-${builderType.type.toLowerCase()}.jsonld`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Arquivo baixado!", description: `schema-${builderType.type.toLowerCase()}.jsonld` });
+  }, [builderJsonLd, builderType]);
+
+  const downloadScriptTag = useCallback(() => {
+    if (!builderScriptTag || !builderType) return;
+    const blob = new Blob([builderScriptTag], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `schema-${builderType.type.toLowerCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Script tag baixado!", description: `Pronto para colar no <head> do site.` });
+  }, [builderScriptTag, builderType]);
+
+  const saveSchemaToProject = useCallback(async () => {
+    if (!builderType || !user || !projectId) return;
+    // Find or create an entity with this schema type
+    const existing = entities.find((e) => e.schema_type === builderType.type);
+    if (existing) {
+      const { error } = await supabase
+        .from("semantic_entities")
+        .update({ schema_properties: builderValues, schema_type: builderType.type })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Schema atualizado!", description: `Entidade "${existing.name}" atualizada com sucesso.` });
+    } else {
+      const { error } = await supabase.from("semantic_entities").insert({
+        name: builderValues.name || builderType.type,
+        entity_type: "concept",
+        schema_type: builderType.type,
+        schema_properties: builderValues,
+        project_id: projectId,
+        owner_id: user.id,
+      });
+      if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Schema salvo!", description: `Nova entidade "${builderValues.name || builderType.type}" criada no projeto.` });
+    }
+    // Reload entities
+    const { data } = await supabase.from("semantic_entities").select("*").eq("project_id", projectId);
+    setEntities(data || []);
+  }, [builderType, builderValues, user, projectId, entities]);
+
   // ── Tree toggle ──
   const toggleTreeNode = (name: string) => {
     setExpandedTreeNodes((prev) => {
@@ -1068,7 +1134,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                     <FileJson className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">JSON-LD Preview</span>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 flex-wrap">
                     <Button
                       size="sm"
                       variant="outline"
@@ -1076,7 +1142,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                       onClick={() => handleCopy(builderScriptTag, "builder-script")}
                     >
                       {copied === "builder-script" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copied === "builder-script" ? "Copiado!" : "Copiar &lt;script&gt;"}
+                      {copied === "builder-script" ? "Copiado!" : "<script>"}
                     </Button>
                     <Button
                       size="sm"
@@ -1084,7 +1150,7 @@ export function SchemaOrgTab({ projectId }: Props) {
                       onClick={() => handleCopy(builderJsonLd, "builder-json")}
                     >
                       {copied === "builder-json" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copied === "builder-json" ? "Copiado!" : "Copiar JSON"}
+                      {copied === "builder-json" ? "Copiado!" : "JSON"}
                     </Button>
                   </div>
                 </div>
@@ -1103,14 +1169,34 @@ export function SchemaOrgTab({ projectId }: Props) {
                   </pre>
                 </ScrollArea>
 
-                <div className="p-3 border-t bg-primary/5">
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-muted-foreground">
-                      Cole este código no <code className="text-primary font-mono">&lt;head&gt;</code> da página correspondente. Valide em{" "}
-                      <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                        Google Rich Results Test
-                      </a>
+                <div className="p-3 border-t space-y-2">
+                  {/* Action Buttons Row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={openGoogleValidator}>
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Testar no Google
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={openSchemaOrgValidator}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Validador Schema.org
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={downloadJsonFile}>
+                      <FileDown className="h-3.5 w-3.5" />
+                      Baixar .jsonld
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={downloadScriptTag}>
+                      <Download className="h-3.5 w-3.5" />
+                      Baixar &lt;script&gt;
+                    </Button>
+                  </div>
+                  <Button size="sm" className="w-full gap-1.5 text-xs h-8" onClick={saveSchemaToProject}>
+                    <Save className="h-3.5 w-3.5" />
+                    Salvar no Projeto
+                  </Button>
+                  <div className="flex items-start gap-2 pt-1">
+                    <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-muted-foreground">
+                      Cole o <code className="text-primary font-mono">&lt;script&gt;</code> no <code className="text-primary font-mono">&lt;head&gt;</code> da página correspondente para ativar os Rich Results.
                     </p>
                   </div>
                 </div>
