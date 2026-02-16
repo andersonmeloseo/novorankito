@@ -1108,10 +1108,13 @@ export type Database = {
           is_default: boolean
           members_limit: number
           name: string
+          payment_methods: string[] | null
           price: number
           projects_limit: number
           slug: string
           sort_order: number
+          stripe_checkout_url: string | null
+          stripe_price_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1127,10 +1130,13 @@ export type Database = {
           is_default?: boolean
           members_limit?: number
           name: string
+          payment_methods?: string[] | null
           price?: number
           projects_limit?: number
           slug: string
           sort_order?: number
+          stripe_checkout_url?: string | null
+          stripe_price_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1146,10 +1152,13 @@ export type Database = {
           is_default?: boolean
           members_limit?: number
           name?: string
+          payment_methods?: string[] | null
           price?: number
           projects_limit?: number
           slug?: string
           sort_order?: number
+          stripe_checkout_url?: string | null
+          stripe_price_id?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -15,8 +15,9 @@ import {
 import {
   Settings2, ToggleLeft, Save, Check, AlertTriangle, Users,
   FolderOpen, Bot, Activity, Send, Shield, Trash2, Crown, Zap, Infinity,
-  Plus, X, Copy, Sparkles, Eye, EyeOff,
+  Plus, X, Copy, Sparkles, Eye, EyeOff, CreditCard, ExternalLink, Link2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -40,10 +41,11 @@ const LIMIT_FIELDS = [
 interface PlanEditorProps {
   plan: Plan;
   subscriberCount: number;
+  subscribers: Array<{ user_id: string; display_name: string | null; status: string; mrr: number }>;
   onDeleted: () => void;
 }
 
-export function PlanEditor({ plan, subscriberCount, onDeleted }: PlanEditorProps) {
+export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: PlanEditorProps) {
   const updatePlan = useUpdatePlan();
   const deletePlan = useDeletePlan();
   const { data: features = [], isLoading: featuresLoading } = useAdminPlanFeatures(plan.id);
@@ -231,6 +233,19 @@ export function PlanEditor({ plan, subscriberCount, onDeleted }: PlanEditorProps
                 <Badge variant="secondary" className="text-[8px] ml-1.5 font-mono">
                   {enabledCount}/{features.length}
                 </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="payment"
+                className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent px-4 py-2.5"
+              >
+                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pagamento
+              </TabsTrigger>
+              <TabsTrigger
+                value="subscribers"
+                className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent px-4 py-2.5"
+              >
+                <Users className="h-3.5 w-3.5 mr-1.5" /> Assinantes
+                <Badge variant="secondary" className="text-[8px] ml-1.5 font-mono">{subscriberCount}</Badge>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -469,6 +484,154 @@ export function PlanEditor({ plan, subscriberCount, onDeleted }: PlanEditorProps
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ──── PAYMENT ──── */}
+            <TabsContent value="payment" className="mt-0 space-y-5">
+              <p className="text-xs text-muted-foreground">
+                Configure a integração de pagamento para este plano. Conecte com Stripe ou outras plataformas.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Stripe Price ID</Label>
+                  <Input
+                    value={getValue("stripe_price_id") || ""}
+                    onChange={e => setValue("stripe_price_id", e.target.value || null)}
+                    placeholder="price_1MoBy5LkdIwHu7ixZhnattbh"
+                    className="h-9 text-sm font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">ID do preço no Stripe Dashboard</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">URL de Checkout</Label>
+                  <Input
+                    value={getValue("stripe_checkout_url") || ""}
+                    onChange={e => setValue("stripe_checkout_url", e.target.value || null)}
+                    placeholder="https://checkout.stripe.com/..."
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Link de pagamento direto (Payment Link)</p>
+                </div>
+              </div>
+
+              {getValue("stripe_checkout_url") && (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={getValue("stripe_checkout_url") as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" /> Abrir link de checkout
+                  </a>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(getValue("stripe_checkout_url") as string); toast.success("URL copiada"); }}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <Copy className="h-3 w-3" /> Copiar
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3 pt-3 border-t border-border">
+                <Label className="text-xs font-medium">Métodos de Pagamento Aceitos</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: "stripe", label: "Stripe (Cartão)", icon: "💳" },
+                    { key: "pix", label: "PIX", icon: "🏦" },
+                    { key: "boleto", label: "Boleto", icon: "📄" },
+                    { key: "paypal", label: "PayPal", icon: "🅿️" },
+                    { key: "bank_transfer", label: "Transferência", icon: "🏧" },
+                    { key: "manual", label: "Manual", icon: "✋" },
+                  ].map(method => {
+                    const currentMethods = (getValue("payment_methods") as string[]) || ["stripe"];
+                    const isChecked = currentMethods.includes(method.key);
+                    return (
+                      <label
+                        key={method.key}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition-all",
+                          isChecked ? "border-primary/30 bg-primary/5" : "border-border hover:border-primary/20"
+                        )}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const methods = [...currentMethods];
+                            if (checked) {
+                              methods.push(method.key);
+                            } else {
+                              const idx = methods.indexOf(method.key);
+                              if (idx > -1) methods.splice(idx, 1);
+                            }
+                            setValue("payment_methods", methods);
+                          }}
+                        />
+                        <span className="text-sm">{method.icon}</span>
+                        <span className="text-xs font-medium">{method.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-border">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                  <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Para integração completa com Stripe, configure a chave da API em <strong>Configurações → APIs</strong>. 
+                    O checkout será gerado automaticamente ao atribuir este plano a um cliente.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ──── SUBSCRIBERS ──── */}
+            <TabsContent value="subscribers" className="mt-0 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                {subscriberCount} cliente{subscriberCount !== 1 ? "s" : ""} atualmente neste plano. Os limites definidos na aba "Limites" se aplicam a todos.
+              </p>
+
+              {subscribers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhum assinante neste plano</p>
+                  <p className="text-xs">Atribua clientes a este plano na aba de Clientes</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Cliente</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">MRR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscribers.map(sub => (
+                        <tr key={sub.user_id} className="border-b last:border-0 hover:bg-muted/20">
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                {(sub.display_name || "?")[0].toUpperCase()}
+                              </div>
+                              <span className="font-medium">{sub.display_name || "Sem nome"}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <Badge variant={sub.status === "active" ? "default" : "secondary"} className="text-[9px]">
+                              {sub.status === "active" ? "Ativo" : sub.status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2.5 font-medium">R$ {Number(sub.mrr).toLocaleString("pt-BR")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </TabsContent>
