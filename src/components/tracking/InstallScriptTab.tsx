@@ -411,7 +411,7 @@ export function InstallScriptTab() {
     }
   },true);
 
-  // Capture ALL clicks (not just interactive elements) for heatmap density + dead click
+  // Capture ALL clicks (not just interactive elements) for heatmap + click tracking
   var CTA_WORDS=/falar|contato|comprar|saiba|enviar|assinar|agendar|orçamento|whatsapp|ligar|chamar|pedir|quero|começar|inscrever|cadastr|especialista|consultor/i;
   d.addEventListener('click',function(e){
     if(e.target.closest(INTERACTIVE_SEL))return; // already captured above
@@ -421,12 +421,13 @@ export function InstallScriptTab() {
     if(skip)return;
     var clickText=(e.target.textContent||'').trim().substring(0,100);
     var meta={click_x:Math.round(e.pageX),click_y:Math.round(e.pageY),click_vx:Math.round(e.clientX),click_vy:Math.round(e.clientY),vp_w:w.innerWidth,vp_h:w.innerHeight,doc_h:d.documentElement.scrollHeight,tag:e.target.tagName.toLowerCase(),selector:e.target.tagName.toLowerCase()+(e.target.id?'#'+e.target.id:'')};
-    // If text looks like a CTA, treat as button_click instead of dead_click
+    // If text looks like a CTA, treat as button_click
     if(CTA_WORDS.test(clickText)){
       send(Object.assign({event_type:'button_click',cta_text:clickText,cta_selector:meta.selector,metadata:meta},base));
       log('🔘 CTA detectado (reclassificado): '+clickText);
     } else {
-      send(Object.assign({event_type:'heatmap_click',metadata:meta},base));
+      // Send as click (visible in events table) with heatmap coordinates in metadata
+      send(Object.assign({event_type:'click',cta_text:clickText||null,cta_selector:meta.selector,metadata:meta},base));
     }
 
     // Rage click on non-interactive too
