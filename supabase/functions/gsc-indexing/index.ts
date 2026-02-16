@@ -117,10 +117,10 @@ serve(async (req) => {
 
       // Build maps
       const coverageMap = new Map((coverage || []).map((c: any) => [c.url, c]));
-      // Keep only latest request per URL
+      // Keep only latest request per URL (overwrite so last = most recent)
       const reqMap = new Map<string, any>();
       for (const r of (indexingReqs || [])) {
-        if (!reqMap.has(r.url)) reqMap.set(r.url, r);
+        reqMap.set(r.url, r);
       }
 
       const inventory = (siteUrls || []).map((u: any) => {
