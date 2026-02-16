@@ -124,13 +124,30 @@ export function GraphBuilder() {
     setDeleteNodeId(nodeId);
   }, []);
 
-  // Inject onEdit/onDelete into node data
+  // Delete an edge (relation)
+  const handleDeleteEdge = useCallback(async (edgeId: string) => {
+    setSaving(true);
+    await supabase.from("semantic_relations").delete().eq("id", edgeId);
+    setSaving(false);
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    toast({ title: "Relação removida" });
+  }, [setEdges]);
+
+  // Inject callbacks into node data + edge data
   const nodesWithCallbacks = useMemo(() =>
     nodes.map((n) => ({
       ...n,
       data: { ...n.data, onEdit: handleEdit, onDelete: handleDeletePrompt },
     })),
     [nodes, handleEdit, handleDeletePrompt],
+  );
+
+  const edgesWithCallbacks = useMemo(() =>
+    edges.map((e) => ({
+      ...e,
+      data: { ...e.data, onDeleteEdge: handleDeleteEdge },
+    })),
+    [edges, handleDeleteEdge],
   );
 
   // Handle node click → open detail panel
@@ -410,7 +427,7 @@ export function GraphBuilder() {
   }
 
   return (
-    <div className="h-[600px] w-full rounded-xl border bg-card overflow-hidden relative">
+    <div className="h-[calc(100vh-280px)] min-h-[500px] w-full rounded-xl border bg-card overflow-hidden relative">
       {saving && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-card/90 border rounded-lg px-3 py-1.5 text-xs text-muted-foreground shadow">
           <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
@@ -418,7 +435,7 @@ export function GraphBuilder() {
       )}
       <ReactFlow
         nodes={nodesWithCallbacks}
-        edges={edges}
+        edges={edgesWithCallbacks}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
