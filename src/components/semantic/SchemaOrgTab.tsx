@@ -501,6 +501,608 @@ const SCHEMA_CATALOG: SchemaTypeDef[] = [
       { name: "offers", required: false, description: "Preço (JSON Offer)", example: '{"@type":"Offer","price":"497","priceCurrency":"BRL"}', inputType: "json" },
     ],
   },
+  // ── Expanded Organizations ──
+  {
+    type: "NGO", category: "Organizações", parent: "Organization", description: "Organização não-governamental.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "NGO" },
+      { name: "name", required: true, description: "Nome da ONG", example: "Instituto Esperança" },
+      { name: "url", required: false, description: "Site", example: "https://ong.org", inputType: "url" },
+      { name: "description", required: false, description: "Descrição", example: "ONG focada em educação infantil", inputType: "textarea" },
+      { name: "foundingDate", required: false, description: "Data de fundação", example: "2010-03-15", inputType: "date" },
+      { name: "areaServed", required: false, description: "Área de atuação", example: "Brasil" },
+    ],
+  },
+  {
+    type: "Airline", category: "Organizações", parent: "Organization", description: "Companhia aérea.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Airline" },
+      { name: "name", required: true, description: "Nome da companhia", example: "Azul Linhas Aéreas" },
+      { name: "iataCode", required: false, description: "Código IATA", example: "AD" },
+      { name: "url", required: false, description: "Site", example: "https://voeazul.com.br", inputType: "url" },
+    ],
+  },
+  {
+    type: "SportsOrganization", category: "Organizações", parent: "Organization", description: "Organização esportiva, liga ou federação.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SportsOrganization" },
+      { name: "name", required: true, description: "Nome", example: "CBF" },
+      { name: "sport", required: false, description: "Esporte", example: "Futebol" },
+      { name: "url", required: false, description: "Site", example: "https://cbf.com.br", inputType: "url" },
+    ],
+  },
+  {
+    type: "SportsTeam", category: "Organizações", parent: "SportsOrganization", description: "Time ou equipe esportiva.",
+    googleFeature: "Knowledge Panel",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SportsTeam" },
+      { name: "name", required: true, description: "Nome do time", example: "Corinthians" },
+      { name: "sport", required: false, description: "Esporte", example: "Futebol" },
+      { name: "coach", required: false, description: "Treinador (JSON Person)", example: '{"@type":"Person","name":"Técnico X"}', inputType: "json" },
+      { name: "memberOf", required: false, description: "Liga/Federação", example: '{"@type":"SportsOrganization","name":"CBF"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "GovernmentOrganization", category: "Organizações", parent: "Organization", description: "Órgão governamental.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "GovernmentOrganization" },
+      { name: "name", required: true, description: "Nome do órgão", example: "Ministério da Educação" },
+      { name: "url", required: false, description: "Site", example: "https://gov.br/mec", inputType: "url" },
+      { name: "address", required: false, description: "Endereço", example: "Brasília - DF" },
+    ],
+  },
+  {
+    type: "MusicGroup", category: "Organizações", parent: "PerformingGroup", description: "Banda musical ou grupo artístico.",
+    googleFeature: "Knowledge Panel",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "MusicGroup" },
+      { name: "name", required: true, description: "Nome da banda", example: "Legião Urbana" },
+      { name: "genre", required: false, description: "Gênero musical", example: "Rock Brasileiro" },
+      { name: "album", required: false, description: "Álbuns (JSON)", example: '{"@type":"MusicAlbum","name":"Dois"}', inputType: "json" },
+      { name: "sameAs", required: false, description: "Links", example: '["https://open.spotify.com/artist/..."]', inputType: "json" },
+    ],
+  },
+  // ── Expanded Products ──
+  {
+    type: "IndividualProduct", category: "Produtos", parent: "Product", description: "Produto individual com identificador único.",
+    googleFeature: "Product Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "IndividualProduct" },
+      { name: "name", required: true, description: "Nome", example: "Tênis Air Max 90" },
+      { name: "serialNumber", required: false, description: "Número de série", example: "SN-2025-001" },
+      { name: "brand", required: true, description: "Marca (JSON)", example: '{"@type":"Brand","name":"Nike"}', inputType: "json" },
+      { name: "offers", required: true, description: "Oferta (JSON)", example: '{"@type":"Offer","price":"799","priceCurrency":"BRL"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "ProductGroup", category: "Produtos", parent: "Product", description: "Grupo de variantes de produto (cores, tamanhos).",
+    googleFeature: "Product Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "ProductGroup" },
+      { name: "name", required: true, description: "Nome do grupo", example: "Camiseta Básica" },
+      { name: "productGroupID", required: false, description: "ID do grupo", example: "GRP-CAMISETA-001" },
+      { name: "variesBy", required: false, description: "Varia por", example: '["https://schema.org/color","https://schema.org/size"]', inputType: "json" },
+      { name: "hasVariant", required: false, description: "Variantes (JSON)", example: '[{"@type":"Product","name":"Camiseta P Azul","color":"Azul","size":"P"}]', inputType: "json" },
+    ],
+  },
+  {
+    type: "Vehicle", category: "Produtos", parent: "Product", description: "Veículo automotor.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Vehicle" },
+      { name: "name", required: true, description: "Nome do veículo", example: "Honda Civic 2025" },
+      { name: "brand", required: true, description: "Marca (JSON)", example: '{"@type":"Brand","name":"Honda"}', inputType: "json" },
+      { name: "model", required: false, description: "Modelo", example: "Civic EXL" },
+      { name: "vehicleModelDate", required: false, description: "Ano/modelo", example: "2025" },
+      { name: "fuelType", required: false, description: "Combustível", example: "Flex" },
+      { name: "mileageFromOdometer", required: false, description: "Quilometragem", example: '{"@type":"QuantitativeValue","value":"0","unitCode":"KMT"}', inputType: "json" },
+      { name: "offers", required: false, description: "Preço (JSON)", example: '{"@type":"Offer","price":"165000","priceCurrency":"BRL"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Book", category: "Produtos", parent: "CreativeWork", description: "Livro físico ou digital.",
+    googleFeature: "Book Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Book" },
+      { name: "name", required: true, description: "Título", example: "A Arte do SEO" },
+      { name: "author", required: true, description: "Autor", example: '{"@type":"Person","name":"Eric Enge"}', inputType: "json" },
+      { name: "isbn", required: false, description: "ISBN", example: "978-85-352-0000-0" },
+      { name: "numberOfPages", required: false, description: "Páginas", example: "450", inputType: "number" },
+      { name: "publisher", required: false, description: "Editora (JSON)", example: '{"@type":"Organization","name":"Editora X"}', inputType: "json" },
+      { name: "datePublished", required: false, description: "Data de publicação", example: "2024-06-01", inputType: "date" },
+      { name: "inLanguage", required: false, description: "Idioma", example: "pt-BR" },
+      { name: "offers", required: false, description: "Preço (JSON)", example: '{"@type":"Offer","price":"89.90","priceCurrency":"BRL"}', inputType: "json" },
+    ],
+  },
+  // ── Expanded Services ──
+  {
+    type: "FinancialService", category: "Serviços", parent: "LocalBusiness", description: "Serviço financeiro: banco, seguradora, contabilidade.",
+    googleFeature: "Local Pack",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "FinancialService" },
+      { name: "name", required: true, description: "Nome", example: "Banco Digital Plus" },
+      { name: "address", required: false, description: "Endereço", example: "Av. Financeira, 500" },
+      { name: "url", required: false, description: "Site", example: "https://bancodigital.com", inputType: "url" },
+      { name: "areaServed", required: false, description: "Área de atuação", example: "Todo o Brasil" },
+    ],
+  },
+  {
+    type: "InsuranceAgency", category: "Serviços", parent: "FinancialService", description: "Corretora ou agência de seguros.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "InsuranceAgency" },
+      { name: "name", required: true, description: "Nome", example: "Seguros Confiança" },
+      { name: "address", required: false, description: "Endereço", example: "Rua dos Seguros, 200" },
+      { name: "telephone", required: false, description: "Telefone", example: "+55 11 3333-7777" },
+    ],
+  },
+  {
+    type: "GovernmentService", category: "Serviços", parent: "Service", description: "Serviço governamental oferecido ao público.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "GovernmentService" },
+      { name: "name", required: true, description: "Nome do serviço", example: "Emissão de Passaporte" },
+      { name: "serviceOperator", required: false, description: "Órgão responsável", example: '{"@type":"GovernmentOrganization","name":"Polícia Federal"}', inputType: "json" },
+      { name: "areaServed", required: false, description: "Área", example: "Brasil" },
+      { name: "url", required: false, description: "URL", example: "https://gov.br/passaporte", inputType: "url" },
+    ],
+  },
+  // ── Expanded Pessoas ──
+  {
+    type: "Occupation", category: "Pessoas", parent: "Intangible", description: "Profissão ou ocupação.",
+    googleFeature: "Occupation Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Occupation" },
+      { name: "name", required: true, description: "Nome da profissão", example: "Analista de SEO" },
+      { name: "description", required: false, description: "Descrição", example: "Profissional que otimiza sites...", inputType: "textarea" },
+      { name: "estimatedSalary", required: false, description: "Salário estimado (JSON)", example: '{"@type":"MonetaryAmountDistribution","name":"base","currency":"BRL","median":"8000"}', inputType: "json" },
+      { name: "occupationLocation", required: false, description: "Local", example: '{"@type":"Country","name":"Brasil"}', inputType: "json" },
+      { name: "skills", required: false, description: "Habilidades", example: "Google Analytics, SEMrush, Python" },
+    ],
+  },
+  // ── Expanded Web ──
+  {
+    type: "SearchAction", category: "Web", parent: "Action", description: "Ação de busca para Sitelinks Search Box.",
+    googleFeature: "Sitelinks Search Box",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SearchAction" },
+      { name: "target", required: true, description: "URL com template de busca", example: "https://example.com/busca?q={search_term_string}", inputType: "url" },
+      { name: "query-input", required: true, description: "Input da query", example: "required name=search_term_string" },
+    ],
+  },
+  {
+    type: "SiteNavigationElement", category: "Web", parent: "WebPageElement", description: "Elemento de navegação do site.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SiteNavigationElement" },
+      { name: "name", required: true, description: "Nome do item", example: "Menu Principal" },
+      { name: "url", required: false, description: "URL", example: "https://example.com/sobre", inputType: "url" },
+    ],
+  },
+  {
+    type: "ProfilePage", category: "Web", parent: "WebPage", description: "Página de perfil de pessoa ou organização.",
+    googleFeature: "Profile Page",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "ProfilePage" },
+      { name: "name", required: true, description: "Nome do perfil", example: "Perfil de João Silva" },
+      { name: "url", required: true, description: "URL do perfil", example: "https://example.com/joao", inputType: "url" },
+      { name: "mainEntity", required: false, description: "Entidade principal (JSON Person)", example: '{"@type":"Person","name":"João Silva"}', inputType: "json" },
+    ],
+  },
+  // ── Expanded Conteúdo ──
+  {
+    type: "NewsArticle", category: "Conteúdo", parent: "Article", description: "Notícia ou artigo jornalístico.",
+    googleFeature: "Top Stories, Article Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "NewsArticle" },
+      { name: "headline", required: true, description: "Título", example: "Google Atualiza Algoritmo de Busca" },
+      { name: "image", required: true, description: "Imagem destaque", example: "https://example.com/news.jpg", inputType: "url" },
+      { name: "datePublished", required: true, description: "Publicação", example: "2025-03-01", inputType: "date" },
+      { name: "dateModified", required: false, description: "Última atualização", example: "2025-03-02", inputType: "date" },
+      { name: "author", required: true, description: "Autor", example: '{"@type":"Person","name":"Repórter X"}', inputType: "json" },
+      { name: "publisher", required: true, description: "Veículo (JSON Organization)", example: '{"@type":"Organization","name":"Portal News"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "BlogPosting", category: "Conteúdo", parent: "SocialMediaPosting", description: "Post de blog.",
+    googleFeature: "Article Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "BlogPosting" },
+      { name: "headline", required: true, description: "Título", example: "10 Dicas de SEO para 2025" },
+      { name: "image", required: true, description: "Imagem", example: "https://example.com/post.jpg", inputType: "url" },
+      { name: "author", required: true, description: "Autor", example: '{"@type":"Person","name":"Ana Blog"}', inputType: "json" },
+      { name: "datePublished", required: true, description: "Publicação", example: "2025-01-10", inputType: "date" },
+      { name: "publisher", required: false, description: "Publicador (JSON)", example: '{"@type":"Organization","name":"Meu Blog"}', inputType: "json" },
+      { name: "wordCount", required: false, description: "Palavras", example: "1500", inputType: "number" },
+    ],
+  },
+  {
+    type: "Podcast", category: "Conteúdo", parent: "CreativeWorkSeries", description: "Série de podcast.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "PodcastSeries" },
+      { name: "name", required: true, description: "Nome", example: "SEO Cast" },
+      { name: "description", required: false, description: "Descrição", example: "Podcast semanal sobre SEO", inputType: "textarea" },
+      { name: "url", required: false, description: "URL", example: "https://seocast.com", inputType: "url" },
+      { name: "author", required: false, description: "Host (JSON Person)", example: '{"@type":"Person","name":"Carlos"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "MusicRecording", category: "Conteúdo", parent: "CreativeWork", description: "Gravação musical individual.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "MusicRecording" },
+      { name: "name", required: true, description: "Nome da música", example: "Faroeste Caboclo" },
+      { name: "byArtist", required: false, description: "Artista (JSON)", example: '{"@type":"MusicGroup","name":"Legião Urbana"}', inputType: "json" },
+      { name: "duration", required: false, description: "Duração (ISO 8601)", example: "PT9M30S" },
+      { name: "inAlbum", required: false, description: "Álbum (JSON)", example: '{"@type":"MusicAlbum","name":"Que País É Este?"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Movie", category: "Conteúdo", parent: "CreativeWork", description: "Filme ou longa-metragem.",
+    googleFeature: "Knowledge Panel",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Movie" },
+      { name: "name", required: true, description: "Título", example: "Tropa de Elite" },
+      { name: "director", required: false, description: "Diretor (JSON Person)", example: '{"@type":"Person","name":"José Padilha"}', inputType: "json" },
+      { name: "dateCreated", required: false, description: "Ano", example: "2007", inputType: "number" },
+      { name: "duration", required: false, description: "Duração", example: "PT1H55M" },
+      { name: "genre", required: false, description: "Gênero", example: "Ação, Drama" },
+      { name: "aggregateRating", required: false, description: "Avaliação (JSON)", example: '{"@type":"AggregateRating","ratingValue":"8.0","reviewCount":"5000"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Dataset", category: "Conteúdo", parent: "CreativeWork", description: "Conjunto de dados estruturados.",
+    googleFeature: "Dataset Search",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Dataset" },
+      { name: "name", required: true, description: "Nome", example: "Dados de Tráfego Orgânico 2025" },
+      { name: "description", required: true, description: "Descrição", example: "Dataset com métricas de tráfego...", inputType: "textarea" },
+      { name: "url", required: false, description: "URL", example: "https://example.com/dataset", inputType: "url" },
+      { name: "distribution", required: false, description: "Distribuição (JSON)", example: '{"@type":"DataDownload","encodingFormat":"CSV","contentUrl":"https://..."}', inputType: "json" },
+      { name: "license", required: false, description: "Licença", example: "https://creativecommons.org/licenses/by/4.0/" },
+    ],
+  },
+  // ── Expanded Locais ──
+  {
+    type: "TouristAttraction", category: "Locais", parent: "Place", description: "Ponto turístico ou atração.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "TouristAttraction" },
+      { name: "name", required: true, description: "Nome", example: "Cristo Redentor" },
+      { name: "description", required: false, description: "Descrição", example: "Estátua icônica no Rio de Janeiro", inputType: "textarea" },
+      { name: "address", required: false, description: "Endereço", example: "Parque Nacional da Tijuca, RJ" },
+      { name: "geo", required: false, description: "Coordenadas", example: '{"@type":"GeoCoordinates","latitude":"-22.9519","longitude":"-43.2105"}', inputType: "json" },
+      { name: "openingHoursSpecification", required: false, description: "Horários", example: "08:00-18:00" },
+    ],
+  },
+  {
+    type: "Airport", category: "Locais", parent: "CivicStructure", description: "Aeroporto.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Airport" },
+      { name: "name", required: true, description: "Nome", example: "Aeroporto de Guarulhos" },
+      { name: "iataCode", required: false, description: "Código IATA", example: "GRU" },
+      { name: "address", required: false, description: "Endereço", example: "Guarulhos, SP" },
+      { name: "geo", required: false, description: "Coordenadas", example: '{"@type":"GeoCoordinates","latitude":"-23.4356","longitude":"-46.4731"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Hotel", category: "Locais", parent: "LodgingBusiness", description: "Hotel ou hospedagem.",
+    googleFeature: "Hotel Rich Results, Maps",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Hotel" },
+      { name: "name", required: true, description: "Nome", example: "Grand Hotel São Paulo" },
+      { name: "address", required: true, description: "Endereço", example: "Av. Paulista, 2000" },
+      { name: "starRating", required: false, description: "Estrelas (JSON Rating)", example: '{"@type":"Rating","ratingValue":"5"}', inputType: "json" },
+      { name: "priceRange", required: false, description: "Faixa de preço", example: "$$$" },
+      { name: "amenityFeature", required: false, description: "Facilidades (JSON)", example: '[{"@type":"LocationFeatureSpecification","name":"Wi-Fi","value":true}]', inputType: "json" },
+      { name: "aggregateRating", required: false, description: "Avaliação", example: '{"@type":"AggregateRating","ratingValue":"4.5","reviewCount":"300"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "GeoCoordinates", category: "Locais", parent: "StructuredValue", description: "Coordenadas geográficas (latitude/longitude).",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "GeoCoordinates" },
+      { name: "latitude", required: true, description: "Latitude", example: "-23.5505", inputType: "number" },
+      { name: "longitude", required: true, description: "Longitude", example: "-46.6333", inputType: "number" },
+      { name: "elevation", required: false, description: "Elevação (metros)", example: "760", inputType: "number" },
+    ],
+  },
+  // ── Expanded Avaliações ──
+  {
+    type: "Rating", category: "Avaliações", parent: "Intangible", description: "Classificação individual com nota.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Rating" },
+      { name: "ratingValue", required: true, description: "Nota", example: "4.5", inputType: "number" },
+      { name: "bestRating", required: false, description: "Nota máxima", example: "5", inputType: "number" },
+      { name: "worstRating", required: false, description: "Nota mínima", example: "1", inputType: "number" },
+      { name: "author", required: false, description: "Autor", example: '{"@type":"Person","name":"Maria"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "EmployerAggregateRating", category: "Avaliações", parent: "AggregateRating", description: "Avaliação agregada de empregador.",
+    googleFeature: "Employer Rating",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "EmployerAggregateRating" },
+      { name: "ratingValue", required: true, description: "Nota média", example: "4.2", inputType: "number" },
+      { name: "reviewCount", required: true, description: "Total reviews", example: "150", inputType: "number" },
+      { name: "bestRating", required: false, description: "Máximo", example: "5", inputType: "number" },
+      { name: "itemReviewed", required: false, description: "Empresa avaliada", example: '{"@type":"Organization","name":"Empresa XYZ"}', inputType: "json" },
+    ],
+  },
+  // ── Expanded Negócios Especializados ──
+  {
+    type: "Dentist", category: "Negócios Especializados", parent: "LocalBusiness", description: "Consultório dentário ou clínica odontológica.",
+    googleFeature: "Local Pack, Health Panel",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Dentist" },
+      { name: "name", required: true, description: "Nome", example: "Odonto Care" },
+      { name: "address", required: true, description: "Endereço", example: "Rua dos Dentistas, 50" },
+      { name: "telephone", required: false, description: "Telefone", example: "+55 11 8888-9999" },
+      { name: "medicalSpecialty", required: false, description: "Especialidade", example: "Ortodontia" },
+    ],
+  },
+  {
+    type: "Bakery", category: "Negócios Especializados", parent: "FoodEstablishment", description: "Padaria ou confeitaria.",
+    googleFeature: "Local Pack",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Bakery" },
+      { name: "name", required: true, description: "Nome", example: "Pão Quente" },
+      { name: "address", required: true, description: "Endereço", example: "Rua do Pão, 15" },
+      { name: "servesCuisine", required: false, description: "Especialidade", example: "Pães artesanais" },
+    ],
+  },
+  {
+    type: "Pharmacy", category: "Negócios Especializados", parent: "MedicalBusiness", description: "Farmácia ou drogaria.",
+    googleFeature: "Local Pack",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Pharmacy" },
+      { name: "name", required: true, description: "Nome", example: "Farmácia Popular" },
+      { name: "address", required: true, description: "Endereço", example: "Av. da Saúde, 300" },
+      { name: "openingHoursSpecification", required: false, description: "Horários", example: "24 horas" },
+    ],
+  },
+  {
+    type: "GasStation", category: "Negócios Especializados", parent: "AutomotiveBusiness", description: "Posto de combustíveis.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "GasStation" },
+      { name: "name", required: true, description: "Nome", example: "Posto Shell Centro" },
+      { name: "address", required: true, description: "Endereço", example: "Rodovia BR-101, km 200" },
+      { name: "openingHoursSpecification", required: false, description: "Horários", example: "24 horas" },
+    ],
+  },
+  {
+    type: "ExerciseGym", category: "Negócios Especializados", parent: "SportsActivityLocation", description: "Academia de ginástica.",
+    googleFeature: "Local Pack",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "ExerciseGym" },
+      { name: "name", required: true, description: "Nome", example: "SmartFit" },
+      { name: "address", required: true, description: "Endereço", example: "Shopping Center, Piso 2" },
+      { name: "openingHoursSpecification", required: false, description: "Horários", example: "Seg-Sex 06:00-23:00" },
+    ],
+  },
+  {
+    type: "Electrician", category: "Negócios Especializados", parent: "HomeAndConstructionBusiness", description: "Eletricista ou empresa de serviços elétricos.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Electrician" },
+      { name: "name", required: true, description: "Nome", example: "Eletricista Express" },
+      { name: "address", required: false, description: "Endereço", example: "São Paulo - SP" },
+      { name: "areaServed", required: false, description: "Região atendida", example: "Grande São Paulo" },
+      { name: "telephone", required: false, description: "Telefone", example: "+55 11 9999-0000" },
+    ],
+  },
+  {
+    type: "Plumber", category: "Negócios Especializados", parent: "HomeAndConstructionBusiness", description: "Encanador ou empresa de serviços hidráulicos.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Plumber" },
+      { name: "name", required: true, description: "Nome", example: "Hidro Service" },
+      { name: "address", required: false, description: "Endereço", example: "São Paulo - SP" },
+      { name: "areaServed", required: false, description: "Região atendida", example: "Zona Sul de SP" },
+    ],
+  },
+  {
+    type: "Hospital", category: "Negócios Especializados", parent: "EmergencyService", description: "Hospital ou pronto-socorro.",
+    googleFeature: "Health Panel, Local Pack",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Hospital" },
+      { name: "name", required: true, description: "Nome", example: "Hospital Albert Einstein" },
+      { name: "address", required: true, description: "Endereço", example: "Av. Albert Einstein, 627" },
+      { name: "telephone", required: true, description: "Telefone", example: "+55 11 2151-1233" },
+      { name: "medicalSpecialty", required: false, description: "Especialidades", example: "Cardiologia, Oncologia, Neurologia" },
+      { name: "availableService", required: false, description: "Serviços disponíveis", example: "Emergência 24h, UTI, Centro Cirúrgico" },
+    ],
+  },
+  // ── Expanded Eventos ──
+  {
+    type: "MusicEvent", category: "Eventos", parent: "Event", description: "Show, festival ou concerto musical.",
+    googleFeature: "Event Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "MusicEvent" },
+      { name: "name", required: true, description: "Nome", example: "Rock in Rio 2025" },
+      { name: "startDate", required: true, description: "Início", example: "2025-09-19", inputType: "date" },
+      { name: "location", required: true, description: "Local (JSON Place)", example: '{"@type":"Place","name":"Cidade do Rock","address":"Rio de Janeiro"}', inputType: "json" },
+      { name: "performer", required: false, description: "Artistas (JSON)", example: '[{"@type":"MusicGroup","name":"Foo Fighters"}]', inputType: "json" },
+      { name: "offers", required: false, description: "Ingressos (JSON)", example: '{"@type":"Offer","price":"695","priceCurrency":"BRL"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "SportsEvent", category: "Eventos", parent: "Event", description: "Evento esportivo: jogo, campeonato, corrida.",
+    googleFeature: "Event Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SportsEvent" },
+      { name: "name", required: true, description: "Nome", example: "Final da Copa do Brasil" },
+      { name: "startDate", required: true, description: "Data", example: "2025-11-15", inputType: "date" },
+      { name: "location", required: true, description: "Local (JSON Place)", example: '{"@type":"Place","name":"Maracanã"}', inputType: "json" },
+      { name: "homeTeam", required: false, description: "Time mandante (JSON)", example: '{"@type":"SportsTeam","name":"Flamengo"}', inputType: "json" },
+      { name: "awayTeam", required: false, description: "Time visitante (JSON)", example: '{"@type":"SportsTeam","name":"Corinthians"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "BusinessEvent", category: "Eventos", parent: "Event", description: "Evento corporativo: conferência, feira, meetup.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "BusinessEvent" },
+      { name: "name", required: true, description: "Nome", example: "Web Summit Rio 2025" },
+      { name: "startDate", required: true, description: "Início", example: "2025-04-28", inputType: "date" },
+      { name: "endDate", required: false, description: "Fim", example: "2025-04-30", inputType: "date" },
+      { name: "location", required: false, description: "Local (JSON Place)", example: '{"@type":"Place","name":"Expo Center","address":"Rio de Janeiro"}', inputType: "json" },
+      { name: "organizer", required: false, description: "Organizador", example: '{"@type":"Organization","name":"Web Summit"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "EducationEvent", category: "Eventos", parent: "Event", description: "Evento educacional: workshop, palestra, aula.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "EducationEvent" },
+      { name: "name", required: true, description: "Nome", example: "Workshop de SEO Técnico" },
+      { name: "startDate", required: true, description: "Data", example: "2025-05-20", inputType: "date" },
+      { name: "location", required: false, description: "Local", example: '{"@type":"VirtualLocation","url":"https://meet.google.com/xyz"}', inputType: "json" },
+      { name: "organizer", required: false, description: "Organizador", example: '{"@type":"Organization","name":"SEO Academy"}', inputType: "json" },
+    ],
+  },
+  // ── Expanded Comércio ──
+  {
+    type: "AggregateOffer", category: "Comércio", parent: "Offer", description: "Oferta agregada com faixa de preço de múltiplos vendedores.",
+    googleFeature: "Product Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "AggregateOffer" },
+      { name: "lowPrice", required: true, description: "Preço mínimo", example: "99.90", inputType: "number" },
+      { name: "highPrice", required: true, description: "Preço máximo", example: "299.90", inputType: "number" },
+      { name: "priceCurrency", required: true, description: "Moeda", example: "BRL" },
+      { name: "offerCount", required: false, description: "Número de ofertas", example: "15", inputType: "number" },
+    ],
+  },
+  {
+    type: "Order", category: "Comércio", parent: "Intangible", description: "Pedido/encomenda de produto ou serviço.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Order" },
+      { name: "orderNumber", required: true, description: "Número do pedido", example: "PED-2025-001234" },
+      { name: "orderStatus", required: false, description: "Status", example: "https://schema.org/OrderDelivered", inputType: "url" },
+      { name: "orderedItem", required: false, description: "Item (JSON Product)", example: '{"@type":"Product","name":"Produto X"}', inputType: "json" },
+      { name: "orderDate", required: false, description: "Data", example: "2025-03-01", inputType: "date" },
+      { name: "customer", required: false, description: "Cliente (JSON Person)", example: '{"@type":"Person","name":"João"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Invoice", category: "Comércio", parent: "Intangible", description: "Fatura ou nota fiscal.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Invoice" },
+      { name: "totalPaymentDue", required: true, description: "Total (JSON MonetaryAmount)", example: '{"@type":"MonetaryAmount","value":"599.90","currency":"BRL"}', inputType: "json" },
+      { name: "paymentDueDate", required: false, description: "Vencimento", example: "2025-04-15", inputType: "date" },
+      { name: "paymentStatus", required: false, description: "Status", example: "PaymentComplete" },
+      { name: "customer", required: false, description: "Cliente", example: '{"@type":"Person","name":"Maria"}', inputType: "json" },
+    ],
+  },
+  // ── Categorias novas ──
+  {
+    type: "ItemList", category: "Listas", parent: "Intangible", description: "Lista ordenada de itens (carrossel).",
+    googleFeature: "Carousel, List Rich Results",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "ItemList" },
+      { name: "name", required: false, description: "Nome da lista", example: "Top 10 Restaurantes" },
+      { name: "itemListElement", required: true, description: "Itens (JSON array)", example: '[{"@type":"ListItem","position":1,"name":"Restaurante A","url":"https://..."}]', inputType: "json" },
+      { name: "itemListOrder", required: false, description: "Ordem", example: "https://schema.org/ItemListOrderAscending", inputType: "url" },
+      { name: "numberOfItems", required: false, description: "Número de itens", example: "10", inputType: "number" },
+    ],
+  },
+  {
+    type: "ListItem", category: "Listas", parent: "Intangible", description: "Item individual dentro de uma lista.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "ListItem" },
+      { name: "position", required: true, description: "Posição", example: "1", inputType: "number" },
+      { name: "name", required: true, description: "Nome", example: "Item 1" },
+      { name: "url", required: false, description: "URL", example: "https://example.com/item1", inputType: "url" },
+      { name: "item", required: false, description: "Item referenciado (JSON)", example: '{"@type":"Product","name":"Produto 1"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "SpecialAnnouncement", category: "Comunicação", parent: "CreativeWork", description: "Anúncio especial (COVID, emergência, eventos).",
+    googleFeature: "Special Announcement",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SpecialAnnouncement" },
+      { name: "name", required: true, description: "Título", example: "Mudança de Horário" },
+      { name: "text", required: true, description: "Texto do anúncio", example: "Nosso horário de funcionamento mudou...", inputType: "textarea" },
+      { name: "datePosted", required: true, description: "Data", example: "2025-03-01", inputType: "date" },
+      { name: "expires", required: false, description: "Validade", example: "2025-06-30", inputType: "date" },
+      { name: "announcementLocation", required: false, description: "Local (JSON Place)", example: '{"@type":"Place","name":"Todas as unidades"}', inputType: "json" },
+    ],
+  },
+  {
+    type: "Brand", category: "Comércio", parent: "Intangible", description: "Marca comercial.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Brand" },
+      { name: "name", required: true, description: "Nome da marca", example: "Apple" },
+      { name: "logo", required: false, description: "Logo URL", example: "https://apple.com/logo.png", inputType: "url" },
+      { name: "url", required: false, description: "Site", example: "https://apple.com", inputType: "url" },
+      { name: "slogan", required: false, description: "Slogan", example: "Think Different" },
+    ],
+  },
+  {
+    type: "OfferCatalog", category: "Comércio", parent: "ItemList", description: "Catálogo de ofertas de produtos/serviços.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "OfferCatalog" },
+      { name: "name", required: true, description: "Nome", example: "Catálogo Verão 2025" },
+      { name: "itemListElement", required: true, description: "Ofertas (JSON array)", example: '[{"@type":"Offer","itemOffered":{"@type":"Product","name":"Produto A"}}]', inputType: "json" },
+    ],
+  },
+  // ── Saúde ──
+  {
+    type: "Drug", category: "Saúde", parent: "Substance", description: "Medicamento ou substância farmacêutica.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Drug" },
+      { name: "name", required: true, description: "Nome comercial", example: "Dipirona Sódica" },
+      { name: "activeIngredient", required: false, description: "Princípio ativo", example: "Metamizol" },
+      { name: "drugClass", required: false, description: "Classe terapêutica", example: "Analgésico" },
+      { name: "administrationRoute", required: false, description: "Via de administração", example: "Oral" },
+      { name: "prescriptionStatus", required: false, description: "Status", example: "OTC" },
+    ],
+  },
+  {
+    type: "MedicalCondition", category: "Saúde", parent: "MedicalEntity", description: "Condição ou doença médica.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "MedicalCondition" },
+      { name: "name", required: true, description: "Nome", example: "Diabetes Tipo 2" },
+      { name: "description", required: false, description: "Descrição", example: "Condição crônica que afeta o metabolismo...", inputType: "textarea" },
+      { name: "signOrSymptom", required: false, description: "Sintomas", example: "Sede excessiva, visão turva" },
+      { name: "possibleTreatment", required: false, description: "Tratamento", example: "Medicação, dieta, exercícios" },
+      { name: "riskFactor", required: false, description: "Fatores de risco", example: "Obesidade, sedentarismo, genética" },
+    ],
+  },
+  // ── Educação ──
+  {
+    type: "EducationalOccupationalCredential", category: "Educação", parent: "CreativeWork", description: "Certificação, diploma ou credencial educacional.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "EducationalOccupationalCredential" },
+      { name: "name", required: true, description: "Nome", example: "Certificação Google Analytics" },
+      { name: "credentialCategory", required: false, description: "Categoria", example: "Certificação Profissional" },
+      { name: "recognizedBy", required: false, description: "Reconhecido por", example: '{"@type":"Organization","name":"Google"}', inputType: "json" },
+      { name: "validIn", required: false, description: "Válido em", example: "Global" },
+    ],
+  },
+  {
+    type: "CollegeOrUniversity", category: "Educação", parent: "EducationalOrganization", description: "Faculdade ou universidade.",
+    googleFeature: "Knowledge Panel",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "CollegeOrUniversity" },
+      { name: "name", required: true, description: "Nome", example: "Universidade de São Paulo" },
+      { name: "url", required: false, description: "Site", example: "https://usp.br", inputType: "url" },
+      { name: "address", required: false, description: "Endereço", example: "Cidade Universitária, SP" },
+      { name: "foundingDate", required: false, description: "Fundação", example: "1934-01-25", inputType: "date" },
+    ],
+  },
+  // ── Imobiliário ──
+  {
+    type: "Apartment", category: "Imóveis", parent: "Accommodation", description: "Apartamento para venda ou aluguel.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "Apartment" },
+      { name: "name", required: true, description: "Nome/Título", example: "Apartamento 3Q Moema" },
+      { name: "numberOfRooms", required: false, description: "Quartos", example: "3", inputType: "number" },
+      { name: "floorSize", required: false, description: "Área (JSON QuantitativeValue)", example: '{"@type":"QuantitativeValue","value":"85","unitCode":"MTK"}', inputType: "json" },
+      { name: "address", required: false, description: "Endereço", example: "R. dos Moemas, 200, SP" },
+      { name: "numberOfBathroomsTotal", required: false, description: "Banheiros", example: "2", inputType: "number" },
+    ],
+  },
+  {
+    type: "SingleFamilyResidence", category: "Imóveis", parent: "House", description: "Casa residencial.",
+    properties: [
+      { name: "@type", required: true, description: "Tipo", example: "SingleFamilyResidence" },
+      { name: "name", required: true, description: "Título", example: "Casa 4 quartos Alphaville" },
+      { name: "numberOfRooms", required: false, description: "Quartos", example: "4", inputType: "number" },
+      { name: "floorSize", required: false, description: "Área", example: '{"@type":"QuantitativeValue","value":"250","unitCode":"MTK"}', inputType: "json" },
+      { name: "address", required: false, description: "Endereço", example: "Alphaville, Barueri - SP" },
+    ],
+  },
 ];
 
 const CATEGORIES = [...new Set(SCHEMA_CATALOG.map((s) => s.category))];
@@ -517,6 +1119,11 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Eventos": Zap,
   "Conteúdo": FileCode,
   "Comércio": TrendingUp,
+  "Listas": ListChecks,
+  "Comunicação": Sparkles,
+  "Saúde": Plus,
+  "Educação": BookOpen,
+  "Imóveis": Building2,
 };
 
 // ── Pre-built sample schemas ──
