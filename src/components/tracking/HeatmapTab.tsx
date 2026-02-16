@@ -220,8 +220,8 @@ const TRAIL_COLORS = [
 ];
 
 /* ── Page Row for table listing view ── */
-function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, onClick, onDelete }: {
-  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
+function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, firstEvent, lastEvent, topCity, topCountry, onClick, onDelete }: {
+  url: string; clicks: number; exits: number; views: number; visitors: number; avgScroll: number; moveCount: number; firstEvent: string; lastEvent: string; topCity: string; topCountry: string; onClick: () => void; onDelete: (e: React.MouseEvent) => void;
 }) {
   let pathname = url;
   try { pathname = new URL(url).pathname; } catch { /* keep full url */ }
@@ -230,6 +230,8 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
     const d = new Date(iso);
     return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   };
+
+  const location = [topCity, topCountry].filter(Boolean).join(", ");
 
   return (
     <tr className="group table-row-hover cursor-pointer border-b border-border/50 last:border-0" onClick={onClick}>
@@ -256,8 +258,8 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
       <td className="py-3 px-3 text-center hidden lg:table-cell">
         <p className="text-xs font-bold text-foreground">{avgScroll}%</p>
       </td>
-      <td className="py-3 px-3 text-center hidden xl:table-cell">
-        <p className="text-xs font-bold text-foreground">{moveCount}</p>
+      <td className="py-3 px-3 hidden md:table-cell">
+        <p className="text-[10px] text-muted-foreground truncate max-w-[120px]" title={location}>{location || "—"}</p>
       </td>
       <td className="py-3 px-3 text-right hidden md:table-cell">
         <p className="text-[10px] text-muted-foreground">{fmtDate(lastEvent)}</p>
@@ -277,6 +279,24 @@ function PageRow({ url, clicks, exits, views, visitors, avgScroll, moveCount, fi
     </tr>
   );
 }
+
+/* ── Sortable Table Header ── */
+function SortHeader({ label, field, current, onSort, className = "" }: { label: string; field: string; current: string; onSort: (f: string) => void; className?: string }) {
+  const isActive = current === field || current === `-${field}`;
+  const isDesc = current === field; // default first click = desc
+  return (
+    <th
+      className={`py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors ${className}`}
+      onClick={() => onSort(isActive && isDesc ? `-${field}` : field)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive && <span className="text-primary">{isDesc ? "↓" : "↑"}</span>}
+      </span>
+    </th>
+  );
+}
+
 /* ── Data Availability Indicator ── */
 function DataAvailabilityBadge({ available, count, label, icon: Icon }: { available: boolean; count: number; label: string; icon: React.ElementType }) {
   return (
@@ -284,7 +304,7 @@ function DataAvailabilityBadge({ available, count, label, icon: Icon }: { availa
       {available ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
       <Icon className="h-3 w-3" />
       <span className="font-medium">{label}</span>
-      <Badge variant="secondary" className="text-[8px] h-4 min-w-[16px] px-1">{count}</Badge>
+      {available && <Badge variant="outline" className="text-[8px] h-4 px-1.5 ml-1">{count}</Badge>}
     </div>
   );
 }
@@ -630,12 +650,12 @@ export function HeatmapTab() {
 
   // URL options with stats
   const urlOptions = useMemo(() => {
-    const map = new Map<string, { rawUrls: Set<string>; clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number> }>();
+    const map = new Map<string, { rawUrls: Set<string>; clicks: number; exits: number; views: number; visitors: Set<string>; moveSessions: number; scrollSum: number; scrollCount: number; firstEvent: string; lastEvent: string; cities: Map<string, number>; countries: Map<string, number>; devices: Set<string> }>();
     allEvents.forEach((e) => {
       const rawUrl = e.page_url;
       if (!rawUrl) return;
       const url = normalizeUrl(rawUrl);
-      const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>() };
+      const entry = map.get(url) || { rawUrls: new Set<string>(), clicks: 0, exits: 0, views: 0, visitors: new Set<string>(), moveSessions: 0, scrollSum: 0, scrollCount: 0, firstEvent: e.created_at, lastEvent: e.created_at, cities: new Map<string, number>(), countries: new Map<string, number>(), devices: new Set<string>() };
       entry.rawUrls.add(rawUrl);
       if (["click", "button_click", "whatsapp_click", "phone_click", "email_click", "heatmap_click"].includes(e.event_type)) entry.clicks++;
       if (e.event_type === "page_exit") {
@@ -647,6 +667,8 @@ export function HeatmapTab() {
       if (e.event_type === "page_view") entry.views++;
       if (e.visitor_id) entry.visitors.add(e.visitor_id);
       if (e.city) entry.cities.set(e.city, (entry.cities.get(e.city) || 0) + 1);
+      if (e.country) entry.countries.set(e.country, (entry.countries.get(e.country) || 0) + 1);
+      if (e.device) entry.devices.add(e.device);
       if (e.created_at < entry.firstEvent) entry.firstEvent = e.created_at;
       if (e.created_at > entry.lastEvent) entry.lastEvent = e.created_at;
       map.set(url, entry);
@@ -656,6 +678,9 @@ export function HeatmapTab() {
         let topCity = "";
         let maxCityCount = 0;
         s.cities.forEach((count, city) => { if (count > maxCityCount) { maxCityCount = count; topCity = city; } });
+        let topCountry = "";
+        let maxCountryCount = 0;
+        s.countries.forEach((count, country) => { if (count > maxCountryCount) { maxCountryCount = count; topCountry = country; } });
         return {
           url, rawUrls: Array.from(s.rawUrls), clicks: s.clicks, exits: s.exits, views: s.views,
           visitors: s.visitors.size,
@@ -663,7 +688,8 @@ export function HeatmapTab() {
           moveCount: s.moveSessions,
           firstEvent: s.firstEvent,
           lastEvent: s.lastEvent,
-          topCity,
+          topCity, topCountry,
+          devices: Array.from(s.devices),
         };
       })
       .sort((a, b) => (b.clicks + b.views) - (a.clicks + a.views));
@@ -918,21 +944,6 @@ export function HeatmapTab() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Ordenar por</label>
-                <Select value={listSortBy} onValueChange={setListSortBy}>
-                  <SelectTrigger className="h-9 text-xs w-[140px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="relevance" className="text-xs">Relevância</SelectItem>
-                    <SelectItem value="clicks" className="text-xs">Mais Cliques</SelectItem>
-                    <SelectItem value="views" className="text-xs">Mais Views</SelectItem>
-                    <SelectItem value="visitors" className="text-xs">Mais Visitantes</SelectItem>
-                    <SelectItem value="scroll" className="text-xs">Maior Scroll</SelectItem>
-                    <SelectItem value="recent" className="text-xs">Mais Recente</SelectItem>
-                    <SelectItem value="oldest" className="text-xs">Mais Antigo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </Card>
         </AnimatedContainer>
@@ -941,18 +952,23 @@ export function HeatmapTab() {
         {(() => {
           let filtered = urlOptions.filter((opt) => {
             if (listSearch && !opt.url.toLowerCase().includes(listSearch.toLowerCase())) return false;
-            if (listDeviceFilter !== "all") {
-              const deviceEvents = allEvents.filter(e => e.page_url === opt.url && e.device === listDeviceFilter);
-              if (deviceEvents.length === 0) return false;
-            }
+            if (listDeviceFilter !== "all" && !opt.devices.includes(listDeviceFilter)) return false;
             return true;
           });
-          if (listSortBy === "clicks") filtered.sort((a, b) => b.clicks - a.clicks);
-          else if (listSortBy === "views") filtered.sort((a, b) => b.views - a.views);
-          else if (listSortBy === "visitors") filtered.sort((a, b) => b.visitors - a.visitors);
-          else if (listSortBy === "scroll") filtered.sort((a, b) => b.avgScroll - a.avgScroll);
-          else if (listSortBy === "recent") filtered.sort((a, b) => b.lastEvent.localeCompare(a.lastEvent));
-          else if (listSortBy === "oldest") filtered.sort((a, b) => a.firstEvent.localeCompare(b.firstEvent));
+          // Sorting via column headers
+          const sortField = listSortBy.replace(/^-/, "");
+          const sortAsc = listSortBy.startsWith("-");
+          const sortFn = (a: typeof filtered[0], b: typeof filtered[0]) => {
+            let diff = 0;
+            if (sortField === "clicks") diff = b.clicks - a.clicks;
+            else if (sortField === "views") diff = b.views - a.views;
+            else if (sortField === "visitors") diff = b.visitors - a.visitors;
+            else if (sortField === "scroll") diff = b.avgScroll - a.avgScroll;
+            else if (sortField === "recent") diff = b.lastEvent.localeCompare(a.lastEvent);
+            else diff = (b.clicks + b.views) - (a.clicks + a.views); // relevance
+            return sortAsc ? -diff : diff;
+          };
+          filtered.sort(sortFn);
 
           const totalPages = Math.ceil(filtered.length / CARDS_PER_PAGE);
           const safePage = Math.min(listPage, totalPages - 1);
@@ -967,12 +983,12 @@ export function HeatmapTab() {
                       <thead>
                         <tr className="border-b border-border bg-muted/30">
                           <th className="py-2.5 px-4 text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Página</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Views</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Cliques</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center">Visitantes</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center hidden lg:table-cell">Scroll</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-center hidden xl:table-cell">Trilhas</th>
-                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground text-right hidden md:table-cell">Último evento</th>
+                          <SortHeader label="Views" field="views" current={listSortBy} onSort={setListSortBy} className="text-center" />
+                          <SortHeader label="Cliques" field="clicks" current={listSortBy} onSort={setListSortBy} className="text-center" />
+                          <SortHeader label="Visitantes" field="visitors" current={listSortBy} onSort={setListSortBy} className="text-center" />
+                          <SortHeader label="Scroll" field="scroll" current={listSortBy} onSort={setListSortBy} className="text-center hidden lg:table-cell" />
+                          <th className="py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground hidden md:table-cell">Localização</th>
+                          <SortHeader label="Último evento" field="recent" current={listSortBy} onSort={setListSortBy} className="text-right hidden md:table-cell" />
                           <th className="py-2.5 px-2 w-[60px]"></th>
                         </tr>
                       </thead>
@@ -990,12 +1006,12 @@ export function HeatmapTab() {
                             firstEvent={opt.firstEvent}
                             lastEvent={opt.lastEvent}
                             topCity={opt.topCity}
+                            topCountry={opt.topCountry}
                             onClick={() => setSelectedUrl(opt.url)}
                             onDelete={async (e) => {
                               e.stopPropagation();
                               if (!projectId) return;
                               if (!window.confirm(`Excluir todos os dados de heatmap da página "${(() => { try { return new URL(opt.url).pathname; } catch { return opt.url; } })()}"?`)) return;
-                              // Delete all raw URL variants that normalized to this URL
                               const { error } = await supabase
                                 .from("tracking_events")
                                 .delete()
