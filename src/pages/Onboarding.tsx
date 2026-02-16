@@ -21,7 +21,7 @@ import {
   ArrowLeft, ArrowRight, Check, Globe, MapPin, Clock, FileText, Search,
   Link2, Zap, BarChart3, Bot, MonitorSmartphone, Loader2, CheckCircle2,
   AlertCircle, ExternalLink, Copy, Wifi, Target, TrendingUp, DollarSign, Upload,
-  Bell, Megaphone, BookOpen, ChevronsUpDown, Building2,
+  Bell, Megaphone, BookOpen, ChevronsUpDown, Building2, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,12 +58,21 @@ const pageVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
+interface CreatedProject {
+  id: string;
+  name: string;
+  domain: string;
+  sitemapImported: boolean;
+}
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [createdProjects, setCreatedProjects] = useState<CreatedProject[]>([]);
+  const [showSummary, setShowSummary] = useState(false);
   const [project, setProject] = useState({
     name: "", domain: "", type: "", country: "", city: "", timezone: "",
     isRankRent: false, rrPrice: "", rrDeadline: "", rrClient: "",
@@ -90,6 +99,7 @@ export default function Onboarding() {
       }).select("id").single();
       if (error) throw error;
       setProjectId(data.id);
+      setCreatedProjects(prev => [...prev, { id: data.id, name: project.name.trim(), domain: project.domain.trim(), sitemapImported: false }]);
       await supabase.from("project_members").insert({
         project_id: data.id, user_id: user.id, role: "owner",
       });
@@ -143,19 +153,110 @@ export default function Onboarding() {
       // Mark onboarding as complete
       if (projectId) {
         supabase.from("projects").update({ onboarding_completed: true, onboarding_step: STEPS.length }).eq("id", projectId);
+        // Update created projects list
+        setCreatedProjects(prev => {
+          const existing = prev.find(p => p.id === projectId);
+          if (existing) return prev;
+          return [...prev, { id: projectId, name: project.name, domain: project.domain, sitemapImported: false }];
+        });
       }
-      navigate("/projects");
+      setShowSummary(true);
     }
   };
+
+  const handleAddAnotherProject = () => {
+    setShowSummary(false);
+    setProjectId(null);
+    setProject({ name: "", domain: "", type: "", country: "", city: "", timezone: "", isRankRent: false, rrPrice: "", rrDeadline: "", rrClient: "" });
+    setStep(0);
+  };
+
+  const handleFinishOnboarding = () => {
+    localStorage.setItem("rankito_show_tour", "true");
+    navigate("/projects");
+  };
+
+  if (showSummary) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-semibold text-foreground tracking-tight">Rankito</span>
+            <span className="text-muted-foreground text-sm">/ Onboarding Concluído</span>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg space-y-6">
+            <div className="text-center space-y-2">
+              <div className="h-16 w-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="h-8 w-8 text-success" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">
+                {createdProjects.length === 1 ? "Projeto criado!" : `${createdProjects.length} projetos criados!`}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Seu onboarding está completo. Você pode adicionar mais projetos ou ir para o dashboard.
+              </p>
+            </div>
+
+            {/* Created projects list */}
+            <Card className="overflow-hidden">
+              <div className="px-4 py-3 bg-muted/30 border-b border-border">
+                <span className="text-xs font-medium text-foreground">Projetos configurados</span>
+              </div>
+              <div className="divide-y divide-border">
+                {createdProjects.map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Globe className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-foreground truncate block">{p.name}</span>
+                      <span className="text-xs text-muted-foreground truncate block">{p.domain}</span>
+                    </div>
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  </motion.div>
+                ))}
+              </div>
+            </Card>
+
+            <div className="flex flex-col gap-2">
+              <Button onClick={handleAddAnotherProject} variant="outline" className="w-full gap-2 text-sm">
+                <Plus className="h-4 w-4" /> Adicionar outro projeto
+              </Button>
+              <Button onClick={handleFinishOnboarding} className="w-full gap-2 text-sm">
+                Ir para o Dashboard <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-lg font-semibold text-foreground tracking-tight">Rankito</span>
-          <span className="text-muted-foreground text-sm">/ Novo Projeto</span>
+          <span className="text-muted-foreground text-sm">/ Novo Projeto {createdProjects.length > 0 ? `(#${createdProjects.length + 1})` : ""}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>Cancelar</Button>
+        <div className="flex items-center gap-2">
+          {createdProjects.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <CheckCircle2 className="h-2.5 w-2.5" /> {createdProjects.length} projeto{createdProjects.length > 1 ? "s" : ""} criado{createdProjects.length > 1 ? "s" : ""}
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => createdProjects.length > 0 ? handleFinishOnboarding() : navigate("/projects")}>
+            {createdProjects.length > 0 ? "Concluir" : "Cancelar"}
+          </Button>
+        </div>
       </header>
 
       <div className="border-b border-border px-4 sm:px-6 py-3 overflow-x-auto">
