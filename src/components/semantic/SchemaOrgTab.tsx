@@ -1429,6 +1429,7 @@ export function SchemaOrgTab({ projectId }: Props) {
   const [builderValues, setBuilderValues] = useState<Record<string, string>>({});
   const [showOnlyRequired, setShowOnlyRequired] = useState(false);
   const [addedExtraProps, setAddedExtraProps] = useState<string[]>([]);
+  const [sampleFilter, setSampleFilter] = useState("all");
 
   // Tree state
   const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set([
@@ -1943,78 +1944,90 @@ export function SchemaOrgTab({ projectId }: Props) {
 
         {/* ═══════ SAMPLES TAB ═══════ */}
         <TabsContent value="samples" className="mt-4 space-y-4">
-          <Card className="p-4 bg-primary/5 border-primary/20">
-            <div className="flex items-start gap-2">
-              <ClipboardPaste className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <h4 className="text-sm font-semibold mb-0.5">Schemas Pré-Prontos</h4>
-                <p className="text-xs text-muted-foreground">
-                  Exemplos prontos para uso. Clique em "Usar como Base" para abrir no construtor e personalizar, ou copie diretamente o JSON-LD.
-                </p>
-              </div>
-            </div>
-          </Card>
+          {/* Filter bar */}
+          {(() => {
+            const SAMPLE_CATEGORIES: { key: string; label: string; types: string[] }[] = [
+              { key: "all", label: "Todos", types: [] },
+              { key: "negocios", label: "Negócios", types: ["LocalBusiness", "Restaurant", "Organization", "MedicalBusiness"] },
+              { key: "conteudo", label: "Conteúdo", types: ["Article", "BlogPosting", "VideoObject", "HowTo", "FAQPage", "Recipe"] },
+              { key: "comercio", label: "Comércio", types: ["Product", "SoftwareApplication", "Review", "ItemList"] },
+              { key: "eventos", label: "Eventos & Cursos", types: ["Event", "MusicEvent", "Course", "JobPosting"] },
+              { key: "tecnico", label: "Técnico", types: ["WebSite", "BreadcrumbList", "Person"] },
+            ];
+            const activeCat = SAMPLE_CATEGORIES.find(c => c.key === sampleFilter) || SAMPLE_CATEGORIES[0];
+            const filteredSamples = sampleFilter === "all" ? SCHEMA_SAMPLES : SCHEMA_SAMPLES.filter(s => activeCat.types.includes(s.type));
 
-          <ScrollArea className="h-[calc(100vh-520px)] min-h-[400px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {SCHEMA_SAMPLES.map((sample) => {
-                const SampleIcon = sample.icon;
-                const typeDef = FULL_CATALOG.find((s) => s.type === sample.type);
-                const sampleJson = JSON.stringify({ "@context": "https://schema.org", ...Object.fromEntries(
-                  Object.entries(sample.values).map(([k, v]) => {
-                    try { return [k, JSON.parse(v)]; } catch { return [k, v]; }
-                  })
-                )}, null, 2);
+            return (
+              <>
+                <div className="flex gap-1.5 flex-wrap">
+                  {SAMPLE_CATEGORIES.map(cat => (
+                    <Badge
+                      key={cat.key}
+                      variant={sampleFilter === cat.key ? "default" : "outline"}
+                      className="cursor-pointer text-[10px] px-2.5 py-1"
+                      onClick={() => setSampleFilter(cat.key)}
+                    >
+                      {cat.label}
+                      {cat.key !== "all" && <span className="ml-1 opacity-60">({SCHEMA_SAMPLES.filter(s => cat.types.includes(s.type)).length})</span>}
+                    </Badge>
+                  ))}
+                </div>
 
-                return (
-                  <Card key={sample.id} className="overflow-hidden hover:shadow-md transition-all">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <SampleIcon className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm">{sample.title}</h4>
-                          <p className="text-[11px] text-muted-foreground">{sample.description}</p>
-                          <Badge variant="outline" className="text-[9px] gap-0.5 mt-1">
-                            <Code2 className="h-2.5 w-2.5" />
-                            {sample.type}
-                          </Badge>
-                        </div>
-                      </div>
+                <ScrollArea className="h-[calc(100vh-480px)] min-h-[400px]">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                    {filteredSamples.map((sample) => {
+                      const SampleIcon = sample.icon;
+                      const typeDef = FULL_CATALOG.find((s) => s.type === sample.type);
+                      const sampleJson = JSON.stringify({ "@context": "https://schema.org", ...Object.fromEntries(
+                        Object.entries(sample.values).map(([k, v]) => {
+                          try { return [k, JSON.parse(v)]; } catch { return [k, v]; }
+                        })
+                      )}, null, 2);
 
-                      {/* Preview */}
-                      <pre className="p-3 rounded-lg bg-muted/40 border text-[10px] font-mono text-foreground max-h-[120px] overflow-hidden relative">
-                        {sampleJson.slice(0, 300)}
-                        {sampleJson.length > 300 && "..."}
-                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-muted/80 to-transparent" />
-                      </pre>
+                      return (
+                        <Card key={sample.id} className="overflow-hidden hover:shadow-md transition-all group">
+                          <div className="p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <SampleIcon className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-xs truncate">{sample.title}</h4>
+                                <Badge variant="outline" className="text-[8px] gap-0.5 px-1 py-0">
+                                  {sample.type}
+                                </Badge>
+                              </div>
+                            </div>
 
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1 gap-1.5 text-xs h-8"
-                          onClick={() => typeDef && startBuilder(typeDef, sample.values)}
-                        >
-                          <Wrench className="h-3 w-3" />
-                          Usar como Base
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 text-xs h-8"
-                          onClick={() => handleCopy(`<script type="application/ld+json">\n${sampleJson}\n</script>`, sample.id)}
-                        >
-                          {copied === sample.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                          {copied === sample.id ? "Copiado!" : "Copiar"}
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </ScrollArea>
+                            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{sample.description}</p>
+
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                className="flex-1 gap-1 text-[10px] h-6 px-2"
+                                onClick={() => typeDef && startBuilder(typeDef, sample.values)}
+                              >
+                                <Wrench className="h-2.5 w-2.5" />
+                                Usar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 text-[10px] h-6 px-2"
+                                onClick={() => handleCopy(`<script type="application/ld+json">\n${sampleJson}\n</script>`, sample.id)}
+                              >
+                                {copied === sample.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* ═══════ CATALOG TAB ═══════ */}
