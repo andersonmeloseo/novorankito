@@ -132,7 +132,7 @@ export function AnalyticsDataTable({ columns, rows, tooltips, pageSize = 10 }: A
       </div>
 
       {/* Pagination */}
-      {sorted.length > pageSize && (
+      {totalPages > 0 && (
         <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
           <span className="text-[10px] text-muted-foreground">
             {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, sorted.length)} de {sorted.length}

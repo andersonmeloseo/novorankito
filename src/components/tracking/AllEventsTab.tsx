@@ -75,6 +75,7 @@ export function AllEventsTab() {
     // Rankito
     page_exit: "🚪", whatsapp_click: "💬", phone_click: "📞",
     email_click: "✉️", button_click: "🖱️", form_submit: "📝", heatmap_click: "🔥",
+    custom: "🔧",
   };
 
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
