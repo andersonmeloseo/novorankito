@@ -246,7 +246,13 @@ export function SessionsTab() {
   const sourcePieData = useMemo(() => {
     const map = new Map<string, number>();
     filtered.forEach(s => map.set(s.source, (map.get(s.source) || 0) + 1));
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+    const all = Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    // Limit to top 5, group rest as "Outros"
+    if (all.length <= 6) return all;
+    const top = all.slice(0, 5);
+    const othersValue = all.slice(5).reduce((s, d) => s + d.value, 0);
+    if (othersValue > 0) top.push({ name: "Outros", value: othersValue });
+    return top;
   }, [filtered]);
 
   const sessionFunnel = useMemo(() => {
