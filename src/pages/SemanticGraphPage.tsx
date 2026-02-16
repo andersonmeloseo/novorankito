@@ -3,17 +3,19 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
-  Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown,
+  Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown, Users,
 } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { GraphBuilder } from "@/components/semantic/GraphBuilder";
 import { TriplesTable } from "@/components/semantic/TriplesTable";
 import { SchemaOrgTab } from "@/components/semantic/SchemaOrgTab";
+import { CompetitorAnalysisTab } from "@/components/semantic/CompetitorAnalysisTab";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
   { id: "triples", label: "Triples", icon: GitBranch },
   { id: "schema", label: "Schema.org", icon: Code2 },
+  { id: "competitors", label: "Concorrentes", icon: Users },
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "recommendations", label: "Recomendações", icon: Lightbulb },
   { id: "exports", label: "Exportações", icon: FileDown },
@@ -68,6 +70,11 @@ export default function SemanticGraphPage() {
           {/* Schema.org Tab */}
           <TabsContent value="schema" className="mt-4">
             <SchemaOrgTab projectId={localStorage.getItem("rankito_current_project") || ""} />
+          </TabsContent>
+
+          {/* Competitors Tab */}
+          <TabsContent value="competitors" className="mt-4">
+            <CompetitorAnalysisTab />
           </TabsContent>
 
           {/* Dashboard Tab */}
