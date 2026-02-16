@@ -542,8 +542,11 @@ export default function IndexingPage() {
                   onClick={() => {
                     const quotaUrls = inventory.filter(u => u.last_request_status === "quota_exceeded").map(u => u.url);
                     if (quotaUrls.length === 0) return;
-                    toast.info(`Reenviando ${quotaUrls.slice(0, 50).length} URL(s) com quota excedida...`);
-                    submitMutation.mutate({ urls: quotaUrls.slice(0, 50), requestType: "URL_UPDATED" });
+                    const remaining = Math.max(0, stats.dailyLimit - stats.sentToday);
+                    const batch = quotaUrls.slice(0, Math.min(quotaUrls.length, remaining));
+                    if (batch.length === 0) { toast.warning("Quota diária esgotada. Tente amanhã."); return; }
+                    toast.info(`Reenviando ${batch.length} URL(s) com quota excedida...`);
+                    submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
                   }}
                   disabled={submitMutation.isPending}
                 >
