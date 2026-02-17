@@ -1076,6 +1076,122 @@ export type Database = {
         }
         Relationships: []
       }
+      orchestrator_deployments: {
+        Row: {
+          created_at: string
+          delivery_channels: Json
+          delivery_config: Json
+          hierarchy: Json
+          id: string
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          owner_id: string
+          project_id: string
+          roles: Json
+          run_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_channels?: Json
+          delivery_config?: Json
+          hierarchy?: Json
+          id?: string
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          owner_id: string
+          project_id: string
+          roles?: Json
+          run_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_channels?: Json
+          delivery_config?: Json
+          hierarchy?: Json
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          owner_id?: string
+          project_id?: string
+          roles?: Json
+          run_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orchestrator_deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orchestrator_runs: {
+        Row: {
+          agent_results: Json
+          completed_at: string | null
+          created_at: string
+          delivery_status: Json
+          deployment_id: string
+          id: string
+          owner_id: string
+          project_id: string
+          started_at: string
+          status: string
+          summary: string | null
+        }
+        Insert: {
+          agent_results?: Json
+          completed_at?: string | null
+          created_at?: string
+          delivery_status?: Json
+          deployment_id: string
+          id?: string
+          owner_id: string
+          project_id: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+        }
+        Update: {
+          agent_results?: Json
+          completed_at?: string | null
+          created_at?: string
+          delivery_status?: Json
+          deployment_id?: string
+          id?: string
+          owner_id?: string
+          project_id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orchestrator_runs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "orchestrator_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orchestrator_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_features: {
         Row: {
           created_at: string
