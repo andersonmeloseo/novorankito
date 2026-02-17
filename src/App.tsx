@@ -10,6 +10,7 @@ import { AdminProtectedRoute } from "@/components/layout/AdminProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+import { PiracyWarningModal } from "@/components/layout/PiracyWarningModal";
 import NotFound from "./pages/NotFound";
 
 // Lazy-loaded pages
@@ -93,6 +94,7 @@ const App = () => (
         <ErrorBoundary>
           <Toaster />
           <Sonner />
+          <PiracyWarningModal />
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
               <Routes>
