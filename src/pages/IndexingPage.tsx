@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +66,23 @@ function StatusBadge({ status, map }: { status: string | null; map: Record<strin
 export default function IndexingPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // Read initial tab from URL hash
+  const getTabFromHash = () => {
+    const hash = window.location.hash.replace("#", "");
+    return ["dashboard", "inventory", "sitemap", "history", "schedule", "accounts"].includes(hash) ? hash : "dashboard";
+  };
+  const [activeTab, setActiveTab] = useState(getTabFromHash);
+
+  useEffect(() => {
+    const onHash = () => setActiveTab(getTabFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  };
   const [searchFilter, setSearchFilter] = useState("");
   const [verdictFilter, setVerdictFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -344,7 +360,7 @@ export default function IndexingPage() {
     <>
       <TopBar title="Indexação" subtitle="Gerencie a indexação das suas páginas via Google Search Console" />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <FeatureBanner icon={Send} title="Indexação de Páginas" description={<>Gerencie a <strong>indexação</strong> das suas páginas no Google com submissão em lote, sitemaps, agendamentos e monitoramento em tempo real.</>} />
+        
 
         {/* No GSC Connection Warning */}
         {!gscLoading && gscConnections.length === 0 && (
@@ -382,7 +398,7 @@ export default function IndexingPage() {
         </Card>
 
         {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <TabsList className="flex flex-wrap h-auto gap-0.5">
               <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
