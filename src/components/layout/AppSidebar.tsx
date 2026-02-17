@@ -260,7 +260,7 @@ export function AppSidebar() {
       <SidebarContent className="scrollbar-thin py-1">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
-            Projetos
+            Inicie por Aqui
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
