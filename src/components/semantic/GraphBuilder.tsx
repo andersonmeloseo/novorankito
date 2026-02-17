@@ -19,7 +19,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Loader2, Wand2, LayoutGrid, Network } from "lucide-react";
+import { Plus, Loader2, Wand2, LayoutGrid, Network, Trash2 } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -61,6 +61,7 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
   const [editNodeId, setEditNodeId] = useState<string | null>(null);
   const [editData, setEditData] = useState<EntityFormData | null>(null);
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -332,7 +333,26 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
     toast({ title: "Entidade excluída" });
   }, [deleteNodeId, setNodes, setEdges]);
 
-  // ── Connect: node-to-node ──
+  // ── Delete ALL entities ──
+  const handleConfirmDeleteAll = useCallback(async () => {
+    if (!projectId) return;
+    setSaving(true);
+    let relQuery = supabase.from("semantic_relations").delete().eq("project_id", projectId);
+    let entQuery_del = supabase.from("semantic_entities").delete().eq("project_id", projectId);
+    if (semanticProjectId) {
+      relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+      entQuery_del = entQuery_del.eq("goal_project_id", semanticProjectId);
+    }
+    await relQuery;
+    await entQuery_del;
+    setSaving(false);
+    setNodes([]);
+    setEdges([]);
+    setDeleteAllOpen(false);
+    toast({ title: "Todos os nós excluídos", description: "O grafo foi limpo completamente." });
+  }, [projectId, semanticProjectId, setNodes, setEdges]);
+
+
   const onConnectStart = useCallback((_: any, params: any) => {
     connectingNodeId.current = params.nodeId;
   }, []);
@@ -664,6 +684,12 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
               Reorganizar
             </Button>
           )}
+          {nodes.length > 0 && (
+            <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteAllOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Excluir Todos
+            </Button>
+          )}
         </Panel>
         {nodes.length === 0 && (
           <Panel position="top-center" className="mt-24">
@@ -723,6 +749,24 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete ALL confirmation */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir TODOS os nós?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação removerá <strong>todas as {nodes.length} entidades</strong> e suas relações permanentemente. Não é possível desfazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir Todos ({nodes.length})
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

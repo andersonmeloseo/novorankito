@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Lightbulb, Network, GitBranch, Code2, AlertTriangle, Loader2,
   ArrowRight, Zap, Link2, FileText, Plus, CheckCircle2, Target,
-  TrendingUp, Users, Globe, Play,
+  TrendingUp, Users, Globe, Play, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -185,6 +185,7 @@ export function SemanticRecommendationsTab({ semanticProjectId }: { semanticProj
   const [relations, setRelations] = useState<RelationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [acceptAllLoading, setAcceptAllLoading] = useState(false);
 
   const fetchData = async () => {
     if (!projectId) return;
@@ -380,6 +381,125 @@ export function SemanticRecommendationsTab({ semanticProjectId }: { semanticProj
       toast({ title: "Erro", description: err.message || "Falha ao executar ação", variant: "destructive" });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // ── Accept ALL actionable recommendations at once ──
+  const handleAcceptAll = async () => {
+    if (!projectId || !user) return;
+    setAcceptAllLoading(true);
+
+    try {
+      const existingTypes = new Set(entities.map((e) => e.entity_type));
+      const visited = new Set<string>(existingTypes);
+      const typesToCreate: Array<{ type: string; name: string; parentType: string; description: string; schema_type: string }> = [];
+
+      const blueprintLookup: Record<string, { name: string; description: string; schema_type: string }> = {};
+      Object.values(ENTITY_SUGGESTIONS).flat().forEach((b) => { if (!blueprintLookup[b.type]) blueprintLookup[b.type] = b; });
+
+      const expandQueue = [...Array.from(existingTypes)];
+      while (expandQueue.length > 0) {
+        const currentType = expandQueue.shift()!;
+        const suggestions = ENTITY_SUGGESTIONS[currentType] || [];
+        for (const s of suggestions) {
+          if (!visited.has(s.type)) {
+            visited.add(s.type);
+            typesToCreate.push({ type: s.type, name: s.name, parentType: currentType, description: s.description, schema_type: s.schema_type });
+            expandQueue.push(s.type);
+          }
+        }
+      }
+
+      const existingByType: Record<string, string> = {};
+      entities.forEach((e) => { existingByType[e.entity_type] = e.id; });
+      const createdEntities: Record<string, string> = {};
+
+      if (typesToCreate.length > 0) {
+        const sourceEntity = entities[0];
+        const rootX = sourceEntity?.position_x ?? 300;
+        const rootY = sourceEntity?.position_y ?? 300;
+
+        const typeToDepth: Record<string, number> = {};
+        const typeToParent: Record<string, string> = {};
+        for (const t of typesToCreate) {
+          typeToParent[t.type] = t.parentType;
+          let depth = 1, parent = t.parentType;
+          while (typeToParent[parent]) { depth++; parent = typeToParent[parent]; }
+          typeToDepth[t.type] = depth;
+        }
+
+        const depthGroups: Record<number, typeof typesToCreate> = {};
+        for (const t of typesToCreate) {
+          const d = typeToDepth[t.type];
+          if (!depthGroups[d]) depthGroups[d] = [];
+          depthGroups[d].push(t);
+        }
+
+        const allInserts: any[] = [];
+        for (const [depthStr, group] of Object.entries(depthGroups)) {
+          const depth = parseInt(depthStr);
+          const startY = rootY - ((group.length - 1) * 150) / 2;
+          group.forEach((t, idx) => {
+            allInserts.push({
+              name: t.name, entity_type: t.type, description: t.description,
+              schema_type: t.schema_type, project_id: projectId, owner_id: user.id,
+              position_x: rootX + depth * 280, position_y: startY + idx * 150,
+              goal_project_id: semanticProjectId || null,
+            });
+          });
+        }
+
+        const { data: inserted, error } = await supabase.from("semantic_entities").insert(allInserts).select("id, entity_type");
+        if (error) throw error;
+        (inserted || []).forEach((e) => { createdEntities[e.entity_type] = e.id; });
+      }
+
+      const allEntityMap = { ...existingByType, ...createdEntities };
+      const existingRelPairs = new Set(relations.map((r) => {
+        const sType = entities.find((e) => e.id === r.subject_id)?.entity_type || "";
+        const oType = entities.find((e) => e.id === r.object_id)?.entity_type || "";
+        return `${sType}-${oType}-${r.predicate}`;
+      }));
+
+      const relationInserts: any[] = [];
+      for (const t of typesToCreate) {
+        const parentId = allEntityMap[t.parentType];
+        const childId = createdEntities[t.type];
+        if (!parentId || !childId) continue;
+        const relSuggestion = RELATION_SUGGESTIONS.find((rs) => rs.subjectType === t.parentType && rs.objectType === t.type)
+          || RELATION_SUGGESTIONS.find((rs) => rs.objectType === t.parentType && rs.subjectType === t.type);
+        const isReverse = relSuggestion?.subjectType === t.type;
+        relationInserts.push({
+          subject_id: isReverse ? childId : parentId, object_id: isReverse ? parentId : childId,
+          predicate: relSuggestion?.predicate || "relacionado_a",
+          project_id: projectId, owner_id: user.id, goal_project_id: semanticProjectId || null,
+        });
+      }
+
+      RELATION_SUGGESTIONS.forEach((s) => {
+        const subId = allEntityMap[s.subjectType];
+        const objId = allEntityMap[s.objectType];
+        if (subId && objId && !existingRelPairs.has(`${s.subjectType}-${s.objectType}-${s.predicate}`)) {
+          relationInserts.push({
+            subject_id: subId, object_id: objId, predicate: s.predicate,
+            project_id: projectId, owner_id: user.id, goal_project_id: semanticProjectId || null,
+          });
+        }
+      });
+
+      if (relationInserts.length > 0) {
+        await supabase.from("semantic_relations").insert(relationInserts);
+      }
+
+      toast({
+        title: "Todas as recomendações aceitas! 🚀",
+        description: `${typesToCreate.length} entidades e ${relationInserts.length} relações criadas.`,
+      });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Falha ao aceitar", variant: "destructive" });
+    } finally {
+      setAcceptAllLoading(false);
     }
   };
 
@@ -602,6 +722,18 @@ export function SemanticRecommendationsTab({ semanticProjectId }: { semanticProj
           <p className="text-xs text-muted-foreground">Prioridade Baixa</p>
         </Card>
       </div>
+
+      {/* Accept All button */}
+      {recommendations.filter((r) => r.type === "suggested_entity" || r.type === "suggested_relation").length > 0 && (
+        <Button
+          className="w-full gap-2"
+          disabled={acceptAllLoading}
+          onClick={handleAcceptAll}
+        >
+          {acceptAllLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Aceitar Todas as Recomendações
+        </Button>
+      )}
 
       {recommendations.length === 0 ? (
         <Card className="p-8 flex flex-col items-center justify-center min-h-[200px] text-center space-y-3">
