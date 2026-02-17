@@ -45,6 +45,7 @@ export function useCreateApiConfig() {
       is_configured?: boolean;
       base_url?: string;
       docs_url?: string;
+      secret_value?: string;
     }) => {
       const { error } = await supabase.from("api_configurations").insert(config);
       if (error) throw error;

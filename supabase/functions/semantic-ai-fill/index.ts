@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,18 +7,43 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function getOpenAIKey(): Promise<string | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data, error } = await supabase
+    .from("api_configurations_decrypted")
+    .select("secret_value")
+    .eq("secret_key_name", "OPENAI_API_KEY")
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching OpenAI key:", error.message);
+    return null;
+  }
+  return data?.secret_value || null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { entities, relations } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     if (!entities?.length) {
       return new Response(JSON.stringify({ filled: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Try OpenAI key from admin config first, fallback to Lovable AI
+    const openaiKey = await getOpenAIKey();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!openaiKey && !LOVABLE_API_KEY) {
+      throw new Error("Nenhuma API de IA configurada. Configure a OpenAI API no painel Admin > APIs & Chaves.");
     }
 
     const entityDescriptions = entities.map((e: any) => {
@@ -58,21 +84,43 @@ ${relationDescriptions}
 
 Return a JSON array with filled properties for each entity.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.3,
-      }),
-    });
+    let response: Response;
+
+    if (openaiKey) {
+      // Use OpenAI directly
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.3,
+        }),
+      });
+    } else {
+      // Fallback to Lovable AI
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.3,
+        }),
+      });
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -88,14 +136,13 @@ Return a JSON array with filled properties for each entity.`;
         });
       }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("AI error:", response.status, t);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const aiData = await response.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
     
-    // Clean markdown fences if present
     let jsonStr = rawContent.trim();
     if (jsonStr.startsWith("```")) {
       jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");

@@ -45,6 +45,7 @@ const emptyForm = {
   docs_url: "",
   status: "inactive",
   is_configured: false,
+  secret_value: "",
 };
 
 export default function AdminApisPage() {
@@ -94,6 +95,7 @@ export default function AdminApisPage() {
       docs_url: api.docs_url || "",
       status: api.status,
       is_configured: api.is_configured,
+      secret_value: "",
     });
     setShowForm(true);
   };
@@ -105,7 +107,7 @@ export default function AdminApisPage() {
     }
     try {
       if (editId) {
-        await updateApi.mutateAsync({
+        const updates: any = {
           id: editId,
           name: form.name,
           service_name: form.service_name,
@@ -116,10 +118,12 @@ export default function AdminApisPage() {
           docs_url: form.docs_url || null,
           status: form.status,
           is_configured: form.is_configured,
-        });
+        };
+        if (form.secret_value) updates.secret_value = form.secret_value;
+        await updateApi.mutateAsync(updates);
         toast({ title: "API atualizada" });
       } else {
-        await createApi.mutateAsync({
+        const payload: any = {
           name: form.name,
           service_name: form.service_name,
           description: form.description || undefined,
@@ -129,7 +133,9 @@ export default function AdminApisPage() {
           docs_url: form.docs_url || undefined,
           status: form.status,
           is_configured: form.is_configured,
-        });
+        };
+        if (form.secret_value) payload.secret_value = form.secret_value;
+        await createApi.mutateAsync(payload);
         toast({ title: "API adicionada" });
       }
       setShowForm(false);
@@ -410,6 +416,17 @@ export default function AdminApisPage() {
                   className="text-sm"
                 />
               </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">🔑 Chave / Secret Value</label>
+              <Input
+                type="password"
+                placeholder={editId ? "Deixe vazio para manter a atual" : "Cole a chave da API aqui"}
+                value={form.secret_value}
+                onChange={e => setForm(p => ({ ...p, secret_value: e.target.value }))}
+                className="text-sm font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground">A chave será encriptada automaticamente ao salvar</p>
             </div>
             <div className="flex items-center gap-2">
               <Switch
