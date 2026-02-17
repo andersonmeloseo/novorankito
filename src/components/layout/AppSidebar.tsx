@@ -270,14 +270,14 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {activeProject && (
-          <div className="relative ml-4 mr-0">
+          <div className="relative ml-3 mr-0">
             {/* Vertical hierarchy line */}
             <div className="absolute left-0 top-0 bottom-3 w-px bg-gradient-to-b from-sidebar-primary/60 via-sidebar-primary/30 to-transparent" />
             
             {/* Connection dot at top */}
             <div className="absolute left-0 top-2 -translate-x-[3px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.5)]" />
 
-            <div className="pl-4">
+            <div className="pl-2.5">
               <Collapsible defaultOpen={pathname === "/overview" || pathname === "/reports"}>
                 <SidebarGroup>
                   <CollapsibleTrigger className="w-full">
