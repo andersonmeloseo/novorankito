@@ -23,6 +23,7 @@ import { WhiteLabelSettings } from "@/components/settings/WhiteLabelSettings";
 import { ApiKeysSettings } from "@/components/settings/ApiKeysSettings";
 import { WebhooksSettings } from "@/components/settings/WebhooksSettings";
 import { IntegrationsInfoCard } from "@/components/settings/IntegrationsInfoCard";
+import { TeamSettings } from "@/components/settings/TeamSettings";
 import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
@@ -322,32 +323,7 @@ export default function ProjectSettingsPage() {
         )}
 
         {tab === "team" && (
-          <div className="space-y-4">
-            <Card className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground">Membros do Projeto</h3>
-                <Button size="sm" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Convidar</Button>
-              </div>
-              {members.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhum membro adicional encontrado.</p>
-              ) : (
-                members.map((member: any) => (
-                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                        {member.role[0]?.toUpperCase()}
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-foreground">{member.user_id.slice(0, 8)}...</span>
-                        <p className="text-[10px] text-muted-foreground">Role: {member.role}</p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="text-[10px]">{member.role}</Badge>
-                  </div>
-                ))
-              )}
-            </Card>
-          </div>
+          <TeamSettings projectId={project.id} />
         )}
 
         {tab === "api" && (
