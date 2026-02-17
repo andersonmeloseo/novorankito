@@ -1697,6 +1697,44 @@ export type Database = {
           },
         ]
       }
+      semantic_implementation_plans: {
+        Row: {
+          created_at: string
+          goal_project_id: string
+          id: string
+          owner_id: string
+          plan: Json
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          goal_project_id: string
+          id?: string
+          owner_id: string
+          plan?: Json
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          goal_project_id?: string
+          id?: string
+          owner_id?: string
+          plan?: Json
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_implementation_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       semantic_relations: {
         Row: {
           confidence: number | null
