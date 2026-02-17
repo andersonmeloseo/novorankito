@@ -49,8 +49,10 @@ export type CanvasNodeData = {
   label: string;
   nodeType: CanvasNodeType;
   config: TriggerData | AgentData | ActionData | ConditionData | DelayData | SplitData | MergeData | ReportData;
-  executionStatus?: "idle" | "running" | "success" | "error" | "skipped";
+  executionStatus?: "idle" | "waiting" | "running" | "success" | "error" | "skipped";
   executionResult?: string;
+  hierarchyDepth?: number;
+  roleId?: string;
 };
 
 export interface SavedCanvasWorkflow {
