@@ -1,5 +1,6 @@
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useTrackingEvents } from "@/hooks/use-tracking-events";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
@@ -35,6 +36,21 @@ export default function AnaliticaOverviewPage() {
     <>
       <TopBar title="Analítica Rankito" subtitle="Pixel v4.1.0 — Hub de Tracking Universal" />
       <div className="p-4 sm:p-6 space-y-5">
+        <Card className="p-4 flex items-center gap-3">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
+          </span>
+          <span className="text-sm font-medium text-foreground">Pixel Ativado — Capturando Eventos em Tempo Real</span>
+          <Badge variant="secondary" className="text-[10px]">v4.1.0</Badge>
+          {!isLoading && (
+            <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+              <span><strong className="text-foreground">{totalEvents.toLocaleString("pt-BR")}</strong> eventos</span>
+              <span><strong className="text-foreground">{uniqueSessions.toLocaleString("pt-BR")}</strong> sessões</span>
+              <span><strong className="text-foreground">{uniquePages}</strong> páginas</span>
+            </div>
+          )}
+        </Card>
 
         {/* Banner de lembrete para instalar o Pixel */}
         {!isLoading && totalEvents === 0 && (
