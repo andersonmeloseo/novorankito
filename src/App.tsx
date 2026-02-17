@@ -10,6 +10,7 @@ import { AdminProtectedRoute } from "@/components/layout/AdminProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import NotFound from "./pages/NotFound";
 
 // Lazy-loaded pages
@@ -87,9 +88,13 @@ function PageLoader() {
   );
 }
 
-const App = () => (
+const App = () => {
+  const projectId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") || undefined : undefined;
+
+  return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <WhiteLabelProvider projectId={projectId}>
       <TooltipProvider>
         <ErrorBoundary>
           <Toaster />
@@ -165,8 +170,10 @@ const App = () => (
           </BrowserRouter>
         </ErrorBoundary>
       </TooltipProvider>
+      </WhiteLabelProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

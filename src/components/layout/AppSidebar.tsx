@@ -338,7 +338,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                   <CollapsibleTrigger className="w-full">
                     <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>🤖 Rankito IA</span>
+                      <span>🤖 {wl.brand_name} IA</span>
                       <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
                     </SidebarGroupLabel>
                   </CollapsibleTrigger>
@@ -527,7 +527,18 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
+      <SidebarFooter className="p-3 border-t border-sidebar-border space-y-2">
+        {/* Footer text / Powered by */}
+        {(wl.footer_text || !wl.hide_powered_by) && (
+          <div className="text-center">
+            {wl.footer_text && (
+              <p className="text-[10px] text-sidebar-foreground/40">{wl.footer_text}</p>
+            )}
+            {!wl.hide_powered_by && wl.brand_name !== "Rankito" && (
+              <p className="text-[9px] text-sidebar-foreground/30">Powered by Rankito</p>
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0 shadow-glow ring-1 ring-white/10">

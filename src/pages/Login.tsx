@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { checkLeakedPassword } from "@/lib/password-check";
+import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
 
 const PLANS = [
   {
@@ -92,16 +93,22 @@ export default function Login() {
     }
   };
 
+  const wl = useWhiteLabel();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
-          <Zap className="h-4.5 w-4.5 text-primary-foreground" />
-        </div>
+        {wl.logo_url ? (
+          <img src={wl.logo_url} alt={wl.brand_name} className="h-9 w-9 rounded-xl object-contain" />
+        ) : (
+          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
+            <span className="text-sm font-bold text-primary-foreground">{wl.brand_name.charAt(0)}</span>
+          </div>
+        )}
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Rankito</h1>
-          <p className="text-[10px] text-muted-foreground">SEO & Analytics Intelligence</p>
+          <h1 className="text-lg font-semibold text-foreground">{wl.brand_name}</h1>
+          <p className="text-[10px] text-muted-foreground">{wl.subtitle}</p>
         </div>
       </header>
 
@@ -109,9 +116,9 @@ export default function Login() {
         {/* Login / Signup Form */}
         <Card className="w-full max-w-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-base">{isSignup ? "Criar conta" : "Bem-vindo de volta"}</CardTitle>
+            <CardTitle className="text-base">{isSignup ? "Criar conta" : (wl.login_title || `Bem-vindo ao ${wl.brand_name}`)}</CardTitle>
             <CardDescription className="text-xs">
-              {isSignup ? "Comece a analisar seus sites" : "Entre na sua conta"}
+              {isSignup ? "Comece a analisar seus sites" : (wl.login_subtitle || "Entre na sua conta")}
             </CardDescription>
           </CardHeader>
           <CardContent>
