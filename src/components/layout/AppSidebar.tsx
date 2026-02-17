@@ -258,19 +258,26 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin py-1">
-        <SidebarGroup>
-          <SidebarGroupLabel className="sidebar-section-label">
-            Inicie por Aqui
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Collapsible defaultOpen={true}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                <span>🚀 Inicie por Aqui</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         {activeProject && (
-          <div className="relative ml-3 mr-0">
+          <div className="relative ml-3 mr-2">
             {/* Vertical hierarchy line */}
             <div className="absolute left-0 top-0 bottom-3 w-px bg-gradient-to-b from-sidebar-primary/60 via-sidebar-primary/30 to-transparent" />
             
