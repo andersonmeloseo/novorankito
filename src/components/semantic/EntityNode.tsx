@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   Building2, Package, Briefcase, MapPin, User, Globe, Star, Store,
+  Calendar, HelpCircle, FileText, Tag, Image, Award, Search, Clock,
+  Map, DollarSign, MessageSquare,
 } from "lucide-react";
 
 export const ENTITY_ICONS: Record<string, React.ElementType> = {
@@ -15,6 +17,22 @@ export const ENTITY_ICONS: Record<string, React.ElementType> = {
   site: Globe,
   avaliacao: Star,
   gbp: Store,
+  evento: Calendar,
+  faq: HelpCircle,
+  artigo: FileText,
+  categoria: Tag,
+  imagem: Image,
+  credencial: Award,
+  pagina: FileText,
+  busca: Search,
+  pergunta: MessageSquare,
+  horario: Clock,
+  geo: Map,
+  endereco: MapPin,
+  oferta: DollarSign,
+  marca: Tag,
+  rating: Star,
+  organizacao: Building2,
 };
 
 export const ENTITY_COLORS: Record<string, string> = {
@@ -26,6 +44,22 @@ export const ENTITY_COLORS: Record<string, string> = {
   site: "hsl(260 90% 68%)",
   avaliacao: "hsl(42 95% 52%)",
   gbp: "hsl(155 70% 42%)",
+  evento: "hsl(280 70% 55%)",
+  faq: "hsl(190 80% 45%)",
+  artigo: "hsl(340 75% 55%)",
+  categoria: "hsl(25 90% 50%)",
+  imagem: "hsl(170 65% 45%)",
+  credencial: "hsl(50 85% 50%)",
+  pagina: "hsl(200 70% 55%)",
+  busca: "hsl(230 70% 55%)",
+  pergunta: "hsl(190 80% 45%)",
+  horario: "hsl(15 80% 55%)",
+  geo: "hsl(120 60% 45%)",
+  endereco: "hsl(5 70% 50%)",
+  oferta: "hsl(130 75% 40%)",
+  marca: "hsl(30 85% 55%)",
+  rating: "hsl(45 90% 50%)",
+  organizacao: "hsl(245 75% 55%)",
 };
 
 export type EntityNodeData = {
