@@ -66,22 +66,6 @@ export default function SemanticGraphPage() {
     return () => window.removeEventListener("switch-semantic-tab", handler);
   }, []);
 
-  // If no main project selected, show prompt
-  if (!projectId) {
-    return (
-      <>
-        <TopBar title="Grafo Semântico" subtitle="Selecione um projeto para começar" />
-        <div className="p-6 flex flex-col items-center justify-center h-[60vh] text-center gap-4">
-          <Network className="h-16 w-16 text-muted-foreground/20" />
-          <h2 className="text-lg font-bold text-foreground">Nenhum projeto selecionado</h2>
-          <p className="text-sm text-muted-foreground max-w-md">Selecione um projeto na barra lateral ou crie um novo para começar.</p>
-          <Button onClick={() => navigate("/projects")} className="gap-2">
-            Ver Projetos
-          </Button>
-        </div>
-      </>
-    );
-  }
 
   // If no semantic project selected, show the project selector
   if (!semanticProjectId) {
