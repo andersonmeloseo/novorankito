@@ -41,6 +41,59 @@ const verdictMap: Record<string, { label: string; color: string; icon: any }> = 
   VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle },
 };
 
+const coverageStateMap: Record<string, string> = {
+  "Submitted and indexed": "Enviada e indexada",
+  "Crawled - currently not indexed": "Rastreada — não indexada no momento",
+  "Discovered - currently not indexed": "Descoberta — não indexada no momento",
+  "Page with redirect": "Página com redirecionamento",
+  "Not found (404)": "Não encontrada (404)",
+  "Soft 404": "Soft 404",
+  "Blocked by robots.txt": "Bloqueada por robots.txt",
+  "Blocked due to unauthorized request (401)": "Bloqueada — não autorizada (401)",
+  "Excluded by 'noindex' tag": "Excluída por tag 'noindex'",
+  "Alternate page with proper canonical tag": "Página alternativa com canonical correto",
+  "Duplicate without user-selected canonical": "Duplicada sem canonical selecionado",
+  "Duplicate, Google chose different canonical than user": "Duplicada — Google escolheu canonical diferente",
+  "Server error (5xx)": "Erro no servidor (5xx)",
+  "Blocked due to access forbidden (403)": "Bloqueada — acesso proibido (403)",
+  "Blocked due to other 4xx issue": "Bloqueada — outro erro 4xx",
+  "URL is unknown to Google": "URL desconhecida pelo Google",
+};
+
+const indexingStateMap: Record<string, string> = {
+  INDEXING_ALLOWED: "Indexação permitida",
+  BLOCKED_BY_META_TAG: "Bloqueada por meta tag",
+  BLOCKED_BY_HTTP_HEADER: "Bloqueada por header HTTP",
+  BLOCKED_BY_ROBOTS_TXT: "Bloqueada por robots.txt",
+  INDEXING_STATE_UNSPECIFIED: "Não especificado",
+};
+
+const pageFetchStateMap: Record<string, string> = {
+  SUCCESSFUL: "Sucesso",
+  SOFT_404: "Soft 404",
+  BLOCKED_ROBOTS_TXT: "Bloqueada por robots.txt",
+  NOT_FOUND: "Não encontrada",
+  ACCESS_DENIED: "Acesso negado",
+  SERVER_ERROR: "Erro no servidor",
+  REDIRECT_ERROR: "Erro de redirecionamento",
+  ACCESS_FORBIDDEN: "Acesso proibido",
+  BLOCKED_4XX: "Bloqueada (4xx)",
+  INTERNAL_CRAWL_ERROR: "Erro interno de rastreio",
+  INVALID_URL: "URL inválida",
+  PAGE_FETCH_STATE_UNSPECIFIED: "Não especificado",
+};
+
+const crawledAsMap: Record<string, string> = {
+  DESKTOP: "Desktop",
+  MOBILE: "Dispositivo móvel",
+  CRAWLING_USER_AGENT_UNSPECIFIED: "Não especificado",
+};
+
+function translateField(value: string | null, map: Record<string, string>): string {
+  if (!value) return "—";
+  return map[value] || value;
+}
+
 export function IndexCoverageTab({ projectId }: Props) {
   const queryClient = useQueryClient();
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: "inspected_at", dir: "desc" });
@@ -258,10 +311,10 @@ export function IndexCoverageTab({ projectId }: Props) {
                         <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{row.url}</a>
                       </td>
                       <td className="px-4 py-3">{renderVerdict(row.verdict)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={row.coverage_state || ""}>{row.coverage_state || "—"}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.indexing_state || "—"}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.page_fetch_state || "—"}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.crawled_as || "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={row.coverage_state || ""}>{translateField(row.coverage_state, coverageStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.indexing_state, indexingStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.page_fetch_state, pageFetchStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.crawled_as, crawledAsMap)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {row.last_crawl_time ? format(parseISO(row.last_crawl_time), "dd/MM/yyyy HH:mm") : "—"}
                       </td>
