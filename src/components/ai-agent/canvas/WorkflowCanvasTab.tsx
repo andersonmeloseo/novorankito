@@ -92,6 +92,24 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
 
   const { executeWorkflow, isRunning, abort } = useWorkflowOrchestrator(projectId);
 
+  // Load from orchestrator "Ver no Canvas"
+  useEffect(() => {
+    const raw = localStorage.getItem("rankito_canvas_import");
+    if (!raw) return;
+    localStorage.removeItem("rankito_canvas_import");
+    try {
+      const { nodes: importNodes, edges: importEdges, name } = JSON.parse(raw);
+      if (importNodes?.length) {
+        setNodes(importNodes);
+        setEdges(importEdges || []);
+        setWorkflowName(name || "Orquestrador");
+        setCurrentWorkflowId(null);
+        setSelectedNodeId(null);
+        toast.success(`Equipe "${name}" carregada no canvas!`);
+      }
+    } catch {}
+  }, []);
+
   // Load preset workflow into canvas (from templates - does NOT alter templates)
   useEffect(() => {
     if (!initialPreset) return;
@@ -128,7 +146,7 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
     setNodes(allNodes);
     setEdges(newEdges);
     setWorkflowName(initialPreset.name);
-    setCurrentWorkflowId(null); // New canvas workflow, not overwriting template
+    setCurrentWorkflowId(null);
     setSelectedNodeId(null);
     onPresetLoaded?.();
     toast.success(`Workflow "${initialPreset.name}" carregado no canvas!`);

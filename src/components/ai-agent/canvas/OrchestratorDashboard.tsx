@@ -8,18 +8,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
   Loader2, ChevronDown, ChevronRight, Send, Plus, Clock,
+  AlertTriangle, Eye,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FREQUENCY_LABELS } from "./OrchestratorTemplates";
+import { FREQUENCY_LABELS, PROFESSIONAL_ROLES, DEFAULT_HIERARCHY } from "./OrchestratorTemplates";
 import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
+import type { Node, Edge } from "@xyflow/react";
+import { MarkerType } from "@xyflow/react";
+import type { CanvasNodeData } from "./types";
 
 interface OrchestratorDashboardProps {
   projectId?: string;
+  onViewCanvas?: (nodes: Node[], edges: Edge[], name: string) => void;
 }
 
-export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps) {
+/** Translate raw AI error messages into user-friendly Portuguese */
+function friendlyError(raw: string): string {
+  if (raw.includes("402") || raw.includes("payment_required") || raw.includes("Not enough credits")) {
+    return "⚠️ Créditos de IA insuficientes. Aguarde a renovação ou faça upgrade do plano.";
+  }
+  if (raw.includes("429") || raw.includes("rate_limited")) {
+    return "⚠️ Limite de requisições atingido. Tente novamente em alguns minutos.";
+  }
+  if (raw.includes("500") || raw.includes("internal")) {
+    return "⚠️ Erro interno do servidor de IA. Tente novamente.";
+  }
+  return raw;
+}
+
+export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorDashboardProps) {
   const { user } = useAuth();
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDeployment, setExpandedDeployment] = useState<string | null>(null);
@@ -60,7 +78,7 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
     if (!user || !projectId) return;
     setRunningId(deployment.id);
     try {
-      const { error } = await supabase.functions.invoke("run-orchestrator", {
+      const { data, error } = await supabase.functions.invoke("run-orchestrator", {
         body: {
           deployment_id: deployment.id,
           project_id: projectId,
@@ -71,11 +89,15 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
         },
       });
       if (error) throw error;
-      toast.success("Execução iniciada!");
+      if (data?.error) {
+        toast.error(friendlyError(data.error));
+      } else {
+        toast.success("Execução iniciada!");
+      }
       refetchRuns();
       refetchDeployments();
     } catch (err: any) {
-      toast.error(err.message || "Erro ao executar");
+      toast.error(friendlyError(err.message || "Erro ao executar"));
     } finally {
       setRunningId(null);
     }
@@ -106,7 +128,102 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
     }
   };
 
-  // Dummy handler for CreateOrchestratorDialog (it saves to DB internally)
+  const handleViewCanvas = (dep: any) => {
+    if (!onViewCanvas) return;
+    const roles = (dep.roles as any[]) || [];
+    const hierarchyMap = (dep.hierarchy as Record<string, string>) || {};
+    const ts = Date.now();
+    const HORIZONTAL_SPACING = 280;
+    const VERTICAL_SPACING = 180;
+
+    const nodeMap = new Map<string, Node>();
+    const allEdges: Edge[] = [];
+
+    // Build children map
+    const childrenOf = new Map<string, any[]>();
+    roles.forEach((r: any) => {
+      if (r.id === "ceo") return;
+      const parentId = hierarchyMap[r.id] || "ceo";
+      if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
+      childrenOf.get(parentId)!.push(r);
+    });
+
+    const positionSubtree = (roleId: string, depth: number, startX: number): number => {
+      const role = roles.find((r: any) => r.id === roleId);
+      if (!role) return startX;
+      const children = childrenOf.get(roleId) || [];
+
+      if (children.length === 0) {
+        nodeMap.set(roleId, {
+          id: `orch-${ts}-${roleId}`,
+          type: "canvasNode",
+          position: { x: startX, y: depth * VERTICAL_SPACING + 50 },
+          data: {
+            label: `${role.emoji} ${role.title}`,
+            nodeType: "agent",
+            config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
+          } as CanvasNodeData,
+        });
+        return startX + HORIZONTAL_SPACING;
+      }
+
+      let currentX = startX;
+      children.forEach((child: any) => { currentX = positionSubtree(child.id, depth + 1, currentX); });
+
+      const firstChild = nodeMap.get(children[0].id)!;
+      const lastChild = nodeMap.get(children[children.length - 1].id)!;
+      const centerX = (firstChild.position.x + lastChild.position.x) / 2;
+
+      nodeMap.set(roleId, {
+        id: `orch-${ts}-${roleId}`,
+        type: "canvasNode",
+        position: { x: centerX, y: depth * VERTICAL_SPACING + 50 },
+        data: {
+          label: `${role.emoji} ${role.title}`,
+          nodeType: "agent",
+          config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
+        } as CanvasNodeData,
+      });
+
+      children.forEach((child: any) => {
+        allEdges.push({
+          id: `e-${ts}-${roleId}-${child.id}`,
+          source: `orch-${ts}-${roleId}`,
+          target: `orch-${ts}-${child.id}`,
+          animated: true,
+          style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
+        });
+      });
+
+      return currentX;
+    };
+
+    const triggerNode: Node = {
+      id: `orch-${ts}-trigger`,
+      type: "canvasNode",
+      position: { x: 0, y: 0 },
+      data: { label: "Iniciar Orquestrador", nodeType: "trigger", config: { triggerType: "manual" } } as CanvasNodeData,
+    };
+
+    positionSubtree("ceo", 1, 0);
+
+    const ceoNode = nodeMap.get("ceo");
+    if (ceoNode) {
+      triggerNode.position = { x: ceoNode.position.x, y: 0 };
+      allEdges.unshift({
+        id: `e-${ts}-trigger-ceo`,
+        source: triggerNode.id,
+        target: ceoNode.id,
+        animated: true,
+        style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
+      });
+    }
+
+    onViewCanvas([triggerNode, ...Array.from(nodeMap.values())], allEdges, `🏢 ${dep.name}`);
+  };
+
   const handleGenerated = () => {
     refetchDeployments();
     refetchRuns();
@@ -173,6 +290,9 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
           const lastRun = depRuns[0];
           const roles = (dep.roles as any[]) || [];
           const isExpanded = expandedDeployment === dep.id;
+          const allFailed = lastRun && (lastRun.agent_results as any[])?.every((r: any) => r.status === "error");
+          const hasCreditsError = lastRun && JSON.stringify(lastRun.agent_results || "").includes("402");
+          const hasRateLimit = lastRun && JSON.stringify(lastRun.agent_results || "").includes("429");
 
           return (
             <Card key={dep.id} className="border-border overflow-hidden">
@@ -197,6 +317,16 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
                     </div>
                   </button>
                   <div className="flex items-center gap-1.5">
+                    {onViewCanvas && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => handleViewCanvas(dep)}
+                      >
+                        <Eye className="h-3 w-3" /> Canvas
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -207,26 +337,30 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
                       {runningId === dep.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                       Executar
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleToggleStatus(dep.id, dep.status)}
-                    >
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      onClick={() => handleToggleStatus(dep.id, dep.status)}>
                       {dep.status === "active" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleDelete(dep.id)}
-                    >
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      onClick={() => handleDelete(dep.id)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
                 </div>
 
-                {/* Role chips - always visible */}
+                {/* Error banner */}
+                {allFailed && (hasCreditsError || hasRateLimit) && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-destructive">
+                      {hasCreditsError
+                        ? "A última execução falhou por falta de créditos de IA. Aguarde a renovação ou faça upgrade do plano para executar novamente."
+                        : "A última execução foi limitada por taxa de requisições. Tente novamente em alguns minutos."}
+                    </div>
+                  </div>
+                )}
+
+                {/* Role chips */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {roles.map((r: any) => (
                     <Badge key={r.id} variant="outline" className="text-[9px] gap-1">
@@ -269,7 +403,7 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
                               {new Date(run.started_at).toLocaleString("pt-BR")}
                             </span>
                             <span className="text-[10px] text-muted-foreground ml-2">
-                              {run.status === "running" ? "Em execução..." : run.status === "completed" ? "Concluído" : "Parcial"}
+                              {run.status === "running" ? "Em execução..." : run.status === "completed" ? "Concluído" : successCount === 0 ? "Falhou" : "Parcial"}
                             </span>
                           </div>
                           <Badge variant="outline" className="text-[9px]">
@@ -299,13 +433,13 @@ export function OrchestratorDashboard({ projectId }: OrchestratorDashboardProps)
                                 </div>
                                 <ScrollArea className="max-h-48">
                                   <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                                    {ar.result}
+                                    {ar.status === "error" ? friendlyError(ar.result) : ar.result}
                                   </p>
                                 </ScrollArea>
                               </div>
                             ))}
 
-                            {run.summary && (
+                            {run.summary && !run.summary.includes("AI error") && (
                               <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
                                 <p className="text-xs font-semibold text-primary mb-1.5">📝 Resumo Executivo (CEO)</p>
                                 <ScrollArea className="max-h-60">

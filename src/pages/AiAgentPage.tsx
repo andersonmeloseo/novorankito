@@ -572,7 +572,15 @@ export default function AiAgentPage() {
         )}
 
         {tab === "orchestrator" && (
-          <OrchestratorDashboard projectId={projectId || undefined} />
+          <OrchestratorDashboard
+            projectId={projectId || undefined}
+            onViewCanvas={(nodes, edges, name) => {
+              setCanvasPreset({ name, steps: [] } as any);
+              // We need a way to pass nodes/edges directly - use localStorage temporarily
+              localStorage.setItem("rankito_canvas_import", JSON.stringify({ nodes, edges, name }));
+              setTab("canvas");
+            }}
+          />
         )}
 
         {tab === "schedules" && (
