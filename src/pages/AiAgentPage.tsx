@@ -391,17 +391,21 @@ export default function AiAgentPage() {
     enabled: !!projectId,
   });
 
-  // Seed system agents
+  // Seed system agents (inserts missing ones)
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
     if (!projectId || !user || seeded) return;
-    if (agents === undefined || agents.length > 0) return;
+    if (agents === undefined) return;
+
+    const existingNames = new Set(agents.filter((a: any) => a.is_system).map((a: any) => a.name));
+    const missing = SYSTEM_AGENTS.filter(a => !existingNames.has(a.name));
+    if (missing.length === 0) { setSeeded(true); return; }
     
     const doSeed = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const seedAgents = SYSTEM_AGENTS.map(a => ({
+      const seedAgents = missing.map(a => ({
         ...a,
         project_id: projectId,
         owner_id: user.id,
@@ -412,10 +416,9 @@ export default function AiAgentPage() {
       const { error } = await supabase.from("ai_agents").insert(seedAgents);
       if (error) {
         console.error("Failed to seed agents:", error);
-        toast.error("Falha ao criar agentes. Tente recarregar a página.");
       } else {
         setSeeded(true);
-        toast.success("Agentes Rankito criados! 🤖");
+        toast.success(`${missing.length} novos agentes criados! 🤖`);
       }
       queryClient.invalidateQueries({ queryKey: ["ai-agents", projectId] });
     };
