@@ -67,6 +67,7 @@ Return a JSON array with filled properties for each entity.`;
       ],
       model: "gpt-4o-mini",
       temperature: 0.3,
+      max_tokens: 4096,
     });
 
     const aiData = await response.json();
