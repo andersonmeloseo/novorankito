@@ -122,46 +122,136 @@ export function SemanticRecommendationsTab() {
         window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "graph" }));
         toast({ title: "Navegando para o Construtor de Grafo", description: `Clique em "${rec.entityName}" para editar a descrição.` });
       } else if (rec.type === "suggested_entity") {
-        // Find source entity to position near it and create relation
-        const sourceEntity = entities.find((e) => e.entity_type === rec.sourceEntityType);
-        const baseX = sourceEntity?.position_x ?? 300;
-        const baseY = sourceEntity?.position_y ?? 300;
-        const offsetX = 200 + Math.random() * 100;
-        const offsetY = -100 + Math.random() * 200;
+        // === RECURSIVE FULL GRAPH EXPANSION ===
+        // Collect all entity types to create recursively
+        const existingTypes = new Set(entities.map((e) => e.entity_type));
+        const typesToCreate: Array<{ type: string; name: string; parentType: string }> = [];
+        const visited = new Set<string>(existingTypes);
 
-        const { data: newEntity, error } = await supabase.from("semantic_entities").insert({
-          name: rec.title.replace("Criar entidade: ", ""),
-          entity_type: rec.entityType || "outro",
-          project_id: projectId,
-          owner_id: user.id,
-          position_x: baseX + offsetX,
-          position_y: baseY + offsetY,
-        }).select("id").single();
+        // BFS to find all derivable types
+        const queue: string[] = [rec.sourceEntityType || ""];
+        // First, add the direct suggestion that was clicked
+        if (rec.entityType && !existingTypes.has(rec.entityType)) {
+          typesToCreate.push({ type: rec.entityType, name: rec.title.replace("Criar entidade: ", ""), parentType: rec.sourceEntityType || "" });
+          visited.add(rec.entityType);
+        }
+        // Then expand from all known + new types
+        const expandQueue = [...Array.from(existingTypes), ...(rec.entityType ? [rec.entityType] : [])];
+        while (expandQueue.length > 0) {
+          const currentType = expandQueue.shift()!;
+          const suggestions = ENTITY_SUGGESTIONS[currentType] || [];
+          for (const s of suggestions) {
+            if (!visited.has(s.type)) {
+              visited.add(s.type);
+              typesToCreate.push({ type: s.type, name: s.name, parentType: currentType });
+              expandQueue.push(s.type);
+            }
+          }
+        }
+
+        if (typesToCreate.length === 0) {
+          toast({ title: "Nada a criar", description: "Todas as entidades sugeridas já existem no grafo." });
+          setActionLoading(null);
+          return;
+        }
+
+        // Tree horizontal layout: source entity is root, children spread vertically
+        const sourceEntity = entities.find((e) => e.entity_type === rec.sourceEntityType);
+        const rootX = sourceEntity?.position_x ?? 300;
+        const rootY = sourceEntity?.position_y ?? 300;
+
+        // Group by depth level for tree layout
+        const typeToDepth: Record<string, number> = {};
+        const typeToParent: Record<string, string> = {};
+        for (const t of typesToCreate) {
+          typeToParent[t.type] = t.parentType;
+          // Calculate depth from existing types
+          let depth = 1;
+          let parent = t.parentType;
+          while (typeToParent[parent]) {
+            depth++;
+            parent = typeToParent[parent];
+          }
+          typeToDepth[t.type] = depth;
+        }
+
+        // Group by depth
+        const depthGroups: Record<number, typeof typesToCreate> = {};
+        for (const t of typesToCreate) {
+          const d = typeToDepth[t.type];
+          if (!depthGroups[d]) depthGroups[d] = [];
+          depthGroups[d].push(t);
+        }
+
+        // Assign positions: each depth level is 280px to the right, items spread vertically with 150px spacing
+        const createdEntities: Record<string, string> = {}; // type -> id
+        // Map existing entities by type for relation linking
+        const existingByType: Record<string, string> = {};
+        entities.forEach((e) => { existingByType[e.entity_type] = e.id; });
+
+        const allInserts: Array<{ name: string; entity_type: string; project_id: string; owner_id: string; position_x: number; position_y: number }> = [];
+
+        for (const [depthStr, group] of Object.entries(depthGroups)) {
+          const depth = parseInt(depthStr);
+          const totalInGroup = group.length;
+          const startY = rootY - ((totalInGroup - 1) * 150) / 2;
+
+          group.forEach((t, idx) => {
+            allInserts.push({
+              name: t.name,
+              entity_type: t.type,
+              project_id: projectId,
+              owner_id: user.id,
+              position_x: rootX + depth * 280,
+              position_y: startY + idx * 150,
+            });
+          });
+        }
+
+        // Batch insert all entities
+        const { data: insertedEntities, error } = await supabase
+          .from("semantic_entities")
+          .insert(allInserts)
+          .select("id, entity_type");
         if (error) throw error;
 
-        // Auto-create relation between source and new entity
-        if (sourceEntity && newEntity) {
+        // Map created entities
+        (insertedEntities || []).forEach((e) => { createdEntities[e.entity_type] = e.id; });
+
+        // Create all relations between parent → child
+        const relationInserts: Array<{ subject_id: string; object_id: string; predicate: string; project_id: string; owner_id: string }> = [];
+
+        for (const t of typesToCreate) {
+          const parentId = existingByType[t.parentType] || createdEntities[t.parentType];
+          const childId = createdEntities[t.type];
+          if (!parentId || !childId) continue;
+
+          // Find best predicate from RELATION_SUGGESTIONS
           const relSuggestion = RELATION_SUGGESTIONS.find(
-            (rs) => rs.subjectType === rec.sourceEntityType && rs.objectType === rec.entityType
+            (rs) => rs.subjectType === t.parentType && rs.objectType === t.type
           ) || RELATION_SUGGESTIONS.find(
-            (rs) => rs.objectType === rec.sourceEntityType && rs.subjectType === rec.entityType
+            (rs) => rs.objectType === t.parentType && rs.subjectType === t.type
           );
 
-          const isReverse = relSuggestion?.subjectType === rec.entityType;
-          const subjectId = isReverse ? newEntity.id : sourceEntity.id;
-          const objectId = isReverse ? sourceEntity.id : newEntity.id;
-          const predicate = relSuggestion?.predicate || "relacionado_a";
-
-          await supabase.from("semantic_relations").insert({
-            subject_id: subjectId,
-            object_id: objectId,
-            predicate,
+          const isReverse = relSuggestion?.subjectType === t.type;
+          relationInserts.push({
+            subject_id: isReverse ? childId : parentId,
+            object_id: isReverse ? parentId : childId,
+            predicate: relSuggestion?.predicate || "relacionado_a",
             project_id: projectId,
             owner_id: user.id,
           });
         }
 
-        toast({ title: "Entidade criada e conectada!", description: `"${rec.entityType}" adicionada e ligada ao grafo.` });
+        if (relationInserts.length > 0) {
+          const { error: relError } = await supabase.from("semantic_relations").insert(relationInserts);
+          if (relError) throw relError;
+        }
+
+        toast({
+          title: `Grafo expandido! 🚀`,
+          description: `${typesToCreate.length} entidades e ${relationInserts.length} relações criadas automaticamente.`,
+        });
         await fetchData();
       } else if (rec.type === "suggested_relation") {
         // Find matching entities for the relation
@@ -463,7 +553,7 @@ export function SemanticRecommendationsTab() {
                         ) : (
                           <Play className="h-3 w-3" />
                         )}
-                        {rec.type === "suggested_entity" ? "Criar agora" :
+                        {rec.type === "suggested_entity" ? "Expandir grafo completo" :
                          rec.type === "suggested_relation" ? "Conectar agora" :
                          "Ir para correção"}
                       </Button>
