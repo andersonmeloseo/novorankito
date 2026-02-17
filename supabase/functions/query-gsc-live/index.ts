@@ -90,10 +90,22 @@ serve(async (req) => {
 
     const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(conn.site_url)}/searchAnalytics/query`;
 
-    const dims = ["query", "page", "country", "device"];
+    const dims = ["query", "page", "country", "device", "date"];
     const tasks = dims.flatMap(dim => [
-      fetchDimension(apiUrl, accessToken, current_start, current_end, [dim]).then(rows => ({ dim, period: "current" as const, rows: mapRows(rows) })),
-      fetchDimension(apiUrl, accessToken, previous_start, previous_end, [dim]).then(rows => ({ dim, period: "previous" as const, rows: mapRows(rows) })),
+      fetchDimension(apiUrl, accessToken, current_start, current_end, [dim]).then(rows => ({ dim, period: "current" as const, rows: dim === "date" ? rows.map((r: any) => ({
+        name: r.keys[0],
+        clicks: r.clicks || 0,
+        impressions: r.impressions || 0,
+        ctr: r.ctr ? parseFloat((r.ctr * 100).toFixed(2)) : 0,
+        position: r.position ? parseFloat(r.position.toFixed(1)) : 0,
+      })) : mapRows(rows) })),
+      fetchDimension(apiUrl, accessToken, previous_start, previous_end, [dim]).then(rows => ({ dim, period: "previous" as const, rows: dim === "date" ? rows.map((r: any) => ({
+        name: r.keys[0],
+        clicks: r.clicks || 0,
+        impressions: r.impressions || 0,
+        ctr: r.ctr ? parseFloat((r.ctr * 100).toFixed(2)) : 0,
+        position: r.position ? parseFloat(r.position.toFixed(1)) : 0,
+      })) : mapRows(rows) })),
     ]);
 
     const resolved = await log.time("fetch-all-dimensions", () => Promise.all(tasks), { project_id });
