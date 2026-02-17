@@ -182,6 +182,7 @@ export default function ProjectsList() {
                       className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
                       onClick={() => {
                         localStorage.setItem("rankito_current_project", project.id);
+                        window.dispatchEvent(new Event("rankito_project_changed"));
                         navigate("/overview");
                       }}
                     >

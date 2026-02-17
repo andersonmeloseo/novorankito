@@ -70,7 +70,7 @@ export function useSeoMetrics(projectId?: string, dimensionType?: string) {
       return fetchAllPaginated<SeoMetricRow>("seo_metrics", {
         filters,
         orderBy: { column: "metric_date", ascending: false },
-        maxRows: 30000,
+        maxRows: 2000,
       });
     },
     enabled: !!user,
