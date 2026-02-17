@@ -162,7 +162,7 @@ export default function Overview() {
     staleTime: 60_000,
   });
 
-  // SEO top-level from RPC
+  // SEO top-level from RPC (fallback)
   const { data: seoSummary } = useQuery({
     queryKey: ["overview-seo-summary", projectId],
     queryFn: async () => {
@@ -173,6 +173,28 @@ export default function Overview() {
     enabled: !!projectId,
     staleTime: 2 * 60_000,
   });
+
+  // Live GSC data (same as SEO page) — overrides RPC totals when available
+  const hasGsc = !!gscConn;
+  const { data: gscLive } = useQuery({
+    queryKey: ["gsc-live-overview", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("query-gsc-live", {
+        body: { project_id: projectId, days: "28", compare_mode: "none" },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: hasGsc && !!projectId,
+    staleTime: 5 * 60_000,
+  });
+
+  // Merge: prefer live GSC totals over RPC
+  const liveTotals = gscLive?.totals?.current;
+  const seoClicks = liveTotals?.clicks ?? seoSummary?.total_clicks ?? 0;
+  const seoImpressions = liveTotals?.impressions ?? seoSummary?.total_impressions ?? 0;
+  const seoCtr = liveTotals?.ctr ?? seoSummary?.avg_ctr ?? 0;
+  const seoPosition = liveTotals?.position ?? seoSummary?.avg_position ?? 0;
 
   // Recent sync jobs
   const { data: recentJobs = [] } = useQuery({
@@ -300,10 +322,10 @@ export default function Overview() {
         {/* SEO Summary */}
         <Section title="SEO" icon={Search} badge={counts ? `${formatCompact(counts.seo)} métricas` : undefined} to="/seo" delay={0.08}>
           <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <MiniStat icon={MousePointerClick} iconColor="text-primary" bgColor="bg-primary/10" label="Cliques" value={formatCompact(seoSummary?.total_clicks ?? 0)} subtitle="28 dias" />
-            <MiniStat icon={Eye} iconColor="text-info" bgColor="bg-info/10" label="Impressões" value={formatCompact(seoSummary?.total_impressions ?? 0)} />
-            <MiniStat icon={Target} iconColor="text-success" bgColor="bg-success/10" label="CTR Médio" value={`${(seoSummary?.avg_ctr ?? 0).toFixed(2)}%`} />
-            <MiniStat icon={TrendingUp} iconColor="text-warning" bgColor="bg-warning/10" label="Posição Média" value={seoSummary?.avg_position > 0 ? seoSummary.avg_position.toFixed(1) : "—"} />
+            <MiniStat icon={MousePointerClick} iconColor="text-primary" bgColor="bg-primary/10" label="Cliques" value={formatCompact(seoClicks)} subtitle="28 dias" />
+            <MiniStat icon={Eye} iconColor="text-info" bgColor="bg-info/10" label="Impressões" value={formatCompact(seoImpressions)} />
+            <MiniStat icon={Target} iconColor="text-success" bgColor="bg-success/10" label="CTR Médio" value={`${seoCtr.toFixed(2)}%`} />
+            <MiniStat icon={TrendingUp} iconColor="text-warning" bgColor="bg-warning/10" label="Posição Média" value={seoPosition > 0 ? seoPosition.toFixed(1) : "—"} />
             <MiniStat icon={Globe} iconColor="text-chart-5" bgColor="bg-chart-5/10" label="Páginas" value={formatCompact(seoSummary?.total_urls ?? 0)} />
             <MiniStat icon={Search} iconColor="text-chart-6" bgColor="bg-chart-6/10" label="Consultas" value={formatCompact(seoSummary?.total_queries ?? 0)} />
           </StaggeredGrid>
