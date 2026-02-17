@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/layout/TopBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, MessageSquare, Plus, Sparkles, Users, GitBranch, Calendar } from "lucide-react";
+import { Bot, Plus, Sparkles } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -228,7 +228,7 @@ export default function AiAgentPage() {
 
   return (
     <>
-      <TopBar title="Rankito IA" subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
+      <TopBar title={`Rankito IA — ${tab === "chat" ? "Chat" : tab === "agents" ? "Agentes" : tab === "workflows" ? "Workflows" : "Agendamentos"}`} subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureBanner icon={Bot} title="Rankito IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
 
@@ -238,76 +238,66 @@ export default function AiAgentPage() {
           </Badge>
         )}
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <TabsList>
-              <TabsTrigger value="chat" className="text-xs gap-1.5"><MessageSquare className="h-3 w-3" /> Chat</TabsTrigger>
-              <TabsTrigger value="agents" className="text-xs gap-1.5"><Users className="h-3 w-3" /> Agentes</TabsTrigger>
-              <TabsTrigger value="workflows" className="text-xs gap-1.5"><GitBranch className="h-3 w-3" /> Workflows</TabsTrigger>
-              <TabsTrigger value="schedules" className="text-xs gap-1.5"><Calendar className="h-3 w-3" /> Agendamentos</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-2">
-              {tab === "agents" && (
-                <Button size="sm" onClick={() => setCreateOpen(true)} className="text-xs gap-1.5">
-                  <Plus className="h-3 w-3" /> Criar Agente
-                </Button>
-              )}
-              {tab === "chat" && chatAgent && (
-                <Button size="sm" variant="outline" onClick={() => setChatAgent(null)} className="text-xs gap-1.5">
-                  <Sparkles className="h-3 w-3" /> Voltar ao Rankito
-                </Button>
-              )}
-            </div>
+        <div className="flex items-center justify-end gap-2">
+          {tab === "agents" && (
+            <Button size="sm" onClick={() => setCreateOpen(true)} className="text-xs gap-1.5">
+              <Plus className="h-3 w-3" /> Criar Agente
+            </Button>
+          )}
+          {tab === "chat" && chatAgent && (
+            <Button size="sm" variant="outline" onClick={() => setChatAgent(null)} className="text-xs gap-1.5">
+              <Sparkles className="h-3 w-3" /> Voltar ao Rankito
+            </Button>
+          )}
+        </div>
+
+        {tab === "chat" && (
+          <AgentChatTab
+            agentName={chatAgent?.name}
+            agentInstructions={chatAgent?.instructions}
+            agentSpeciality={chatAgent?.speciality}
+            projectId={projectId || undefined}
+          />
+        )}
+
+        {tab === "agents" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {agents.map((agent: any) => (
+              <AgentCard
+                key={agent.id}
+                agent={agent}
+                onToggle={handleToggle}
+                onEdit={handleOpenEdit}
+                onDelete={handleDelete}
+                onChat={handleOpenChat}
+              />
+            ))}
+            {agents.length === 0 && (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Bot className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="text-sm">Nenhum agente configurado. Os agentes de sistema serão criados automaticamente.</p>
+              </div>
+            )}
           </div>
+        )}
 
-          <TabsContent value="chat" className="mt-4">
-            <AgentChatTab
-              agentName={chatAgent?.name}
-              agentInstructions={chatAgent?.instructions}
-              agentSpeciality={chatAgent?.speciality}
-              projectId={projectId || undefined}
-            />
-          </TabsContent>
+        {tab === "workflows" && (
+          <AgentWorkflows
+            projectId={projectId || undefined}
+            onExecuteWorkflow={(name, steps) => {
+              const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
+              setChatAgent({
+                name: `Workflow: ${name}`,
+                instructions: `Você está executando o workflow "${name}". Execute cada passo em sequência, usando os dados do projeto:\n\n${allPrompts}\n\nExecute TODOS os passos e apresente os resultados de forma estruturada.`,
+              });
+              setTab("chat");
+            }}
+          />
+        )}
 
-          <TabsContent value="agents" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent: any) => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  onToggle={handleToggle}
-                  onEdit={handleOpenEdit}
-                  onDelete={handleDelete}
-                  onChat={handleOpenChat}
-                />
-              ))}
-              {agents.length === 0 && (
-                <div className="col-span-full text-center py-12 text-muted-foreground">
-                  <Bot className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="text-sm">Nenhum agente configurado. Os agentes de sistema serão criados automaticamente.</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="workflows" className="mt-4">
-            <AgentWorkflows
-              projectId={projectId || undefined}
-              onExecuteWorkflow={(name, steps) => {
-                const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
-                setChatAgent({
-                  name: `Workflow: ${name}`,
-                  instructions: `Você está executando o workflow "${name}". Execute cada passo em sequência, usando os dados do projeto:\n\n${allPrompts}\n\nExecute TODOS os passos e apresente os resultados de forma estruturada.`,
-                });
-                setTab("chat");
-              }}
-            />
-          </TabsContent>
-
-          <TabsContent value="schedules" className="mt-4">
-            <WorkflowSchedulesTab projectId={projectId || undefined} />
-          </TabsContent>
-        </Tabs>
+        {tab === "schedules" && (
+          <WorkflowSchedulesTab projectId={projectId || undefined} />
+        )}
 
         <CreateAgentDialog
           open={createOpen}
