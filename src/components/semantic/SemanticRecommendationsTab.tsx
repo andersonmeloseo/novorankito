@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import {
   Lightbulb, Network, GitBranch, Code2, AlertTriangle, Loader2,
   ArrowRight, Zap, Link2, FileText, Plus, CheckCircle2, Target,
-  TrendingUp, Users, Globe,
+  TrendingUp, Users, Globe, Play,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import { ENTITY_ICONS, ENTITY_COLORS } from "./EntityNode";
 
 interface EntityRow {
@@ -81,23 +83,80 @@ const RELATION_SUGGESTIONS: Array<{ subjectType: string; objectType: string; pre
 
 export function SemanticRecommendationsTab() {
   const projectId = localStorage.getItem("rankito_current_project");
+  const { user } = useAuth();
   const [entities, setEntities] = useState<EntityRow[]>([]);
   const [relations, setRelations] = useState<RelationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!projectId) return;
-    (async () => {
-      setLoading(true);
-      const [entRes, relRes] = await Promise.all([
-        supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description").eq("project_id", projectId),
-        supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId),
-      ]);
-      setEntities(entRes.data || []);
-      setRelations(relRes.data || []);
-      setLoading(false);
-    })();
-  }, [projectId]);
+    setLoading(true);
+    const [entRes, relRes] = await Promise.all([
+      supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description").eq("project_id", projectId),
+      supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId),
+    ]);
+    setEntities(entRes.data || []);
+    setRelations(relRes.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, [projectId]);
+
+  const handleAction = async (rec: Recommendation) => {
+    if (!projectId || !user) return;
+    setActionLoading(rec.id);
+
+    try {
+      // Actions that navigate to another tab
+      if (rec.type === "disconnected" || rec.type === "low_relations") {
+        window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "graph" }));
+        toast({ title: "Navegando para o Construtor de Grafo", description: `Conecte "${rec.entityName}" a outras entidades.` });
+      } else if (rec.type === "missing_schema") {
+        window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "schema" }));
+        toast({ title: "Navegando para Schema.org", description: `Atribua um tipo Schema para "${rec.entityName}".` });
+      } else if (rec.type === "missing_description") {
+        window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "graph" }));
+        toast({ title: "Navegando para o Construtor de Grafo", description: `Clique em "${rec.entityName}" para editar a descrição.` });
+      } else if (rec.type === "suggested_entity") {
+        // Auto-create the suggested entity
+        const { error } = await supabase.from("semantic_entities").insert({
+          name: rec.title.replace("Criar entidade: ", ""),
+          entity_type: rec.entityType || "outro",
+          project_id: projectId,
+          owner_id: user.id,
+          position_x: Math.random() * 400 + 100,
+          position_y: Math.random() * 400 + 100,
+        });
+        if (error) throw error;
+        toast({ title: "Entidade criada!", description: `"${rec.entityType}" adicionada ao grafo.` });
+        await fetchData();
+      } else if (rec.type === "suggested_relation") {
+        // Find matching entities for the relation
+        const subjectType = rec.title.split(" → ")[0]?.replace("Conectar ", "");
+        const objectType = rec.title.split(" → ")[2];
+        const predicate = rec.title.split(" → ")[1];
+        const subject = entities.find((e) => e.entity_type === subjectType);
+        const object = entities.find((e) => e.entity_type === objectType);
+        if (subject && object && predicate) {
+          const { error } = await supabase.from("semantic_relations").insert({
+            subject_id: subject.id,
+            object_id: object.id,
+            predicate,
+            project_id: projectId,
+            owner_id: user.id,
+          });
+          if (error) throw error;
+          toast({ title: "Relação criada!", description: `${subjectType} → ${predicate} → ${objectType}` });
+          await fetchData();
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Falha ao executar ação", variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const recommendations = useMemo(() => {
     const recs: Recommendation[] = [];
@@ -357,6 +416,24 @@ export function SemanticRecommendationsTab() {
                     <div className="flex items-center gap-1.5 text-[10px] text-primary/80">
                       <Zap className="h-3 w-3" />
                       <span>{rec.action}</span>
+                    </div>
+                    <div className="mt-2">
+                      <Button
+                        size="sm"
+                        variant={rec.type === "suggested_entity" || rec.type === "suggested_relation" ? "default" : "outline"}
+                        className="h-7 text-[11px] gap-1.5"
+                        disabled={actionLoading === rec.id}
+                        onClick={() => handleAction(rec)}
+                      >
+                        {actionLoading === rec.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Play className="h-3 w-3" />
+                        )}
+                        {rec.type === "suggested_entity" ? "Criar agora" :
+                         rec.type === "suggested_relation" ? "Conectar agora" :
+                         "Ir para correção"}
+                      </Button>
                     </div>
                   </div>
                 </div>
