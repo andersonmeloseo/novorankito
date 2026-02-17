@@ -4,24 +4,38 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface WhiteLabelConfig {
   brand_name: string;
+  subtitle: string;
   logo_url: string | null;
   favicon_url: string | null;
   primary_color: string | null;
   accent_color: string | null;
+  sidebar_bg_color: string | null;
+  text_color: string | null;
   footer_text: string | null;
   hide_powered_by: boolean;
   custom_domain: string | null;
+  login_title: string | null;
+  login_subtitle: string | null;
+  support_email: string | null;
+  support_url: string | null;
 }
 
 const defaults: WhiteLabelConfig = {
   brand_name: "Rankito",
+  subtitle: "SEO Intelligence",
   logo_url: null,
   favicon_url: null,
   primary_color: null,
   accent_color: null,
+  sidebar_bg_color: null,
+  text_color: null,
   footer_text: null,
   hide_powered_by: false,
   custom_domain: null,
+  login_title: null,
+  login_subtitle: null,
+  support_email: null,
+  support_url: null,
 };
 
 const WhiteLabelContext = createContext<WhiteLabelConfig>(defaults);
@@ -48,6 +62,15 @@ function hexToHsl(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function applyHslVar(root: HTMLElement, varName: string, hex: string | null) {
+  if (hex) {
+    const hsl = hexToHsl(hex);
+    if (hsl) root.style.setProperty(varName, hsl);
+  } else {
+    root.style.removeProperty(varName);
+  }
+}
+
 export function WhiteLabelProvider({ projectId, children }: { projectId: string | undefined; children: React.ReactNode }) {
   const { data } = useQuery({
     queryKey: ["whitelabel-runtime", projectId],
@@ -66,40 +89,35 @@ export function WhiteLabelProvider({ projectId, children }: { projectId: string 
 
   const config = useMemo<WhiteLabelConfig>(() => {
     if (!data) return defaults;
+    const d = data as any;
     return {
-      brand_name: data.brand_name || defaults.brand_name,
-      logo_url: data.logo_url,
-      favicon_url: data.favicon_url,
-      primary_color: data.primary_color,
-      accent_color: data.accent_color,
-      footer_text: data.footer_text,
-      hide_powered_by: data.hide_powered_by ?? false,
-      custom_domain: data.custom_domain,
+      brand_name: d.brand_name || defaults.brand_name,
+      subtitle: d.subtitle || defaults.subtitle,
+      logo_url: d.logo_url,
+      favicon_url: d.favicon_url,
+      primary_color: d.primary_color,
+      accent_color: d.accent_color,
+      sidebar_bg_color: d.sidebar_bg_color,
+      text_color: d.text_color,
+      footer_text: d.footer_text,
+      hide_powered_by: d.hide_powered_by ?? false,
+      custom_domain: d.custom_domain,
+      login_title: d.login_title,
+      login_subtitle: d.login_subtitle,
+      support_email: d.support_email,
+      support_url: d.support_url,
     };
   }, [data]);
 
-  // Apply CSS custom properties
   useEffect(() => {
     const root = document.documentElement;
-    if (config.primary_color) {
-      const hsl = hexToHsl(config.primary_color);
-      if (hsl) {
-        root.style.setProperty("--primary", hsl);
-        root.style.setProperty("--sidebar-primary", hsl);
-      }
-    } else {
-      root.style.removeProperty("--primary");
-      root.style.removeProperty("--sidebar-primary");
-    }
 
-    if (config.accent_color) {
-      const hsl = hexToHsl(config.accent_color);
-      if (hsl) {
-        root.style.setProperty("--accent", hsl);
-      }
-    } else {
-      root.style.removeProperty("--accent");
-    }
+    applyHslVar(root, "--primary", config.primary_color);
+    applyHslVar(root, "--sidebar-primary", config.primary_color);
+    applyHslVar(root, "--accent", config.accent_color);
+    applyHslVar(root, "--sidebar", config.sidebar_bg_color);
+    applyHslVar(root, "--foreground", config.text_color);
+    applyHslVar(root, "--sidebar-foreground", config.text_color);
 
     // Favicon
     if (config.favicon_url) {
@@ -118,9 +136,7 @@ export function WhiteLabelProvider({ projectId, children }: { projectId: string 
     }
 
     return () => {
-      root.style.removeProperty("--primary");
-      root.style.removeProperty("--sidebar-primary");
-      root.style.removeProperty("--accent");
+      ["--primary", "--sidebar-primary", "--accent", "--sidebar", "--foreground", "--sidebar-foreground"].forEach(v => root.style.removeProperty(v));
     };
   }, [config]);
 

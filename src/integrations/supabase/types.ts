@@ -2396,10 +2396,17 @@ export type Database = {
           footer_text: string | null
           hide_powered_by: boolean | null
           id: string
+          login_subtitle: string | null
+          login_title: string | null
           logo_url: string | null
           owner_id: string
           primary_color: string | null
           project_id: string
+          sidebar_bg_color: string | null
+          subtitle: string | null
+          support_email: string | null
+          support_url: string | null
+          text_color: string | null
           updated_at: string
         }
         Insert: {
@@ -2411,10 +2418,17 @@ export type Database = {
           footer_text?: string | null
           hide_powered_by?: boolean | null
           id?: string
+          login_subtitle?: string | null
+          login_title?: string | null
           logo_url?: string | null
           owner_id: string
           primary_color?: string | null
           project_id: string
+          sidebar_bg_color?: string | null
+          subtitle?: string | null
+          support_email?: string | null
+          support_url?: string | null
+          text_color?: string | null
           updated_at?: string
         }
         Update: {
@@ -2426,10 +2440,17 @@ export type Database = {
           footer_text?: string | null
           hide_powered_by?: boolean | null
           id?: string
+          login_subtitle?: string | null
+          login_title?: string | null
           logo_url?: string | null
           owner_id?: string
           primary_color?: string | null
           project_id?: string
+          sidebar_bg_color?: string | null
+          subtitle?: string | null
+          support_email?: string | null
+          support_url?: string | null
+          text_color?: string | null
           updated_at?: string
         }
         Relationships: [

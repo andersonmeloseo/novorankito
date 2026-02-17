@@ -231,7 +231,7 @@ export function AppSidebar() {
           )}
           <div>
             <span className="font-bold text-base text-transparent bg-clip-text bg-gradient-to-r from-white via-sidebar-primary to-white bg-[length:200%_100%] animate-[shimmer-text_3s_ease-in-out_infinite] font-display tracking-tight block leading-tight">{wl.brand_name}</span>
-            <span className="text-[10px] text-sidebar-foreground/50">SEO Intelligence</span>
+            <span className="text-[10px] text-sidebar-foreground/50">{wl.subtitle}</span>
           </div>
         </div>
 

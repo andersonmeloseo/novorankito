@@ -9,11 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Globe, Type, Image, Loader2, Save, RotateCcw } from "lucide-react";
+import { Palette, Globe, Type, Image, Loader2, Save, RotateCcw, Mail, Link2, LogIn } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface WhiteLabelSettingsProps {
   projectId: string;
 }
+
+const defaultForm = {
+  brand_name: "Rankito",
+  subtitle: "SEO Intelligence",
+  logo_url: "",
+  favicon_url: "",
+  primary_color: "#6366f1",
+  accent_color: "#22c55e",
+  sidebar_bg_color: "",
+  text_color: "",
+  custom_domain: "",
+  footer_text: "",
+  hide_powered_by: false,
+  login_title: "",
+  login_subtitle: "",
+  support_email: "",
+  support_url: "",
+};
 
 export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
   const { user } = useAuth();
@@ -33,47 +52,43 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     enabled: !!user && !!projectId,
   });
 
-  const defaultForm = {
-    brand_name: "Rankito",
-    logo_url: "",
-    favicon_url: "",
-    primary_color: "#6366f1",
-    accent_color: "#22c55e",
-    custom_domain: "",
-    footer_text: "",
-    hide_powered_by: false,
-  };
-
   const [form, setForm] = useState(defaultForm);
 
-  // Sync form with loaded data
   const [synced, setSynced] = useState(false);
   if (settings && !synced) {
     setForm({
       brand_name: settings.brand_name || "Rankito",
+      subtitle: (settings as any).subtitle || "SEO Intelligence",
       logo_url: settings.logo_url || "",
       favicon_url: settings.favicon_url || "",
       primary_color: settings.primary_color || "#6366f1",
       accent_color: settings.accent_color || "#22c55e",
+      sidebar_bg_color: (settings as any).sidebar_bg_color || "",
+      text_color: (settings as any).text_color || "",
       custom_domain: settings.custom_domain || "",
       footer_text: settings.footer_text || "",
       hide_powered_by: settings.hide_powered_by || false,
+      login_title: (settings as any).login_title || "",
+      login_subtitle: (settings as any).login_subtitle || "",
+      support_email: (settings as any).support_email || "",
+      support_url: (settings as any).support_url || "",
     });
     setSynced(true);
   }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const payload: any = { ...form };
       if (settings) {
         const { error } = await supabase
           .from("whitelabel_settings")
-          .update(form)
+          .update(payload)
           .eq("id", settings.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("whitelabel_settings")
-          .insert({ ...form, project_id: projectId, owner_id: user!.id });
+          .insert({ ...payload, project_id: projectId, owner_id: user!.id });
         if (error) throw error;
       }
     },
@@ -97,6 +112,26 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     );
   }
 
+  const colorField = (label: string, field: keyof typeof form, placeholder?: string) => (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex gap-2 items-center">
+        <input
+          type="color"
+          value={(form[field] as string) || "#000000"}
+          onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+          className="h-8 w-10 rounded border cursor-pointer"
+        />
+        <Input
+          className="h-8 text-sm flex-1"
+          placeholder={placeholder || "#hex"}
+          value={form[field] as string}
+          onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -106,51 +141,98 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
           <Badge variant="secondary" className="text-[10px]">Enterprise</Badge>
         </CardTitle>
         <CardDescription className="text-xs">
-          Personalize a marca do seu projeto para seus clientes
+          Personalize completamente a marca do seu projeto para seus clientes
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3" /> Nome da marca</Label>
-            <Input className="h-8 text-sm" value={form.brand_name} onChange={(e) => setForm({ ...form, brand_name: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5"><Globe className="h-3 w-3" /> Domínio customizado</Label>
-            <Input className="h-8 text-sm" placeholder="app.suaempresa.com" value={form.custom_domain} onChange={(e) => setForm({ ...form, custom_domain: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5"><Image className="h-3 w-3" /> URL do Logo</Label>
-            <Input className="h-8 text-sm" placeholder="https://..." value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5"><Image className="h-3 w-3" /> URL do Favicon</Label>
-            <Input className="h-8 text-sm" placeholder="https://..." value={form.favicon_url} onChange={(e) => setForm({ ...form, favicon_url: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Cor primária</Label>
-            <div className="flex gap-2 items-center">
-              <input type="color" value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="h-8 w-10 rounded border cursor-pointer" />
-              <Input className="h-8 text-sm flex-1" value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} />
+      <CardContent className="space-y-5">
+        {/* Brand Identity */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Identidade da Marca</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3" /> Nome da marca</Label>
+              <Input className="h-8 text-sm" value={form.brand_name} onChange={(e) => setForm({ ...form, brand_name: e.target.value })} />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Cor de destaque</Label>
-            <div className="flex gap-2 items-center">
-              <input type="color" value={form.accent_color} onChange={(e) => setForm({ ...form, accent_color: e.target.value })} className="h-8 w-10 rounded border cursor-pointer" />
-              <Input className="h-8 text-sm flex-1" value={form.accent_color} onChange={(e) => setForm({ ...form, accent_color: e.target.value })} />
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3" /> Subtítulo</Label>
+              <Input className="h-8 text-sm" placeholder="SEO Intelligence" value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Image className="h-3 w-3" /> URL do Logo</Label>
+              <Input className="h-8 text-sm" placeholder="https://..." value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Image className="h-3 w-3" /> URL do Favicon</Label>
+              <Input className="h-8 text-sm" placeholder="https://..." value={form.favicon_url} onChange={(e) => setForm({ ...form, favicon_url: e.target.value })} />
             </div>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs">Texto do rodapé</Label>
-          <Input className="h-8 text-sm" placeholder="© 2026 Sua Empresa" value={form.footer_text} onChange={(e) => setForm({ ...form, footer_text: e.target.value })} />
+        <Separator />
+
+        {/* Colors */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Cores</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {colorField("Cor primária", "primary_color", "#6366f1")}
+            {colorField("Cor de destaque", "accent_color", "#22c55e")}
+            {colorField("Fundo da sidebar", "sidebar_bg_color", "Padrão do tema")}
+            {colorField("Cor do texto", "text_color", "Padrão do tema")}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Ocultar "Powered by Rankito"</Label>
-          <Switch checked={form.hide_powered_by} onCheckedChange={(v) => setForm({ ...form, hide_powered_by: v })} />
+        <Separator />
+
+        {/* Login Screen */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <LogIn className="h-3 w-3" /> Tela de Login
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Título do login</Label>
+              <Input className="h-8 text-sm" placeholder="Bem-vindo ao Rankito" value={form.login_title} onChange={(e) => setForm({ ...form, login_title: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subtítulo do login</Label>
+              <Input className="h-8 text-sm" placeholder="Entre na sua conta" value={form.login_subtitle} onChange={(e) => setForm({ ...form, login_subtitle: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Domain & Support */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Domínio & Suporte</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Globe className="h-3 w-3" /> Domínio customizado</Label>
+              <Input className="h-8 text-sm" placeholder="app.suaempresa.com" value={form.custom_domain} onChange={(e) => setForm({ ...form, custom_domain: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Mail className="h-3 w-3" /> E-mail de suporte</Label>
+              <Input className="h-8 text-sm" placeholder="suporte@suaempresa.com" value={form.support_email} onChange={(e) => setForm({ ...form, support_email: e.target.value })} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs flex items-center gap-1.5"><Link2 className="h-3 w-3" /> URL de suporte / Central de ajuda</Label>
+              <Input className="h-8 text-sm" placeholder="https://ajuda.suaempresa.com" value={form.support_url} onChange={(e) => setForm({ ...form, support_url: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Footer & Misc */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Texto do rodapé</Label>
+            <Input className="h-8 text-sm" placeholder="© 2026 Sua Empresa" value={form.footer_text} onChange={(e) => setForm({ ...form, footer_text: e.target.value })} />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Ocultar "Powered by Rankito"</Label>
+            <Switch checked={form.hide_powered_by} onCheckedChange={(v) => setForm({ ...form, hide_powered_by: v })} />
+          </div>
         </div>
 
         <div className="flex gap-2">
