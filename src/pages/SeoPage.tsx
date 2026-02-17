@@ -162,10 +162,10 @@ export default function SeoPage() {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
-      const latestDate = baseMetrics.length > 0
-        ? baseMetrics.reduce((max: string, m: any) => m.metric_date > max ? m.metric_date : max, baseMetrics[0].metric_date)
-        : null;
-      const refDate = latestDate ? parseISO(latestDate) : new Date();
+      // Always use current date minus GSC's ~3-day data delay as reference
+      // This ensures the date range matches what GSC shows in the browser
+      const now = new Date();
+      const refDate = subDays(now, 3);
       const days = parseInt(dateRange);
       to = refDate;
       from = subDays(refDate, days - 1);
