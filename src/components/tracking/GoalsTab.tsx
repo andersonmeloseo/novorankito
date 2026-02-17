@@ -51,7 +51,45 @@ const GOAL_ICONS: Record<string, any> = {
   page_value: DollarSign,
 };
 
-/* ─── Auto-detect CTAs from events ─── */
+/* ─── Suggested Goal Templates ─── */
+const SUGGESTED_GOALS: { name: string; description: string; goalType: TrackingGoal["goal_type"]; targetValue: number; currencyValue: number; config: GoalConfig }[] = [
+  {
+    name: "Lead WhatsApp",
+    description: "Conta cliques em links de WhatsApp (wa.me, api.whatsapp).",
+    goalType: "url_pattern", targetValue: 10, currencyValue: 5,
+    config: { link_url_patterns: ["wa.me", "api.whatsapp.com"], link_text_patterns: ["whatsapp", "fale conosco"] },
+  },
+  {
+    name: "Lead Telefone",
+    description: "Conta cliques em links tel: para ligações.",
+    goalType: "url_pattern", targetValue: 10, currencyValue: 5,
+    config: { link_url_patterns: ["tel:"], link_text_patterns: ["ligar", "telefone"] },
+  },
+  {
+    name: "Envio de Formulário",
+    description: "Rastreia submissões de formulário no site.",
+    goalType: "cta_click", targetValue: 10, currencyValue: 10,
+    config: { cta_text_patterns: ["enviar", "solicitar", "cadastrar", "agendar"], cta_match_mode: "partial" as const },
+  },
+  {
+    name: "Página de Obrigado",
+    description: "Conversão ao chegar na página /obrigado ou /thank-you.",
+    goalType: "page_destination", targetValue: 10, currencyValue: 15,
+    config: { destination_urls: ["/obrigado", "/thank-you", "/sucesso"], url_match_mode: "contains" as const },
+  },
+  {
+    name: "Leitura Completa",
+    description: "Usuário rolou até o final da página (100% scroll).",
+    goalType: "scroll_depth", targetValue: 50, currencyValue: 1,
+    config: { scroll_threshold: 100 },
+  },
+  {
+    name: "Engajamento 2min",
+    description: "Usuário permaneceu pelo menos 2 minutos na página.",
+    goalType: "time_on_page", targetValue: 50, currencyValue: 1,
+    config: { min_seconds: 120 },
+  },
+];
 function useDetectedCTAs(events: any[]) {
   return useMemo(() => {
     const ctaMap = new Map<string, { text: string; selector: string; count: number; lastSeen: string }>();
@@ -701,6 +739,21 @@ export function GoalsTab() {
   };
   const closeWizard = () => { setWizardOpen(false); setEditingId(null); };
 
+  const handleQuickCreate = async (tpl: typeof SUGGESTED_GOALS[number]) => {
+    if (!projectId || !userId) { toast.error("Projeto ou usuário não encontrado."); return; }
+    try {
+      await createGoal.mutateAsync({
+        project_id: projectId, owner_id: userId,
+        name: tpl.name, description: tpl.description,
+        goal_type: tpl.goalType, target_value: tpl.targetValue,
+        target_urls: tpl.config.destination_urls || [],
+        target_events: [], currency_value: tpl.currencyValue,
+        config: tpl.config, enabled: true,
+      } as any);
+      toast.success(`Meta "${tpl.name}" criada!`);
+    } catch (err: any) { toast.error("Erro: " + (err.message || "")); }
+  };
+
   const handleSave = async () => {
     if (!wizardData.name.trim()) { toast.error("Preencha o nome da meta."); return; }
     if (!projectId || !userId) { toast.error("Projeto ou usuário não encontrado."); return; }
@@ -857,18 +910,50 @@ export function GoalsTab() {
         </AnimatedContainer>
       )}
 
-      {/* Empty state */}
+      {/* Empty state with suggested templates */}
       {!isLoading && goals.length === 0 && !wizardOpen && (
         <AnimatedContainer delay={0.06}>
-          <Card className="p-8 text-center border-dashed">
-            <Target className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <h3 className="text-sm font-bold font-display">Nenhuma meta personalizada</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              Crie metas para acompanhar conversões: clique em CTAs, páginas de destino, scroll, tempo na página e mais. Cada conversão tem um valor monetário.
-            </p>
-            <Button onClick={openCreate} className="gap-1.5 text-xs mt-4">
-              <Plus className="h-3.5 w-3.5" /> Criar Primeira Meta
-            </Button>
+          <Card className="p-6 sm:p-8 border-dashed space-y-5">
+            <div className="text-center">
+              <Target className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <h3 className="text-sm font-bold font-display">Nenhuma meta personalizada</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Crie metas para acompanhar conversões. Use os templates abaixo para começar rapidamente ou crie do zero.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">⚡ Metas Sugeridas — Criar com 1 Clique</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {SUGGESTED_GOALS.map((tpl, i) => {
+                  const Icon = GOAL_ICONS[tpl.goalType] || Target;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleQuickCreate(tpl)}
+                      disabled={createGoal.isPending}
+                      className="p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 text-left transition-all group"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-xs font-semibold truncate">{tpl.name}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2">{tpl.description}</p>
+                      <span className="text-[9px] text-primary font-medium mt-1.5 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Plus className="h-2.5 w-2.5" /> Criar agora
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <Button onClick={openCreate} variant="outline" className="gap-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" /> Criar Meta Personalizada
+              </Button>
+            </div>
           </Card>
         </AnimatedContainer>
       )}
