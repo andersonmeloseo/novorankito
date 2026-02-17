@@ -143,7 +143,27 @@ export function TriplesTable() {
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
+      {/* Descrição da funcionalidade */}
+      <Card className="p-4 border-primary/20 bg-accent/30">
+        <div className="flex gap-3 items-start">
+          <GitBranch className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">O que são Triples (Triplas Semânticas)?</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Triples são a base do <strong>SEO Semântico</strong>. Cada triple é uma declaração no formato{" "}
+              <strong>Sujeito → Predicado → Objeto</strong> (ex: &quot;Padaria Artesanal <em>oferece</em> Pão Sourdough&quot;).
+              São essas relações que o Google usa para entender <strong>quem você é</strong>, <strong>o que oferece</strong> e{" "}
+              <strong>como se conecta</strong> ao seu nicho. Quanto mais triples bem definidos, maior sua{" "}
+              <strong>Autoridade Semântica</strong> — e melhor seu posicionamento orgânico.
+            </p>
+            <p className="text-[11px] text-muted-foreground/80">
+              💡 <strong>Como usar:</strong> Crie relações no <em>Construtor de Grafo</em> e elas aparecerão automaticamente aqui.
+              Use esta tabela para auditar, filtrar por predicado, exportar em CSV/XML e garantir que seu grafo está completo.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-foreground">{entities.length}</p>
