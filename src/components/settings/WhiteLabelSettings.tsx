@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Globe, Type, Image, Loader2, Save } from "lucide-react";
+import { Palette, Globe, Type, Image, Loader2, Save, RotateCcw } from "lucide-react";
 
 interface WhiteLabelSettingsProps {
   projectId: string;
@@ -33,8 +33,8 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     enabled: !!user && !!projectId,
   });
 
-  const [form, setForm] = useState({
-    brand_name: "",
+  const defaultForm = {
+    brand_name: "Rankito",
     logo_url: "",
     favicon_url: "",
     primary_color: "#6366f1",
@@ -42,7 +42,9 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     custom_domain: "",
     footer_text: "",
     hide_powered_by: false,
-  });
+  };
+
+  const [form, setForm] = useState(defaultForm);
 
   // Sync form with loaded data
   const [synced, setSynced] = useState(false);
@@ -78,6 +80,7 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     onSuccess: () => {
       toast({ title: "Salvo!", description: "Configurações white-label atualizadas." });
       qc.invalidateQueries({ queryKey: ["whitelabel", projectId] });
+      qc.invalidateQueries({ queryKey: ["whitelabel-runtime", projectId] });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -150,10 +153,16 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
           <Switch checked={form.hide_powered_by} onCheckedChange={(v) => setForm({ ...form, hide_powered_by: v })} />
         </div>
 
-        <Button className="w-full h-8 text-sm gap-1.5" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Salvar configurações
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 h-8 text-sm gap-1.5" onClick={() => { setForm(defaultForm); toast({ title: "Restaurado", description: "Valores padrão aplicados. Clique em Salvar para confirmar." }); }}>
+            <RotateCcw className="h-3.5 w-3.5" />
+            Restaurar padrão
+          </Button>
+          <Button className="flex-1 h-8 text-sm gap-1.5" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Salvar configurações
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
