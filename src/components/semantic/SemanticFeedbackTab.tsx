@@ -23,29 +23,31 @@ export function SemanticFeedbackTab({ projectId, goalProjectId }: Props) {
   const { data: goals = [], isLoading: goalsLoading } = useSemanticGoals(projectId, goalProjectId);
 
   const { data: entities = [] } = useQuery({
-    queryKey: ["semantic-entities-feedback", projectId],
+    queryKey: ["semantic-entities-feedback", projectId, goalProjectId],
     queryFn: async () => {
       const { data } = await supabase
         .from("semantic_entities")
         .select("id, name, entity_type, schema_type, description")
         .eq("project_id", projectId)
+        .eq("goal_project_id", goalProjectId)
         .eq("owner_id", user?.id || "");
       return data || [];
     },
-    enabled: !!projectId && !!user?.id,
+    enabled: !!projectId && !!goalProjectId && !!user?.id,
   });
 
   const { data: relations = [] } = useQuery({
-    queryKey: ["semantic-relations-feedback", projectId],
+    queryKey: ["semantic-relations-feedback", projectId, goalProjectId],
     queryFn: async () => {
       const { data } = await supabase
         .from("semantic_relations")
         .select("id, subject_id, object_id, predicate")
         .eq("project_id", projectId)
+        .eq("goal_project_id", goalProjectId)
         .eq("owner_id", user?.id || "");
       return data || [];
     },
-    enabled: !!projectId && !!user?.id,
+    enabled: !!projectId && !!goalProjectId && !!user?.id,
   });
 
   // ── Check if project is truly empty (no goals, no entities)
