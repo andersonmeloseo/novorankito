@@ -194,6 +194,33 @@ export default function GettingStartedPage() {
         title="Guia de Início"
         description="Siga o passo a passo para configurar e aproveitar ao máximo o Rankito."
       />
+      {/* Intro explanation */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="border-primary/20 bg-accent/30">
+          <CardContent className="pt-5 pb-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <BookOpen className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">Como funciona o Rankito?</p>
+                <ol className="list-decimal list-inside space-y-1.5">
+                  <li>
+                    <strong className="text-foreground">Crie um projeto</strong> — cadastre o domínio do seu site. Todos os módulos (SEO, GA4, Indexação, IA, etc.) ficam vinculados ao projeto selecionado.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Conecte as APIs do Google</strong> — integre o <span className="text-primary font-medium">Google Search Console</span> e o <span className="text-primary font-medium">Google Analytics 4</span> nas configurações do projeto para importar seus dados reais.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Explore os módulos</strong> — com o projeto ativo e as integrações configuradas, todas as abas da sidebar (SEO, GA4, Indexação, Analítica, IA, etc.) passam a funcionar com dados reais.
+                  </li>
+                </ol>
+                <p className="text-xs text-muted-foreground/70 pt-1">
+                  💡 <strong>Dica:</strong> selecione o projeto ativo no topo da sidebar para alternar entre sites. Cada projeto tem suas próprias integrações e dados independentes.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Progress bar */}
       <motion.div
