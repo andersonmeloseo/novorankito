@@ -154,17 +154,35 @@ function buildPagePlan(entities: Entity[], relations: Relation[]): PagePlan[] {
 }
 
 // ========== AI Plan types ==========
+interface AiSchemaDetail {
+  type: string;
+  id_value: string;
+  connects_to: string[];
+  required_properties: Record<string, any>;
+  missing_properties: string[];
+  notes: string;
+}
+
 interface AiPagePlan {
   slug: string;
   title: string;
   meta_description: string;
   h1: string;
-  schemas_required: string[];
+  schemas: AiSchemaDetail[];
+  schemas_required?: string[]; // legacy compat
+  full_jsonld: string;
   content_brief: string;
   internal_links: Array<{ to: string; anchor_text: string; context: string }>;
   priority: string;
-  estimated_impact: string;
+  estimated_impact?: string;
   seo_tips: string[];
+}
+
+interface IdConnection {
+  from_id: string;
+  to_id: string;
+  via_property: string;
+  on_page: string;
 }
 
 interface AiPlan {
@@ -174,21 +192,26 @@ interface AiPlan {
     summary: string;
     strengths: string[];
     weaknesses: string[];
-    opportunities: string[];
+    opportunities?: string[];
+    gaps?: string[];
   };
   pages: AiPagePlan[];
+  id_graph?: {
+    description: string;
+    connections: IdConnection[];
+  };
   knowledge_panel_strategy: {
     steps: string[];
     entity_home: string;
     required_signals: string[];
     estimated_timeline: string;
   };
-  internal_linking_map: {
+  internal_linking_map?: {
     hub_pages: Array<{ slug: string; spoke_pages: string[] }>;
     strategy: string;
   };
   quick_wins: Array<{ action: string; impact: string; effort: string; description: string }>;
-  advanced_recommendations: Array<{ title: string; description: string; priority: string }>;
+  advanced_recommendations?: Array<{ title: string; description: string; priority: string }>;
 }
 
 interface Props {
@@ -487,10 +510,10 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
                     <Card className="p-3 border-blue-500/20 bg-blue-500/5">
                       <div className="flex items-center gap-1.5 mb-2">
                         <Lightbulb className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-xs font-bold text-blue-600">Oportunidades</span>
+                        <span className="text-xs font-bold text-blue-600">{aiPlan.verdict.gaps?.length ? "Gaps Técnicos" : "Oportunidades"}</span>
                       </div>
                       <ul className="space-y-1">
-                        {aiPlan.verdict.opportunities.map((o, i) => (
+                        {(aiPlan.verdict.gaps || aiPlan.verdict.opportunities || []).map((o, i) => (
                           <li key={i} className="text-[11px] text-muted-foreground">• {o}</li>
                         ))}
                       </ul>
@@ -615,18 +638,75 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
                               </div>
                             </div>
 
-                            {/* Schemas */}
+                            {/* Schemas with @id details */}
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-1.5">
                                 <Code2 className="h-3 w-3 text-primary" />
-                                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Schemas Necessários</span>
+                                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  Schemas ({(page.schemas || page.schemas_required || []).length})
+                                </span>
                               </div>
-                              <div className="flex flex-wrap gap-1">
-                                {page.schemas_required.map((s) => (
-                                  <Badge key={s} variant="outline" className="text-[9px]">{s}</Badge>
-                                ))}
-                              </div>
+                              {page.schemas?.length > 0 ? (
+                                <div className="space-y-2">
+                                  {page.schemas.map((schema, si) => (
+                                    <Card key={si} className="p-2.5 border-l-2 border-l-primary/50">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <Badge className="text-[9px] bg-primary/10 text-primary border-primary/20">{schema.type}</Badge>
+                                          <code className="text-[9px] text-muted-foreground font-mono">{schema.id_value}</code>
+                                        </div>
+                                      </div>
+                                      {schema.connects_to?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-1.5">
+                                          <span className="text-[9px] text-muted-foreground">Conecta com:</span>
+                                          {schema.connects_to.map((cid, ci) => (
+                                            <Badge key={ci} variant="outline" className="text-[8px] font-mono">{cid.split("#")[1] || cid}</Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {schema.missing_properties?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-1.5">
+                                          <span className="text-[9px] text-red-500 font-semibold">Faltando:</span>
+                                          {schema.missing_properties.map((mp, mi) => (
+                                            <Badge key={mi} variant="destructive" className="text-[8px]">{mp}</Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {schema.notes && (
+                                        <p className="text-[10px] text-muted-foreground italic">{schema.notes}</p>
+                                      )}
+                                    </Card>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {(page.schemas_required || []).map((s) => (
+                                    <Badge key={s} variant="outline" className="text-[9px]">{s}</Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+
+                            {/* Full JSON-LD code */}
+                            {page.full_jsonld && (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <FileCode className="h-3 w-3 text-green-500" />
+                                    <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">JSON-LD Pronto</span>
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1 px-2" onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyText(page.full_jsonld, "JSON-LD");
+                                  }}>
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </Button>
+                                </div>
+                                <pre className="bg-muted rounded-lg p-3 text-[10px] font-mono text-foreground/80 overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap break-all leading-relaxed">
+                                  {page.full_jsonld}
+                                </pre>
+                              </div>
+                            )}
 
                             {/* Content brief */}
                             <div className="space-y-1.5">
@@ -679,13 +759,15 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
                             )}
 
                             {/* Impact */}
-                            <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/10">
-                              <div className="flex items-center gap-1.5">
-                                <TrendingUp className="h-3 w-3 text-primary" />
-                                <span className="text-[10px] font-bold text-primary">Impacto Estimado</span>
+                            {page.estimated_impact && (
+                              <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/10">
+                                <div className="flex items-center gap-1.5">
+                                  <TrendingUp className="h-3 w-3 text-primary" />
+                                  <span className="text-[10px] font-bold text-primary">Impacto Estimado</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{page.estimated_impact}</p>
                               </div>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">{page.estimated_impact}</p>
-                            </div>
+                            )}
                           </div>
                         </CollapsibleContent>
                       </Card>
@@ -755,6 +837,56 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
                           <Badge key={i} variant="outline" className="text-[9px]">{sig}</Badge>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {/* @ID GRAPH MAP */}
+          {aiPlan.id_graph?.connections?.length > 0 && (
+            <Collapsible open={expandedSections.has("idgraph")} onOpenChange={() => toggleSection("idgraph")}>
+              <Card className="overflow-hidden border-green-500/20">
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <Layers className="h-4 w-4 text-green-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Mapa de Conexões @id</h3>
+                          <p className="text-[10px] text-muted-foreground">{aiPlan.id_graph.connections.length} conexões entre schemas</p>
+                        </div>
+                      </div>
+                      {expandedSections.has("idgraph") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Separator />
+                  <div className="p-4 space-y-2">
+                    {aiPlan.id_graph.description && (
+                      <p className="text-[11px] text-muted-foreground mb-2">{aiPlan.id_graph.description}</p>
+                    )}
+                    <div className="bg-muted/50 rounded-lg overflow-hidden">
+                      <div className="grid grid-cols-[1fr_auto_1fr_auto_auto] gap-1 p-2 text-[9px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
+                        <span>De (@id)</span>
+                        <span></span>
+                        <span>Para (@id)</span>
+                        <span>Propriedade</span>
+                        <span>Página</span>
+                      </div>
+                      {aiPlan.id_graph.connections.map((conn, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto_auto] gap-1 p-2 text-[10px] font-mono border-b border-border/50 last:border-0 items-center">
+                          <code className="text-primary truncate">{conn.from_id.split("#")[1] || conn.from_id}</code>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                          <code className="text-green-600 truncate">{conn.to_id.split("#")[1] || conn.to_id}</code>
+                          <Badge variant="outline" className="text-[8px]">{conn.via_property}</Badge>
+                          <code className="text-[9px] text-muted-foreground">{conn.on_page}</code>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </CollapsibleContent>

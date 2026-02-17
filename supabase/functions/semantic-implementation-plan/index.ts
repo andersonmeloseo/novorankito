@@ -21,95 +21,117 @@ serve(async (req) => {
 
     const openaiKey = await getOpenAIKey();
 
-    const entitySummary = entities.map((e: any) =>
-      `- "${e.name}" [${e.entity_type}] Schema: ${e.schema_type || "N/A"}, Props preenchidas: ${Object.keys(e.schema_properties || {}).length}`
-    ).join("\n");
+    const entitySummary = entities.map((e: any) => {
+      const propsEntries = Object.entries(e.schema_properties || {})
+        .filter(([_, v]) => v && String(v).trim())
+        .map(([k, v]) => `    ${k}: "${String(v).substring(0, 80)}"`)
+        .join("\n");
+      return `- "${e.name}" [tipo: ${e.entity_type}] Schema: ${e.schema_type || "NÃO DEFINIDO"}${e.description ? ` | Desc: ${e.description}` : ""}${propsEntries ? `\n  Propriedades preenchidas:\n${propsEntries}` : "\n  Propriedades: NENHUMA preenchida"}`;
+    }).join("\n");
 
     const relationSummary = relations.map((r: any) =>
-      `- "${r.subject}" → ${r.predicate} → "${r.object}"`
+      `- "${r.subject}" —[${r.predicate}]→ "${r.object}"`
     ).join("\n");
 
     const pageSummary = pages.map((p: any) =>
-      `- ${p.slug}: "${p.title}" (${p.schemas.join(", ")}) → links: ${p.linkedPages.join(", ") || "nenhum"}`
+      `- ${p.slug}: "${p.title}" (schemas: ${p.schemas.join(", ")}) → links internos: ${p.linkedPages.join(", ") || "nenhum"}`
     ).join("\n");
 
-    const systemPrompt = `Você é um consultor sênior de SEO Técnico, Schema.org e Knowledge Graph com mais de 20 anos de experiência em SEO, GEO (Generative Engine Optimization), biblioteconomia digital e ciência da informação.
+    const systemPrompt = `Você é um engenheiro de dados estruturados e Schema.org com 20 anos de experiência. Sua especialidade é gerar código JSON-LD REAL e FUNCIONAL, com conexões via @id entre schemas.
 
-Você é reconhecido como um dos maiores especialistas do mundo em:
-- Dados estruturados e Schema.org
-- Google Knowledge Panel e Entity SEO
-- E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness)
-- Topical Authority e grafos semânticos
-- Internal linking architecture
-- Rich Results e SERP Features
+MISSÃO: Gerar um plano de implementação TÉCNICO E CONCRETO — NÃO genérico.
 
-MISSÃO: Analisar o grafo semântico do cliente e gerar um PLANO DE IMPLEMENTAÇÃO COMPLETO e PROFISSIONAL.
+O output deve ser JSON puro (sem markdown, sem code fences) com esta estrutura:
 
-FORMATO DA RESPOSTA — JSON puro, sem markdown:
 {
   "verdict": {
     "score": 0-100,
     "level": "iniciante|intermediário|avançado|expert",
-    "summary": "Resumo executivo em 2-3 frases sobre a maturidade semântica",
-    "strengths": ["ponto forte 1", "ponto forte 2"],
-    "weaknesses": ["ponto fraco 1", "ponto fraco 2"],
-    "opportunities": ["oportunidade 1", "oportunidade 2"]
+    "summary": "2-3 frases objetivas",
+    "strengths": ["..."],
+    "weaknesses": ["..."],
+    "gaps": ["propriedade X faltando em Y", "schema Z não conectado via @id"]
   },
   "pages": [
     {
-      "slug": "/caminho-da-pagina",
-      "title": "Título SEO da Página (max 60 chars)",
-      "meta_description": "Meta description otimizada (max 155 chars)",
-      "h1": "Heading H1 principal",
-      "schemas_required": ["Organization", "BreadcrumbList"],
-      "content_brief": "Briefing detalhado do conteúdo: o que escrever, tópicos a cobrir, tamanho ideal, tom de voz",
-      "internal_links": [{"to": "/outra-pagina", "anchor_text": "texto âncora sugerido", "context": "onde colocar o link"}],
+      "slug": "/caminho",
+      "title": "Title SEO (max 60 chars)",
+      "meta_description": "Meta description (max 155 chars)",
+      "h1": "H1 da página",
       "priority": "critical|high|medium|low",
-      "estimated_impact": "Impacto esperado em 1-2 frases",
-      "seo_tips": ["dica técnica 1", "dica técnica 2"]
+      "schemas": [
+        {
+          "type": "Organization",
+          "id_value": "https://dominio.com/#organization",
+          "connects_to": ["https://dominio.com/#website", "https://dominio.com/#address"],
+          "required_properties": {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": "https://dominio.com/#organization",
+            "name": "Nome Real",
+            "url": "https://dominio.com",
+            "logo": { "@type": "ImageObject", "@id": "https://dominio.com/#logo", "url": "https://dominio.com/logo.png" },
+            "address": { "@id": "https://dominio.com/#address" },
+            "sameAs": ["https://facebook.com/...", "https://instagram.com/..."]
+          },
+          "missing_properties": ["telephone", "email", "foundingDate"],
+          "notes": "Explicação técnica de por que este schema é necessário aqui"
+        }
+      ],
+      "full_jsonld": "<script type=\\"application/ld+json\\">\\n[array com todos os schemas desta página conectados via @id]\\n</script>",
+      "internal_links": [
+        { "to": "/outra-pagina", "anchor_text": "texto âncora", "context": "onde colocar" }
+      ],
+      "content_brief": "O que escrever nesta página (3-5 frases)",
+      "seo_tips": ["dica 1", "dica 2"]
     }
   ],
-  "knowledge_panel_strategy": {
-    "steps": ["passo 1 para conquistar o Knowledge Panel", "passo 2"],
-    "entity_home": "/pagina-entidade-principal",
-    "required_signals": ["sinal 1", "sinal 2"],
-    "estimated_timeline": "tempo estimado"
+  "id_graph": {
+    "description": "Mapa de como os @id se conectam entre páginas",
+    "connections": [
+      { "from_id": "https://dominio.com/#organization", "to_id": "https://dominio.com/#website", "via_property": "publisher", "on_page": "/" },
+      { "from_id": "https://dominio.com/#website", "to_id": "https://dominio.com/#organization", "via_property": "publisher", "on_page": "/" }
+    ]
   },
-  "internal_linking_map": {
-    "hub_pages": [{"slug": "/hub", "spoke_pages": ["/spoke1", "/spoke2"]}],
-    "strategy": "Explicação da estratégia de linking"
+  "knowledge_panel_strategy": {
+    "steps": ["passo concreto 1", "passo concreto 2"],
+    "entity_home": "/",
+    "required_signals": ["..."],
+    "estimated_timeline": "X meses"
   },
   "quick_wins": [
-    {"action": "ação rápida", "impact": "alto|médio", "effort": "baixo|médio|alto", "description": "o que fazer"}
-  ],
-  "advanced_recommendations": [
-    {"title": "recomendação", "description": "explicação detalhada", "priority": "alta|média|baixa"}
+    { "action": "ação", "impact": "alto|médio", "effort": "baixo|médio", "description": "o que fazer EXATAMENTE" }
   ]
 }
 
-REGRAS:
-1. Retorne APENAS JSON puro — SEM markdown, SEM code fences
-2. Seja EXTREMAMENTE detalhado e profissional
-3. Use dados REAIS do grafo do cliente
-4. O content_brief deve ser rico o suficiente para um redator produzir o conteúdo
-5. Pense como se estivesse cobrando R$15.000 por esta consultoria
-6. Foque em DOMINAR o Google e o Knowledge Panel
-7. Todas as sugestões devem ser acionáveis e específicas`;
+REGRAS CRÍTICAS:
+1. Retorne APENAS JSON puro
+2. O campo "full_jsonld" de CADA página deve conter o código JSON-LD COMPLETO e REAL pronto para colar no HTML
+3. Use @id para CONECTAR schemas entre si (Organization → WebSite → WebPage → BreadcrumbList → Service/Product/Person)
+4. Cada schema deve ter um @id único no formato "https://dominio.com/#tipo" 
+5. O campo "connects_to" mostra quais outros @id este schema referencia
+6. O "id_graph" mostra o MAPA COMPLETO de conexões @id entre todas as páginas
+7. NÃO use texto genérico. Use os DADOS REAIS das entidades do cliente
+8. Preencha as propriedades com os valores REAIS que o cliente já forneceu
+9. Liste as propriedades que FALTAM preencher em "missing_properties"
+10. Se o domínio não foi informado, use "https://seudominio.com" como placeholder
+11. Cada página DEVE ter BreadcrumbList conectado
+12. A Home DEVE ter Organization + WebSite + WebPage no mínimo`;
 
-    const userPrompt = `Analise o seguinte grafo semântico e gere o plano de implementação completo:
+    const userPrompt = `Analise o grafo semântico e gere o plano de implementação TÉCNICO com JSON-LD real e conexões @id:
 
-DOMÍNIO: ${domain || "não informado"}
+DOMÍNIO: ${domain || "https://seudominio.com"}
 
-ENTIDADES DO GRAFO (${entities.length}):
+ENTIDADES (${entities.length}):
 ${entitySummary}
 
-RELAÇÕES SEMÂNTICAS (${relations.length}):
-${relationSummary || "Nenhuma relação definida"}
+RELAÇÕES (${relations.length}):
+${relationSummary || "Nenhuma relação definida ainda"}
 
-PÁGINAS MAPEADAS (${pages.length}):
+PÁGINAS PRÉ-MAPEADAS (${pages.length}):
 ${pageSummary}
 
-Gere o plano de implementação JSON completo com veredito profissional, estratégia de Knowledge Panel, mapa de links internos e quick wins.`;
+Gere o plano com JSON-LD COMPLETO para cada página, mapa de @id connections, e propriedades faltantes.`;
 
     const response = await callOpenAI({
       apiKey: openaiKey,
@@ -118,14 +140,13 @@ Gere o plano de implementação JSON completo com veredito profissional, estrat�
         { role: "user", content: userPrompt },
       ],
       model: "gpt-4o-mini",
-      temperature: 0.3,
-      max_tokens: 8192,
+      temperature: 0.2,
+      max_tokens: 16384,
     });
 
     const aiData = await response.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
 
-    // Try to parse JSON
     let plan = null;
     let str = rawContent.trim();
     if (str.startsWith("```")) {
@@ -134,7 +155,6 @@ Gere o plano de implementação JSON completo com veredito profissional, estrat�
     try {
       plan = JSON.parse(str);
     } catch {
-      // Try to find JSON object
       const start = str.indexOf("{");
       const end = str.lastIndexOf("}");
       if (start >= 0 && end > start) {
