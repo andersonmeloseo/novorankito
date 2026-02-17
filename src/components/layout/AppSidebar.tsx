@@ -2,7 +2,8 @@ import {
   LayoutDashboard, Globe, Search, BarChart3, Database, Bot, MousePointerClick,
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
-  Layers, DollarSign, Store, TrendingUp, Plus, Network
+  Layers, DollarSign, Store, TrendingUp, Plus, Network,
+  History, CalendarClock, Wifi, Map,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,10 +30,18 @@ const projectNav = [
   { title: "URLs", url: "/urls", icon: Globe },
   { title: "SEO", url: "/seo", icon: Search, tourId: "seo" },
   { title: "GA4", url: "/ga4", icon: BarChart3 },
-  { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const indexingNav = [
+  { title: "Dashboard", url: "/indexing#dashboard", icon: LayoutDashboard },
+  { title: "URLs", url: "/indexing#inventory", icon: Layers },
+  { title: "Sitemap", url: "/indexing#sitemap", icon: Map },
+  { title: "Histórico", url: "/indexing#history", icon: History },
+  { title: "Agendar", url: "/indexing#schedule", icon: CalendarClock },
+  { title: "Contas", url: "/indexing#accounts", icon: Wifi },
 ];
 
 const analiticaNav = [
@@ -68,8 +77,12 @@ const accountNav = [
 ];
 
 function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean }) {
-  const { pathname } = useLocation();
-  const isActive = end ? pathname === item.url : pathname.startsWith(item.url);
+  const { pathname, hash } = useLocation();
+  const fullPath = pathname + hash;
+  const hasHash = item.url.includes("#");
+  const isActive = hasHash
+    ? fullPath === item.url
+    : end ? pathname === item.url : pathname.startsWith(item.url);
 
   return (
     <SidebarMenuItem>
@@ -195,6 +208,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>🗂️ Indexação</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {indexingNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
           <SidebarGroup>
