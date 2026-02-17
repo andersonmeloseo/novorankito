@@ -273,36 +273,6 @@ export function IndexingDashboard({ stats, inventory, requests, sitemaps }: Prop
   return (
     <div className="space-y-4">
 
-      {/* ─── Row 0: Daily Quota Banner ─── */}
-      <Card className="p-4 border-primary/20 bg-primary/5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2.5 rounded-xl bg-primary/10">
-              <Zap className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Quota de Indexação Diária</div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-bold text-foreground tabular-nums">{stats.sentToday}</span>
-                <span className="text-sm text-muted-foreground">/ {stats.dailyLimit}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 w-full sm:max-w-xs">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground">Utilização</span>
-              <span className="text-[10px] font-medium text-foreground">{stats.dailyLimit > 0 ? Math.round((stats.sentToday / stats.dailyLimit) * 100) : 0}%</span>
-            </div>
-            <Progress value={stats.dailyLimit > 0 ? (stats.sentToday / stats.dailyLimit) * 100 : 0} className="h-2.5" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">
-              {stats.sentToday >= stats.dailyLimit
-                ? "Quota esgotada. Novos envios serão possíveis amanhã."
-                : `Restam ${stats.dailyLimit - stats.sentToday} envios hoje.`}
-            </p>
-          </div>
-        </div>
-      </Card>
-
       {/* ─── Row 1: Health Gauge + KPI Cards ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <HealthGauge score={healthScore} stats={stats} />
