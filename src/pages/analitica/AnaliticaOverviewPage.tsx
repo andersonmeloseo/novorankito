@@ -6,8 +6,9 @@ import { useTrackingEvents } from "@/hooks/use-tracking-events";
 import { AnimatedContainer, StaggeredGrid } from "@/components/ui/animated-container";
 import {
   Activity, Users, Flame, ShoppingCart, Footprints, Target,
-  PhoneCall, MousePointerClick, Flag, Code, Loader2,
+  PhoneCall, MousePointerClick, Flag, Code, Loader2, Download, AlertTriangle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const sections = [
   { title: "Eventos", desc: "Todos os eventos capturados em tempo real", icon: Activity, path: "/analitica-rankito/eventos", color: "hsl(var(--primary))" },
@@ -19,7 +20,7 @@ const sections = [
   { title: "Conversão Offline", desc: "Ligações, formulários offline", icon: PhoneCall, path: "/analitica-rankito/offline", color: "hsl(var(--chart-6))" },
   { title: "Eventos Personalizados", desc: "Crie triggers customizados", icon: MousePointerClick, path: "/analitica-rankito/event-builder", color: "hsl(var(--chart-7))" },
   { title: "Metas", desc: "Defina e acompanhe metas de conversão", icon: Flag, path: "/analitica-rankito/metas", color: "hsl(var(--chart-8))" },
-  { title: "Pixel Rankito", desc: "Instale e configure o script de tracking", icon: Code, path: "/analitica-rankito/pixel", color: "hsl(var(--muted-foreground))" },
+  { title: "Instalar o Pixel", desc: "Instale e configure o script de tracking", icon: Download, path: "/analitica-rankito/pixel", color: "hsl(var(--muted-foreground))" },
 ];
 
 export default function AnaliticaOverviewPage() {
@@ -50,6 +51,27 @@ export default function AnaliticaOverviewPage() {
             </div>
           )}
         </Card>
+
+        {/* Banner de lembrete para instalar o Pixel */}
+        {!isLoading && totalEvents === 0 && (
+          <Card className="p-4 border-warning/30 bg-warning/5">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-foreground">Instale o Pixel Rankito para começar</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Nenhum evento foi capturado ainda. Instale o script de tracking no seu site para começar a coletar dados de eventos, sessões, heatmaps e conversões.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-warning/30 text-warning hover:bg-warning/10" onClick={() => navigate("/analitica-rankito/pixel")}>
+                <Download className="h-3.5 w-3.5" />
+                Instalar o Pixel
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
