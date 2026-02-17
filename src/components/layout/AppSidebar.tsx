@@ -278,11 +278,13 @@ export function AppSidebar() {
 
         {activeProject && (
           <div className="relative ml-3 mr-2">
-            {/* Vertical hierarchy line */}
-            <div className="absolute left-0 top-0 bottom-3 w-px bg-gradient-to-b from-sidebar-primary/60 via-sidebar-primary/30 to-transparent" />
+            {/* Vertical hierarchy line with animated glow */}
+            <div className="absolute left-0 top-0 bottom-3 w-[2px] rounded-full bg-sidebar-primary/50 shadow-[0_0_8px_hsl(var(--sidebar-primary)/0.6)] overflow-hidden">
+              <div className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-sidebar-primary to-transparent animate-[sidebar-flow_2.5s_ease-in-out_infinite] opacity-80" />
+            </div>
             
             {/* Connection dot at top */}
-            <div className="absolute left-0 top-2 -translate-x-[3px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.5)]" />
+            <div className="absolute left-0 top-2 -translate-x-[2.5px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_10px_hsl(var(--sidebar-primary)/0.7)] animate-pulse" />
 
             <div className="pl-2.5">
               <Collapsible defaultOpen={pathname === "/overview" || pathname === "/reports"}>
