@@ -162,15 +162,12 @@ export default function SeoPage() {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
-      // GSC data delay: ~2 days for very recent data, ~3 days for fully processed
-      // For short ranges (1-7 days) use 2-day delay to match GSC's "Last X days" view
-      // For longer ranges use 3-day delay for more stable/complete data
-      const now = new Date();
+      // Pass dates directly to GSC API — it handles data availability itself.
+      // No artificial delay compensation. "today" simply returns whatever GSC has.
+      const today = new Date();
       const days = parseInt(dateRange);
-      const delayDays = days <= 7 ? 2 : 3;
-      const refDate = subDays(now, delayDays);
-      to = refDate;
-      from = subDays(refDate, days - 1);
+      to = today;
+      from = subDays(today, days - 1);
     }
 
     const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
