@@ -1572,7 +1572,29 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                             <TooltipTrigger asChild>
                               <span className="cursor-default">{formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR })}</span>
                             </TooltipTrigger>
-                            <TooltipContent>{format(new Date(s.last_run_at), "dd/MM/yyyy HH:mm:ss")}</TooltipContent>
+                            <TooltipContent className="max-w-xs">
+                              <div className="space-y-1">
+                                <div className="text-[10px] font-medium">{format(new Date(s.last_run_at), "dd/MM/yyyy HH:mm:ss")}</div>
+                                {s.last_run_result?.errors?.length > 0 && (
+                                  <div className="text-[10px] text-destructive">
+                                    {s.last_run_result.errors.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
+                                  </div>
+                                )}
+                                {s.last_run_result?.actions?.length > 0 && (
+                                  <div className="text-[10px] text-success">
+                                    {s.last_run_result.actions.map((a: any, i: number) => (
+                                      <div key={i}>✓ {a.type}: {a.result?.submitted ?? a.result?.inspected ?? 0} URLs</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {s.last_run_result?.error && (
+                                  <div className="text-[10px] text-destructive">⚠ {s.last_run_result.error}</div>
+                                )}
+                                {!s.last_run_result?.errors?.length && !s.last_run_result?.actions?.length && !s.last_run_result?.error && (
+                                  <div className="text-[10px]">Sem detalhes</div>
+                                )}
+                              </div>
+                            </TooltipContent>
                           </Tooltip>
                         ) : "Nunca"}
                       </td>

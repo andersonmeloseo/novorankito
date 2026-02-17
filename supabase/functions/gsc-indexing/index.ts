@@ -35,7 +35,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project_id, action, urls, request_type, request_id } = await req.json();
+    const { project_id, action, urls, request_type, request_id, max_urls } = await req.json();
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -395,7 +395,207 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action. Use: inventory, list, submit, retry, inspect" }), {
+    // ─── Action: "submit_auto" — auto-select non-indexed URLs and submit them (used by cron) ───
+    if (action === "submit_auto") {
+      const maxUrls = max_urls || 200;
+
+      // Get URLs that are not indexed (verdict != PASS or no verdict) and haven't been sent today
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Get all site_urls
+      const { data: siteUrls } = await supabase
+        .from("site_urls")
+        .select("url")
+        .eq("project_id", project_id)
+        .order("priority", { ascending: false })
+        .limit(1000);
+
+      if (!siteUrls || siteUrls.length === 0) {
+        return new Response(JSON.stringify({ submitted: 0, message: "No URLs found" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get already-sent-today URLs
+      const { data: sentToday } = await supabase
+        .from("indexing_requests")
+        .select("url")
+        .eq("project_id", project_id)
+        .gte("submitted_at", today + "T00:00:00Z");
+
+      const sentSet = new Set((sentToday || []).map((r: any) => r.url));
+
+      // Get indexed URLs (PASS verdict)
+      const { data: indexedUrls } = await supabase
+        .from("index_coverage")
+        .select("url")
+        .eq("project_id", project_id)
+        .eq("verdict", "PASS");
+
+      const indexedSet = new Set((indexedUrls || []).map((r: any) => r.url));
+
+      // Select URLs: not indexed AND not sent today
+      const candidates = siteUrls
+        .map((u: any) => u.url)
+        .filter((url: string) => !indexedSet.has(url) && !sentSet.has(url))
+        .slice(0, maxUrls);
+
+      if (candidates.length === 0) {
+        return new Response(JSON.stringify({ submitted: 0, message: "No eligible URLs to submit" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Submit using the same logic as "submit"
+      const type = "URL_UPDATED";
+      const ownerId = conn.owner_id;
+
+      const connTokens: { conn: any; token: string }[] = [];
+      for (const c of allConns!) {
+        try {
+          const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
+          connTokens.push({ conn: c, token });
+        } catch (e) {
+          console.error(`Failed to get token for ${c.client_email}:`, e);
+        }
+      }
+
+      if (connTokens.length === 0) {
+        return new Response(JSON.stringify({ error: "Failed to authenticate" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const results: any[] = [];
+      for (let i = 0; i < candidates.length; i++) {
+        const url = candidates[i];
+        const ct = connTokens[i % connTokens.length];
+        try {
+          const res = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${ct.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ url, type }),
+          });
+          const body = await res.json();
+          results.push({
+            url, status: res.ok ? "success" : res.status === 429 ? "quota_exceeded" : "failed",
+            response_code: res.status,
+            response_message: res.ok ? (body.urlNotificationMetadata?.latestUpdate?.type || type) : null,
+            fail_reason: !res.ok ? (body.error?.message || `HTTP ${res.status}`) : null,
+          });
+          await new Promise(r => setTimeout(r, 150));
+        } catch (e) {
+          results.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown" });
+        }
+      }
+
+      // Save results
+      const rows = results.map(r => ({
+        project_id, owner_id: ownerId, url: r.url, request_type: type,
+        status: r.status, response_code: r.response_code || null,
+        response_message: r.response_message || null, fail_reason: r.fail_reason || null,
+        completed_at: r.status !== "pending" ? new Date().toISOString() : null,
+        submitted_at: new Date().toISOString(),
+      }));
+      if (rows.length > 0) await supabase.from("indexing_requests").insert(rows);
+
+      return new Response(JSON.stringify({
+        submitted: results.filter(r => r.status === "success").length,
+        failed: results.filter(r => r.status === "failed").length,
+        quota_exceeded: results.filter(r => r.status === "quota_exceeded").length,
+        total: results.length,
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: "inspect_auto" — auto-inspect URLs without coverage data (used by cron) ───
+    if (action === "inspect_auto") {
+      const maxUrls = Math.min(max_urls || 200, 500);
+
+      // Get site URLs without inspection
+      const { data: siteUrls } = await supabase
+        .from("site_urls")
+        .select("url")
+        .eq("project_id", project_id)
+        .limit(1000);
+
+      const { data: inspected } = await supabase
+        .from("index_coverage")
+        .select("url")
+        .eq("project_id", project_id);
+
+      const inspectedSet = new Set((inspected || []).map((r: any) => r.url));
+      const candidates = (siteUrls || [])
+        .map((u: any) => u.url)
+        .filter((url: string) => !inspectedSet.has(url))
+        .slice(0, maxUrls);
+
+      if (candidates.length === 0) {
+        return new Response(JSON.stringify({ inspected: 0, message: "All URLs already inspected" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Inspect using same logic
+      const inspectTokens: { conn: any; token: string }[] = [];
+      for (const c of allConns!) {
+        try {
+          const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/webmasters.readonly");
+          inspectTokens.push({ conn: c, token });
+        } catch (e) {
+          console.error(`Failed to get inspect token for ${c.client_email}:`, e);
+        }
+      }
+
+      if (inspectTokens.length === 0) {
+        return new Response(JSON.stringify({ error: "Failed to authenticate" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const results: any[] = [];
+      let errors = 0;
+      for (let i = 0; i < candidates.length; i++) {
+        const url = candidates[i];
+        const ct = inspectTokens[i % inspectTokens.length];
+        try {
+          const inspectRes = await fetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${ct.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ inspectionUrl: url, siteUrl: ct.conn.site_url }),
+          });
+          if (!inspectRes.ok) { errors++; continue; }
+          const result = await inspectRes.json();
+          const inspection = result.inspectionResult?.indexStatusResult || {};
+          results.push({
+            project_id, owner_id: ct.conn.owner_id, url,
+            verdict: inspection.verdict || "VERDICT_UNSPECIFIED",
+            coverage_state: inspection.coverageState || null,
+            robotstxt_state: inspection.robotsTxtState || null,
+            indexing_state: inspection.indexingState || null,
+            page_fetch_state: inspection.pageFetchState || null,
+            crawled_as: inspection.crawledAs || null,
+            last_crawl_time: inspection.lastCrawlTime || null,
+            referring_urls: inspection.referringUrls || [],
+            sitemap: inspection.sitemap?.[0] || null,
+            inspected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          await new Promise(r => setTimeout(r, 200));
+        } catch { errors++; }
+      }
+
+      if (results.length > 0) {
+        await supabase.from("index_coverage").upsert(results, { onConflict: "project_id,url" });
+      }
+
+      return new Response(JSON.stringify({ inspected: results.length, errors }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Invalid action. Use: inventory, list, submit, submit_auto, retry, inspect, inspect_auto" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
