@@ -798,7 +798,7 @@ export default function SeoPage() {
               </>
             )}
 
-            {!hasData && (
+            {!hasData && ["queries","pages","countries","devices"].includes(activeTab) && (
               <EmptyState
                 icon={Search}
                 title="Nenhuma métrica SEO"
