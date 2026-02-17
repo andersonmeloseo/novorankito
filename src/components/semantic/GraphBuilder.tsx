@@ -19,7 +19,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Loader2, Wand2, LayoutGrid, Network, Trash2, Layout } from "lucide-react";
+import { Plus, Loader2, Wand2, LayoutGrid, Network, Trash2, Layout, Sparkles } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -27,6 +27,7 @@ import { NicheGraphWizard, type NicheTemplate } from "./NicheGraphWizard";
 import { EntityDetailPanel } from "./EntityDetailPanel";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getSchemaProperties } from "./schema-properties";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -66,6 +67,7 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
   const [saving, setSaving] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardGenerating, setWizardGenerating] = useState(false);
+  const [aiFillingAll, setAiFillingAll] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detail panel state
@@ -603,6 +605,87 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
     toast({ title: "Layout reorganizado", description: `${layers.length} camadas, ${nodes.length} entidades distribuídas.` });
   }, [nodes, edges, setNodes]);
 
+  // ── AI fill all entities directly from graph ──
+  const handleAiFillAll = useCallback(async () => {
+    if (!projectId || !user || nodes.length === 0) return;
+    setAiFillingAll(true);
+    try {
+      // Load full entity data from DB
+      let entQuery = supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description, schema_properties").eq("project_id", projectId);
+      let relQuery = supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId);
+      if (semanticProjectId) {
+        entQuery = entQuery.eq("goal_project_id", semanticProjectId);
+        relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+      }
+      const [entRes, relRes] = await Promise.all([entQuery, relQuery]);
+      const entities = entRes.data || [];
+      const relations = relRes.data || [];
+
+      const entitiesForAi = entities.map((e: any) => ({
+        id: e.id,
+        name: e.name,
+        entity_type: e.entity_type,
+        schema_type: e.schema_type,
+        description: e.description,
+        properties: getSchemaProperties(e.schema_type || "").map((p) => ({
+          name: p.name,
+          description: p.description,
+          example: p.example,
+          required: p.required,
+        })),
+        current_values: e.schema_properties || {},
+      }));
+
+      const relationsForAi = relations.map((r: any) => {
+        const subj = entities.find((e: any) => e.id === r.subject_id);
+        const obj = entities.find((e: any) => e.id === r.object_id);
+        return {
+          subject: subj?.name || r.subject_id,
+          predicate: r.predicate,
+          object: obj?.name || r.object_id,
+        };
+      });
+
+      const { data, error } = await supabase.functions.invoke("semantic-ai-fill", {
+        body: { entities: entitiesForAi, relations: relationsForAi, projectId },
+      });
+
+      if (error) throw error;
+
+      const filled = data?.filled as Array<{ id: string; properties: Record<string, string> }>;
+      if (!filled?.length) {
+        toast({ title: "IA não retornou dados", description: "Tente novamente", variant: "destructive" });
+        return;
+      }
+
+      let savedCount = 0;
+      for (const item of filled) {
+        const existing = entities.find((e: any) => e.id === item.id);
+        if (!existing) continue;
+        const merged = { ...((existing.schema_properties as Record<string, string>) || {}), ...item.properties };
+        const { error: updateError } = await supabase
+          .from("semantic_entities")
+          .update({ schema_properties: merged as any })
+          .eq("id", item.id);
+        if (!updateError) savedCount++;
+      }
+
+      toast({
+        title: `✨ IA preencheu ${savedCount} entidades`,
+        description: "Clique em qualquer entidade para ver as propriedades preenchidas na aba Schema.",
+      });
+    } catch (err: any) {
+      console.error("AI fill error:", err);
+      toast({
+        title: "Erro ao preencher com IA",
+        description: err.message || "Tente novamente",
+        variant: "destructive",
+      });
+    } finally {
+      setAiFillingAll(false);
+    }
+  }, [projectId, user, nodes, semanticProjectId]);
+
   if (!projectId) {
     return (
       <div className="h-[600px] flex items-center justify-center text-muted-foreground">
@@ -688,6 +771,12 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
             <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteAllOpen(true)}>
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Excluir Todos
+            </Button>
+          )}
+          {nodes.length > 0 && (
+            <Button size="sm" variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20" onClick={handleAiFillAll} disabled={aiFillingAll}>
+              {aiFillingAll ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+              {aiFillingAll ? "Preenchendo..." : "IA Preencher Tudo"}
             </Button>
           )}
           {nodes.length > 0 && (
