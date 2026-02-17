@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useLocation } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,18 +67,16 @@ function StatusBadge({ status, map }: { status: string | null; map: Record<strin
 export default function IndexingPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  // Read initial tab from URL hash
-  const getTabFromHash = () => {
-    const hash = window.location.hash.replace("#", "");
-    return ["dashboard", "inventory", "sitemap", "history", "schedule", "accounts"].includes(hash) ? hash : "dashboard";
+  const location = useLocation();
+  const getTabFromHash = (hash: string) => {
+    const h = hash.replace("#", "");
+    return ["dashboard", "inventory", "sitemap", "history", "schedule", "accounts"].includes(h) ? h : "dashboard";
   };
-  const [activeTab, setActiveTab] = useState(getTabFromHash);
+  const [activeTab, setActiveTab] = useState(() => getTabFromHash(location.hash));
 
   useEffect(() => {
-    const onHash = () => setActiveTab(getTabFromHash());
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+    setActiveTab(getTabFromHash(location.hash));
+  }, [location.hash]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
