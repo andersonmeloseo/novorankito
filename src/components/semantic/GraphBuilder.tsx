@@ -776,7 +776,7 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
           {nodes.length > 0 && (
             <Button size="sm" variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20" onClick={handleAiFillAll} disabled={aiFillingAll}>
               {aiFillingAll ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-              {aiFillingAll ? "Preenchendo..." : "IA Preencher Tudo"}
+              {aiFillingAll ? "Preenchendo..." : "Preencher com IA"}
             </Button>
           )}
           {nodes.length > 0 && (
