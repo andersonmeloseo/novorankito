@@ -1,30 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getOpenAIKey, callOpenAI, OpenAIError } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-async function getOpenAIKey(): Promise<string | null> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-  const { data, error } = await supabase
-    .from("api_configurations_decrypted")
-    .select("secret_value")
-    .eq("secret_key_name", "OPENAI_API_KEY")
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (error) {
-    console.error("Error fetching OpenAI key:", error.message);
-    return null;
-  }
-  return data?.secret_value || null;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -38,13 +19,7 @@ serve(async (req) => {
       });
     }
 
-    // Try OpenAI key from admin config first, fallback to Lovable AI
     const openaiKey = await getOpenAIKey();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!openaiKey && !LOVABLE_API_KEY) {
-      throw new Error("Nenhuma API de IA configurada. Configure a OpenAI API no painel Admin > APIs & Chaves.");
-    }
 
     const entityDescriptions = entities.map((e: any) => {
       const propsToFill = (e.properties || [])
@@ -84,61 +59,15 @@ ${relationDescriptions}
 
 Return a JSON array with filled properties for each entity.`;
 
-    let response: Response;
-
-    if (openaiKey) {
-      // Use OpenAI directly
-      response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.3,
-        }),
-      });
-    } else {
-      // Fallback to Lovable AI
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.3,
-        }),
-      });
-    }
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI error:", response.status, t);
-      throw new Error(`AI error: ${response.status}`);
-    }
+    const response = await callOpenAI({
+      apiKey: openaiKey,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      model: "gpt-4o-mini",
+      temperature: 0.3,
+    });
 
     const aiData = await response.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
@@ -162,9 +91,10 @@ Return a JSON array with filled properties for each entity.`;
     });
   } catch (e) {
     console.error("semantic-ai-fill error:", e);
+    const status = e instanceof OpenAIError ? e.status : 500;
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

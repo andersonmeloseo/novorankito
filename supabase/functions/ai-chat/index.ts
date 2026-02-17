@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, validateUUID, jsonResponse, errorResponse } from "../_shared/utils.ts";
+import { getCorsHeaders, validateUUID, errorResponse } from "../_shared/utils.ts";
 import { createLogger, getRequestId } from "../_shared/logger.ts";
+import { getOpenAIKey, callOpenAI, OpenAIError } from "../_shared/openai.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -11,8 +12,7 @@ serve(async (req) => {
   const log = createLogger("ai-chat", requestId);
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const openaiKey = await getOpenAIKey();
 
     const body = await req.json();
 
@@ -122,25 +122,12 @@ DIRETRIZES DE RESPOSTA:
 - Formate tabelas quando apresentar comparativos
 - Sempre termine com uma pergunta ou sugestão de próximo passo`;
 
-    const response = await log.time("ai-gateway-call", () => fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: true,
-      }),
+    const response = await log.time("openai-call", () => callOpenAI({
+      apiKey: openaiKey,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      model: "gpt-4o-mini",
+      stream: true,
     }), { project_id: project_id || "NONE" });
-
-    if (!response.ok) {
-      if (response.status === 429) return errorResponse("Limite de requisições excedido. Tente novamente em alguns segundos.", cors, 429);
-      if (response.status === 402) return errorResponse("Créditos de IA esgotados. Adicione créditos ao workspace.", cors, 402);
-      log.error("AI gateway error", null, { status: response.status });
-      return errorResponse("Erro no gateway de IA", cors);
-    }
 
     log.info("Streaming response started", { project_id: project_id || "NONE" });
 
@@ -149,6 +136,7 @@ DIRETRIZES DE RESPOSTA:
     });
   } catch (e) {
     log.error("Request failed", e);
-    return errorResponse(e instanceof Error ? e.message : "Erro desconhecido", cors);
+    const status = e instanceof OpenAIError ? e.status : 500;
+    return errorResponse(e instanceof Error ? e.message : "Erro desconhecido", cors, status);
   }
 });
