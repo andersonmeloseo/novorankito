@@ -45,7 +45,7 @@ const analiticaNav = [
   { title: "Offline", url: "/analitica-rankito/offline", icon: PhoneCall },
   { title: "Event Builder", url: "/analitica-rankito/event-builder", icon: MousePointerClick },
   { title: "Metas", url: "/analitica-rankito/metas", icon: Flag },
-  { title: "Pixel", url: "/analitica-rankito/pixel", icon: Code },
+  { title: "Instalar o Pixel", url: "/analitica-rankito/pixel", icon: Code },
 ];
 
 const rankRentNav = [
