@@ -7,6 +7,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Try to repair truncated JSON array */
+function tryParseJson(raw: string): any[] {
+  let str = raw.trim();
+  if (str.startsWith("```")) {
+    str = str.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  str = str.trim();
+
+  // Try direct parse first
+  try {
+    const parsed = JSON.parse(str);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { /* continue */ }
+
+  // Try to repair truncated JSON: find last complete object
+  if (str.startsWith("[")) {
+    // Find last '}' that closes an object
+    let lastClose = str.lastIndexOf("}");
+    while (lastClose > 0) {
+      const attempt = str.substring(0, lastClose + 1) + "]";
+      try {
+        const parsed = JSON.parse(attempt);
+        if (Array.isArray(parsed)) {
+          console.log(`Repaired truncated JSON: recovered ${parsed.length} entities`);
+          return parsed;
+        }
+      } catch { /* try earlier closing brace */ }
+      lastClose = str.lastIndexOf("}", lastClose - 1);
+    }
+  }
+
+  return [];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -21,43 +55,28 @@ serve(async (req) => {
 
     const openaiKey = await getOpenAIKey();
 
+    // Limit to max 5 properties per entity to reduce token usage
     const entityDescriptions = entities.map((e: any) => {
       const propsToFill = (e.properties || [])
         .filter((p: any) => !e.current_values?.[p.name]?.trim())
-        .map((p: any) => `  - ${p.name} (${p.required ? "REQUIRED" : "optional"}): ${p.description}. Example: "${p.example}"`)
+        .slice(0, 8) // max 8 props per entity
+        .map((p: any) => `  - ${p.name}: ${p.description}. Ex: "${p.example}"`)
         .join("\n");
 
-      return `Entity "${e.name}" [id=${e.id}] (type: ${e.entity_type}, schema: ${e.schema_type})
-Description: ${e.description || "N/A"}
-Already filled: ${JSON.stringify(e.current_values || {})}
-Properties to fill:
+      return `"${e.name}" [id=${e.id}] (${e.schema_type})
+Props to fill:
 ${propsToFill || "  (none)"}`;
-    }).join("\n\n---\n\n");
+    }).join("\n---\n");
 
-    const relationDescriptions = relations.map((r: any) =>
+    const relationDescriptions = (relations || []).slice(0, 10).map((r: any) =>
       `${r.subject} → ${r.predicate} → ${r.object}`
     ).join("\n");
 
-    const systemPrompt = `You are a Schema.org SEO expert. Fill Schema.org properties for entities.
+    const systemPrompt = `You are a Schema.org SEO expert. Fill properties for entities.
+Return ONLY a JSON array: [{"id":"entity_id","properties":{"prop":"value"}}]
+NO markdown, NO explanation. Use Brazilian Portuguese values. Be concise.`;
 
-RULES:
-- Return ONLY a raw JSON array: [{"id":"entity_id","properties":{"prop":"value"}}]
-- NO markdown, NO code fences, NO explanation — just the JSON array
-- Fill ALL empty required properties and as many optional ones as possible
-- Use realistic Brazilian Portuguese values
-- For URLs use "https://www.example.com/page"
-- For phones use Brazilian format "+55 11 99999-9999"
-- Respect entity relationships when filling values
-- Do NOT include already-filled properties`;
-
-    const userPrompt = `Entities:
-
-${entityDescriptions}
-
-Relationships:
-${relationDescriptions}
-
-Return a JSON array with filled properties for each entity.`;
+    const userPrompt = `Entities:\n${entityDescriptions}\n\nRelationships:\n${relationDescriptions || "none"}\n\nReturn JSON array.`;
 
     const response = await callOpenAI({
       apiKey: openaiKey,
@@ -72,19 +91,14 @@ Return a JSON array with filled properties for each entity.`;
 
     const aiData = await response.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
+    const finishReason = aiData.choices?.[0]?.finish_reason;
     
-    let jsonStr = rawContent.trim();
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
+    console.log("AI finish_reason:", finishReason, "content length:", rawContent.length);
+
+    const filled = tryParseJson(rawContent);
     
-    let filled: any[] = [];
-    try {
-      filled = JSON.parse(jsonStr);
-      if (!Array.isArray(filled)) filled = [];
-    } catch (parseErr) {
-      console.error("Failed to parse AI response:", jsonStr.substring(0, 500));
-      throw new Error("AI retornou formato inválido. Tente novamente.");
+    if (filled.length === 0 && rawContent.length > 10) {
+      console.error("Failed to parse AI response:", rawContent.substring(0, 500));
     }
 
     return new Response(JSON.stringify({ filled }), {
