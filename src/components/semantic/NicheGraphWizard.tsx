@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -16,6 +17,9 @@ import {
   Crown, Layers, MapPin, ShieldCheck, Store,
 } from "lucide-react";
 
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+
 // ── Niche templates ──
 interface NicheEntity {
   name: string;
@@ -28,6 +32,29 @@ interface NicheRelation {
   objectIndex: number;
   predicate: string;
 }
+
+// ── Wizard questions ──
+interface ScopeQuestion {
+  key: string;
+  label: string;
+  description: string;
+  default: boolean;
+  /** Indices of entities to add/remove based on answer */
+  entityIndices: number[];
+}
+interface DataQuestion {
+  key: string;
+  label: string;
+  placeholder: string;
+  /** Index of entity whose name/description gets filled */
+  entityIndex: number;
+  field: "name" | "description";
+}
+interface NicheQuestions {
+  scope: ScopeQuestion[];
+  data: DataQuestion[];
+}
+
 interface NicheTemplate {
   id: string;
   label: string;
@@ -35,7 +62,112 @@ interface NicheTemplate {
   color: string;
   entities: NicheEntity[];
   relations: NicheRelation[];
+  questions?: NicheQuestions;
 }
+
+// ── Questions per niche ──
+const NICHE_QUESTIONS: Record<string, NicheQuestions> = {
+  restaurante: {
+    scope: [
+      { key: "delivery", label: "Tem serviço de delivery?", description: "Adiciona node de Serviço de Delivery", default: true, entityIndices: [8] },
+      { key: "eventos", label: "Tem área para eventos?", description: "Adiciona node de Área de Eventos", default: true, entityIndices: [9] },
+      { key: "chef", label: "Quer destacar o Chef?", description: "Adiciona node do Chef Principal", default: true, entityIndices: [2] },
+    ],
+    data: [
+      { key: "prato", label: "Qual o prato principal da casa?", placeholder: "Ex: Picanha na Brasa", entityIndex: 6, field: "name" },
+      { key: "chef_name", label: "Nome do Chef (se aplicável)", placeholder: "Ex: Chef Roberto", entityIndex: 2, field: "name" },
+    ],
+  },
+  clinica: {
+    scope: [
+      { key: "exames", label: "Oferece serviço de exames?", description: "Adiciona node de Exames", default: true, entityIndices: [7] },
+      { key: "telemedicina", label: "Oferece telemedicina?", description: "Adiciona node de Telemedicina", default: true, entityIndices: [8] },
+      { key: "blog", label: "Tem blog de saúde?", description: "Adiciona Blog de Saúde ao grafo", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "medico", label: "Nome do médico principal", placeholder: "Ex: Dr. Silva", entityIndex: 1, field: "name" },
+      { key: "especialidade", label: "Especialidade principal", placeholder: "Ex: Dermatologia", entityIndex: 2, field: "name" },
+    ],
+  },
+  ecommerce: {
+    scope: [
+      { key: "frete", label: "Oferece frete próprio?", description: "Adiciona node de Frete e Entrega", default: true, entityIndices: [6] },
+      { key: "sac", label: "Tem SAC / Suporte dedicado?", description: "Adiciona node de SAC", default: true, entityIndices: [7] },
+      { key: "blog", label: "Tem blog da loja?", description: "Adiciona Blog da Loja", default: true, entityIndices: [8] },
+      { key: "social", label: "Redes sociais ativas?", description: "Adiciona node de Redes Sociais", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "produto", label: "Nome do produto carro-chefe", placeholder: "Ex: Tênis Runner Pro", entityIndex: 1, field: "name" },
+      { key: "cat_a", label: "Nome da categoria principal", placeholder: "Ex: Calçados Esportivos", entityIndex: 2, field: "name" },
+      { key: "cat_b", label: "Nome da segunda categoria", placeholder: "Ex: Acessórios", entityIndex: 3, field: "name" },
+    ],
+  },
+  advocacia: {
+    scope: [
+      { key: "trabalhista", label: "Atua em Direito Trabalhista?", description: "Inclui Direito Trabalhista", default: true, entityIndices: [3] },
+      { key: "civil", label: "Atua em Direito Civil?", description: "Inclui Direito Civil", default: true, entityIndices: [4] },
+      { key: "blog", label: "Tem blog jurídico?", description: "Inclui Blog Jurídico", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "advogado", label: "Nome do advogado sócio", placeholder: "Ex: Dra. Maria Santos, OAB/SP 12345", entityIndex: 1, field: "name" },
+    ],
+  },
+  academia: {
+    scope: [
+      { key: "nutricao", label: "Oferece acompanhamento nutricional?", description: "Adiciona node de Nutrição", default: true, entityIndices: [9] },
+      { key: "aulas", label: "Tem aulas em grupo?", description: "Adiciona node de Aulas em Grupo", default: true, entityIndices: [3] },
+    ],
+    data: [
+      { key: "personal", label: "Nome do Personal Trainer destaque", placeholder: "Ex: Prof. Lucas", entityIndex: 1, field: "name" },
+      { key: "plano", label: "Nome do plano principal", placeholder: "Ex: Plano Gold", entityIndex: 7, field: "name" },
+    ],
+  },
+  imobiliaria: {
+    scope: [
+      { key: "locacao", label: "Trabalha com locação?", description: "Adiciona node de Locação", default: true, entityIndices: [3] },
+      { key: "financiamento", label: "Oferece assessoria de financiamento?", description: "Adiciona node de Financiamento", default: true, entityIndices: [8] },
+      { key: "blog", label: "Tem blog imobiliário?", description: "Adiciona Blog Imobiliário", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "corretor", label: "Nome do corretor destaque", placeholder: "Ex: Carlos Mendes, CRECI 54321", entityIndex: 1, field: "name" },
+    ],
+  },
+  agencia: {
+    scope: [
+      { key: "social", label: "Oferece Social Media?", description: "Inclui Social Media", default: true, entityIndices: [4] },
+      { key: "webdesign", label: "Oferece Web Design?", description: "Inclui Web Design", default: true, entityIndices: [5] },
+      { key: "portfolio", label: "Tem portfólio de cases?", description: "Adiciona Portfólio", default: true, entityIndices: [7] },
+    ],
+    data: [
+      { key: "ceo", label: "Nome do CEO / Fundador", placeholder: "Ex: Ana Paula", entityIndex: 1, field: "name" },
+    ],
+  },
+  educacao: {
+    scope: [
+      { key: "medio", label: "Tem Ensino Médio?", description: "Inclui Ensino Médio", default: true, entityIndices: [3] },
+      { key: "extra", label: "Tem cursos extracurriculares?", description: "Inclui Cursos Extra", default: true, entityIndices: [4] },
+      { key: "blog", label: "Tem blog educacional?", description: "Inclui Blog Educacional", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "diretor", label: "Nome do(a) Diretor(a)", placeholder: "Ex: Profa. Cristina", entityIndex: 1, field: "name" },
+    ],
+  },
+  automoveis: {
+    scope: [
+      { key: "pecas", label: "Vende peças automotivas?", description: "Inclui node de Peças", default: true, entityIndices: [4] },
+      { key: "guincho", label: "Oferece guincho / socorro?", description: "Inclui Guincho / Socorro", default: true, entityIndices: [9] },
+    ],
+    data: [
+      { key: "mecanico", label: "Nome do mecânico chefe", placeholder: "Ex: João Ferreira", entityIndex: 1, field: "name" },
+    ],
+  },
+  turismo: {
+    scope: [],
+    data: [
+      { key: "guia", label: "Nome do guia de turismo", placeholder: "Ex: Ricardo", entityIndex: 1, field: "name" },
+    ],
+  },
+};
 
 const NICHE_TEMPLATES: NicheTemplate[] = [
   {
@@ -838,10 +970,15 @@ interface Props {
 }
 
 export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }: Props) {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedNiche, setSelectedNiche] = useState<NicheTemplate | null>(null);
   const [businessName, setBusinessName] = useState("");
   const [locationName, setLocationName] = useState("");
+  const [scopeAnswers, setScopeAnswers] = useState<Record<string, boolean>>({});
+  const [dataAnswers, setDataAnswers] = useState<Record<string, string>>({});
+
+  const questions = selectedNiche ? NICHE_QUESTIONS[selectedNiche.id] : null;
+  const hasQuestions = questions && (questions.scope.length > 0 || questions.data.length > 0);
 
   const handleSelect = (t: NicheTemplate) => {
     setSelectedNiche(t);
@@ -849,13 +986,76 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
   };
 
   const handleBack = () => {
-    setStep(1);
-    setSelectedNiche(null);
+    if (step === 3) {
+      setStep(2);
+    } else {
+      setStep(1);
+      setSelectedNiche(null);
+    }
+  };
+
+  const handleNextToQuestions = () => {
+    if (!businessName.trim()) return;
+    if (hasQuestions) {
+      // Initialize scope defaults
+      const defaults: Record<string, boolean> = {};
+      questions!.scope.forEach((q) => { defaults[q.key] = q.default; });
+      setScopeAnswers(defaults);
+      setDataAnswers({});
+      setStep(3);
+    } else {
+      handleGenerate();
+    }
   };
 
   const handleGenerate = () => {
     if (!selectedNiche || !businessName.trim()) return;
-    onGenerate(selectedNiche, businessName.trim(), locationName.trim());
+
+    // Clone template and apply scope/data answers
+    const cloned: NicheTemplate = JSON.parse(JSON.stringify(selectedNiche));
+
+    // Apply data answers — fill entity names
+    if (questions) {
+      questions.data.forEach((dq) => {
+        const val = dataAnswers[dq.key]?.trim();
+        if (val && cloned.entities[dq.entityIndex]) {
+          cloned.entities[dq.entityIndex][dq.field] = val;
+        }
+      });
+
+      // Collect indices to remove (scope answers that are false)
+      const indicesToRemove = new Set<number>();
+      questions.scope.forEach((sq) => {
+        if (scopeAnswers[sq.key] === false) {
+          sq.entityIndices.forEach((i) => indicesToRemove.add(i));
+        }
+      });
+
+      if (indicesToRemove.size > 0) {
+        // Build index mapping (old → new)
+        const oldToNew = new Map<number, number>();
+        let newIdx = 0;
+        for (let i = 0; i < cloned.entities.length; i++) {
+          if (!indicesToRemove.has(i)) {
+            oldToNew.set(i, newIdx++);
+          }
+        }
+
+        // Filter entities
+        cloned.entities = cloned.entities.filter((_, i) => !indicesToRemove.has(i));
+
+        // Remap relations
+        cloned.relations = cloned.relations
+          .filter((r) => !indicesToRemove.has(r.subjectIndex) && !indicesToRemove.has(r.objectIndex))
+          .map((r) => ({
+            ...r,
+            subjectIndex: oldToNew.get(r.subjectIndex)!,
+            objectIndex: oldToNew.get(r.objectIndex)!,
+          }));
+      }
+    }
+
+    onGenerate(cloned, businessName.trim(), locationName.trim());
   };
 
   // Reset on close
@@ -865,6 +1065,8 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
       setSelectedNiche(null);
       setBusinessName("");
       setLocationName("");
+      setScopeAnswers({});
+      setDataAnswers({});
     }
     onOpenChange(o);
   };
@@ -875,15 +1077,42 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
-            {step === 1 ? "Wizard de Grafo — Escolha o Nicho" : `Configurar: ${selectedNiche?.label}`}
+            {step === 1
+              ? "Wizard de Grafo — Escolha o Nicho"
+              : step === 2
+                ? `Configurar: ${selectedNiche?.label}`
+                : `Personalizar: ${selectedNiche?.label}`
+            }
           </DialogTitle>
           <DialogDescription>
             {step === 1
               ? "Selecione o nicho do seu negócio para gerar automaticamente um grafo semântico completo."
-              : "Personalize com o nome do negócio e localização para gerar entidades e relações."
+              : step === 2
+                ? "Personalize com o nome do negócio e localização para gerar entidades e relações."
+                : "Responda as perguntas abaixo para customizar seu grafo com mais precisão."
             }
           </DialogDescription>
         </DialogHeader>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 px-1">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex items-center gap-1.5">
+              <div className={cn(
+                "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors",
+                step >= s
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {step > s ? <Check className="h-3 w-3" /> : s}
+              </div>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                {s === 1 ? "Nicho" : s === 2 ? "Dados" : "Customizar"}
+              </span>
+              {s < 3 && <ArrowRight className="h-3 w-3 text-muted-foreground/50" />}
+            </div>
+          ))}
+        </div>
 
         {step === 1 && (
           <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6" style={{ maxHeight: "calc(85vh - 200px)" }}>
@@ -961,15 +1190,96 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
           </div>
         )}
 
+        {step === 3 && selectedNiche && questions && (
+          <ScrollArea className="flex-1 -mx-6 px-6" style={{ maxHeight: "calc(85vh - 260px)" }}>
+            <div className="space-y-5 py-2 pr-2">
+              {/* Scope questions */}
+              {questions.scope.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5 text-primary" />
+                    Escopo do Grafo
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Ative ou desative nodes opcionais do seu grafo
+                  </p>
+                  <div className="space-y-2">
+                    {questions.scope.map((sq) => (
+                      <div
+                        key={sq.key}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium">{sq.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{sq.description}</p>
+                        </div>
+                        <Switch
+                          checked={scopeAnswers[sq.key] ?? sq.default}
+                          onCheckedChange={(v) =>
+                            setScopeAnswers((prev) => ({ ...prev, [sq.key]: v }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Data questions */}
+              {questions.data.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Dados do Negócio
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Preencha para que os nodes já venham com informações reais
+                  </p>
+                  <div className="space-y-3">
+                    {questions.data.map((dq) => (
+                      <div key={dq.key} className="space-y-1.5">
+                        <Label htmlFor={`dq-${dq.key}`} className="text-xs">{dq.label}</Label>
+                        <Input
+                          id={`dq-${dq.key}`}
+                          placeholder={dq.placeholder}
+                          value={dataAnswers[dq.key] || ""}
+                          onChange={(e) =>
+                            setDataAnswers((prev) => ({ ...prev, [dq.key]: e.target.value }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        )}
+
         <DialogFooter className="gap-2">
-          {step === 2 && (
+          {step > 1 && (
             <Button variant="outline" onClick={handleBack} disabled={generating}>
               <ArrowLeft className="h-3.5 w-3.5 mr-1" />
               Voltar
             </Button>
           )}
           {step === 2 && (
-            <Button onClick={handleGenerate} disabled={!businessName.trim() || generating}>
+            <Button onClick={handleNextToQuestions} disabled={!businessName.trim()}>
+              {hasQuestions ? (
+                <>
+                  <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                  Personalizar
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5 mr-1" />
+                  Gerar Grafo Completo
+                </>
+              )}
+            </Button>
+          )}
+          {step === 3 && (
+            <Button onClick={handleGenerate} disabled={generating}>
               {generating ? (
                 <>
                   <Sparkles className="h-3.5 w-3.5 mr-1 animate-pulse" />
