@@ -59,7 +59,7 @@ export function AgentCard({ agent, onToggle, onEdit, onDelete, onChat }: AgentCa
   return (
     <>
       <div className={cn(
-        "relative rounded-2xl p-[2px] transition-all duration-500 group cursor-pointer",
+        "relative rounded-2xl p-[2px] transition-all duration-500 group cursor-pointer h-full",
         agent.enabled
           ? `bg-gradient-to-r ${meta.gradient} shadow-lg hover:shadow-xl`
           : "bg-border"
@@ -73,7 +73,7 @@ export function AgentCard({ agent, onToggle, onEdit, onDelete, onChat }: AgentCa
         )}
 
         <Card className={cn(
-          "relative rounded-[14px] p-4 flex flex-col gap-3 transition-all duration-300 border-0",
+          "relative rounded-[14px] p-4 flex flex-col gap-3 transition-all duration-300 border-0 h-full",
           !agent.enabled && "opacity-60 grayscale"
         )}>
           <div className="flex items-start gap-3">
