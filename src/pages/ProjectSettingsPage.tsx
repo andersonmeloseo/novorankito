@@ -24,6 +24,7 @@ import { ApiKeysSettings } from "@/components/settings/ApiKeysSettings";
 import { WebhooksSettings } from "@/components/settings/WebhooksSettings";
 import { IntegrationsInfoCard } from "@/components/settings/IntegrationsInfoCard";
 import { TeamSettings } from "@/components/settings/TeamSettings";
+import { GoalsAlertsSettings } from "@/components/settings/GoalsAlertsSettings";
 import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
@@ -282,44 +283,7 @@ export default function ProjectSettingsPage() {
         )}
 
         {tab === "goals" && (
-          <div className="space-y-4">
-            <Card className="p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-medium text-foreground">Objetivos do Agente IA</h3>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Foco principal</Label>
-                  <Input defaultValue="SEO Growth + Leads" className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Meta de cliques/mês</Label>
-                  <Input defaultValue="30000" type="number" className="h-9 text-sm" />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-warning" />
-                <h3 className="text-sm font-medium text-foreground">Alertas & Thresholds</h3>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { label: "Alerta de queda de cliques", desc: "Notificar quando cliques caírem > 20%", enabled: true },
-                  { label: "Alerta de posição", desc: "Notificar quando posição média subir > 5 posições", enabled: true },
-                  { label: "Alerta de erro de indexação", desc: "Notificar falhas consecutivas na fila", enabled: false },
-                ].map((alert) => (
-                  <div key={alert.label} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                    <div>
-                      <span className="text-xs font-medium text-foreground">{alert.label}</span>
-                      <p className="text-[10px] text-muted-foreground">{alert.desc}</p>
-                    </div>
-                    <Switch defaultChecked={alert.enabled} />
-                  </div>
-                ))}
-              </div>
-              <Button size="sm" className="text-xs">Salvar Configurações</Button>
-            </Card>
-          </div>
+          <GoalsAlertsSettings projectId={project.id} />
         )}
 
         {tab === "team" && (
