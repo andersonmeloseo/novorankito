@@ -40,7 +40,7 @@ const PRIORITY_LABELS: Record<string, string> = { high: "Alta", medium: "Média"
 type SortKey = "url" | "url_type" | "url_group" | "status" | "discovered_at" | "meta_title" | "meta_description";
 type SortDir = "asc" | "desc";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 export default function UrlsPage() {
   const { user } = useAuth();
