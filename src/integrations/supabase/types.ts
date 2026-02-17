@@ -2542,6 +2542,7 @@ export type Database = {
           notify_whatsapp: boolean
           owner_id: string
           project_id: string
+          recipient_name: string | null
           schedule_days: number[]
           schedule_time: string
           send_pdf: boolean
@@ -2563,6 +2564,7 @@ export type Database = {
           notify_whatsapp?: boolean
           owner_id: string
           project_id: string
+          recipient_name?: string | null
           schedule_days?: number[]
           schedule_time?: string
           send_pdf?: boolean
@@ -2584,6 +2586,7 @@ export type Database = {
           notify_whatsapp?: boolean
           owner_id?: string
           project_id?: string
+          recipient_name?: string | null
           schedule_days?: number[]
           schedule_time?: string
           send_pdf?: boolean
