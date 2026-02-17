@@ -141,6 +141,14 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
     const nodeMap = new Map<string, Node>();
     const allEdges: Edge[] = [];
 
+    // Compute hierarchy depth for each role
+    const getDepth = (roleId: string): number => {
+      if (roleId === "ceo") return 0;
+      const parentId = hierarchyMap[roleId];
+      if (!parentId) return 0;
+      return 1 + getDepth(parentId);
+    };
+
     // Build children map
     const childrenOf = new Map<string, any[]>();
     roles.forEach((r: any) => {
@@ -150,10 +158,24 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
       childrenOf.get(parentId)!.push(r);
     });
 
+    // Find the latest run for this deployment to get statuses
+    const depRuns = runs.filter((r: any) => r.deployment_id === dep.id);
+    const lastRun = depRuns[0];
+    const agentResults = (lastRun?.agent_results as any[]) || [];
+    const resultByRole = new Map<string, any>();
+    agentResults.forEach((ar: any) => {
+      if (ar.role_id) resultByRole.set(ar.role_id, ar);
+    });
+
     const positionSubtree = (roleId: string, depth: number, startX: number): number => {
       const role = roles.find((r: any) => r.id === roleId);
       if (!role) return startX;
       const children = childrenOf.get(roleId) || [];
+      const runResult = resultByRole.get(roleId);
+
+      const executionStatus = runResult
+        ? (runResult.status === "success" ? "success" : "error")
+        : (lastRun?.status === "running" ? "waiting" : "idle");
 
       if (children.length === 0) {
         nodeMap.set(roleId, {
@@ -164,6 +186,10 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
             label: `${role.emoji} ${role.title}`,
             nodeType: "agent",
             config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
+            hierarchyDepth: getDepth(roleId),
+            roleId: roleId,
+            executionStatus,
+            executionResult: runResult?.result ? String(runResult.result).slice(0, 200) : undefined,
           } as CanvasNodeData,
         });
         return startX + HORIZONTAL_SPACING;
@@ -184,17 +210,30 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
           label: `${role.emoji} ${role.title}`,
           nodeType: "agent",
           config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
+          hierarchyDepth: getDepth(roleId),
+          roleId: roleId,
+          executionStatus,
+          executionResult: runResult?.result ? String(runResult.result).slice(0, 200) : undefined,
         } as CanvasNodeData,
       });
 
       children.forEach((child: any) => {
+        const edgeStatus = resultByRole.get(roleId)?.status === "success";
         allEdges.push({
           id: `e-${ts}-${roleId}-${child.id}`,
           source: `orch-${ts}-${roleId}`,
           target: `orch-${ts}-${child.id}`,
-          animated: true,
-          style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
+          animated: edgeStatus || lastRun?.status === "running",
+          style: {
+            stroke: edgeStatus ? "hsl(142, 71%, 45%)" : "hsl(var(--primary))",
+            strokeWidth: edgeStatus ? 3 : 2,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: edgeStatus ? "hsl(142, 71%, 45%)" : "hsl(var(--primary))",
+          },
+          label: edgeStatus ? "✓ dados passados" : undefined,
+          labelStyle: { fontSize: 9, fill: "hsl(142, 71%, 45%)" },
         });
       });
 
@@ -205,7 +244,12 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
       id: `orch-${ts}-trigger`,
       type: "canvasNode",
       position: { x: 0, y: 0 },
-      data: { label: "Iniciar Orquestrador", nodeType: "trigger", config: { triggerType: "manual" } } as CanvasNodeData,
+      data: {
+        label: "Iniciar Orquestrador",
+        nodeType: "trigger",
+        config: { triggerType: "manual" },
+        executionStatus: lastRun ? "success" : "idle",
+      } as CanvasNodeData,
     };
 
     positionSubtree("ceo", 1, 0);
