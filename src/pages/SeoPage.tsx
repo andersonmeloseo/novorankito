@@ -72,7 +72,7 @@ export default function SeoPage() {
   const { data: gscConnection } = useQuery({
     queryKey: ["gsc-connection", projectId],
     queryFn: async () => {
-      const { data } = await supabase.from("gsc_connections").select("id, connection_name, site_url, last_sync_at").eq("project_id", projectId!).maybeSingle();
+      const { data } = await supabase.from("gsc_connections").select("id, connection_name, site_url, last_sync_at").eq("project_id", projectId!).order("created_at", { ascending: true }).limit(1).maybeSingle();
       return data;
     },
     enabled: !!projectId,
