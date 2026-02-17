@@ -14,7 +14,7 @@ export async function getOpenAIKey(): Promise<string> {
   const { data, error } = await supabase
     .from("api_configurations_decrypted")
     .select("secret_value")
-    .eq("secret_key_name", "OPENAI_API_KEY")
+    .eq("secret_key_name", "OPEN_AI_API_KEY")
     .eq("status", "active")
     .maybeSingle();
 
