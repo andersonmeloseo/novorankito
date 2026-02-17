@@ -488,26 +488,69 @@ function GraphBuilderInner() {
     });
   }, [projectId, user, setNodes, setEdges]);
 
-  // ── Reorganize nodes in a structured layout ──
+  // ── Reorganize nodes in a tree/hierarchical layout to minimize crossings ──
   const handleReorganize = useCallback(async () => {
     if (nodes.length === 0) return;
 
-    // Find root nodes (nodes that are not targets of any edge, or all if none found)
+    // Build adjacency: for each node, which nodes are connected?
+    const adjacency = new Map<string, Set<string>>();
+    nodes.forEach((n) => adjacency.set(n.id, new Set()));
+    edges.forEach((e) => {
+      adjacency.get(e.source)?.add(e.target);
+      adjacency.get(e.target)?.add(e.source);
+    });
+
+    // BFS layering from root nodes (nodes with most connections, or no incoming edges)
     const targetIds = new Set(edges.map((e) => e.target));
-    const roots = nodes.filter((n) => !targetIds.has(n.id));
-    const nonRoots = nodes.filter((n) => targetIds.has(n.id));
-    const ordered = roots.length > 0 ? [...roots, ...nonRoots] : [...nodes];
+    let roots = nodes.filter((n) => !targetIds.has(n.id));
+    if (roots.length === 0) {
+      // pick node with most connections as root
+      roots = [...nodes].sort((a, b) => (adjacency.get(b.id)?.size || 0) - (adjacency.get(a.id)?.size || 0)).slice(0, 1);
+    }
 
-    const cols = Math.max(2, Math.ceil(Math.sqrt(ordered.length)));
-    const spacingX = 320;
-    const spacingY = 200;
+    const layers: string[][] = [];
+    const visited = new Set<string>();
+    let currentLayer = roots.map((r) => r.id);
+    currentLayer.forEach((id) => visited.add(id));
 
-    const updated = ordered.map((node, i) => ({
+    while (currentLayer.length > 0) {
+      layers.push(currentLayer);
+      const nextLayer: string[] = [];
+      for (const nodeId of currentLayer) {
+        const neighbors = adjacency.get(nodeId) || new Set();
+        for (const neighbor of neighbors) {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor);
+            nextLayer.push(neighbor);
+          }
+        }
+      }
+      currentLayer = nextLayer;
+    }
+
+    // Add any disconnected nodes as their own layer
+    const disconnected = nodes.filter((n) => !visited.has(n.id)).map((n) => n.id);
+    if (disconnected.length > 0) layers.push(disconnected);
+
+    // Position: each layer is a row, nodes spread horizontally with generous spacing
+    const spacingY = 250;
+    const spacingX = 350;
+    const positionMap = new Map<string, { x: number; y: number }>();
+
+    layers.forEach((layer, layerIdx) => {
+      const totalWidth = (layer.length - 1) * spacingX;
+      const startX = -totalWidth / 2 + 400;
+      layer.forEach((nodeId, nodeIdx) => {
+        positionMap.set(nodeId, {
+          x: startX + nodeIdx * spacingX,
+          y: layerIdx * spacingY + 100,
+        });
+      });
+    });
+
+    const updated = nodes.map((node) => ({
       ...node,
-      position: {
-        x: (i % cols) * spacingX + 100,
-        y: Math.floor(i / cols) * spacingY + 100,
-      },
+      position: positionMap.get(node.id) || node.position,
     }));
 
     setNodes(updated);
@@ -523,7 +566,7 @@ function GraphBuilderInner() {
       )
     );
     setSaving(false);
-    toast({ title: "Layout reorganizado" });
+    toast({ title: "Layout reorganizado", description: `${layers.length} camadas, ${nodes.length} entidades distribuídas.` });
   }, [nodes, edges, setNodes]);
 
   if (!projectId) {
