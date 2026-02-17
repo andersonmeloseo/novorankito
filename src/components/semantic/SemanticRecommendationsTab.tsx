@@ -18,6 +18,8 @@ interface EntityRow {
   entity_type: string;
   schema_type: string | null;
   description: string | null;
+  position_x: number | null;
+  position_y: number | null;
 }
 
 interface RelationRow {
@@ -36,6 +38,7 @@ interface Recommendation {
   entityId?: string;
   entityName?: string;
   entityType?: string;
+  sourceEntityType?: string;
   action: string;
   icon: React.ElementType;
 }
@@ -93,7 +96,7 @@ export function SemanticRecommendationsTab() {
     if (!projectId) return;
     setLoading(true);
     const [entRes, relRes] = await Promise.all([
-      supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description").eq("project_id", projectId),
+      supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description, position_x, position_y").eq("project_id", projectId),
       supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId),
     ]);
     setEntities(entRes.data || []);
@@ -119,17 +122,46 @@ export function SemanticRecommendationsTab() {
         window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "graph" }));
         toast({ title: "Navegando para o Construtor de Grafo", description: `Clique em "${rec.entityName}" para editar a descrição.` });
       } else if (rec.type === "suggested_entity") {
-        // Auto-create the suggested entity
-        const { error } = await supabase.from("semantic_entities").insert({
+        // Find source entity to position near it and create relation
+        const sourceEntity = entities.find((e) => e.entity_type === rec.sourceEntityType);
+        const baseX = sourceEntity?.position_x ?? 300;
+        const baseY = sourceEntity?.position_y ?? 300;
+        const offsetX = 200 + Math.random() * 100;
+        const offsetY = -100 + Math.random() * 200;
+
+        const { data: newEntity, error } = await supabase.from("semantic_entities").insert({
           name: rec.title.replace("Criar entidade: ", ""),
           entity_type: rec.entityType || "outro",
           project_id: projectId,
           owner_id: user.id,
-          position_x: Math.random() * 400 + 100,
-          position_y: Math.random() * 400 + 100,
-        });
+          position_x: baseX + offsetX,
+          position_y: baseY + offsetY,
+        }).select("id").single();
         if (error) throw error;
-        toast({ title: "Entidade criada!", description: `"${rec.entityType}" adicionada ao grafo.` });
+
+        // Auto-create relation between source and new entity
+        if (sourceEntity && newEntity) {
+          const relSuggestion = RELATION_SUGGESTIONS.find(
+            (rs) => rs.subjectType === rec.sourceEntityType && rs.objectType === rec.entityType
+          ) || RELATION_SUGGESTIONS.find(
+            (rs) => rs.objectType === rec.sourceEntityType && rs.subjectType === rec.entityType
+          );
+
+          const isReverse = relSuggestion?.subjectType === rec.entityType;
+          const subjectId = isReverse ? newEntity.id : sourceEntity.id;
+          const objectId = isReverse ? sourceEntity.id : newEntity.id;
+          const predicate = relSuggestion?.predicate || "relacionado_a";
+
+          await supabase.from("semantic_relations").insert({
+            subject_id: subjectId,
+            object_id: objectId,
+            predicate,
+            project_id: projectId,
+            owner_id: user.id,
+          });
+        }
+
+        toast({ title: "Entidade criada e conectada!", description: `"${rec.entityType}" adicionada e ligada ao grafo.` });
         await fetchData();
       } else if (rec.type === "suggested_relation") {
         // Find matching entities for the relation
@@ -276,6 +308,7 @@ export function SemanticRecommendationsTab() {
               title: `Criar entidade: ${s.name}`,
               description: s.reason,
               entityType: s.type,
+              sourceEntityType: type,
               action: `Crie uma entidade do tipo "${s.type}" no Construtor de Grafo`,
               icon: Plus,
             });
