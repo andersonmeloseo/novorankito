@@ -451,18 +451,25 @@ export function AppSidebar() {
           <div className="h-px bg-sidebar-border/50" />
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="sidebar-section-label">
-            Conta
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accountNav.map((item) => (
-                <NavItem key={item.url} item={item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Collapsible defaultOpen={pathname.startsWith("/account")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                <span>👤 Conta</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {accountNav.map((item) => (
+                    <NavItem key={item.url} item={item} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         {isAdmin && (
           <SidebarGroup>
