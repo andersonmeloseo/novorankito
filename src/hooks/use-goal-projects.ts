@@ -7,13 +7,13 @@ export interface GoalProject {
   owner_id: string;
   name: string;
   description: string | null;
-  module: "goals" | "conversions";
+  module: "goals" | "conversions" | "semantic";
   color: string;
   created_at: string;
   updated_at: string;
 }
 
-export function useGoalProjects(projectId: string | null | undefined, module: "goals" | "conversions") {
+export function useGoalProjects(projectId: string | null | undefined, module: "goals" | "conversions" | "semantic") {
   const queryClient = useQueryClient();
   const queryKey = ["goal-projects", projectId, module];
 

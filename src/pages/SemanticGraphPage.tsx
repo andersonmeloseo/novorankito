@@ -3,8 +3,9 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
-  Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown, Users,
+  Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown, Users, ArrowLeft,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { GraphBuilder } from "@/components/semantic/GraphBuilder";
 import { TriplesTable } from "@/components/semantic/TriplesTable";
@@ -12,6 +13,7 @@ import { SchemaOrgTab } from "@/components/semantic/SchemaOrgTab";
 import { CompetitorAnalysisTab } from "@/components/semantic/CompetitorAnalysisTab";
 import { SemanticDashboardTab } from "@/components/semantic/SemanticDashboardTab";
 import { SemanticRecommendationsTab } from "@/components/semantic/SemanticRecommendationsTab";
+import { SemanticProjectSelector } from "@/components/semantic/SemanticProjectSelector";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
@@ -25,12 +27,38 @@ const TABS = [
 
 export default function SemanticGraphPage() {
   const [activeTab, setActiveTab] = useState("graph");
+  const projectId = localStorage.getItem("rankito_current_project") || "";
+  const [semanticProjectId, setSemanticProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => setActiveTab((e as CustomEvent).detail);
     window.addEventListener("switch-semantic-tab", handler);
     return () => window.removeEventListener("switch-semantic-tab", handler);
   }, []);
+
+  // If no semantic project selected, show the project selector
+  if (!semanticProjectId) {
+    return (
+      <>
+        <TopBar
+          title="Grafo Semântico"
+          subtitle="Selecione ou crie um projeto semântico para organizar suas entidades"
+        />
+        <div className="p-4 sm:p-6 space-y-4 overflow-auto">
+          <FeatureBanner
+            title="Projetos Semânticos"
+            description="Organize seu trabalho de SEO semântico em projetos separados. Cada projeto é uma pasta com seu próprio grafo de entidades, relações e schemas."
+            icon={Network}
+          />
+          <SemanticProjectSelector
+            projectId={projectId}
+            selected={semanticProjectId}
+            onSelect={setSemanticProjectId}
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -39,6 +67,18 @@ export default function SemanticGraphPage() {
         subtitle="Construa o ecossistema de entidades do seu negócio para SEO semântico"
       />
       <div className="p-4 sm:p-6 space-y-4 flex flex-col min-h-0 overflow-auto">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setSemanticProjectId(null)}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Projetos
+          </Button>
+        </div>
+
         <FeatureBanner
           title="Semantic Graph Engine"
           description="Transforme seu negócio em um ecossistema de entidades compreendido pelo Google. Crie entidades, defina relações ontológicas e gere Schema.org automaticamente."
@@ -68,7 +108,7 @@ export default function SemanticGraphPage() {
           </TabsContent>
 
           <TabsContent value="schema" className="mt-4">
-            <SchemaOrgTab projectId={localStorage.getItem("rankito_current_project") || ""} />
+            <SchemaOrgTab projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="competitors" className="mt-4">
