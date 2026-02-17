@@ -20,7 +20,7 @@ const PROJECT_COLORS = [
 
 interface GoalProjectSelectorProps {
   projectId: string | null;
-  module: "goals" | "conversions";
+  module: "goals" | "conversions" | "semantic";
   selected: string | null;
   onSelect: (id: string | null) => void;
 }
