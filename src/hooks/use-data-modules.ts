@@ -63,8 +63,8 @@ export function useSeoMetrics(projectId?: string, dimensionType?: string) {
   return useQuery<SeoMetricRow[]>({
     queryKey: ["seo-metrics", projectId, dimensionType],
     queryFn: async () => {
-      const filters: Record<string, string> = {};
-      if (projectId) filters.project_id = projectId;
+      if (!projectId) return [];
+      const filters: Record<string, string> = { project_id: projectId };
       if (dimensionType) filters.dimension_type = dimensionType;
 
       return fetchAllPaginated<SeoMetricRow>("seo_metrics", {
@@ -73,7 +73,7 @@ export function useSeoMetrics(projectId?: string, dimensionType?: string) {
         maxRows: 2000,
       });
     },
-    enabled: !!user,
+    enabled: !!user && !!projectId,
   });
 }
 
