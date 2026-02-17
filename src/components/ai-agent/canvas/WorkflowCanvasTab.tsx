@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Zap, Bot, Mail, GitBranch, Timer, Split as SplitIcon,
   Merge as MergeIcon, Play, Square, Save, Trash2, Plus,
-  Bell, Loader2, FileText, Sparkles,
+  Bell, Loader2, FileText, Sparkles, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import { CanvasNode } from "./CanvasNode";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import { useWorkflowOrchestrator } from "./useWorkflowOrchestrator";
 import { AIWorkflowGenerator } from "./AIWorkflowGenerator";
+import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
 import type { PresetWorkflow } from "../AgentWorkflows";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,7 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
   const [workflowName, setWorkflowName] = useState("Meu Workflow");
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const [aiGeneratorOpen, setAiGeneratorOpen] = useState(false);
+  const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const idCounter = useRef(10);
 
   const { executeWorkflow, isRunning, abort } = useWorkflowOrchestrator(projectId);
@@ -417,6 +419,13 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
         onOpenChange={setAiGeneratorOpen}
         onGenerated={handleAIGenerated}
         projectId={projectId}
+      />
+
+      {/* Orchestrator Dialog */}
+      <CreateOrchestratorDialog
+        open={orchestratorOpen}
+        onOpenChange={setOrchestratorOpen}
+        onGenerated={handleAIGenerated}
       />
     </div>
   );
