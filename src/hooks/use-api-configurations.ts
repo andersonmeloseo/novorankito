@@ -15,6 +15,7 @@ export interface ApiConfig {
   created_at: string;
   updated_at: string;
   configured_by: string | null;
+  secret_value?: string | null;
 }
 
 export function useApiConfigurations() {
