@@ -1829,6 +1829,21 @@ export function SchemaOrgTab({ projectId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Banner explicativo */}
+      <Card className="p-4 border-primary/20 bg-accent/30">
+        <div className="flex gap-3 items-start">
+          <Code2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">Schema.org — Marcação Estruturada para SEO</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Schema.org é o <strong>vocabulário universal</strong> que o Google, Bing e outros buscadores usam para entender o conteúdo das suas páginas. Ao adicionar marcações JSON-LD corretas, você habilita <strong>rich snippets</strong> (estrelas, FAQ, breadcrumbs, preços) nos resultados de busca, aumentando CTR e visibilidade.
+            </p>
+            <p className="text-[11px] text-muted-foreground/80">
+              💡 <strong>Como usar:</strong> Explore o catálogo de 800+ tipos, use o <em>Builder</em> para montar seu JSON-LD com propriedades herdadas automaticamente, consulte as <em>Amostras</em> prontas para inspiração e valide externamente com o botão de teste do Google.
+            </p>
+          </div>
+        </div>
+      </Card>
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4 space-y-1">
