@@ -18,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, Wand2 } from "lucide-react";
+import { Plus, Loader2, Wand2, LayoutGrid } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -488,6 +488,44 @@ function GraphBuilderInner() {
     });
   }, [projectId, user, setNodes, setEdges]);
 
+  // ── Reorganize nodes in a structured layout ──
+  const handleReorganize = useCallback(async () => {
+    if (nodes.length === 0) return;
+
+    // Find root nodes (nodes that are not targets of any edge, or all if none found)
+    const targetIds = new Set(edges.map((e) => e.target));
+    const roots = nodes.filter((n) => !targetIds.has(n.id));
+    const nonRoots = nodes.filter((n) => targetIds.has(n.id));
+    const ordered = roots.length > 0 ? [...roots, ...nonRoots] : [...nodes];
+
+    const cols = Math.max(2, Math.ceil(Math.sqrt(ordered.length)));
+    const spacingX = 320;
+    const spacingY = 200;
+
+    const updated = ordered.map((node, i) => ({
+      ...node,
+      position: {
+        x: (i % cols) * spacingX + 100,
+        y: Math.floor(i / cols) * spacingY + 100,
+      },
+    }));
+
+    setNodes(updated);
+
+    // Save positions to DB
+    setSaving(true);
+    await Promise.all(
+      updated.map((n) =>
+        supabase
+          .from("semantic_entities")
+          .update({ position_x: n.position.x, position_y: n.position.y })
+          .eq("id", n.id)
+      )
+    );
+    setSaving(false);
+    toast({ title: "Layout reorganizado" });
+  }, [nodes, edges, setNodes]);
+
   if (!projectId) {
     return (
       <div className="h-[600px] flex items-center justify-center text-muted-foreground">
@@ -548,6 +586,12 @@ function GraphBuilderInner() {
             <Wand2 className="h-3.5 w-3.5 mr-1" />
             Wizard por Nicho
           </Button>
+          {nodes.length > 1 && (
+            <Button size="sm" variant="outline" onClick={handleReorganize}>
+              <LayoutGrid className="h-3.5 w-3.5 mr-1" />
+              Reorganizar
+            </Button>
+          )}
         </Panel>
         {nodes.length === 0 && (
           <Panel position="top-center" className="mt-24">
