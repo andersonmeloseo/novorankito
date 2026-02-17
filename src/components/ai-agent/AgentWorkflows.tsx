@@ -245,6 +245,66 @@ const PRESET_WORKFLOWS: PresetWorkflow[] = [
       { agent: "Agente Growth", emoji: "⚡", action: "Plano de otimização", prompt: "Crie um plano de otimização de velocidade priorizado: quais páginas otimizar primeiro baseado no impacto em tráfego e conversões. Sugira melhorias genéricas (compressão, cache, lazy loading)." },
     ],
   },
+  {
+    id: "ecommerce-seo",
+    name: "SEO para E-commerce",
+    description: "Categorias → Produtos → Schema → Resultados",
+    steps: [
+      { agent: "Agente SEO", emoji: "🛒", action: "Audita páginas de produto", prompt: "Analise as páginas de produto/categoria do site: titles, descriptions, schema Product, breadcrumbs, canonical. Identifique problemas e oportunidades." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Performance por categoria", prompt: "Analise tráfego e conversão por landing page de produto/categoria. Identifique as categorias com melhor e pior performance." },
+      { agent: "Agente Growth", emoji: "🎯", action: "Otimizações de produto", prompt: "Crie um plano de otimização para páginas de produto: schema markup, rich snippets, reviews, FAQ, internal linking entre produtos relacionados." },
+    ],
+  },
+  {
+    id: "featured-snippets",
+    name: "Conquista de Featured Snippets",
+    description: "Identifica → Formata → Otimiza → Monitora",
+    steps: [
+      { agent: "Agente SEO", emoji: "⭐", action: "Identifica oportunidades de snippet", prompt: "Identifique keywords do projeto em posição 1-5 que têm featured snippets. Analise o formato atual do snippet (parágrafo, lista, tabela) e se nosso conteúdo está formatado para conquistá-lo." },
+      { agent: "Agente Growth", emoji: "📝", action: "Formata conteúdo para snippets", prompt: "Para cada oportunidade, sugira a formatação ideal do conteúdo: parágrafos concisos de 40-60 palavras, listas ordenadas, tabelas comparativas. Forneça exemplos prontos." },
+      { agent: "Notificador", emoji: "📱", action: "Lista de otimizações", prompt: "Resumo prático: top 10 oportunidades de featured snippet com URL, keyword, formato necessário e exemplo de conteúdo otimizado." },
+    ],
+  },
+  {
+    id: "site-architecture",
+    name: "Arquitetura do Site",
+    description: "Estrutura → Siloing → Internal Links → Melhorias",
+    steps: [
+      { agent: "Agente SEO", emoji: "🏗️", action: "Mapeia arquitetura atual", prompt: "Analise a estrutura do site: profundidade de cliques, distribuição de URLs por nível, páginas órfãs, estrutura de categorias e silos temáticos." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Fluxo de navegação", prompt: "Analise o fluxo de navegação dos usuários: páginas de entrada, caminhos mais comuns, páginas de saída. Identifique onde os usuários se perdem." },
+      { agent: "Agente Growth", emoji: "🔧", action: "Plano de reestruturação", prompt: "Sugira melhorias na arquitetura: reorganização de silos, hub pages, breadcrumbs otimizados, mega menu, e redistribuição de link equity." },
+    ],
+  },
+  {
+    id: "international-expansion",
+    name: "Expansão Internacional",
+    description: "Mercados → Keywords locais → Hreflang → Plano",
+    steps: [
+      { agent: "Agente SEO", emoji: "🌍", action: "Analisa potencial internacional", prompt: "Identifique keywords do projeto com volume significativo em outros países/idiomas. Liste os mercados com maior potencial de expansão." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Tráfego por país", prompt: "Analise o tráfego atual por país: de onde vêm visitantes internacionais? Há demanda não atendida? Compare engagement por localização." },
+      { agent: "Agente Growth", emoji: "🚀", action: "Plano de internacionalização", prompt: "Crie um roadmap de expansão: prioridade de mercados, estratégia de URLs (subdiretório vs subdomínio), implementação de hreflang e localização de conteúdo." },
+    ],
+  },
+  {
+    id: "ai-seo-readiness",
+    name: "Prontidão para AI Search",
+    description: "AI Overview → Citações → Otimização → Futuro",
+    steps: [
+      { agent: "Agente SEO", emoji: "🤖", action: "Analisa presença em AI Overviews", prompt: "Avalie como o site aparece em buscas com AI Overview do Google: keywords afetadas, páginas citadas, impacto no CTR. Identifique riscos e oportunidades." },
+      { agent: "Agente Growth", emoji: "🧠", action: "Estratégia para AI Search", prompt: "Crie uma estratégia de otimização para AI Search: conteúdo E-E-A-T, structured data, citabilidade, authority building. Como se posicionar para ser citado pelas IAs." },
+      { agent: "Notificador", emoji: "📱", action: "Plano de adaptação", prompt: "Resumo: impacto atual da AI Search no projeto, top 5 ações para se adaptar, e métricas para monitorar a transição." },
+    ],
+  },
+  {
+    id: "penalty-check",
+    name: "Verificação de Penalidades",
+    description: "Sinais → Diagnóstico → Recuperação → Monitoramento",
+    steps: [
+      { agent: "Agente SEO", emoji: "⚠️", action: "Detecta sinais de penalidade", prompt: "Verifique sinais de penalidade manual ou algorítmica: quedas bruscas de tráfego, páginas desindexadas, padrões suspeitos no perfil de links, conteúdo duplicado." },
+      { agent: "Agente Analytics", emoji: "📊", action: "Timeline de impacto", prompt: "Crie uma timeline correlacionando quedas de tráfego com datas de updates do Google. Identifique se há correlação com Helpful Content, Core Updates ou Spam Updates." },
+      { agent: "Agente Growth", emoji: "🔄", action: "Plano de recuperação", prompt: "Se houver indícios de penalidade: plano de recuperação com disavow, remoção de conteúdo thin, melhoria de E-E-A-T e timeline de recuperação esperada." },
+    ],
+  },
 ];
 
 const STEP_COLORS: Record<string, { border: string; bg: string; text: string; glow: string }> = {
@@ -488,7 +548,7 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {PRESET_WORKFLOWS.map((workflow) => {
           const isActive = activeWorkflows.has(workflow.id);
           return (
