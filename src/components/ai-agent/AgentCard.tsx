@@ -58,18 +58,25 @@ export function AgentCard({ agent, onToggle, onEdit, onDelete, onChat }: AgentCa
 
   return (
     <>
-      <div className={cn(
-        "relative rounded-2xl p-[2px] transition-all duration-500 group cursor-pointer h-full",
-        agent.enabled
-          ? `bg-gradient-to-r ${meta.gradient} shadow-lg hover:shadow-xl`
-          : "bg-border"
-      )}>
+      <div
+        className={cn(
+          "relative rounded-2xl p-[2px] transition-all duration-500 group cursor-pointer h-full overflow-hidden",
+          !agent.enabled && "bg-border"
+        )}
+        style={agent.enabled ? {
+          background: `linear-gradient(var(--agent-border-angle, 0deg), ${meta.gradient.includes('emerald') ? '#10b981, #06b6d4, #3b82f6' : meta.gradient.includes('blue-500 via-purple') ? '#3b82f6, #a855f7, #ec4899' : meta.gradient.includes('amber') ? '#f59e0b, #f97316, #ef4444' : '#8b5cf6, #a855f7, #d946ef'})`,
+          animation: 'agent-border-spin 3s linear infinite',
+        } : undefined}
+      >
         {/* Animated glow for active agents */}
         {agent.enabled && (
-          <div className={cn(
-            "absolute inset-0 rounded-2xl bg-gradient-to-r opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60",
-            meta.gradient
-          )} />
+          <div
+            className="absolute inset-0 rounded-2xl opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60"
+            style={{
+              background: `linear-gradient(var(--agent-border-angle, 0deg), ${meta.gradient.includes('emerald') ? '#10b981, #06b6d4, #3b82f6' : meta.gradient.includes('blue-500 via-purple') ? '#3b82f6, #a855f7, #ec4899' : meta.gradient.includes('amber') ? '#f59e0b, #f97316, #ef4444' : '#8b5cf6, #a855f7, #d946ef'})`,
+              animation: 'agent-border-spin 3s linear infinite',
+            }}
+          />
         )}
 
         <Card className={cn(
