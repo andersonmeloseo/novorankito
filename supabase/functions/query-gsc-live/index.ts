@@ -106,7 +106,7 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: conn, error: connErr } = await supabase
-      .from("gsc_connections").select("*").eq("project_id", project_id).single();
+      .from("gsc_connections").select("*").eq("project_id", project_id).order("created_at", { ascending: true }).limit(1).maybeSingle();
 
     if (connErr || !conn) {
       log.warn("No GSC connection found", { project_id });

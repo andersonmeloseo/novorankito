@@ -162,11 +162,12 @@ export default function SeoPage() {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
-      // Use today as end date and count N days back — same as GSC's "Last N days"
+      // GSC "Last 28 days" = 28 days ending at the last day with complete data (~3 days ago).
+      // Verified: Jan 18–Feb 14 returns 836 clicks matching GSC's 835. Without delay (Jan 20–Feb 17) returns only 794.
       const today = new Date();
       const days = parseInt(dateRange);
-      to = today;
-      from = subDays(today, days);
+      to = subDays(today, 3);
+      from = subDays(to, days - 1);
     }
 
     const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
