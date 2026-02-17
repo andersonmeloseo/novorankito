@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +36,8 @@ import {
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { format, parseISO, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, subWeeks, startOfQuarter, startOfYear, subYears, endOfYear, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+type GA4Tab = "overview" | "realtime" | "acquisition" | "ai-traffic" | "engagement" | "demographics" | "technology" | "retention" | "ecommerce";
 
 type DatePreset =
   | "today" | "yesterday" | "last7" | "lastWeek" | "last14"
@@ -130,8 +133,24 @@ function DashboardSection({ title, icon: Icon, children, defaultOpen = true }: {
   );
 }
 
+const GA4_TAB_TITLES: Record<GA4Tab, string> = {
+  overview: "Visão Geral",
+  realtime: "Tempo Real",
+  acquisition: "Aquisição de Tráfego",
+  "ai-traffic": "Tráfego de IA",
+  engagement: "Performance",
+  demographics: "Público",
+  technology: "Tecnologia",
+  retention: "Retenção",
+  ecommerce: "E-commerce",
+};
+
 export default function AnalyticsPage() {
   const { user } = useAuth();
+  const { hash } = useLocation();
+  const activeTab: GA4Tab = (hash.replace("#", "") as GA4Tab) || "overview";
+  const tabTitle = GA4_TAB_TITLES[activeTab] || "GA4";
+
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
     queryFn: async () => {
@@ -267,9 +286,9 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <TopBar title="GA4" subtitle="Dashboard GA4 — Análise Avançada" />
+      <TopBar title="GA4" subtitle={`GA4 — ${tabTitle}`} />
       <div className="p-4 sm:p-6 space-y-6">
-        <FeatureBanner icon={Activity} title="Google Analytics 4" description={<>Dashboard avançado com <strong>aquisição</strong>, <strong>engajamento</strong>, <strong>demografia</strong>, <strong>retenção</strong>, <strong>e-commerce</strong> e dados em <strong>tempo real</strong> do GA4.</>} />
+        <FeatureBanner icon={Activity} title={`GA4 — ${tabTitle}`} description={<>Dashboard avançado com <strong>aquisição</strong>, <strong>engajamento</strong>, <strong>demografia</strong>, <strong>retenção</strong>, <strong>e-commerce</strong> e dados em <strong>tempo real</strong> do GA4.</>} />
         {/* Connection bar */}
         {ga4Connection && (
           <AnimatedContainer>
@@ -378,150 +397,159 @@ export default function AnalyticsPage() {
         {hasConnection && (
           <div className="space-y-8">
 
-            {/* ═══ LINHA 1 — KPIs Executivos ═══ */}
-            <DashboardSection title="Visão Geral" icon={TrendingUp}>
-              {loadingOverview ? <KpiSkeleton count={6} /> : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {kpis.slice(0, 6).map(kpi => (
-                    <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
-                  ))}
-                </div>
-              )}
-              {loadingOverview ? <KpiSkeleton count={6} /> : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {kpis.slice(6).map(kpi => (
-                    <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
-                  ))}
-                </div>
-              )}
-            </DashboardSection>
+            {/* ═══ Visão Geral ═══ */}
+            {activeTab === "overview" && (
+              <>
+                <DashboardSection title="KPIs Executivos" icon={TrendingUp}>
+                  {loadingOverview ? <KpiSkeleton count={6} /> : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                      {kpis.slice(0, 6).map(kpi => (
+                        <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
+                      ))}
+                    </div>
+                  )}
+                  {loadingOverview ? <KpiSkeleton count={6} /> : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                      {kpis.slice(6).map(kpi => (
+                        <KpiCard key={kpi.label} label={kpi.label} description={kpi.description} value={kpi.value} change={kpi.change} prefix={kpi.prefix} suffix={kpi.suffix} prevValue={kpi.prevValue} showComparison={compareEnabled} sparklineData={kpi.sparklineData} sparklinePrevData={compareEnabled ? kpi.sparklinePrevData : undefined} sparklineColor={kpi.sparklineColor} />
+                      ))}
+                    </div>
+                  )}
+                </DashboardSection>
 
-            {/* ═══ TEMPO REAL ═══ */}
-            <DashboardSection title="Tempo Real" icon={Zap}>
-              <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
-            </DashboardSection>
+                <DashboardSection title="Tendências" icon={BarChart3}>
+                  {!loadingOverview && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: "Pico de Usuários", value: Math.max(...(trend.map((t: any) => t.totalUsers || 0)), 0), desc: "Maior número de usuários em um único dia" },
+                        { label: "Média Diária", value: trend.length > 0 ? Math.round(trend.reduce((s: number, t: any) => s + (t.totalUsers || 0), 0) / trend.length) : 0, desc: "Média de usuários por dia no período" },
+                        { label: "Total Sessões", value: sessions, desc: "Soma de todas as sessões no período" },
+                        { label: "Pags/Sessão", value: sessions > 0 ? (pageViews / sessions).toFixed(1) : "0", suffix: "", desc: "Média de páginas vistas por sessão" },
+                      ].map(item => (
+                        <Card key={item.label} className="p-3">
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{item.label}</span>
+                            <TooltipProvider delayDuration={200}>
+                              <RadixTooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground cursor-help shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[200px] text-xs">{item.desc}</TooltipContent>
+                              </RadixTooltip>
+                            </TooltipProvider>
+                          </div>
+                          <span className="text-lg font-bold text-foreground">{typeof item.value === 'number' ? item.value.toLocaleString("pt-BR") : item.value}{item.suffix}</span>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
 
-            {/* ═══ LINHA 2 — Tendências ═══ */}
-            <DashboardSection title="Visão Geral de Tendências" icon={BarChart3}>
-              {/* Summary mini-cards */}
-              {!loadingOverview && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "Pico de Usuários", value: Math.max(...(trend.map((t: any) => t.totalUsers || 0)), 0), desc: "Maior número de usuários em um único dia" },
-                    { label: "Média Diária", value: trend.length > 0 ? Math.round(trend.reduce((s: number, t: any) => s + (t.totalUsers || 0), 0) / trend.length) : 0, desc: "Média de usuários por dia no período" },
-                    { label: "Total Sessões", value: sessions, desc: "Soma de todas as sessões no período" },
-                    { label: "Pags/Sessão", value: sessions > 0 ? (pageViews / sessions).toFixed(1) : "0", suffix: "", desc: "Média de páginas vistas por sessão" },
-                  ].map(item => (
-                    <Card key={item.label} className="p-3">
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{item.label}</span>
-                        <TooltipProvider delayDuration={200}>
-                          <RadixTooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground cursor-help shrink-0" />
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[200px] text-xs">{item.desc}</TooltipContent>
-                          </RadixTooltip>
-                        </TooltipProvider>
+                  {!loadingOverview && trendData.length > 1 ? (
+                    <Card className="p-5">
+                      <h3 className="text-sm font-medium text-foreground mb-1">Tendência Diária</h3>
+                      <p className="text-[10px] text-muted-foreground mb-4">Evolução de usuários, sessões, pageviews e eventos ao longo do período. Dados reais do GA4.</p>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="sessionsGradA" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="pvGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="eventsGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.15} />
+                                <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
+                            <RechartsTooltip contentStyle={{ background: "hsl(var(--card) / 0.85)", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", boxShadow: "0 8px 32px -8px hsl(var(--foreground) / 0.18)", padding: "8px 12px" }} />
+                            <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                            <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
+                            <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
+                            <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
+                            <Area type="monotone" dataKey="events" name="Eventos" stroke="hsl(var(--chart-4))" fill="url(#eventsGrad)" strokeWidth={1.5} dot={false} />
+                            {compareEnabled && (
+                              <>
+                                <Area type="monotone" dataKey="prevUsers" name="Usuários (ant.)" stroke="hsl(var(--chart-1))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                                <Area type="monotone" dataKey="prevSessions" name="Sessões (ant.)" stroke="hsl(var(--chart-2))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
+                              </>
+                            )}
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
-                      <span className="text-lg font-bold text-foreground">{typeof item.value === 'number' ? item.value.toLocaleString("pt-BR") : item.value}{item.suffix}</span>
                     </Card>
-                  ))}
-                </div>
-              )}
+                  ) : loadingOverview ? <ChartSkeleton /> : null}
+                </DashboardSection>
+              </>
+            )}
 
-              {/* Main trend chart — full width */}
-              {!loadingOverview && trendData.length > 1 ? (
-                <Card className="p-5">
-                  <h3 className="text-sm font-medium text-foreground mb-1">Tendência Diária</h3>
-                  <p className="text-[10px] text-muted-foreground mb-4">Evolução de usuários, sessões, pageviews e eventos ao longo do período. Dados reais do GA4.</p>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendData} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="sessionsGradA" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="pvGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="eventsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.15} />
-                            <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={45} />
-                        <RechartsTooltip contentStyle={{ background: "hsl(var(--card) / 0.85)", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", boxShadow: "0 8px 32px -8px hsl(var(--foreground) / 0.18)", padding: "8px 12px" }} />
-                        <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-                        <Area type="monotone" dataKey="users" name="Usuários" stroke="hsl(var(--chart-1))" fill="url(#usersGrad)" strokeWidth={2} dot={false} />
-                        <Area type="monotone" dataKey="sessions" name="Sessões" stroke="hsl(var(--chart-2))" fill="url(#sessionsGradA)" strokeWidth={2} dot={false} />
-                        <Area type="monotone" dataKey="pageViews" name="Pageviews" stroke="hsl(var(--chart-3))" fill="url(#pvGrad)" strokeWidth={2} dot={false} />
-                        <Area type="monotone" dataKey="events" name="Eventos" stroke="hsl(var(--chart-4))" fill="url(#eventsGrad)" strokeWidth={1.5} dot={false} />
-                        {compareEnabled && (
-                          <>
-                            <Area type="monotone" dataKey="prevUsers" name="Usuários (ant.)" stroke="hsl(var(--chart-1))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
-                            <Area type="monotone" dataKey="prevSessions" name="Sessões (ant.)" stroke="hsl(var(--chart-2))" strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.4} fill="none" dot={false} />
-                          </>
-                        )}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-              ) : loadingOverview ? <ChartSkeleton /> : null}
-            </DashboardSection>
+            {/* ═══ Tempo Real ═══ */}
+            {activeTab === "realtime" && (
+              <DashboardSection title="Tempo Real" icon={Zap}>
+                <RealtimeTab data={realtimeData} isLoading={loadingRealtime} />
+              </DashboardSection>
+            )}
 
-            {/* ═══ LINHA 3 — Aquisição ═══ */}
-            <DashboardSection title="Aquisição de Tráfego" icon={MousePointerClick}>
-              {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : <AcquisitionTab data={acquisitionData} />}
-            </DashboardSection>
+            {/* ═══ Aquisição ═══ */}
+            {activeTab === "acquisition" && (
+              <DashboardSection title="Aquisição de Tráfego" icon={MousePointerClick}>
+                {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : <AcquisitionTab data={acquisitionData} />}
+              </DashboardSection>
+            )}
 
-            {/* ═══ TRÁFEGO DE IA ═══ */}
-            <DashboardSection title="Tráfego de IA — LLMs & Assistentes" icon={Bot}>
-              {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : (
-                <AiTrafficTab sources={acquisitionData?.sources || []} pages={engagementData?.pages || []} firstUserChannels={acquisitionData?.firstUserChannels || []} />
-              )}
-            </DashboardSection>
+            {/* ═══ Tráfego de IA ═══ */}
+            {activeTab === "ai-traffic" && (
+              <DashboardSection title="Tráfego de IA — LLMs & Assistentes" icon={Bot}>
+                {loadingAcquisition ? <><ChartSkeleton /><TableSkeleton /></> : (
+                  <AiTrafficTab sources={acquisitionData?.sources || []} pages={engagementData?.pages || []} firstUserChannels={acquisitionData?.firstUserChannels || []} />
+                )}
+              </DashboardSection>
+            )}
 
-            {/* ═══ LINHA 4 — Performance ═══ */}
-            <DashboardSection title="Performance — Páginas + Eventos" icon={Eye}>
-              {loadingEngagement ? <><ChartSkeleton /><TableSkeleton /></> : <EngagementTab data={engagementData} />}
-            </DashboardSection>
+            {/* ═══ Performance ═══ */}
+            {activeTab === "engagement" && (
+              <DashboardSection title="Performance — Páginas + Eventos" icon={Eye}>
+                {loadingEngagement ? <><ChartSkeleton /><TableSkeleton /></> : <EngagementTab data={engagementData} />}
+              </DashboardSection>
+            )}
 
-            {/* ═══ LINHA 5 — Público ═══ */}
-            <DashboardSection title="Público — Geo + Demografia + Dispositivos" icon={Globe}>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Demografia & Geolocalização</h3>
-                  {loadingDemographics ? <><ChartSkeleton /><TableSkeleton /></> : <DemographicsTab data={demographicsData} />}
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tecnologia & Dispositivos</h3>
-                  {loadingTechnology ? <><ChartSkeleton /><TableSkeleton /></> : <TechnologyTab data={technologyData} />}
-                </div>
-              </div>
-            </DashboardSection>
+            {/* ═══ Público / Demografia ═══ */}
+            {activeTab === "demographics" && (
+              <DashboardSection title="Público — Geo + Demografia + Dispositivos" icon={Globe}>
+                {loadingDemographics ? <><ChartSkeleton /><TableSkeleton /></> : <DemographicsTab data={demographicsData} />}
+              </DashboardSection>
+            )}
 
-            {/* ═══ LINHA 6 — Retenção + E-commerce ═══ */}
-            <DashboardSection title="Engajamento + Retenção + E-commerce" icon={UserCheck}>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Retenção</h3>
-                  {loadingRetention ? <><ChartSkeleton /><TableSkeleton /></> : <RetentionTab data={retentionData} />}
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">E-commerce</h3>
-                  {loadingEcommerce ? <><ChartSkeleton /><TableSkeleton /></> : <EcommerceTab data={ecommerceData} />}
-                </div>
-              </div>
-            </DashboardSection>
+            {/* ═══ Tecnologia ═══ */}
+            {activeTab === "technology" && (
+              <DashboardSection title="Tecnologia & Dispositivos" icon={Monitor}>
+                {loadingTechnology ? <><ChartSkeleton /><TableSkeleton /></> : <TechnologyTab data={technologyData} />}
+              </DashboardSection>
+            )}
+
+            {/* ═══ Retenção ═══ */}
+            {activeTab === "retention" && (
+              <DashboardSection title="Retenção" icon={UserCheck}>
+                {loadingRetention ? <><ChartSkeleton /><TableSkeleton /></> : <RetentionTab data={retentionData} />}
+              </DashboardSection>
+            )}
+
+            {/* ═══ E-commerce ═══ */}
+            {activeTab === "ecommerce" && (
+              <DashboardSection title="E-commerce" icon={ShoppingCart}>
+                {loadingEcommerce ? <><ChartSkeleton /><TableSkeleton /></> : <EcommerceTab data={ecommerceData} />}
+              </DashboardSection>
+            )}
 
           </div>
         )}
