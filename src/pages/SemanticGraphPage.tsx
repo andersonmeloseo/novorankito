@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
   Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown, Users, ArrowLeft,
+  Target, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
@@ -14,8 +15,12 @@ import { CompetitorAnalysisTab } from "@/components/semantic/CompetitorAnalysisT
 import { SemanticDashboardTab } from "@/components/semantic/SemanticDashboardTab";
 import { SemanticRecommendationsTab } from "@/components/semantic/SemanticRecommendationsTab";
 import { SemanticProjectSelector } from "@/components/semantic/SemanticProjectSelector";
+import { SemanticGoalsTab } from "@/components/semantic/SemanticGoalsTab";
+import { SemanticFeedbackTab } from "@/components/semantic/SemanticFeedbackTab";
 
 const TABS = [
+  { id: "goals", label: "Metas", icon: Target },
+  { id: "feedback", label: "Feedback", icon: MessageSquare },
   { id: "graph", label: "Construtor de Grafo", icon: Network },
   { id: "triples", label: "Triples", icon: GitBranch },
   { id: "schema", label: "Schema.org", icon: Code2 },
@@ -26,7 +31,7 @@ const TABS = [
 ];
 
 export default function SemanticGraphPage() {
-  const [activeTab, setActiveTab] = useState("graph");
+  const [activeTab, setActiveTab] = useState("goals");
   const projectId = localStorage.getItem("rankito_current_project") || "";
   const [semanticProjectId, setSemanticProjectId] = useState<string | null>(null);
 
@@ -98,6 +103,14 @@ export default function SemanticGraphPage() {
               </TabsTrigger>
             ))}
           </TabsList>
+
+          <TabsContent value="goals" className="mt-4">
+            <SemanticGoalsTab projectId={projectId} goalProjectId={semanticProjectId} />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="mt-4">
+            <SemanticFeedbackTab projectId={projectId} goalProjectId={semanticProjectId} />
+          </TabsContent>
 
           <TabsContent value="graph" className="mt-4">
             <GraphBuilder />
