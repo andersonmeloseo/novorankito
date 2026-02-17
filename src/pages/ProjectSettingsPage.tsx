@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2,
@@ -28,6 +28,11 @@ import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 export default function ProjectSettingsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { hash } = useLocation();
+  const navigate = useNavigate();
+  const validTabs = ["general", "integrations", "tracking", "goals", "team", "api", "whitelabel"];
+  const hashTab = hash.replace("#", "");
+  const tab = validTabs.includes(hashTab) ? hashTab : "general";
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["active-project-settings", user?.id],
@@ -139,20 +144,10 @@ export default function ProjectSettingsPage() {
 
   return (
     <>
-      <TopBar title="Configurações" subtitle={`Gerencie o projeto ${project.name}`} />
+      <TopBar title={`Configurações — ${tab === "general" ? "Geral" : tab === "integrations" ? "Integrações" : tab === "tracking" ? "Tracking" : tab === "goals" ? "Metas & Alertas" : tab === "team" ? "Equipe" : tab === "api" ? "API & Webhooks" : "White-Label"}`} subtitle={`Gerencie o projeto ${project.name}`} />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <Tabs defaultValue="general">
-          <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="general" className="text-xs">Geral</TabsTrigger>
-            <TabsTrigger value="integrations" className="text-xs">Integrações</TabsTrigger>
-            <TabsTrigger value="tracking" className="text-xs">Tracking</TabsTrigger>
-            <TabsTrigger value="goals" className="text-xs">Metas & Alertas</TabsTrigger>
-            <TabsTrigger value="team" className="text-xs">Equipe</TabsTrigger>
-            <TabsTrigger value="api" className="text-xs">API & Webhooks</TabsTrigger>
-            <TabsTrigger value="whitelabel" className="text-xs">White-Label</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="general" className="mt-4 space-y-4">
+        {tab === "general" && (
+          <div className="space-y-4">
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">Informações do Projeto</h3>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -249,16 +244,20 @@ export default function ProjectSettingsPage() {
               )}
               <Button size="sm" className="text-xs" onClick={handleSave}>Salvar Alterações</Button>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="integrations" className="mt-4 space-y-4">
+        {tab === "integrations" && (
+          <div className="space-y-4">
             <GscIntegrationCard projectId={project.id} />
             <Ga4IntegrationCard projectId={project.id} />
             <AdsIntegrationCard name="Google Ads" />
             <AdsIntegrationCard name="Meta Ads" />
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="tracking" className="mt-4 space-y-4">
+        {tab === "tracking" && (
+          <div className="space-y-4">
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">Script de Tracking</h3>
               <div className="space-y-1.5">
@@ -277,9 +276,11 @@ export default function ProjectSettingsPage() {
                 </div>
               </div>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="goals" className="mt-4 space-y-4">
+        {tab === "goals" && (
+          <div className="space-y-4">
             <Card className="p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-primary" />
@@ -316,9 +317,11 @@ export default function ProjectSettingsPage() {
               </div>
               <Button size="sm" className="text-xs">Salvar Configurações</Button>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="team" className="mt-4 space-y-4">
+        {tab === "team" && (
+          <div className="space-y-4">
             <Card className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">Membros do Projeto</h3>
@@ -343,17 +346,21 @@ export default function ProjectSettingsPage() {
                 ))
               )}
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="api" className="mt-4 space-y-4">
+        {tab === "api" && (
+          <div className="space-y-4">
             <ApiKeysSettings projectId={project.id} />
             <WebhooksSettings projectId={project.id} />
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="whitelabel" className="mt-4 space-y-4">
+        {tab === "whitelabel" && (
+          <div className="space-y-4">
             <WhiteLabelSettings projectId={project.id} />
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </>
   );
