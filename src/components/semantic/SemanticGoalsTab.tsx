@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Stethoscope, ShoppingBag, UtensilsCrossed, Scale, Home,
-  Award, Layers, MapPin, BookOpen,
+  Award, Layers, MapPin, BookOpen, Target,
 };
 
 const TYPE_LABELS = {
