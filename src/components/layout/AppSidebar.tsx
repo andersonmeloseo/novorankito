@@ -29,9 +29,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
-  { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const rankitoAiNav = [
+  { title: "Chat", url: "/rankito-ai#chat", icon: Bot },
+  { title: "Agentes", url: "/rankito-ai#agents", icon: Users },
+  { title: "Workflows", url: "/rankito-ai#workflows", icon: Target },
+  { title: "Agendamentos", url: "/rankito-ai#schedules", icon: CalendarClock },
 ];
 
 const ga4Nav = [
@@ -260,6 +266,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>🤖 Rankito IA</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {rankitoAiNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <Collapsible defaultOpen={pathname.startsWith("/seo")}>
           <SidebarGroup>
