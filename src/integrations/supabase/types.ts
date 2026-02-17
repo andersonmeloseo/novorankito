@@ -293,6 +293,7 @@ export type Database = {
           is_configured: boolean
           name: string
           secret_key_name: string
+          secret_value: string | null
           service_name: string
           status: string
           updated_at: string
@@ -308,6 +309,7 @@ export type Database = {
           is_configured?: boolean
           name: string
           secret_key_name: string
+          secret_value?: string | null
           service_name: string
           status?: string
           updated_at?: string
@@ -323,6 +325,7 @@ export type Database = {
           is_configured?: boolean
           name?: string
           secret_key_name?: string
+          secret_value?: string | null
           service_name?: string
           status?: string
           updated_at?: string
@@ -2540,6 +2543,57 @@ export type Database = {
       }
     }
     Views: {
+      api_configurations_decrypted: {
+        Row: {
+          base_url: string | null
+          category: string | null
+          configured_by: string | null
+          created_at: string | null
+          description: string | null
+          docs_url: string | null
+          id: string | null
+          is_configured: boolean | null
+          name: string | null
+          secret_key_name: string | null
+          secret_value: string | null
+          service_name: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_url?: string | null
+          category?: string | null
+          configured_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          docs_url?: string | null
+          id?: string | null
+          is_configured?: boolean | null
+          name?: string | null
+          secret_key_name?: string | null
+          secret_value?: never
+          service_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_url?: string | null
+          category?: string | null
+          configured_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          docs_url?: string | null
+          id?: string | null
+          is_configured?: boolean | null
+          name?: string | null
+          secret_key_name?: string | null
+          secret_value?: never
+          service_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ga4_connections_decrypted: {
         Row: {
           client_email: string | null
