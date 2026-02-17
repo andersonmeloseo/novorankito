@@ -22,8 +22,18 @@ const SeoPage = lazy(() => import("@/pages/SeoPage"));
 const GA4Page = lazy(() => import("@/pages/AnalyticsPage"));
 const IndexingPage = lazy(() => import("@/pages/IndexingPage"));
 const AiAgentPage = lazy(() => import("@/pages/AiAgentPage"));
-const TrackingPage = lazy(() => import("@/pages/TrackingPage"));
-const ConversionsPage = lazy(() => import("@/pages/ConversionsPage"));
+const TrackingPage = lazy(() => import("@/pages/analitica/AnaliticaOverviewPage"));
+// Analítica sub-pages
+const AnaliticaEventosPage = lazy(() => import("@/pages/analitica/AnaliticaEventosPage"));
+const AnaliticaSessoesPage = lazy(() => import("@/pages/analitica/AnaliticaSessoesPage"));
+const AnaliticaHeatmapsPage = lazy(() => import("@/pages/analitica/AnaliticaHeatmapsPage"));
+const AnaliticaEcommercePage = lazy(() => import("@/pages/analitica/AnaliticaEcommercePage"));
+const AnaliticaJornadaPage = lazy(() => import("@/pages/analitica/AnaliticaJornadaPage"));
+const AnaliticaAdsUtmPage = lazy(() => import("@/pages/analitica/AnaliticaAdsUtmPage"));
+const AnaliticaOfflinePage = lazy(() => import("@/pages/analitica/AnaliticaOfflinePage"));
+const AnaliticaEventBuilderPage = lazy(() => import("@/pages/analitica/AnaliticaEventBuilderPage"));
+const AnaliticaMetasPage = lazy(() => import("@/pages/analitica/AnaliticaMetasPage"));
+const AnaliticaPixelPage = lazy(() => import("@/pages/analitica/AnaliticaPixelPage"));
 const AdsPage = lazy(() => import("@/pages/AdsPage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
 const ProjectSettingsPage = lazy(() => import("@/pages/ProjectSettingsPage"));
@@ -100,7 +110,16 @@ const App = () => (
                   <Route path="/indexing" element={<IndexingPage />} />
                   <Route path="/rankito-ai" element={<AiAgentPage />} />
                   <Route path="/analitica-rankito" element={<TrackingPage />} />
-                  <Route path="/conversions" element={<ConversionsPage />} />
+                  <Route path="/analitica-rankito/eventos" element={<AnaliticaEventosPage />} />
+                  <Route path="/analitica-rankito/sessoes" element={<AnaliticaSessoesPage />} />
+                  <Route path="/analitica-rankito/heatmaps" element={<AnaliticaHeatmapsPage />} />
+                  <Route path="/analitica-rankito/ecommerce" element={<AnaliticaEcommercePage />} />
+                  <Route path="/analitica-rankito/jornada" element={<AnaliticaJornadaPage />} />
+                  <Route path="/analitica-rankito/ads-utm" element={<AnaliticaAdsUtmPage />} />
+                  <Route path="/analitica-rankito/offline" element={<AnaliticaOfflinePage />} />
+                  <Route path="/analitica-rankito/event-builder" element={<AnaliticaEventBuilderPage />} />
+                  <Route path="/analitica-rankito/metas" element={<AnaliticaMetasPage />} />
+                  <Route path="/analitica-rankito/pixel" element={<AnaliticaPixelPage />} />
                   <Route path="/ads" element={<AdsPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/project-settings" element={<ProjectSettingsPage />} />
