@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
@@ -33,10 +34,27 @@ const TABS = [
 ];
 
 export default function SemanticGraphPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("goals");
-  const projectId = localStorage.getItem("rankito_current_project") || "";
+  const [projectId, setProjectId] = useState(localStorage.getItem("rankito_current_project") || "");
   const [semanticProjectId, setSemanticProjectId] = useState<string | null>(null);
   const [implementationActivated, setImplementationActivated] = useState(false);
+
+  // Sync projectId with localStorage
+  useEffect(() => {
+    const sync = () => {
+      const stored = localStorage.getItem("rankito_current_project") || "";
+      if (stored !== projectId) setProjectId(stored);
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener("rankito_project_changed", sync);
+    const interval = setInterval(sync, 1000);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("rankito_project_changed", sync);
+      clearInterval(interval);
+    };
+  }, [projectId]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -47,6 +65,23 @@ export default function SemanticGraphPage() {
     window.addEventListener("switch-semantic-tab", handler);
     return () => window.removeEventListener("switch-semantic-tab", handler);
   }, []);
+
+  // If no main project selected, show prompt
+  if (!projectId) {
+    return (
+      <>
+        <TopBar title="Grafo Semântico" subtitle="Selecione um projeto para começar" />
+        <div className="p-6 flex flex-col items-center justify-center h-[60vh] text-center gap-4">
+          <Network className="h-16 w-16 text-muted-foreground/20" />
+          <h2 className="text-lg font-bold text-foreground">Nenhum projeto selecionado</h2>
+          <p className="text-sm text-muted-foreground max-w-md">Selecione um projeto na barra lateral ou crie um novo para começar.</p>
+          <Button onClick={() => navigate("/projects")} className="gap-2">
+            Ver Projetos
+          </Button>
+        </div>
+      </>
+    );
+  }
 
   // If no semantic project selected, show the project selector
   if (!semanticProjectId) {
