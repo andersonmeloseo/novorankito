@@ -30,6 +30,7 @@ import { NodeConfigPanel } from "./NodeConfigPanel";
 import { useWorkflowOrchestrator } from "./useWorkflowOrchestrator";
 import { AIWorkflowGenerator } from "./AIWorkflowGenerator";
 import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
+import { OrchestratorDashboard } from "./OrchestratorDashboard";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
 import type { PresetWorkflow } from "../AgentWorkflows";
 import { supabase } from "@/integrations/supabase/client";
@@ -429,7 +430,13 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
         open={orchestratorOpen}
         onOpenChange={setOrchestratorOpen}
         onGenerated={handleAIGenerated}
+        projectId={projectId}
       />
+
+      {/* Orchestrator Dashboard - bottom right */}
+      <div className="absolute bottom-2 right-2 z-10 max-w-[380px] max-h-[300px] overflow-y-auto">
+        <OrchestratorDashboard projectId={projectId} />
+      </div>
     </div>
   );
 }

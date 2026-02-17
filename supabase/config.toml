@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.semantic-ai-fill]
 verify_jwt = false
+
+[functions.run-orchestrator]
+verify_jwt = false
