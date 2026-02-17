@@ -1,0 +1,2 @@
+ALTER TABLE public.goal_projects DROP CONSTRAINT goal_projects_module_check;
+ALTER TABLE public.goal_projects ADD CONSTRAINT goal_projects_module_check CHECK (module = ANY (ARRAY['goals'::text, 'conversions'::text, 'semantic'::text]));
