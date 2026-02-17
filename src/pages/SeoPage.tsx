@@ -230,34 +230,40 @@ export default function SeoPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // KPIs - prefer live GSC "date" dimension (daily totals) for most accurate numbers
-  const liveDateCurrent = comparisonData?.date?.current || [];
-  const liveDatePrev = comparisonData?.date?.previous || [];
-  const useLive = liveDateCurrent.length > 0;
+  // KPIs - use exact GSC aggregate totals (queried without dimensions = exact match with GSC UI)
+  const liveCurrentTotals = comparisonData?.totals?.current;
+  const livePrevTotals = comparisonData?.totals?.previous;
+  const useLive = !!liveCurrentTotals;
 
   const totalClicks = useLive
-    ? liveDateCurrent.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    ? liveCurrentTotals.clicks
     : metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = useLive
-    ? liveDateCurrent.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    ? liveCurrentTotals.impressions
     : metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
-  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-  const weightedPositionSum = useLive
-    ? liveDateCurrent.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
-    : metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
-  const avgPosition = totalImpressions > 0 ? weightedPositionSum / totalImpressions : 0;
+  const avgCtr = useLive
+    ? liveCurrentTotals.ctr
+    : (totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
+  const avgPosition = useLive
+    ? liveCurrentTotals.position
+    : (totalImpressions > 0
+      ? metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0) / totalImpressions
+      : 0);
 
   const prevClicks = useLive
-    ? liveDatePrev.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    ? livePrevTotals.clicks
     : prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const prevImpressions = useLive
-    ? liveDatePrev.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    ? livePrevTotals.impressions
     : prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
-  const prevAvgCtr = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
-  const prevWeightedPos = useLive
-    ? liveDatePrev.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
-    : prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
-  const prevAvgPosition = prevImpressions > 0 ? prevWeightedPos / prevImpressions : 0;
+  const prevAvgCtr = useLive
+    ? livePrevTotals.ctr
+    : (prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0);
+  const prevAvgPosition = useLive
+    ? livePrevTotals.position
+    : (prevImpressions > 0
+      ? prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0) / prevImpressions
+      : 0);
 
   const pctChange = (curr: number, prev: number) => prev === 0 ? 0 : parseFloat((((curr - prev) / prev) * 100).toFixed(1));
 
