@@ -46,6 +46,7 @@ const rankitoAiNav = [
   { title: "Chat", url: "/rankito-ai#chat", icon: Bot },
   { title: "Agentes", url: "/rankito-ai#agents", icon: Users },
   { title: "Workflows", url: "/rankito-ai#workflows", icon: Target },
+  { title: "Canvas", url: "/rankito-ai#canvas", icon: Network },
   { title: "Agendamentos", url: "/rankito-ai#schedules", icon: CalendarClock },
 ];
 

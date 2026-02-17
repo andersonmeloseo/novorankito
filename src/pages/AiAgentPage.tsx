@@ -15,6 +15,7 @@ import { AgentCard } from "@/components/ai-agent/AgentCard";
 import { CreateAgentDialog } from "@/components/ai-agent/CreateAgentDialog";
 import { AgentWorkflows } from "@/components/ai-agent/AgentWorkflows";
 import { WorkflowSchedulesTab } from "@/components/ai-agent/WorkflowSchedulesTab";
+import { WorkflowCanvasTab } from "@/components/ai-agent/canvas/WorkflowCanvasTab";
 
 const SYSTEM_AGENTS = [
   {
@@ -364,7 +365,7 @@ export default function AiAgentPage() {
   const { hash } = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const validTabs = ["chat", "agents", "workflows", "schedules"];
+  const validTabs = ["chat", "agents", "workflows", "canvas", "schedules"];
   const hashTab = hash.replace("#", "");
   const tab = validTabs.includes(hashTab) ? hashTab : "chat";
   const setTab = (t: string) => navigate(`/rankito-ai#${t}`, { replace: true });
@@ -489,7 +490,7 @@ export default function AiAgentPage() {
 
   return (
     <>
-      <TopBar title={`Rankito IA — ${tab === "chat" ? "Chat" : tab === "agents" ? "Agentes" : tab === "workflows" ? "Workflows" : "Agendamentos"}`} subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
+      <TopBar title={`Rankito IA — ${tab === "chat" ? "Chat" : tab === "agents" ? "Agentes" : tab === "workflows" ? "Workflows" : tab === "canvas" ? "Canvas" : "Agendamentos"}`} subtitle="Assistente conversacional com dados reais, agentes autônomos e workflows automatizados" />
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureBanner icon={Bot} title="Rankito IA" description={<>Converse com <strong>agentes especializados</strong> que analisam dados reais do seu projeto, criam <strong>workflows automatizados</strong> e enviam relatórios por e-mail e WhatsApp.</>} />
 
@@ -554,6 +555,10 @@ export default function AiAgentPage() {
               setTab("chat");
             }}
           />
+        )}
+
+        {tab === "canvas" && (
+          <WorkflowCanvasTab projectId={projectId || undefined} />
         )}
 
         {tab === "schedules" && (
