@@ -29,7 +29,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
-  { title: "SEO", url: "/seo#queries", icon: Search, tourId: "seo" },
   { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
   { title: "Relatórios", url: "/reports", icon: FileText },
