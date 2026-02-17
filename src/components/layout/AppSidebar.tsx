@@ -219,13 +219,13 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="p-4 pb-3 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-glow ring-1 ring-white/10">
-            <span className="text-sm font-bold text-primary-foreground font-display tracking-tight">R</span>
+         <div className="flex items-center gap-2.5 mb-4">
+          <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-glow ring-1 ring-white/10 animate-[spin_8s_linear_infinite]">
+            <span className="text-sm font-bold text-primary-foreground font-display tracking-tight animate-[spin_8s_linear_infinite_reverse]">R</span>
           </div>
           <div>
-            <span className="font-bold text-base text-sidebar-primary-foreground font-display tracking-tight block leading-tight">Rankito</span>
-            <span className="text-[10px] text-sidebar-foreground/40">SEO Intelligence</span>
+            <span className="font-bold text-base text-transparent bg-clip-text bg-gradient-to-r from-white via-sidebar-primary to-white bg-[length:200%_100%] animate-[shimmer-text_3s_ease-in-out_infinite] font-display tracking-tight block leading-tight">Rankito</span>
+            <span className="text-[10px] text-sidebar-foreground/50">SEO Intelligence</span>
           </div>
         </div>
 
