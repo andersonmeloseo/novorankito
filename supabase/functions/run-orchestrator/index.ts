@@ -36,8 +36,24 @@ serve(async (req) => {
   try {
     const { deployment_id, project_id, owner_id, roles, hierarchy, trigger_type } = await req.json();
     
+    // Fetch OpenAI key from api_configurations table
+    const { data: apiKeyRow, error: apiKeyErr } = await supabase
+      .from("api_configurations_decrypted")
+      .select("secret_value")
+      .eq("secret_key_name", "OPEN_AI_API_KEY")
+      .eq("status", "active")
+      .maybeSingle();
+
+    // Fallback to LOVABLE_API_KEY if no OpenAI key configured
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const useOpenAI = !!(apiKeyRow?.secret_value);
+    const aiApiKey = apiKeyRow?.secret_value || LOVABLE_API_KEY;
+    const aiEndpoint = useOpenAI
+      ? "https://api.openai.com/v1/chat/completions"
+      : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const aiModel = useOpenAI ? "gpt-4o-mini" : "google/gemini-2.5-flash";
+
+    if (!aiApiKey) throw new Error("Nenhuma chave de IA configurada. Configure a OpenAI em Admin > APIs ou ative o Lovable AI.");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -134,14 +150,14 @@ IMPORTANTE:
 
         const userPrompt = `Execute sua rotina ${role.routine.frequency} agora. Analise os dados do projeto, gere seu relatório e liste as ações autônomas que está tomando.`;
 
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch(aiEndpoint, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${aiApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: aiModel,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
