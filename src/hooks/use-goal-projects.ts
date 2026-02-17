@@ -20,28 +20,40 @@ export function useGoalProjects(projectId: string | null | undefined, module: "g
   const query = useQuery({
     queryKey,
     queryFn: async (): Promise<GoalProject[]> => {
-      if (!projectId) return [];
-      const { data, error } = await supabase
+      let q = supabase
         .from("goal_projects" as any)
         .select("*")
-        .eq("project_id", projectId)
         .eq("module", module)
         .order("created_at", { ascending: false });
+      if (projectId) {
+        q = q.eq("project_id", projectId);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as unknown as GoalProject[];
     },
-    enabled: !!projectId,
     staleTime: 30_000,
   });
 
   const createProject = useMutation({
     mutationFn: async (payload: { name: string; description?: string; color?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !projectId) throw new Error("Auth required");
+      if (!user) throw new Error("Auth required");
+      // Use provided projectId or fetch user's first project as fallback
+      let resolvedProjectId = projectId;
+      if (!resolvedProjectId) {
+        const { data: projects } = await supabase
+          .from("projects")
+          .select("id")
+          .eq("owner_id", user.id)
+          .limit(1);
+        resolvedProjectId = projects?.[0]?.id;
+      }
+      if (!resolvedProjectId) throw new Error("Nenhum projeto encontrado. Crie um projeto primeiro.");
       const { data, error } = await supabase
         .from("goal_projects" as any)
         .insert({
-          project_id: projectId,
+          project_id: resolvedProjectId,
           owner_id: user.id,
           name: payload.name,
           description: payload.description || null,
