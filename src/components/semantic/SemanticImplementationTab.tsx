@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import {
   FileCode, Globe, ArrowRight, Sparkles, Loader2, Copy, Check,
-  ExternalLink, Link2, ChevronDown, ChevronUp, Code2, Layers,
-  FileJson, Wand2, CheckCircle2, AlertCircle, Layout,
+  Link2, ChevronDown, ChevronUp, Code2, Layers,
+  Wand2, CheckCircle2, AlertCircle, Layout, Target, Zap,
+  TrendingUp, Shield, Star, BookOpen, ExternalLink, Award,
+  Lightbulb, BarChart3, Network,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,120 +67,128 @@ function suggestSlug(entity: Entity): string {
   return typeMap[entity.entity_type] || `/${name}`;
 }
 
-// Group entities into logical pages
 function buildPagePlan(entities: Entity[], relations: Relation[]): PagePlan[] {
   const pages: PagePlan[] = [];
-  const entityMap = new Map(entities.map((e) => [e.id, e]));
-
-  // Group: main business = homepage
   const mainEntity = entities.find((e) => e.entity_type === "empresa");
-  const homeEntities = entities.filter((e) =>
-    ["empresa", "gbp", "avaliacao"].includes(e.entity_type)
-  );
+  const homeEntities = entities.filter((e) => ["empresa", "gbp", "avaliacao"].includes(e.entity_type));
 
   if (mainEntity) {
     pages.push({
-      slug: "/",
-      title: `Página Inicial — ${mainEntity.name}`,
+      slug: "/", title: `Página Inicial — ${mainEntity.name}`,
       entityIds: homeEntities.map((e) => e.id),
       schemas: [...new Set(homeEntities.map((e) => e.schema_type).filter(Boolean))] as string[],
-      linkedPages: [],
-      description: "Página principal com Organization/LocalBusiness, AggregateRating e breadcrumbs",
+      linkedPages: [], description: "Página principal com Organization/LocalBusiness",
     });
   }
 
-  // About page for people
   const people = entities.filter((e) => e.entity_type === "pessoa");
   if (people.length > 0) {
     pages.push({
-      slug: "/sobre",
-      title: "Sobre / Equipe",
+      slug: "/sobre", title: "Sobre / Equipe",
       entityIds: people.map((e) => e.id),
       schemas: ["Person", ...(mainEntity ? [mainEntity.schema_type || "Organization"] : [])].filter(Boolean) as string[],
-      linkedPages: ["/"],
-      description: "Página sobre com dados de E-E-A-T, credenciais e sameAs dos autores/profissionais",
+      linkedPages: ["/"], description: "E-E-A-T e credenciais",
     });
   }
 
-  // Service pages
   const services = entities.filter((e) => e.entity_type === "servico");
   if (services.length > 0) {
     pages.push({
-      slug: "/servicos",
-      title: "Página de Serviços",
+      slug: "/servicos", title: "Serviços",
       entityIds: services.map((e) => e.id),
       schemas: ["Service", "BreadcrumbList", "FAQPage"],
-      linkedPages: ["/", "/contato"],
-      description: "Listagem de serviços com Schema Service e FAQ",
+      linkedPages: ["/", "/contato"], description: "Listagem de serviços",
     });
     services.forEach((s) => {
       pages.push({
-        slug: suggestSlug(s),
-        title: s.name,
-        entityIds: [s.id],
-        schemas: [s.schema_type || "Service", "BreadcrumbList"],
-        linkedPages: ["/servicos", "/contato"],
-        description: `Página dedicada ao serviço "${s.name}" com Schema detalhado`,
+        slug: suggestSlug(s), title: s.name,
+        entityIds: [s.id], schemas: [s.schema_type || "Service", "BreadcrumbList"],
+        linkedPages: ["/servicos", "/contato"], description: `Página do serviço "${s.name}"`,
       });
     });
   }
 
-  // Product pages
   const products = entities.filter((e) => e.entity_type === "produto");
   if (products.length > 0) {
     pages.push({
-      slug: "/produtos",
-      title: "Página de Produtos",
+      slug: "/produtos", title: "Produtos",
       entityIds: products.map((e) => e.id),
       schemas: ["Product", "Offer", "BreadcrumbList"],
-      linkedPages: ["/"],
-      description: "Listagem de produtos com Schema Product e Offer",
+      linkedPages: ["/"], description: "Produtos com Schema Product",
     });
   }
 
-  // Contact page for locations
   const locations = entities.filter((e) => e.entity_type === "local");
   if (locations.length > 0) {
     pages.push({
-      slug: "/contato",
-      title: "Contato / Localização",
+      slug: "/contato", title: "Contato / Localização",
       entityIds: locations.map((e) => e.id),
       schemas: ["PostalAddress", "ContactPage", "LocalBusiness"],
-      linkedPages: ["/"],
-      description: "Página de contato com endereço, mapa e horários de funcionamento",
+      linkedPages: ["/"], description: "Contato com endereço e mapa",
     });
   }
 
-  // Content pages
   const content = entities.filter((e) => e.entity_type === "conteudo");
   if (content.length > 0) {
     pages.push({
-      slug: "/blog",
-      title: "Blog / Conteúdo",
+      slug: "/blog", title: "Blog / Conteúdo",
       entityIds: content.map((e) => e.id),
       schemas: ["Article", "BlogPosting", "BreadcrumbList"],
-      linkedPages: ["/", "/sobre"],
-      description: "Hub de conteúdo com artigos estruturados e author markup",
+      linkedPages: ["/", "/sobre"], description: "Hub de conteúdo",
     });
   }
 
-  // Add cross-links based on relations
+  // Cross-links
   const slugByEntity = new Map<string, string>();
-  pages.forEach((p) => {
-    p.entityIds.forEach((eid) => slugByEntity.set(eid, p.slug));
-  });
+  pages.forEach((p) => p.entityIds.forEach((eid) => slugByEntity.set(eid, p.slug)));
   relations.forEach((r) => {
     const fromSlug = slugByEntity.get(r.subject_id);
     const toSlug = slugByEntity.get(r.object_id);
     if (fromSlug && toSlug && fromSlug !== toSlug) {
       const page = pages.find((p) => p.slug === fromSlug);
-      if (page && !page.linkedPages.includes(toSlug)) {
-        page.linkedPages.push(toSlug);
-      }
+      if (page && !page.linkedPages.includes(toSlug)) page.linkedPages.push(toSlug);
     }
   });
 
   return pages;
+}
+
+// ========== AI Plan types ==========
+interface AiPagePlan {
+  slug: string;
+  title: string;
+  meta_description: string;
+  h1: string;
+  schemas_required: string[];
+  content_brief: string;
+  internal_links: Array<{ to: string; anchor_text: string; context: string }>;
+  priority: string;
+  estimated_impact: string;
+  seo_tips: string[];
+}
+
+interface AiPlan {
+  verdict: {
+    score: number;
+    level: string;
+    summary: string;
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+  };
+  pages: AiPagePlan[];
+  knowledge_panel_strategy: {
+    steps: string[];
+    entity_home: string;
+    required_signals: string[];
+    estimated_timeline: string;
+  };
+  internal_linking_map: {
+    hub_pages: Array<{ slug: string; spoke_pages: string[] }>;
+    strategy: string;
+  };
+  quick_wins: Array<{ action: string; impact: string; effort: string; description: string }>;
+  advanced_recommendations: Array<{ title: string; description: string; priority: string }>;
 }
 
 interface Props {
@@ -187,34 +196,40 @@ interface Props {
   projectId: string;
 }
 
+const PRIORITY_COLORS: Record<string, string> = {
+  critical: "text-red-500 bg-red-500/10 border-red-500/30",
+  high: "text-amber-500 bg-amber-500/10 border-amber-500/30",
+  medium: "text-blue-500 bg-blue-500/10 border-blue-500/30",
+  low: "text-muted-foreground bg-muted/50 border-muted",
+};
+
+const SCORE_COLOR = (score: number) =>
+  score >= 80 ? "text-green-500" : score >= 60 ? "text-amber-500" : score >= 40 ? "text-orange-500" : "text-red-500";
+
 export function SemanticImplementationTab({ semanticProjectId, projectId }: Props) {
   const { user } = useAuth();
   const [entities, setEntities] = useState<Entity[]>([]);
   const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiPlan, setAiPlan] = useState<AiPlan | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set());
   const [copiedSchema, setCopiedSchema] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["verdict", "pages"]));
 
-  // Load entities and relations
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     Promise.all([
-      supabase
-        .from("semantic_entities")
+      supabase.from("semantic_entities")
         .select("id, name, entity_type, schema_type, description, schema_properties")
-        .eq("project_id", projectId)
-        .eq("goal_project_id", semanticProjectId),
-      supabase
-        .from("semantic_relations")
+        .eq("project_id", projectId).eq("goal_project_id", semanticProjectId),
+      supabase.from("semantic_relations")
         .select("id, subject_id, object_id, predicate")
-        .eq("project_id", projectId)
-        .eq("goal_project_id", semanticProjectId),
+        .eq("project_id", projectId).eq("goal_project_id", semanticProjectId),
     ]).then(([entRes, relRes]) => {
       setEntities((entRes.data || []).map((e: any) => ({
-        ...e,
-        schema_properties: e.schema_properties as Record<string, string> | null,
+        ...e, schema_properties: e.schema_properties as Record<string, string> | null,
       })));
       setRelations(relRes.data || []);
       setLoading(false);
@@ -223,7 +238,6 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
 
   const pages = useMemo(() => buildPagePlan(entities, relations), [entities, relations]);
 
-  // Count how many entities have filled schema properties
   const filledCount = entities.filter((e) => {
     if (!e.schema_properties || !e.schema_type) return false;
     const props = getSchemaProperties(e.schema_type);
@@ -231,6 +245,14 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
     return filled.length >= Math.min(3, props.length);
   }).length;
   const fillPercent = entities.length > 0 ? Math.round((filledCount / entities.length) * 100) : 0;
+
+  const toggleSection = (id: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const togglePage = (slug: string) => {
     setExpandedPages((prev) => {
@@ -240,7 +262,6 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
     });
   };
 
-  // Generate JSON-LD for an entity
   const generateJsonLd = (entity: Entity) => {
     const props = entity.schema_properties || {};
     const jsonLd: Record<string, any> = {
@@ -260,89 +281,56 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
     setTimeout(() => setCopiedSchema(null), 2000);
   };
 
-  // AI auto-fill all entities
-  const handleAiFill = async () => {
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `${label} copiado!` });
+  };
+
+  // Generate AI implementation plan
+  const handleGeneratePlan = async () => {
     if (!user) return;
     setAiLoading(true);
     try {
+      const relationsForAi = relations.map((r) => {
+        const subj = entities.find((e) => e.id === r.subject_id);
+        const obj = entities.find((e) => e.id === r.object_id);
+        return { subject: subj?.name || "", predicate: r.predicate, object: obj?.name || "" };
+      });
+
       const entitiesForAi = entities.map((e) => ({
-        id: e.id,
         name: e.name,
         entity_type: e.entity_type,
         schema_type: e.schema_type,
         description: e.description,
-        properties: getSchemaProperties(e.schema_type || "").map((p) => ({
-          name: p.name,
-          description: p.description,
-          example: p.example,
-          required: p.required,
-        })),
-        current_values: e.schema_properties || {},
+        schema_properties: e.schema_properties || {},
       }));
 
-      const relationsForAi = relations.map((r) => {
-        const subj = entities.find((e) => e.id === r.subject_id);
-        const obj = entities.find((e) => e.id === r.object_id);
-        return {
-          subject: subj?.name || r.subject_id,
-          predicate: r.predicate,
-          object: obj?.name || r.object_id,
-        };
-      });
+      const pagesForAi = pages.map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        schemas: p.schemas,
+        linkedPages: p.linkedPages,
+      }));
 
-      const { data, error } = await supabase.functions.invoke("semantic-ai-fill", {
-        body: {
-          entities: entitiesForAi,
-          relations: relationsForAi,
-          projectId,
-        },
+      const mainEntity = entities.find((e) => e.entity_type === "empresa");
+      const domain = mainEntity?.schema_properties?.url || mainEntity?.schema_properties?.sameAs || "";
+
+      const { data, error } = await supabase.functions.invoke("semantic-implementation-plan", {
+        body: { entities: entitiesForAi, relations: relationsForAi, pages: pagesForAi, domain },
       });
 
       if (error) throw error;
 
-      const filled = data?.filled as Array<{ id: string; properties: Record<string, string> }>;
-      if (!filled?.length) {
-        toast({ title: "IA não retornou dados", description: "Tente novamente", variant: "destructive" });
-        return;
+      if (data?.plan) {
+        setAiPlan(data.plan);
+        setExpandedSections(new Set(["verdict", "pages", "knowledge", "quickwins"]));
+        toast({ title: "✨ Plano de implementação gerado!", description: "Análise profissional completa disponível" });
+      } else {
+        toast({ title: "IA não retornou o plano", description: "Tente novamente", variant: "destructive" });
       }
-
-      // Save each entity's properties
-      let savedCount = 0;
-      for (const item of filled) {
-        const existing = entities.find((e) => e.id === item.id);
-        if (!existing) continue;
-        const merged = { ...(existing.schema_properties || {}), ...item.properties };
-        const { error: updateError } = await supabase
-          .from("semantic_entities")
-          .update({ schema_properties: merged as any })
-          .eq("id", item.id);
-        if (!updateError) savedCount++;
-      }
-
-      // Reload entities
-      const { data: refreshed } = await supabase
-        .from("semantic_entities")
-        .select("id, name, entity_type, schema_type, description, schema_properties")
-        .eq("project_id", projectId)
-        .eq("goal_project_id", semanticProjectId);
-      if (refreshed) {
-        setEntities(refreshed.map((e: any) => ({
-          ...e,
-          schema_properties: e.schema_properties as Record<string, string> | null,
-        })));
-      }
-
-      toast({
-        title: `✨ IA preencheu ${savedCount} entidades`,
-        description: "As propriedades Schema.org foram preenchidas automaticamente",
-      });
     } catch (err: any) {
-      console.error("AI fill error:", err);
-      toast({
-        title: "Erro ao preencher com IA",
-        description: err.message || "Tente novamente",
-        variant: "destructive",
-      });
+      console.error("AI plan error:", err);
+      toast({ title: "Erro ao gerar plano", description: err.message || "Tente novamente", variant: "destructive" });
     } finally {
       setAiLoading(false);
     }
@@ -370,223 +358,553 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
 
   return (
     <div className="space-y-4">
-      {/* Header card */}
+      {/* Header */}
       <Card className="p-4 border-primary/20 bg-accent/30">
         <div className="flex gap-3 items-start">
           <Layout className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div className="space-y-1 flex-1">
-            <h3 className="text-sm font-semibold text-foreground">Plano de Implementação</h3>
+            <h3 className="text-sm font-semibold text-foreground">Plano de Implementação Profissional</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Baseado no seu grafo semântico, este plano mostra <strong>quais páginas criar</strong>,
-              quais schemas implementar em cada uma, e como elas se conectam via links internos.
+              Gere uma análise completa com <strong>veredito de especialista</strong>, páginas a criar,
+              briefings de conteúdo, estratégia de Knowledge Panel e mapa de links internos.
             </p>
           </div>
         </div>
       </Card>
 
-      {/* Stats + AI button */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-foreground">{pages.length}</p>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Páginas</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-foreground">{entities.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Schemas</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Entidades</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-foreground">{relations.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Links Internos</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Relações</p>
         </Card>
         <Card className="p-3 text-center">
           <div className="flex items-center justify-center gap-2">
             <Progress value={fillPercent} className="h-2 w-16" />
             <span className="text-sm font-bold">{fillPercent}%</span>
           </div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Preenchido</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Schema Preenchido</p>
         </Card>
       </div>
 
-      {/* AI Fill button */}
-      <Button
-        onClick={handleAiFill}
-        disabled={aiLoading}
-        className="w-full gap-2"
-        variant="premium"
-        size="lg"
-      >
+      {/* Generate button */}
+      <Button onClick={handleGeneratePlan} disabled={aiLoading} className="w-full gap-2" size="lg">
         {aiLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            IA preenchendo propriedades...
-          </>
+          <><Loader2 className="h-4 w-4 animate-spin" /> Gerando plano profissional...</>
         ) : (
-          <>
-            <Wand2 className="h-4 w-4" />
-            Preencher Tudo com IA
-            <Badge variant="secondary" className="ml-1 text-[10px]">
-              {entities.length} entidades
-            </Badge>
-          </>
+          <><Wand2 className="h-4 w-4" /> {aiPlan ? "Regenerar" : "Gerar"} Plano de Implementação com IA</>
         )}
       </Button>
 
-      {/* Page plans */}
-      <div className="space-y-2">
-        {pages.map((page) => {
-          const isExpanded = expandedPages.has(page.slug);
-          const pageEntities = page.entityIds
-            .map((id) => entities.find((e) => e.id === id))
-            .filter(Boolean) as Entity[];
+      {/* AI Plan results */}
+      {aiPlan && (
+        <div className="space-y-3">
+          {/* VERDICT */}
+          <Collapsible open={expandedSections.has("verdict")} onOpenChange={() => toggleSection("verdict")}>
+            <Card className="overflow-hidden border-primary/30">
+              <CollapsibleTrigger asChild>
+                <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Award className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Veredito do Especialista</h3>
+                        <p className="text-xs text-muted-foreground">Análise de maturidade semântica</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className={`text-2xl font-black ${SCORE_COLOR(aiPlan.verdict.score)}`}>
+                          {aiPlan.verdict.score}/100
+                        </p>
+                        <Badge variant="outline" className="text-[9px]">{aiPlan.verdict.level}</Badge>
+                      </div>
+                      {expandedSections.has("verdict") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Separator />
+                <div className="p-4 space-y-4">
+                  <p className="text-sm text-foreground leading-relaxed">{aiPlan.verdict.summary}</p>
 
-          return (
-            <Collapsible key={page.slug} open={isExpanded} onOpenChange={() => togglePage(page.slug)}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Card className="p-3 border-green-500/20 bg-green-500/5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        <span className="text-xs font-bold text-green-600">Pontos Fortes</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {aiPlan.verdict.strengths.map((s, i) => (
+                          <li key={i} className="text-[11px] text-muted-foreground">• {s}</li>
+                        ))}
+                      </ul>
+                    </Card>
+
+                    <Card className="p-3 border-red-500/20 bg-red-500/5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                        <span className="text-xs font-bold text-red-600">Pontos Fracos</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {aiPlan.verdict.weaknesses.map((w, i) => (
+                          <li key={i} className="text-[11px] text-muted-foreground">• {w}</li>
+                        ))}
+                      </ul>
+                    </Card>
+
+                    <Card className="p-3 border-blue-500/20 bg-blue-500/5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Lightbulb className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="text-xs font-bold text-blue-600">Oportunidades</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {aiPlan.verdict.opportunities.map((o, i) => (
+                          <li key={i} className="text-[11px] text-muted-foreground">• {o}</li>
+                        ))}
+                      </ul>
+                    </Card>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          {/* QUICK WINS */}
+          {aiPlan.quick_wins?.length > 0 && (
+            <Collapsible open={expandedSections.has("quickwins")} onOpenChange={() => toggleSection("quickwins")}>
               <Card className="overflow-hidden">
                 <CollapsibleTrigger asChild>
                   <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Globe className="h-4 w-4 text-primary" />
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Zap className="h-4 w-4 text-amber-500" />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                              {page.slug}
-                            </code>
-                            <span className="text-xs font-medium truncate">{page.title}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {page.schemas.join(" · ")}
-                          </p>
+                        <div>
+                          <h3 className="text-sm font-bold">Quick Wins</h3>
+                          <p className="text-[10px] text-muted-foreground">{aiPlan.quick_wins.length} ações de resultado rápido</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="text-[10px]">
-                          {pageEntities.length} schemas
-                        </Badge>
-                        {page.linkedPages.length > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            <Link2 className="h-2.5 w-2.5 mr-0.5" />
-                            {page.linkedPages.length} links
-                          </Badge>
-                        )}
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+                      {expandedSections.has("quickwins") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <Separator />
-                  <div className="p-4 space-y-4">
-                    <p className="text-xs text-muted-foreground">{page.description}</p>
-
-                    {/* Schemas for this page */}
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Schemas nesta página
-                      </p>
-                      {pageEntities.map((entity) => {
-                        const Icon = ENTITY_ICONS[entity.entity_type] || Code2;
-                        const color = ENTITY_COLORS[entity.entity_type] || "hsl(0 0% 50%)";
-                        const props = getSchemaProperties(entity.schema_type || "");
-                        const filledProps = props.filter((p) => String(entity.schema_properties?.[p.name] ?? "").trim());
-                        const pct = props.length > 0 ? Math.round((filledProps.length / props.length) * 100) : 0;
-
-                        return (
-                          <Card key={entity.id} className="p-3 border-l-2" style={{ borderLeftColor: color }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-3.5 w-3.5" style={{ color }} />
-                                <span className="text-xs font-semibold">{entity.name}</span>
-                                <Badge variant="outline" className="text-[9px]">
-                                  {entity.schema_type}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  {pct === 100 ? (
-                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                  ) : (
-                                    <AlertCircle className="h-3 w-3 text-amber-500" />
-                                  )}
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {filledProps.length}/{props.length}
-                                  </span>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => copyJsonLd(entity)}
-                                >
-                                  {copiedSchema === entity.id ? (
-                                    <Check className="h-3 w-3 text-green-500" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </div>
+                  <div className="p-4 space-y-2">
+                    {aiPlan.quick_wins.map((qw, i) => (
+                      <Card key={i} className="p-3">
+                        <div className="flex items-start gap-3">
+                          <div className="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="text-[10px] font-bold text-amber-600">{i + 1}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold">{qw.action}</span>
+                              <Badge variant="outline" className="text-[9px]">Impacto: {qw.impact}</Badge>
+                              <Badge variant="secondary" className="text-[9px]">Esforço: {qw.effort}</Badge>
                             </div>
-                            {/* Show filled properties preview */}
-                            {filledProps.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {filledProps.slice(0, 5).map((p) => (
-                                  <Badge key={p.name} variant="secondary" className="text-[9px]">
-                                    {p.name}: {(entity.schema_properties?.[p.name] || "").slice(0, 20)}
-                                  </Badge>
-                                ))}
-                                {filledProps.length > 5 && (
-                                  <Badge variant="secondary" className="text-[9px]">
-                                    +{filledProps.length - 5} mais
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </Card>
-                        );
-                      })}
-                    </div>
-
-                    {/* Internal links */}
-                    {page.linkedPages.length > 0 && (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Links internos para
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {page.linkedPages.map((link) => (
-                            <Badge key={link} variant="outline" className="text-[10px] gap-1">
-                              <ArrowRight className="h-2.5 w-2.5" />
-                              <code>{link}</code>
-                            </Badge>
-                          ))}
+                            <p className="text-[11px] text-muted-foreground mt-1">{qw.description}</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* JSON-LD preview */}
-                    {pageEntities.some((e) => e.schema_properties && Object.keys(e.schema_properties).length > 1) && (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          JSON-LD Preview
-                        </p>
-                        <pre className="bg-muted/50 rounded-lg p-3 text-[10px] font-mono overflow-x-auto max-h-48">
-                          {`<script type="application/ld+json">\n${pageEntities.map((e) => generateJsonLd(e)).join(",\n")}\n</script>`}
-                        </pre>
-                      </div>
-                    )}
+                      </Card>
+                    ))}
                   </div>
                 </CollapsibleContent>
               </Card>
             </Collapsible>
-          );
-        })}
-      </div>
+          )}
+
+          {/* PAGES PLAN */}
+          <Collapsible open={expandedSections.has("pages")} onOpenChange={() => toggleSection("pages")}>
+            <Card className="overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Globe className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Plano de Páginas</h3>
+                        <p className="text-[10px] text-muted-foreground">{aiPlan.pages?.length || 0} páginas com briefing completo</p>
+                      </div>
+                    </div>
+                    {expandedSections.has("pages") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Separator />
+                <div className="p-4 space-y-3">
+                  {(aiPlan.pages || []).map((page, idx) => (
+                    <Collapsible key={idx} open={expandedPages.has(page.slug)} onOpenChange={() => togglePage(page.slug)}>
+                      <Card className="overflow-hidden">
+                        <CollapsibleTrigger asChild>
+                          <div className="p-3 cursor-pointer hover:bg-accent/20 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Badge className={`text-[9px] ${PRIORITY_COLORS[page.priority] || ""}`}>
+                                  {page.priority}
+                                </Badge>
+                                <code className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                  {page.slug}
+                                </code>
+                                <span className="text-xs font-medium truncate">{page.title}</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyText(
+                                    `PÁGINA: ${page.slug}\nTítulo SEO: ${page.title}\nH1: ${page.h1}\nMeta: ${page.meta_description}\nSchemas: ${page.schemas_required.join(", ")}\nConteúdo: ${page.content_brief}\nDicas: ${page.seo_tips.join("; ")}`,
+                                    "Briefing da página"
+                                  );
+                                }}>
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                {expandedPages.has(page.slug) ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                              </div>
+                            </div>
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <Separator />
+                          <div className="p-3 space-y-3 text-xs">
+                            {/* SEO tags */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Target className="h-3 w-3 text-primary" />
+                                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">SEO Tags</span>
+                              </div>
+                              <div className="bg-muted/50 rounded-lg p-2.5 space-y-1 font-mono text-[11px]">
+                                <p><span className="text-muted-foreground">title:</span> {page.title}</p>
+                                <p><span className="text-muted-foreground">h1:</span> {page.h1}</p>
+                                <p><span className="text-muted-foreground">meta:</span> {page.meta_description}</p>
+                              </div>
+                            </div>
+
+                            {/* Schemas */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Code2 className="h-3 w-3 text-primary" />
+                                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Schemas Necessários</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {page.schemas_required.map((s) => (
+                                  <Badge key={s} variant="outline" className="text-[9px]">{s}</Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Content brief */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <BookOpen className="h-3 w-3 text-primary" />
+                                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Briefing de Conteúdo</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed bg-muted/30 rounded-lg p-2.5">
+                                {page.content_brief}
+                              </p>
+                            </div>
+
+                            {/* Internal links */}
+                            {page.internal_links?.length > 0 && (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <Link2 className="h-3 w-3 text-primary" />
+                                  <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Links Internos</span>
+                                </div>
+                                <div className="space-y-1">
+                                  {page.internal_links.map((link, li) => (
+                                    <div key={li} className="flex items-start gap-2 text-[11px]">
+                                      <ArrowRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                                      <div>
+                                        <code className="text-primary">{link.to}</code>
+                                        <span className="text-muted-foreground"> — âncora: "{link.anchor_text}"</span>
+                                        {link.context && <p className="text-muted-foreground/70 text-[10px]">{link.context}</p>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* SEO tips */}
+                            {page.seo_tips?.length > 0 && (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <Sparkles className="h-3 w-3 text-amber-500" />
+                                  <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Dicas SEO</span>
+                                </div>
+                                <ul className="space-y-1">
+                                  {page.seo_tips.map((tip, ti) => (
+                                    <li key={ti} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                      <span className="text-amber-500 shrink-0">💡</span> {tip}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Impact */}
+                            <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/10">
+                              <div className="flex items-center gap-1.5">
+                                <TrendingUp className="h-3 w-3 text-primary" />
+                                <span className="text-[10px] font-bold text-primary">Impacto Estimado</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">{page.estimated_impact}</p>
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          {/* KNOWLEDGE PANEL STRATEGY */}
+          {aiPlan.knowledge_panel_strategy && (
+            <Collapsible open={expandedSections.has("knowledge")} onOpenChange={() => toggleSection("knowledge")}>
+              <Card className="overflow-hidden border-amber-500/20">
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Star className="h-4 w-4 text-amber-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Estratégia Knowledge Panel</h3>
+                          <p className="text-[10px] text-muted-foreground">
+                            Prazo estimado: {aiPlan.knowledge_panel_strategy.estimated_timeline}
+                          </p>
+                        </div>
+                      </div>
+                      {expandedSections.has("knowledge") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Separator />
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Entity Home Page
+                      </p>
+                      <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                        {aiPlan.knowledge_panel_strategy.entity_home}
+                      </code>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Passos para Conquistar
+                      </p>
+                      <ol className="space-y-1.5">
+                        {aiPlan.knowledge_panel_strategy.steps.map((step, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[11px]">
+                            <span className="h-5 w-5 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 text-[9px] font-bold text-amber-600">
+                              {i + 1}
+                            </span>
+                            <span className="text-muted-foreground">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Sinais Necessários
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiPlan.knowledge_panel_strategy.required_signals.map((sig, i) => (
+                          <Badge key={i} variant="outline" className="text-[9px]">{sig}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {/* INTERNAL LINKING MAP */}
+          {aiPlan.internal_linking_map && (
+            <Collapsible open={expandedSections.has("linking")} onOpenChange={() => toggleSection("linking")}>
+              <Card className="overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <Network className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Mapa de Links Internos</h3>
+                          <p className="text-[10px] text-muted-foreground">Arquitetura hub & spoke</p>
+                        </div>
+                      </div>
+                      {expandedSections.has("linking") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Separator />
+                  <div className="p-4 space-y-3">
+                    <p className="text-[11px] text-muted-foreground">{aiPlan.internal_linking_map.strategy}</p>
+                    {aiPlan.internal_linking_map.hub_pages?.map((hub, i) => (
+                      <Card key={i} className="p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Globe className="h-3.5 w-3.5 text-blue-500" />
+                          <code className="text-xs font-bold text-primary">{hub.slug}</code>
+                          <Badge variant="secondary" className="text-[9px]">Hub</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {hub.spoke_pages?.map((sp, si) => (
+                            <Badge key={si} variant="outline" className="text-[9px] gap-1">
+                              <ArrowRight className="h-2 w-2" /> {sp}
+                            </Badge>
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {/* ADVANCED RECOMMENDATIONS */}
+          {aiPlan.advanced_recommendations?.length > 0 && (
+            <Collapsible open={expandedSections.has("advanced")} onOpenChange={() => toggleSection("advanced")}>
+              <Card className="overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                          <BarChart3 className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Recomendações Avançadas</h3>
+                          <p className="text-[10px] text-muted-foreground">{aiPlan.advanced_recommendations.length} recomendações</p>
+                        </div>
+                      </div>
+                      {expandedSections.has("advanced") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Separator />
+                  <div className="p-4 space-y-2">
+                    {aiPlan.advanced_recommendations.map((rec, i) => (
+                      <Card key={i} className="p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold">{rec.title}</span>
+                          <Badge variant="outline" className="text-[9px]">{rec.priority}</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{rec.description}</p>
+                      </Card>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {/* Copy all button */}
+          <Button variant="outline" className="w-full gap-2" onClick={() => {
+            const text = JSON.stringify(aiPlan, null, 2);
+            navigator.clipboard.writeText(text);
+            toast({ title: "Plano completo copiado!", description: "JSON copiado para a área de transferência" });
+          }}>
+            <Copy className="h-4 w-4" />
+            Copiar Plano Completo (JSON)
+          </Button>
+        </div>
+      )}
+
+      {/* Fallback: Original page plans (shown when no AI plan) */}
+      {!aiPlan && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Clique em "Gerar Plano de Implementação com IA" para receber uma análise profissional completa.
+          </p>
+          {pages.map((page) => {
+            const isExpanded = expandedPages.has(page.slug);
+            const pageEntities = page.entityIds.map((id) => entities.find((e) => e.id === id)).filter(Boolean) as Entity[];
+
+            return (
+              <Collapsible key={page.slug} open={isExpanded} onOpenChange={() => togglePage(page.slug)}>
+                <Card className="overflow-hidden">
+                  <CollapsibleTrigger asChild>
+                    <div className="p-3 cursor-pointer hover:bg-accent/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Globe className="h-4 w-4 text-primary shrink-0" />
+                          <code className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">{page.slug}</code>
+                          <span className="text-xs truncate">{page.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="outline" className="text-[9px]">{pageEntities.length} schemas</Badge>
+                          {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <Separator />
+                    <div className="p-3 space-y-3">
+                      <p className="text-[11px] text-muted-foreground">{page.description}</p>
+                      {pageEntities.map((entity) => {
+                        const Icon = ENTITY_ICONS[entity.entity_type] || Code2;
+                        const color = ENTITY_COLORS[entity.entity_type] || "hsl(0 0% 50%)";
+                        return (
+                          <Card key={entity.id} className="p-2.5 border-l-2" style={{ borderLeftColor: color }}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-3.5 w-3.5" style={{ color }} />
+                                <span className="text-xs font-semibold">{entity.name}</span>
+                                <Badge variant="outline" className="text-[9px]">{entity.schema_type}</Badge>
+                              </div>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyJsonLd(entity)}>
+                                {copiedSchema === entity.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                      {page.linkedPages.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {page.linkedPages.map((link) => (
+                            <Badge key={link} variant="outline" className="text-[9px] gap-1">
+                              <ArrowRight className="h-2 w-2" /> <code>{link}</code>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
