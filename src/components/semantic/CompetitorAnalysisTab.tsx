@@ -530,6 +530,21 @@ export function CompetitorAnalysisTab() {
 
   return (
     <div className="space-y-5">
+      {/* Banner explicativo */}
+      <Card className="p-4 border-primary/20 bg-accent/30">
+        <div className="flex gap-3 items-start">
+          <Globe className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">Análise de Schema dos Concorrentes</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Descubra quais <strong>marcações Schema.org (JSON-LD)</strong> seus concorrentes estão usando. Compare tipos de schema, identifique <strong>lacunas na sua estratégia</strong> e encontre oportunidades de rich snippets que eles têm e você ainda não implementou.
+            </p>
+            <p className="text-[11px] text-muted-foreground/80">
+              💡 <strong>Como usar:</strong> Insira até 10 URLs de concorrentes e clique em <em>Analisar</em>. O sistema extrai automaticamente os schemas JSON-LD de cada página e gera um grafo visual comparativo com cores por domínio. Schemas compartilhados são destacados como <em>paridade competitiva</em>.
+            </p>
+          </div>
+        </div>
+      </Card>
       {/* Header row: Input + History toggle */}
       <div className="flex gap-3 items-start">
         <Card className="p-4 space-y-3 flex-1">

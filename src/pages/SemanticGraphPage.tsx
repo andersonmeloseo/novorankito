@@ -79,38 +79,86 @@ export default function SemanticGraphPage() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-              <BarChart3 className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Dashboard Semântico</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Score de Autoridade Semântica, visual do grafo, lacunas de autoridade,
-                próximas ações recomendadas e nível de confiança do negócio.
-              </p>
-            </Card>
+            <div className="space-y-4">
+              <Card className="p-4 border-primary/20 bg-accent/30">
+                <div className="flex gap-3 items-start">
+                  <BarChart3 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground">Dashboard de Autoridade Semântica</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Visualize o <strong>Score de Autoridade Semântica</strong> do seu negócio — uma métrica que mede o quão bem o Google compreende suas entidades e relações. Identifique <strong>lacunas de autoridade</strong>, acompanhe a evolução do grafo e receba recomendações de próximas ações.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      💡 <strong>Quando usar:</strong> Consulte após criar ou expandir seu grafo para avaliar a cobertura semântica e priorizar melhorias de SEO baseadas em dados.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+                <BarChart3 className="h-10 w-10 text-muted-foreground" />
+                <h3 className="text-lg font-semibold text-foreground">Em breve</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Score de Autoridade Semântica, visual do grafo, lacunas de autoridade,
+                  próximas ações recomendadas e nível de confiança do negócio.
+                </p>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Recommendations Tab */}
           <TabsContent value="recommendations" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-              <Lightbulb className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Recomendador de Conteúdo</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Identifica páginas a criar, conteúdos estratégicos e conexões ausentes
-                para fortalecer o grafo semântico do seu negócio.
-              </p>
-            </Card>
+            <div className="space-y-4">
+              <Card className="p-4 border-primary/20 bg-accent/30">
+                <div className="flex gap-3 items-start">
+                  <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground">Recomendador de Conteúdo Semântico</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      O motor de recomendações analisa seu grafo semântico e identifica <strong>páginas que faltam criar</strong>, <strong>entidades desconectadas</strong> e <strong>relações estratégicas ausentes</strong>. Cada sugestão fortalece o Knowledge Graph do seu negócio e melhora o posicionamento orgânico.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      💡 <strong>Quando usar:</strong> Após montar seu grafo inicial, consulte as recomendações para descobrir conteúdos estratégicos que ampliam sua cobertura semântica no nicho.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+                <Lightbulb className="h-10 w-10 text-muted-foreground" />
+                <h3 className="text-lg font-semibold text-foreground">Em breve</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Identifica páginas a criar, conteúdos estratégicos e conexões ausentes
+                  para fortalecer o grafo semântico do seu negócio.
+                </p>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Exports Tab */}
           <TabsContent value="exports" className="mt-4">
-            <Card className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-              <FileDown className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Exportações</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Exporte o plano de ação, estrutura de entidades, checklist de implementação
-                e sugestões de Schema em formatos utilizáveis.
-              </p>
-            </Card>
+            <div className="space-y-4">
+              <Card className="p-4 border-primary/20 bg-accent/30">
+                <div className="flex gap-3 items-start">
+                  <FileDown className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground">Exportações do Grafo Semântico</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Exporte todo o trabalho do seu grafo semântico em <strong>formatos utilizáveis</strong>: plano de ação com prioridades, estrutura de entidades e relações, checklist de implementação Schema.org e código JSON-LD pronto para colar nas suas páginas.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      💡 <strong>Quando usar:</strong> Após finalizar seu grafo e schemas, exporte para compartilhar com sua equipe de desenvolvimento ou usar como guia de implementação técnica.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+                <FileDown className="h-10 w-10 text-muted-foreground" />
+                <h3 className="text-lg font-semibold text-foreground">Em breve</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Exporte o plano de ação, estrutura de entidades, checklist de implementação
+                  e sugestões de Schema em formatos utilizáveis.
+                </p>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

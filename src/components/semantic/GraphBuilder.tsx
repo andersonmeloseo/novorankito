@@ -18,7 +18,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, Wand2, LayoutGrid } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Plus, Loader2, Wand2, LayoutGrid, Network } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -586,7 +587,22 @@ function GraphBuilderInner() {
   }
 
   return (
-    <div className="h-[calc(100vh-280px)] min-h-[500px] w-full rounded-xl border bg-card overflow-hidden relative">
+    <div className="space-y-3">
+      <Card className="p-4 border-primary/20 bg-accent/30">
+        <div className="flex gap-3 items-start">
+          <Network className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">Construtor de Grafo Semântico</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Monte visualmente o <strong>ecossistema de entidades</strong> do seu negócio. Cada nó representa uma entidade (empresa, produto, pessoa, local) e cada conexão é uma <strong>relação semântica</strong> que o Google usa para compreender seu negócio.
+            </p>
+            <p className="text-[11px] text-muted-foreground/80">
+              💡 <strong>Como usar:</strong> Clique em <em>Entidade</em> para criar um nó, ou use o <em>Wizard por Nicho</em> para gerar um grafo completo automaticamente. Arraste de um handle para o espaço vazio para criar e conectar uma nova entidade. Use <em>Reorganizar</em> para distribuir os nós de forma hierárquica.
+            </p>
+          </div>
+        </div>
+      </Card>
+    <div className="h-[calc(100vh-340px)] min-h-[500px] w-full rounded-xl border bg-card overflow-hidden relative">
       {saving && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-card/90 border rounded-lg px-3 py-1.5 text-xs text-muted-foreground shadow">
           <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
@@ -772,6 +788,7 @@ function GraphBuilderInner() {
         allNodes={detailAllNodes}
         allEdges={detailAllEdges}
       />
+    </div>
     </div>
   );
 }
