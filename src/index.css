@@ -261,6 +261,11 @@
   }
 }
 
+@keyframes sidebar-flow {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(800%); }
+}
+
 /* ─── Animated gradient for active tabs ─── */
 @property --tab-gradient-pos {
   syntax: '<percentage>';
