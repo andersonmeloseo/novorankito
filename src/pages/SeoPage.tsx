@@ -208,25 +208,23 @@ export default function SeoPage() {
 
   // Live data from GSC API - always fetch when GSC is connected
   const hasGsc = !!gscConnection;
-  const isComparing = compareMode !== "none" && !!prevDateRange && hasGsc;
+  const isComparing = compareMode !== "none" && hasGsc;
   const { data: comparisonData, isLoading: loadingComparison } = useQuery({
-    queryKey: ["gsc-comparison", projectId, currentDateRange?.start, currentDateRange?.end, prevDateRange?.start, prevDateRange?.end, compareMode],
+    queryKey: ["gsc-live", projectId, dateRange, customFrom, customTo, compareMode],
     queryFn: async () => {
-      const prevStart = prevDateRange?.start || currentDateRange.start;
-      const prevEnd = prevDateRange?.end || currentDateRange.end;
+      const isCustom = dateRange === "custom" && customFrom && customTo;
       const { data, error } = await supabase.functions.invoke("query-gsc-live", {
         body: {
           project_id: projectId,
-          current_start: currentDateRange.start,
-          current_end: currentDateRange.end,
-          previous_start: prevStart,
-          previous_end: prevEnd,
+          days: dateRange,
+          compare_mode: compareMode,
+          ...(isCustom ? { custom_start: customFrom, custom_end: customTo } : {}),
         },
       });
       if (error) throw error;
       return data;
     },
-    enabled: hasGsc && !!projectId && !!currentDateRange?.start,
+    enabled: hasGsc && !!projectId,
     staleTime: 5 * 60 * 1000,
   });
 
