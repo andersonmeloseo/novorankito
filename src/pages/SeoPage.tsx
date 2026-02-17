@@ -231,32 +231,32 @@ export default function SeoPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // KPIs - prefer live GSC data when available, fallback to stored data
-  const liveDeviceCurrent = comparisonData?.device?.current || [];
-  const liveDevicePrev = comparisonData?.device?.previous || [];
-  const useLive = liveDeviceCurrent.length > 0;
+  // KPIs - prefer live GSC "date" dimension (daily totals) for most accurate numbers
+  const liveDateCurrent = comparisonData?.date?.current || [];
+  const liveDatePrev = comparisonData?.date?.previous || [];
+  const useLive = liveDateCurrent.length > 0;
 
   const totalClicks = useLive
-    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    ? liveDateCurrent.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
     : metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const totalImpressions = useLive
-    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    ? liveDateCurrent.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
     : metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const weightedPositionSum = useLive
-    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
+    ? liveDateCurrent.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
     : metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
   const avgPosition = totalImpressions > 0 ? weightedPositionSum / totalImpressions : 0;
 
   const prevClicks = useLive
-    ? liveDevicePrev.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    ? liveDatePrev.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
     : prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
   const prevImpressions = useLive
-    ? liveDevicePrev.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    ? liveDatePrev.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
     : prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const prevAvgCtr = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
   const prevWeightedPos = useLive
-    ? liveDevicePrev.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
+    ? liveDatePrev.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
     : prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
   const prevAvgPosition = prevImpressions > 0 ? prevWeightedPos / prevImpressions : 0;
 
