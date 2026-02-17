@@ -25,6 +25,7 @@ const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
   { id: "triples", label: "Triples", icon: GitBranch },
   { id: "schema", label: "Schema.org", icon: Code2 },
+  { id: "implementation", label: "Implementação", icon: Layout },
   { id: "competitors", label: "Concorrentes", icon: Users },
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "recommendations", label: "Recomendações", icon: Lightbulb },
@@ -35,9 +36,14 @@ export default function SemanticGraphPage() {
   const [activeTab, setActiveTab] = useState("goals");
   const projectId = localStorage.getItem("rankito_current_project") || "";
   const [semanticProjectId, setSemanticProjectId] = useState<string | null>(null);
+  const [implementationActivated, setImplementationActivated] = useState(false);
 
   useEffect(() => {
-    const handler = (e: Event) => setActiveTab((e as CustomEvent).detail);
+    const handler = (e: Event) => {
+      const tab = (e as CustomEvent).detail;
+      setActiveTab(tab);
+      if (tab === "implementation") setImplementationActivated(true);
+    };
     window.addEventListener("switch-semantic-tab", handler);
     return () => window.removeEventListener("switch-semantic-tab", handler);
   }, []);
@@ -126,7 +132,21 @@ export default function SemanticGraphPage() {
           </TabsContent>
 
           <TabsContent value="implementation" className="mt-4">
-            <SemanticImplementationTab semanticProjectId={semanticProjectId} projectId={projectId} />
+            {implementationActivated ? (
+              <SemanticImplementationTab semanticProjectId={semanticProjectId} projectId={projectId} />
+            ) : (
+              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+                <Layout className="h-10 w-10 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">Implementação não iniciada</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Para gerar o plano de implementação, vá ao <strong>Construtor de Grafo</strong>, monte seu grafo de entidades e clique no botão <strong>"Implementar"</strong>.
+                </p>
+                <Button variant="outline" onClick={() => setActiveTab("graph")}>
+                  <Network className="h-4 w-4 mr-2" />
+                  Ir para o Construtor de Grafo
+                </Button>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="competitors" className="mt-4">

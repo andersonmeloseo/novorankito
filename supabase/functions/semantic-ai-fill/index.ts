@@ -20,45 +20,43 @@ serve(async (req) => {
       });
     }
 
-    // Build a prompt for the AI to fill schema properties
     const entityDescriptions = entities.map((e: any) => {
       const propsToFill = (e.properties || [])
         .filter((p: any) => !e.current_values?.[p.name]?.trim())
         .map((p: any) => `  - ${p.name} (${p.required ? "REQUIRED" : "optional"}): ${p.description}. Example: "${p.example}"`)
         .join("\n");
 
-      return `Entity: "${e.name}" (type: ${e.entity_type}, schema: ${e.schema_type})
+      return `Entity "${e.name}" [id=${e.id}] (type: ${e.entity_type}, schema: ${e.schema_type})
 Description: ${e.description || "N/A"}
 Already filled: ${JSON.stringify(e.current_values || {})}
 Properties to fill:
-${propsToFill || "  (none - all filled)"}`;
+${propsToFill || "  (none)"}`;
     }).join("\n\n---\n\n");
 
     const relationDescriptions = relations.map((r: any) =>
       `${r.subject} → ${r.predicate} → ${r.object}`
     ).join("\n");
 
-    const systemPrompt = `You are a Schema.org SEO expert. Given a semantic graph of entities and their relationships, fill in the Schema.org properties for each entity with realistic, SEO-optimized values.
+    const systemPrompt = `You are a Schema.org SEO expert. Fill Schema.org properties for entities.
 
 RULES:
-- Return ONLY a JSON array with objects { "id": "entity_id", "properties": { "property_name": "value" } }
+- Return ONLY a raw JSON array: [{"id":"entity_id","properties":{"prop":"value"}}]
+- NO markdown, NO code fences, NO explanation — just the JSON array
 - Fill ALL empty required properties and as many optional ones as possible
-- Use realistic Brazilian Portuguese values appropriate for the entity type
-- For URLs, use placeholder paths like "https://www.example.com/page"
-- For phone numbers, use Brazilian format like "+55 11 99999-9999"
-- For addresses, use realistic Brazilian addresses
-- Respect the entity relationships when filling values (e.g., if a Person "works_at" an Organization, reference the organization name)
-- Do NOT include properties that are already filled
-- Return valid JSON only, no markdown, no explanation`;
+- Use realistic Brazilian Portuguese values
+- For URLs use "https://www.example.com/page"
+- For phones use Brazilian format "+55 11 99999-9999"
+- Respect entity relationships when filling values
+- Do NOT include already-filled properties`;
 
-    const userPrompt = `Here are the entities to fill:
+    const userPrompt = `Entities:
 
 ${entityDescriptions}
 
-Relationships between entities:
+Relationships:
 ${relationDescriptions}
 
-Fill all empty Schema.org properties with realistic values. Return JSON array only.`;
+Return a JSON array with filled properties for each entity.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -67,44 +65,12 @@ Fill all empty Schema.org properties with realistic values. Return JSON array on
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "fill_schema_properties",
-              description: "Fill Schema.org properties for all entities",
-              parameters: {
-                type: "object",
-                properties: {
-                  filled: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string", description: "Entity ID" },
-                        properties: {
-                          type: "object",
-                          description: "Key-value pairs of Schema.org properties to fill",
-                          additionalProperties: { type: "string" },
-                        },
-                      },
-                      required: ["id", "properties"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["filled"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "fill_schema_properties" } },
+        temperature: 0.3,
       }),
     });
 
@@ -116,7 +82,7 @@ Fill all empty Schema.org properties with realistic values. Return JSON array on
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -127,14 +93,21 @@ Fill all empty Schema.org properties with realistic values. Return JSON array on
     }
 
     const aiData = await response.json();
+    const rawContent = aiData.choices?.[0]?.message?.content || "";
     
-    // Extract tool call result
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    // Clean markdown fences if present
+    let jsonStr = rawContent.trim();
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+    
     let filled: any[] = [];
-    
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      filled = parsed.filled || [];
+    try {
+      filled = JSON.parse(jsonStr);
+      if (!Array.isArray(filled)) filled = [];
+    } catch (parseErr) {
+      console.error("Failed to parse AI response:", jsonStr.substring(0, 500));
+      throw new Error("AI retornou formato inválido. Tente novamente.");
     }
 
     return new Response(JSON.stringify({ filled }), {
