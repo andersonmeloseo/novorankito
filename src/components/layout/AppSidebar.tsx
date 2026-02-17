@@ -78,11 +78,33 @@ const accountNav = [
 
 function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean }) {
   const { pathname, hash } = useLocation();
+  const navigate = useNavigate();
   const fullPath = pathname + hash;
   const hasHash = item.url.includes("#");
   const isActive = hasHash
     ? fullPath === item.url
     : end ? pathname === item.url : pathname.startsWith(item.url);
+
+  // For hash-based URLs, use a button to ensure proper navigation
+  if (hasHash) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <button
+            data-tour={item.tourId}
+            onClick={() => navigate(item.url)}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative w-full text-left",
+              isActive && "sidebar-active-glow bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+            )}
+          >
+            <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
+            <span>{item.title}</span>
+          </button>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <SidebarMenuItem>
