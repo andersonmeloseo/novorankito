@@ -95,18 +95,18 @@ ${(seoData.data || []).slice(0, 20).map((r: any) =>
     if (runErr) throw runErr;
     const runId = run.id;
 
-    // Sort roles: leaves first (analysts), then managers, then CEO
+    // Sort roles: top-down cascade (CEO → managers → analysts)
     const rolesArr = roles as RoleConfig[];
     const hierarchyMap = hierarchy as Record<string, string>;
     
-    // Build execution order: bottom-up (analysts → managers → CEO)
+    // Build execution order: top-down cascade (CEO first, then managers, then specialists)
     const getDepth = (roleId: string): number => {
       const parentId = hierarchyMap[roleId];
       if (!parentId) return 0; // CEO
       return getDepth(parentId) + 1;
     };
 
-    const sortedRoles = [...rolesArr].sort((a, b) => getDepth(b.id) - getDepth(a.id));
+    const sortedRoles = [...rolesArr].sort((a, b) => getDepth(a.id) - getDepth(b.id));
     
     const agentResults: AgentResult[] = [];
     const resultsByRole = new Map<string, string>();
@@ -116,12 +116,17 @@ ${(seoData.data || []).slice(0, 20).map((r: any) =>
       const startedAt = new Date().toISOString();
       
       try {
-        // Build context from subordinates
-        const subordinateResults = rolesArr
-          .filter(r => hierarchyMap[r.id] === role.id)
+        // Build context from superior (cascade: receive instructions from above)
+        const superiorId = hierarchyMap[role.id];
+        const superiorResult = superiorId ? resultsByRole.get(superiorId) : undefined;
+        const superiorRole = superiorId ? rolesArr.find(r => r.id === superiorId) : undefined;
+        
+        // Also include peer results (other subordinates of same superior)
+        const peerResults = rolesArr
+          .filter(r => r.id !== role.id && hierarchyMap[r.id] === (superiorId || ""))
           .map(r => {
-            const subResult = resultsByRole.get(r.id);
-            return subResult ? `\n### Relatório de ${r.emoji} ${r.title}:\n${subResult}` : "";
+            const peerResult = resultsByRole.get(r.id);
+            return peerResult ? `\n### Relatório de ${r.emoji} ${r.title}:\n${peerResult}` : "";
           })
           .filter(Boolean)
           .join("\n");
@@ -129,7 +134,7 @@ ${(seoData.data || []).slice(0, 20).map((r: any) =>
         // Build the prompt
         const systemPrompt = `${role.instructions}
 
-Você faz parte de uma equipe autônoma de agentes de IA. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+Você faz parte de uma equipe profissional de IA organizada como uma empresa real. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
 
 ## Sua Rotina (${role.routine.frequency})
 Tarefas: ${role.routine.tasks.join("; ")}
@@ -139,16 +144,21 @@ Ações autônomas permitidas: ${role.routine.autonomousActions.join(", ")}
 
 ${projectContext}
 
-${subordinateResults ? `## Relatórios Recebidos dos Subordinados:\n${subordinateResults}` : ""}
+${superiorResult && superiorRole ? `## Instruções do seu Superior (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult}\n\nVocê deve executar sua parte com base nas diretrizes acima.` : ""}
+
+${peerResults ? `## Relatórios de Colegas (mesmo nível hierárquico):\n${peerResults}` : ""}
 
 IMPORTANTE:
 - Analise os dados REAIS do projeto fornecidos acima
-- Gere insights acionáveis e específicos (com URLs, queries, números)
-- Indique claramente as ações autônomas que você está executando
-- Se reporta a alguém, estruture seu output para ser útil ao seu superior
+- Se você tem um superior, siga as diretrizes e prioridades definidas por ele
+- Gere seu relatório detalhando o que PRECISA SER FEITO (não execute, descreva)
+- Liste ações específicas com responsáveis, prazos e métricas
+- Comunique-se como um profissional real: objetivo, claro e acionável
 - Seja conciso mas completo (máximo 800 palavras)`;
 
-        const userPrompt = `Execute sua rotina ${role.routine.frequency} agora. Analise os dados do projeto, gere seu relatório e liste as ações autônomas que está tomando.`;
+        const userPrompt = role.id === "ceo"
+          ? `Como CEO, analise todos os dados do projeto e defina: 1) Visão estratégica para esta semana, 2) Top 3 prioridades, 3) Instruções específicas para cada membro da equipe. Seu output será repassado para os gerentes que vão distribuir as tarefas.`
+          : `Execute sua rotina ${role.routine.frequency}. Analise os dados, siga as instruções do seu superior, e gere seu relatório com as ações que precisam ser feitas.`;
 
         const aiResponse = await fetch(aiEndpoint, {
           method: "POST",
