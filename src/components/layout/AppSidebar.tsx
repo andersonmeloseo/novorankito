@@ -270,185 +270,193 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {activeProject && (
-          <>
-            <SidebarGroup>
-              <SidebarGroupLabel className="sidebar-section-label">
-                Projeto
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {projectNav.map((item) => (
-                    <NavItem key={item.url} item={item} end />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+          <div className="relative ml-4 mr-0">
+            {/* Vertical hierarchy line */}
+            <div className="absolute left-0 top-0 bottom-3 w-px bg-gradient-to-b from-sidebar-primary/60 via-sidebar-primary/30 to-transparent" />
+            
+            {/* Connection dot at top */}
+            <div className="absolute left-0 top-2 -translate-x-[3px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.5)]" />
 
-            <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
+            <div className="pl-4">
               <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>⚙️ Configurações</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {settingsNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
+                <SidebarGroupLabel className="sidebar-section-label">
+                  Projeto
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {projectNav.map((item) => (
+                      <NavItem key={item.url} item={item} end />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
               </SidebarGroup>
-            </Collapsible>
 
-            <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>🤖 Rankito IA</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {rankitoAiNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+              <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>⚙️ Configurações</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {settingsNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
-            <Collapsible defaultOpen={pathname.startsWith("/seo")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>🔍 SEO</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {seoNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+              <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>🤖 Rankito IA</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {rankitoAiNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
-            <Collapsible defaultOpen={pathname.startsWith("/ga4")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>📊 GA4</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {ga4Nav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+              <Collapsible defaultOpen={pathname.startsWith("/seo")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>🔍 SEO</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {seoNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
-            <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>🗂️ Indexação</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {indexingNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+              <Collapsible defaultOpen={pathname.startsWith("/ga4")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>📊 GA4</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {ga4Nav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
-            <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>📊 Analítica Rankito</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end />
-                      {analiticaNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+              <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>🗂️ Indexação</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {indexingNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
-            <div className="mx-4 my-1">
-              <div className="h-px bg-sidebar-border/50" />
+              <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>📊 Analítica Rankito</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end />
+                        {analiticaNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+
+              <div className="mx-4 my-1">
+                <div className="h-px bg-sidebar-border/50" />
+              </div>
+
+              <Collapsible defaultOpen={pathname.startsWith("/rank-rent")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>💰 Rank & Rent</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {rankRentNav.map((item) => (
+                          <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+
+              <Collapsible defaultOpen={pathname.startsWith("/semantic-graph")}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>🧠 SEO Semântico</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {semanticNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
             </div>
-
-            <Collapsible defaultOpen={pathname.startsWith("/rank-rent")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>💰 Rank & Rent</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {rankRentNav.map((item) => (
-                        <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-
-            <Collapsible defaultOpen={pathname.startsWith("/semantic-graph")}>
-              <SidebarGroup>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                    <span>🧠 SEO Semântico</span>
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {semanticNav.map((item) => (
-                        <NavItem key={item.url} item={item} end />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-          </>
+          </div>
         )}
 
         <div className="mx-4 my-1">
