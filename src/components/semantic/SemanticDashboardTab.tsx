@@ -28,7 +28,7 @@ interface RelationRow {
   predicate: string;
 }
 
-export function SemanticDashboardTab() {
+export function SemanticDashboardTab({ semanticProjectId }: { semanticProjectId?: string } = {}) {
   const projectId = localStorage.getItem("rankito_current_project");
   const [entities, setEntities] = useState<EntityRow[]>([]);
   const [relations, setRelations] = useState<RelationRow[]>([]);
@@ -38,15 +38,18 @@ export function SemanticDashboardTab() {
     if (!projectId) return;
     (async () => {
       setLoading(true);
-      const [entRes, relRes] = await Promise.all([
-        supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description").eq("project_id", projectId),
-        supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId),
-      ]);
+      let entQuery = supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description").eq("project_id", projectId);
+      let relQuery = supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId);
+      if (semanticProjectId) {
+        entQuery = entQuery.eq("goal_project_id", semanticProjectId);
+        relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+      }
+      const [entRes, relRes] = await Promise.all([entQuery, relQuery]);
       setEntities(entRes.data || []);
       setRelations(relRes.data || []);
       setLoading(false);
     })();
-  }, [projectId]);
+  }, [projectId, semanticProjectId]);
 
   // ── Computed metrics ──
   const metrics = useMemo(() => {

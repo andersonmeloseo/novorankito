@@ -50,7 +50,7 @@ const PREDICATES = [
   "escrito_por", "contém", "possui_busca", "relacionado_a", "parte_de", "criou",
 ];
 
-function GraphBuilderInner() {
+function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }) {
   const { user } = useAuth();
   const projectId = localStorage.getItem("rankito_current_project");
   const { screenToFlowPosition } = useReactFlow();
@@ -91,10 +91,13 @@ function GraphBuilderInner() {
     if (!projectId || !user) return;
     (async () => {
       setLoading(true);
-      const [entRes, relRes] = await Promise.all([
-        supabase.from("semantic_entities").select("*").eq("project_id", projectId),
-        supabase.from("semantic_relations").select("*").eq("project_id", projectId),
-      ]);
+      let entQuery = supabase.from("semantic_entities").select("*").eq("project_id", projectId);
+      let relQuery = supabase.from("semantic_relations").select("*").eq("project_id", projectId);
+      if (semanticProjectId) {
+        entQuery = entQuery.eq("goal_project_id", semanticProjectId);
+        relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+      }
+      const [entRes, relRes] = await Promise.all([entQuery, relQuery]);
       const entities = entRes.data || [];
       const relations = relRes.data || [];
 
@@ -124,7 +127,7 @@ function GraphBuilderInner() {
       setEdges(loadedEdges);
       setLoading(false);
     })();
-  }, [projectId, user]);
+  }, [projectId, user, semanticProjectId]);
 
   // ── Inject callbacks into node data ──
   const handleEdit = useCallback((nodeId: string) => {
@@ -230,7 +233,8 @@ function GraphBuilderInner() {
         description: entity.description || null,
         position_x: posX,
         position_y: posY,
-      }).select().single();
+        goal_project_id: semanticProjectId || null,
+      } as any).select().single();
 
       if (error || !data) {
         setSaving(false);
@@ -260,7 +264,8 @@ function GraphBuilderInner() {
           subject_id: createFromHandle.sourceNodeId,
           object_id: data.id,
           predicate: createFromPredicate,
-        }).select().single();
+          goal_project_id: semanticProjectId || null,
+        } as any).select().single();
 
         if (!relError && relData) {
           const edge: Edge = {
@@ -283,7 +288,7 @@ function GraphBuilderInner() {
       }
       setSaving(false);
     },
-    [projectId, user, setNodes, setEdges, createFromHandle, createFromPredicate],
+    [projectId, user, setNodes, setEdges, createFromHandle, createFromPredicate, semanticProjectId],
   );
 
   // ── Edit entity ──
@@ -385,7 +390,8 @@ function GraphBuilderInner() {
       subject_id: pendingConnection.source,
       object_id: pendingConnection.target,
       predicate: connectionPredicate,
-    }).select().single();
+      goal_project_id: semanticProjectId || null,
+    } as any).select().single();
     setSaving(false);
 
     if (error || !data) {
@@ -431,12 +437,13 @@ function GraphBuilderInner() {
         description: e.description,
         position_x: Math.round(cx + radius * Math.cos(angle)),
         position_y: Math.round(cy + radius * Math.sin(angle)),
+        goal_project_id: semanticProjectId || null,
       };
     });
 
     const { data: insertedEntities, error: entError } = await supabase
       .from("semantic_entities")
-      .insert(entityRows)
+      .insert(entityRows as any)
       .select();
 
     if (entError || !insertedEntities) {
@@ -451,11 +458,12 @@ function GraphBuilderInner() {
       subject_id: insertedEntities[r.subjectIndex].id,
       object_id: insertedEntities[r.objectIndex].id,
       predicate: r.predicate,
+      goal_project_id: semanticProjectId || null,
     }));
 
     const { data: insertedRelations, error: relError } = await supabase
       .from("semantic_relations")
-      .insert(relationRows)
+      .insert(relationRows as any)
       .select();
 
     if (relError) {
@@ -492,7 +500,7 @@ function GraphBuilderInner() {
       title: "Grafo gerado com sucesso!",
       description: `${insertedEntities.length} entidades e ${insertedRelations?.length ?? 0} relações criadas.`,
     });
-  }, [projectId, user, setNodes, setEdges]);
+  }, [projectId, user, setNodes, setEdges, semanticProjectId]);
 
   // ── Reorganize nodes in a tree/hierarchical layout to minimize crossings ──
   const handleReorganize = useCallback(async () => {
@@ -798,10 +806,10 @@ function GraphBuilderInner() {
   );
 }
 
-export function GraphBuilder() {
+export function GraphBuilder({ semanticProjectId }: { semanticProjectId?: string } = {}) {
   return (
     <ReactFlowProvider>
-      <GraphBuilderInner />
+      <GraphBuilderInner semanticProjectId={semanticProjectId} />
     </ReactFlowProvider>
   );
 }

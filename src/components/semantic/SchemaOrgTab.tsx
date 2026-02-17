@@ -1570,9 +1570,10 @@ const SCHEMA_DIDACTICS: Record<string, string> = {
 
 interface Props {
   projectId: string;
+  semanticProjectId?: string;
 }
 
-export function SchemaOrgTab({ projectId }: Props) {
+export function SchemaOrgTab({ projectId, semanticProjectId }: Props) {
   const { user } = useAuth();
   const [entities, setEntities] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -1600,13 +1601,15 @@ export function SchemaOrgTab({ projectId }: Props) {
   useEffect(() => {
     if (!projectId) return;
     (async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("semantic_entities")
         .select("*")
         .eq("project_id", projectId);
+      if (semanticProjectId) query = query.eq("goal_project_id", semanticProjectId);
+      const { data } = await query;
       setEntities(data || []);
     })();
-  }, [projectId]);
+  }, [projectId, semanticProjectId]);
 
   // Filter catalog — use FULL_CATALOG instead of SCHEMA_CATALOG
   const filteredCatalog = useMemo(() => {
@@ -1746,12 +1749,15 @@ export function SchemaOrgTab({ projectId }: Props) {
         schema_properties: builderValues,
         project_id: projectId,
         owner_id: user.id,
-      });
+        goal_project_id: semanticProjectId || null,
+      } as any);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Schema salvo!", description: `Nova entidade "${builderValues.name || builderType.type}" criada no projeto.` });
     }
     // Reload entities
-    const { data } = await supabase.from("semantic_entities").select("*").eq("project_id", projectId);
+    let reloadQuery = supabase.from("semantic_entities").select("*").eq("project_id", projectId);
+    if (semanticProjectId) reloadQuery = reloadQuery.eq("goal_project_id", semanticProjectId);
+    const { data } = await reloadQuery;
     setEntities(data || []);
   }, [builderType, builderValues, user, projectId, entities]);
 
