@@ -396,31 +396,8 @@ export default function IndexingPage() {
           </p>
         </Card>
 
-        {/* Main Tabs */}
+        {/* Main Content — tab switching via sidebar */}
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <TabsList className="flex flex-wrap h-auto gap-0.5">
-              <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
-                <LayoutDashboard className="h-3 w-3" /> Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="gap-1.5 text-xs">
-                <Layers className="h-3 w-3" /> URLs
-              </TabsTrigger>
-              <TabsTrigger value="sitemap" className="gap-1.5 text-xs">
-                <Map className="h-3 w-3" /> Sitemap
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-1.5 text-xs">
-                <History className="h-3 w-3" /> Histórico
-              </TabsTrigger>
-              <TabsTrigger value="schedule" className="gap-1.5 text-xs">
-                <CalendarClock className="h-3 w-3" /> Agendar
-                {cronConfig.enabled && <Badge variant="secondary" className="text-[8px] ml-1 bg-success/10 text-success px-1">ON</Badge>}
-              </TabsTrigger>
-              <TabsTrigger value="accounts" className="gap-1.5 text-xs">
-                <Wifi className="h-3 w-3" /> Contas
-                <Badge variant="secondary" className="text-[8px] ml-1 px-1">{gscConnections.length}</Badge>
-              </TabsTrigger>
-            </TabsList>
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2 flex-1 w-full sm:w-auto">
@@ -499,7 +476,6 @@ export default function IndexingPage() {
                 </Select>
               )}
             </div>
-          </div>
 
           {/* ─── DASHBOARD TAB ─── */}
           <TabsContent value="dashboard" className="mt-4">
