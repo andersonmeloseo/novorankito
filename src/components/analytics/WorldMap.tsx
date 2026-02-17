@@ -131,6 +131,7 @@ export function WorldMap({ countryData, cityData = [] }: WorldMapProps) {
           onMoveEnd={handleMoveEnd}
           minZoom={1}
           maxZoom={8}
+          translateExtent={[[-200, -200], [1200, 800]]}
         >
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
