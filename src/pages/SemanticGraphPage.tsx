@@ -10,6 +10,8 @@ import { GraphBuilder } from "@/components/semantic/GraphBuilder";
 import { TriplesTable } from "@/components/semantic/TriplesTable";
 import { SchemaOrgTab } from "@/components/semantic/SchemaOrgTab";
 import { CompetitorAnalysisTab } from "@/components/semantic/CompetitorAnalysisTab";
+import { SemanticDashboardTab } from "@/components/semantic/SemanticDashboardTab";
+import { SemanticRecommendationsTab } from "@/components/semantic/SemanticRecommendationsTab";
 
 const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
@@ -57,83 +59,30 @@ export default function SemanticGraphPage() {
             ))}
           </TabsList>
 
-          {/* Graph Builder Tab */}
           <TabsContent value="graph" className="mt-4">
             <GraphBuilder />
           </TabsContent>
 
-          {/* Triples Tab */}
           <TabsContent value="triples" className="mt-4">
             <TriplesTable />
           </TabsContent>
 
-          {/* Schema.org Tab */}
           <TabsContent value="schema" className="mt-4">
             <SchemaOrgTab projectId={localStorage.getItem("rankito_current_project") || ""} />
           </TabsContent>
 
-          {/* Competitors Tab */}
           <TabsContent value="competitors" className="mt-4">
             <CompetitorAnalysisTab />
           </TabsContent>
 
-          {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="mt-4">
-            <div className="space-y-4">
-              <Card className="p-4 border-primary/20 bg-accent/30">
-                <div className="flex gap-3 items-start">
-                  <BarChart3 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-foreground">Dashboard de Autoridade Semântica</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Visualize o <strong>Score de Autoridade Semântica</strong> do seu negócio — uma métrica que mede o quão bem o Google compreende suas entidades e relações. Identifique <strong>lacunas de autoridade</strong>, acompanhe a evolução do grafo e receba recomendações de próximas ações.
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/80">
-                      💡 <strong>Quando usar:</strong> Consulte após criar ou expandir seu grafo para avaliar a cobertura semântica e priorizar melhorias de SEO baseadas em dados.
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
-                <BarChart3 className="h-10 w-10 text-muted-foreground" />
-                <h3 className="text-lg font-semibold text-foreground">Em breve</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Score de Autoridade Semântica, visual do grafo, lacunas de autoridade,
-                  próximas ações recomendadas e nível de confiança do negócio.
-                </p>
-              </Card>
-            </div>
+            <SemanticDashboardTab />
           </TabsContent>
 
-          {/* Recommendations Tab */}
           <TabsContent value="recommendations" className="mt-4">
-            <div className="space-y-4">
-              <Card className="p-4 border-primary/20 bg-accent/30">
-                <div className="flex gap-3 items-start">
-                  <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-foreground">Recomendador de Conteúdo Semântico</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      O motor de recomendações analisa seu grafo semântico e identifica <strong>páginas que faltam criar</strong>, <strong>entidades desconectadas</strong> e <strong>relações estratégicas ausentes</strong>. Cada sugestão fortalece o Knowledge Graph do seu negócio e melhora o posicionamento orgânico.
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/80">
-                      💡 <strong>Quando usar:</strong> Após montar seu grafo inicial, consulte as recomendações para descobrir conteúdos estratégicos que ampliam sua cobertura semântica no nicho.
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
-                <Lightbulb className="h-10 w-10 text-muted-foreground" />
-                <h3 className="text-lg font-semibold text-foreground">Em breve</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Identifica páginas a criar, conteúdos estratégicos e conexões ausentes
-                  para fortalecer o grafo semântico do seu negócio.
-                </p>
-              </Card>
-            </div>
+            <SemanticRecommendationsTab />
           </TabsContent>
 
-          {/* Exports Tab */}
           <TabsContent value="exports" className="mt-4">
             <div className="space-y-4">
               <Card className="p-4 border-primary/20 bg-accent/30">
