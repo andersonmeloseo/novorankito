@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +72,25 @@ function Section({ title, icon: Icon, badge, children, to, delay = 0 }: {
 export default function Overview() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentProjectId] = useState(localStorage.getItem("rankito_current_project"));
+  const [currentProjectId, setCurrentProjectId] = useState(localStorage.getItem("rankito_current_project"));
+
+  // Sync with localStorage changes (e.g. sidebar project switch)
+  useEffect(() => {
+    const syncProject = () => {
+      const stored = localStorage.getItem("rankito_current_project");
+      if (stored !== currentProjectId) setCurrentProjectId(stored);
+    };
+    // Listen for storage events from other tabs and custom events from same tab
+    window.addEventListener("storage", syncProject);
+    window.addEventListener("rankito_project_changed", syncProject);
+    // Also poll briefly in case neither event fires
+    const interval = setInterval(syncProject, 1000);
+    return () => {
+      window.removeEventListener("storage", syncProject);
+      window.removeEventListener("rankito_project_changed", syncProject);
+      clearInterval(interval);
+    };
+  }, [currentProjectId]);
 
   // Project
   const { data: project } = useQuery({
