@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
   Network, GitBranch, Code2, BarChart3, Lightbulb, FileDown, Users, ArrowLeft,
-  Target, MessageSquare,
+  Target, MessageSquare, Layout,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
@@ -17,6 +17,7 @@ import { SemanticRecommendationsTab } from "@/components/semantic/SemanticRecomm
 import { SemanticProjectSelector } from "@/components/semantic/SemanticProjectSelector";
 import { SemanticGoalsTab } from "@/components/semantic/SemanticGoalsTab";
 import { SemanticFeedbackTab } from "@/components/semantic/SemanticFeedbackTab";
+import { SemanticImplementationTab } from "@/components/semantic/SemanticImplementationTab";
 
 const TABS = [
   { id: "goals", label: "Metas", icon: Target },
@@ -24,6 +25,7 @@ const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
   { id: "triples", label: "Triples", icon: GitBranch },
   { id: "schema", label: "Schema.org", icon: Code2 },
+  { id: "implementation", label: "Implementação", icon: Layout },
   { id: "competitors", label: "Concorrentes", icon: Users },
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "recommendations", label: "Recomendações", icon: Lightbulb },
@@ -122,6 +124,10 @@ export default function SemanticGraphPage() {
 
           <TabsContent value="schema" className="mt-4">
             <SchemaOrgTab projectId={projectId} semanticProjectId={semanticProjectId} />
+          </TabsContent>
+
+          <TabsContent value="implementation" className="mt-4">
+            <SemanticImplementationTab semanticProjectId={semanticProjectId} projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="competitors" className="mt-4">
