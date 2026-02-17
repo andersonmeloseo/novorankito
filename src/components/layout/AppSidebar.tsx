@@ -400,18 +400,25 @@ export function AppSidebar() {
           <div className="h-px bg-sidebar-border/50" />
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
-            💰 Rank & Rent
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {rankRentNav.map((item) => (
-                <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Collapsible defaultOpen={pathname.startsWith("/rank-rent")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
+                <span>💰 Rank & Rent</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {rankRentNav.map((item) => (
+                    <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
