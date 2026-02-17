@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import {
   Activity, Flame as FlameIcon, ShoppingCart, Footprints, PhoneCall, Flag, Code,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
@@ -35,7 +36,6 @@ const projectNav = [
 ];
 
 const analiticaNav = [
-  { title: "Hub", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" },
   { title: "Eventos", url: "/analitica-rankito/eventos", icon: Activity },
   { title: "Sessões", url: "/analitica-rankito/sessoes", icon: Users },
   { title: "Heatmaps", url: "/analitica-rankito/heatmaps", icon: FlameIcon },
@@ -196,18 +196,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
-            📊 Analítica Rankito
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {analiticaNav.map((item) => (
-                <NavItem key={item.url} item={item} end={item.url === "/analitica-rankito"} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>📊 Analítica Rankito</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end />
+                  {analiticaNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <div className="mx-4 my-1">
           <div className="h-px bg-sidebar-border/50" />
