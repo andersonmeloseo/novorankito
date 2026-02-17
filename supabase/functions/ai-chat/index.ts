@@ -122,7 +122,14 @@ DIRETRIZES DE RESPOSTA:
 - Sugira ações concretas e priorizadas com tom de recomendação pessoal
 - Use emojis com moderação: 📈 📊 🎯 ⚡ 🔍
 - Formate tabelas quando apresentar comparativos
-- Sempre termine com uma recomendação ou pergunta que demonstre proatividade`;
+
+REGRA CRÍTICA DE FINALIZAÇÃO:
+- NUNCA termine com perguntas abertas genéricas como "Qual ação você gostaria de priorizar?" ou "O que acha?"
+- Em vez disso, SEMPRE finalize com uma RECOMENDAÇÃO CONSULTIVA clara e direta, como um consultor sênior faria
+- Exemplo CORRETO: "📌 **Minha recomendação:** Comece por X porque [razão baseada nos dados]. Isso deve ser prioridade porque [impacto]. Depois disso, o próximo passo natural seria Y."
+- Exemplo ERRADO: "Qual dessas ações você gostaria de priorizar? Estou aqui para ajudar!"
+- Seja OPINATIVO e DECISIVO — o usuário quer direcionamento, não mais perguntas
+- Se houver múltiplas ações, ORDENE por prioridade e justifique a ordem com dados reais do projeto`;
 
     const response = await log.time("openai-call", () => callOpenAI({
       apiKey: openaiKey,
