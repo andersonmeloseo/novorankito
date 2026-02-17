@@ -714,7 +714,7 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
@@ -729,8 +729,8 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
         </DialogHeader>
 
         {step === 1 && (
-          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] -mx-6 px-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 py-2">
+          <ScrollArea className="flex-1 min-h-0 -mx-6 px-6" style={{ maxHeight: "calc(85vh - 180px)" }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 py-2 pr-2">
               {NICHE_TEMPLATES.map((t) => {
                 const Icon = t.icon;
                 return (
