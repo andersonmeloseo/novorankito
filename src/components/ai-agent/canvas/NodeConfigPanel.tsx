@@ -4,8 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Bot } from "lucide-react";
-import type { CanvasNodeData, CanvasNodeType } from "./types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X, Bot, Plus, Trash2 } from "lucide-react";
+import type { CanvasNodeData, CanvasNodeType, ReportData } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -48,15 +49,25 @@ export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete, pro
     if (!agent) return;
     onUpdate(nodeId, {
       label: agent.name,
-      config: {
-        ...data.config,
-        agentName: agent.name,
-        agentInstructions: agent.instructions || "",
-        prompt: cfg.prompt || "",
-        emoji: "🤖",
-      } as any,
+      config: { ...data.config, agentName: agent.name, agentInstructions: agent.instructions || "", prompt: cfg.prompt || "", emoji: "🤖" } as any,
     });
     setLabel(agent.name);
+  };
+
+  // Report recipients management
+  const reportCfg = cfg as ReportData;
+  const addRecipient = () => {
+    const recipients = [...(reportCfg.recipients || []), { name: "", email: "", phone: "" }];
+    updateConfig({ recipients });
+  };
+  const updateRecipient = (idx: number, field: string, value: string) => {
+    const recipients = [...(reportCfg.recipients || [])];
+    recipients[idx] = { ...recipients[idx], [field]: value };
+    updateConfig({ recipients });
+  };
+  const removeRecipient = (idx: number) => {
+    const recipients = (reportCfg.recipients || []).filter((_: any, i: number) => i !== idx);
+    updateConfig({ recipients });
   };
 
   return (
@@ -69,11 +80,7 @@ export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete, pro
 
         <div className="space-y-2">
           <Label className="text-xs">Nome</Label>
-          <Input
-            value={label}
-            onChange={(e) => { setLabel(e.target.value); onUpdate(nodeId, { label: e.target.value }); }}
-            className="text-xs h-8"
-          />
+          <Input value={label} onChange={(e) => { setLabel(e.target.value); onUpdate(nodeId, { label: e.target.value }); }} className="text-xs h-8" />
         </div>
 
         {data.nodeType === "trigger" && (
@@ -103,9 +110,7 @@ export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete, pro
               <div className="space-y-1">
                 <Label className="text-xs">Usar agente existente</Label>
                 <Select onValueChange={selectExistingAgent}>
-                  <SelectTrigger className="text-xs h-8">
-                    <SelectValue placeholder="Selecionar agente..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Selecionar agente..." /></SelectTrigger>
                   <SelectContent>
                     {existingAgents.map((agent: any) => (
                       <SelectItem key={agent.id} value={agent.id}>
@@ -157,6 +162,76 @@ export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete, pro
             <div className="space-y-1">
               <Label className="text-xs">Template da Mensagem</Label>
               <Textarea value={cfg.template || ""} onChange={(e) => updateConfig({ template: e.target.value })} placeholder="Use {{resultado}} para inserir dados do passo anterior" className="text-xs min-h-[80px]" />
+            </div>
+          </div>
+        )}
+
+        {data.nodeType === "report" && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nome do Relatório</Label>
+              <Input value={cfg.reportName || ""} onChange={(e) => updateConfig({ reportName: e.target.value })} placeholder="Relatório Semanal" className="text-xs h-8" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Canais de Envio</Label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={(cfg.channels || []).includes("email")}
+                    onCheckedChange={(checked) => {
+                      const channels = checked
+                        ? [...(cfg.channels || []), "email"]
+                        : (cfg.channels || []).filter((c: string) => c !== "email");
+                      updateConfig({ channels });
+                    }}
+                  />
+                  Email
+                </label>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={(cfg.channels || []).includes("whatsapp")}
+                    onCheckedChange={(checked) => {
+                      const channels = checked
+                        ? [...(cfg.channels || []), "whatsapp"]
+                        : (cfg.channels || []).filter((c: string) => c !== "whatsapp");
+                      updateConfig({ channels });
+                    }}
+                  />
+                  WhatsApp
+                </label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Destinatários</Label>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={addRecipient}>
+                  <Plus className="h-3 w-3" /> Adicionar
+                </Button>
+              </div>
+              {(reportCfg.recipients || []).map((r: any, idx: number) => (
+                <div key={idx} className="space-y-1.5 p-2 rounded-lg border border-border bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground font-medium">Destinatário {idx + 1}</span>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeRecipient(idx)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                  <Input value={r.name || ""} onChange={(e) => updateRecipient(idx, "name", e.target.value)} placeholder="Nome" className="text-xs h-7" />
+                  {(cfg.channels || []).includes("email") && (
+                    <Input value={r.email || ""} onChange={(e) => updateRecipient(idx, "email", e.target.value)} placeholder="email@exemplo.com" className="text-xs h-7" />
+                  )}
+                  {(cfg.channels || []).includes("whatsapp") && (
+                    <Input value={r.phone || ""} onChange={(e) => updateRecipient(idx, "phone", e.target.value)} placeholder="+5511999999999" className="text-xs h-7" />
+                  )}
+                </div>
+              ))}
+              {(!reportCfg.recipients || reportCfg.recipients.length === 0) && (
+                <p className="text-[10px] text-muted-foreground text-center py-2">Nenhum destinatário adicionado</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Template (opcional)</Label>
+              <Textarea value={cfg.template || ""} onChange={(e) => updateConfig({ template: e.target.value })} placeholder="Use {{resultado}} para o conteúdo gerado pelos agentes" className="text-xs min-h-[80px]" />
             </div>
           </div>
         )}

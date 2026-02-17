@@ -21,13 +21,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   Zap, Bot, Mail, GitBranch, Timer, Split as SplitIcon,
   Merge as MergeIcon, Play, Square, Save, Trash2, Plus,
-  Bell, Loader2,
+  Bell, Loader2, FileText, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CanvasNode } from "./CanvasNode";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import { useWorkflowOrchestrator } from "./useWorkflowOrchestrator";
+import { AIWorkflowGenerator } from "./AIWorkflowGenerator";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
 import type { PresetWorkflow } from "../AgentWorkflows";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,7 @@ const NODE_PALETTE: { type: CanvasNodeType; label: string; icon: any; color: str
   { type: "trigger", label: "Trigger", icon: Zap, color: "text-yellow-400" },
   { type: "agent", label: "Agente IA", icon: Bot, color: "text-blue-400" },
   { type: "action", label: "Ação", icon: Bell, color: "text-pink-400" },
+  { type: "report", label: "Relatório", icon: FileText, color: "text-purple-400" },
   { type: "condition", label: "Condição", icon: GitBranch, color: "text-orange-400" },
   { type: "delay", label: "Delay", icon: Timer, color: "text-cyan-400" },
   { type: "split", label: "Split", icon: SplitIcon, color: "text-violet-400" },
@@ -51,6 +53,7 @@ function createDefaultData(type: CanvasNodeType): CanvasNodeData {
     trigger: () => ({ label: "Trigger", nodeType: "trigger", config: { triggerType: "manual" } }),
     agent: () => ({ label: "Agente IA", nodeType: "agent", config: { agentName: "", agentInstructions: "", prompt: "", emoji: "🤖" } }),
     action: () => ({ label: "Enviar", nodeType: "action", config: { actionType: "email", destination: "", template: "{{resultado}}" } }),
+    report: () => ({ label: "Relatório", nodeType: "report", config: { reportName: "", channels: ["email"], recipients: [], template: "{{resultado}}" } }),
     condition: () => ({ label: "Condição", nodeType: "condition", config: { field: "resultado", operator: "contains", value: "" } }),
     delay: () => ({ label: "Delay", nodeType: "delay", config: { delaySeconds: 5, delayUnit: "seconds" } }),
     split: () => ({ label: "Split", nodeType: "split", config: { splitType: "parallel" } }),
@@ -82,21 +85,22 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState("Meu Workflow");
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
+  const [aiGeneratorOpen, setAiGeneratorOpen] = useState(false);
   const idCounter = useRef(10);
 
   const { executeWorkflow, isRunning, abort } = useWorkflowOrchestrator(projectId);
 
-  // Load preset workflow into canvas
+  // Load preset workflow into canvas (from templates - does NOT alter templates)
   useEffect(() => {
     if (!initialPreset) return;
     const triggerNode: Node = {
-      id: "preset-trigger",
+      id: `preset-trigger-${Date.now()}`,
       type: "canvasNode",
       position: { x: 300, y: 30 },
       data: createDefaultData("trigger"),
     };
     const agentNodes: Node[] = initialPreset.steps.map((step, i) => ({
-      id: `preset-step-${i}`,
+      id: `preset-step-${Date.now()}-${i}`,
       type: "canvasNode",
       position: { x: 300, y: 150 + i * 140 },
       data: {
@@ -112,7 +116,7 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
     }));
     const allNodes = [triggerNode, ...agentNodes];
     const newEdges: Edge[] = allNodes.slice(0, -1).map((n, i) => ({
-      id: `preset-edge-${i}`,
+      id: `preset-edge-${Date.now()}-${i}`,
       source: n.id,
       target: allNodes[i + 1].id,
       animated: true,
@@ -122,7 +126,7 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
     setNodes(allNodes);
     setEdges(newEdges);
     setWorkflowName(initialPreset.name);
-    setCurrentWorkflowId(null);
+    setCurrentWorkflowId(null); // New canvas workflow, not overwriting template
     setSelectedNodeId(null);
     onPresetLoaded?.();
     toast.success(`Workflow "${initialPreset.name}" carregado no canvas!`);
@@ -187,12 +191,31 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
   const handleSave = useCallback(async () => {
     if (!projectId || !user) { toast.error("Selecione um projeto"); return; }
 
+    // Serialize nodes properly for persistence
+    const serializedNodes = nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      data: n.data,
+    }));
+
+    const serializedEdges = edges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle || null,
+      targetHandle: e.targetHandle || null,
+      animated: e.animated,
+      style: e.style,
+      markerEnd: e.markerEnd,
+    }));
+
     const payload = {
       name: workflowName,
       description: `Canvas workflow: ${nodes.length} nós`,
       project_id: projectId,
       owner_id: user.id,
-      steps: { nodes: nodes.map(n => ({ ...n, data: n.data })), edges } as any,
+      steps: { nodes: serializedNodes, edges: serializedEdges } as any,
       enabled: true,
     };
 
@@ -212,8 +235,25 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
   const loadWorkflow = useCallback((wf: any) => {
     const steps = wf.steps as any;
     if (steps?.nodes && steps?.edges) {
-      setNodes(steps.nodes);
-      setEdges(steps.edges);
+      // Restore nodes with proper structure
+      const restoredNodes = steps.nodes.map((n: any) => ({
+        id: n.id,
+        type: n.type || "canvasNode",
+        position: n.position,
+        data: n.data,
+      }));
+      const restoredEdges = steps.edges.map((e: any) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || undefined,
+        targetHandle: e.targetHandle || undefined,
+        animated: e.animated ?? true,
+        style: e.style || { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+        markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
+      }));
+      setNodes(restoredNodes);
+      setEdges(restoredEdges);
       setWorkflowName(wf.name);
       setCurrentWorkflowId(wf.id);
       setSelectedNodeId(null);
@@ -221,10 +261,31 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
     }
   }, []);
 
+  const handleDeleteWorkflow = useCallback(async (wfId: string) => {
+    const { error } = await supabase.from("agent_workflows").delete().eq("id", wfId);
+    if (error) { toast.error(error.message); return; }
+    if (currentWorkflowId === wfId) {
+      setCurrentWorkflowId(null);
+      setNodes(DEFAULT_NODES);
+      setEdges([]);
+      setWorkflowName("Meu Workflow");
+    }
+    queryClient.invalidateQueries({ queryKey: ["canvas-workflows", projectId] });
+    toast.success("Workflow excluído");
+  }, [currentWorkflowId, projectId]);
+
   const handleNew = useCallback(() => {
     setNodes(DEFAULT_NODES);
     setEdges([]);
     setWorkflowName("Novo Workflow");
+    setCurrentWorkflowId(null);
+    setSelectedNodeId(null);
+  }, []);
+
+  const handleAIGenerated = useCallback((newNodes: Node[], newEdges: Edge[], name: string) => {
+    setNodes(newNodes);
+    setEdges(newEdges);
+    setWorkflowName(name);
     setCurrentWorkflowId(null);
     setSelectedNodeId(null);
   }, []);
@@ -256,7 +317,8 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
             const d = n.data as unknown as CanvasNodeData;
             const colors: Record<string, string> = {
               trigger: "#eab308", agent: "#3b82f6", action: "#ec4899",
-              condition: "#f97316", delay: "#06b6d4", split: "#8b5cf6", merge: "#10b981",
+              condition: "#f97316", delay: "#06b6d4", split: "#8b5cf6",
+              merge: "#10b981", report: "#a855f7",
             };
             return colors[d?.nodeType] || "#888";
           }}
@@ -275,6 +337,9 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={handleNew}>
             <Plus className="h-3 w-3" /> Novo
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-primary" onClick={() => setAiGeneratorOpen(true)}>
+            <Sparkles className="h-3 w-3" /> IA
           </Button>
           <div className="w-px h-5 bg-border" />
           {isRunning ? (
@@ -306,22 +371,29 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
 
         {/* Saved workflows list */}
         {savedWorkflows.length > 0 && (
-          <Panel position="bottom-left" className="bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg max-h-40 overflow-y-auto">
+          <Panel position="bottom-left" className="bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg max-h-48 overflow-y-auto min-w-[220px]">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Workflows Salvos</p>
             {savedWorkflows.map((wf: any) => (
-              <button
+              <div
                 key={wf.id}
-                onClick={() => loadWorkflow(wf)}
                 className={cn(
-                  "flex items-center gap-2 w-full px-2 py-1 rounded text-left hover:bg-muted/50 transition-colors",
+                  "flex items-center gap-2 w-full px-2 py-1.5 rounded text-left hover:bg-muted/50 transition-colors group",
                   currentWorkflowId === wf.id && "bg-primary/10"
                 )}
               >
-                <span className="text-xs truncate">{wf.name}</span>
-                <Badge variant="outline" className="text-[8px] ml-auto shrink-0">
-                  {(wf.steps as any)?.nodes?.length || 0} nós
-                </Badge>
-              </button>
+                <button onClick={() => loadWorkflow(wf)} className="flex-1 flex items-center gap-2 min-w-0">
+                  <span className="text-xs truncate">{wf.name}</span>
+                  <Badge variant="outline" className="text-[8px] ml-auto shrink-0">
+                    {(wf.steps as any)?.nodes?.length || 0} nós
+                  </Badge>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteWorkflow(wf.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </button>
+              </div>
             ))}
           </Panel>
         )}
@@ -338,6 +410,14 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
           projectId={projectId}
         />
       )}
+
+      {/* AI Generator */}
+      <AIWorkflowGenerator
+        open={aiGeneratorOpen}
+        onOpenChange={setAiGeneratorOpen}
+        onGenerated={handleAIGenerated}
+        projectId={projectId}
+      />
     </div>
   );
 }

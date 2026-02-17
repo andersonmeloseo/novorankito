@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import {
   Zap, Bot, Mail, MessageCircle, Webhook, Bell,
-  GitBranch, Timer, Split, Merge, Play, Clock,
+  GitBranch, Timer, Split, Merge, FileText,
   Loader2, CheckCircle2, XCircle, SkipForward,
 } from "lucide-react";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
@@ -18,6 +18,7 @@ const NODE_CONFIG: Record<CanvasNodeType, {
   delay: { icon: Timer, color: "text-cyan-400", bgClass: "bg-cyan-500/10", borderClass: "border-cyan-500/50", glowClass: "shadow-cyan-500/20" },
   split: { icon: Split, color: "text-violet-400", bgClass: "bg-violet-500/10", borderClass: "border-violet-500/50", glowClass: "shadow-violet-500/20" },
   merge: { icon: Merge, color: "text-emerald-400", bgClass: "bg-emerald-500/10", borderClass: "border-emerald-500/50", glowClass: "shadow-emerald-500/20" },
+  report: { icon: FileText, color: "text-purple-400", bgClass: "bg-purple-500/10", borderClass: "border-purple-500/50", glowClass: "shadow-purple-500/20" },
 };
 
 const STATUS_ICONS: Record<string, { icon: any; className: string }> = {
@@ -55,6 +56,11 @@ function getSubtitle(data: CanvasNodeData): string {
       return `Aguardar ${cfg.delaySeconds || 0} ${cfg.delayUnit || "s"}`;
     case "split": return cfg.splitType === "parallel" ? "Paralelo" : "Round Robin";
     case "merge": return cfg.mergeType === "wait_all" ? "Esperar todos" : "Esperar qualquer";
+    case "report": {
+      const channels = cfg.channels?.join(", ") || "—";
+      const recipientCount = cfg.recipients?.length || 0;
+      return `${channels} → ${recipientCount} destinatário${recipientCount !== 1 ? "s" : ""}`;
+    }
     default: return "";
   }
 }
@@ -66,8 +72,6 @@ export const CanvasNode = memo(({ data, selected }: NodeProps) => {
   const status = nodeData.executionStatus;
   const StatusIcon = status ? STATUS_ICONS[status] : null;
 
-  const hasInput = nodeData.nodeType !== "trigger";
-  const hasOutput = nodeData.nodeType !== "merge" || true;
   const hasConditionOutputs = nodeData.nodeType === "condition";
 
   return (
@@ -80,9 +84,8 @@ export const CanvasNode = memo(({ data, selected }: NodeProps) => {
         "backdrop-blur-sm"
       )}
     >
-      {hasInput && (
-        <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-muted-foreground/60 !border-2 !border-background" />
-      )}
+      {/* All nodes have target handle (input) */}
+      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-muted-foreground/60 !border-2 !border-background" />
 
       <div className="flex items-start gap-2.5">
         <div className={cn("mt-0.5 p-1.5 rounded-lg", cfg.bgClass)}>

@@ -1,4 +1,4 @@
-export type CanvasNodeType = "trigger" | "agent" | "action" | "condition" | "delay" | "split" | "merge";
+export type CanvasNodeType = "trigger" | "agent" | "action" | "condition" | "delay" | "split" | "merge" | "report";
 
 export interface TriggerData {
   triggerType: "manual" | "schedule" | "webhook" | "event";
@@ -38,10 +38,17 @@ export interface MergeData {
   mergeType: "wait_all" | "wait_any";
 }
 
+export interface ReportData {
+  reportName: string;
+  channels: ("email" | "whatsapp")[];
+  recipients: { name: string; email?: string; phone?: string }[];
+  template?: string;
+}
+
 export type CanvasNodeData = {
   label: string;
   nodeType: CanvasNodeType;
-  config: TriggerData | AgentData | ActionData | ConditionData | DelayData | SplitData | MergeData;
+  config: TriggerData | AgentData | ActionData | ConditionData | DelayData | SplitData | MergeData | ReportData;
   executionStatus?: "idle" | "running" | "success" | "error" | "skipped";
   executionResult?: string;
 };
