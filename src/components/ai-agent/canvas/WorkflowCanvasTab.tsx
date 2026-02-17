@@ -343,6 +343,9 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-primary" onClick={() => setAiGeneratorOpen(true)}>
             <Sparkles className="h-3 w-3" /> IA
           </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-violet-400" onClick={() => setOrchestratorOpen(true)}>
+            <Building2 className="h-3 w-3" /> Orquestrador
+          </Button>
           <div className="w-px h-5 bg-border" />
           {isRunning ? (
             <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={abort}>
