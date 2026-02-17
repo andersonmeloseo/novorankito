@@ -19,6 +19,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { cn } from "@/lib/utils";
 
+import {
+  Activity, Flame as FlameIcon, ShoppingCart, Footprints, PhoneCall, Flag, Code,
+} from "lucide-react";
+
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
@@ -26,9 +30,22 @@ const projectNav = [
   { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Indexação", url: "/indexing", icon: Database },
   { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
-  { title: "Analítica Rankito", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const analiticaNav = [
+  { title: "Hub", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" },
+  { title: "Eventos", url: "/analitica-rankito/eventos", icon: Activity },
+  { title: "Sessões", url: "/analitica-rankito/sessoes", icon: Users },
+  { title: "Heatmaps", url: "/analitica-rankito/heatmaps", icon: FlameIcon },
+  { title: "E-commerce", url: "/analitica-rankito/ecommerce", icon: ShoppingCart },
+  { title: "Jornada", url: "/analitica-rankito/jornada", icon: Footprints },
+  { title: "Ads & UTM", url: "/analitica-rankito/ads-utm", icon: Target },
+  { title: "Offline", url: "/analitica-rankito/offline", icon: PhoneCall },
+  { title: "Event Builder", url: "/analitica-rankito/event-builder", icon: MousePointerClick },
+  { title: "Metas", url: "/analitica-rankito/metas", icon: Flag },
+  { title: "Pixel", url: "/analitica-rankito/pixel", icon: Code },
 ];
 
 const rankRentNav = [
@@ -174,6 +191,19 @@ export function AppSidebar() {
             <SidebarMenu>
               {projectNav.map((item) => (
                 <NavItem key={item.url} item={item} end />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+            📊 Analítica Rankito
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {analiticaNav.map((item) => (
+                <NavItem key={item.url} item={item} end={item.url === "/analitica-rankito"} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
