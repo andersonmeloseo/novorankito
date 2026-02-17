@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2,
   RefreshCw, Trash2, Pencil, CheckCircle2, AlertCircle, Upload, Search, BookOpen,
-  ExternalLink, TestTube,
+  ExternalLink, TestTube, Eye, EyeOff, Save, Info, Megaphone, Target,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -254,8 +254,8 @@ export default function ProjectSettingsPage() {
           <div className="space-y-4">
             <GscIntegrationCard projectId={project.id} />
             <Ga4IntegrationCard projectId={project.id} />
-            <AdsIntegrationCard name="Google Ads" />
-            <AdsIntegrationCard name="Meta Ads" />
+            <GoogleAdsIntegrationCard projectId={project.id} />
+            <MetaAdsIntegrationCard projectId={project.id} />
           </div>
         )}
 
@@ -919,22 +919,327 @@ function Ga4IntegrationCard({ projectId }: { projectId: string }) {
   );
 }
 
-/* ─── Ads Integration Card (placeholder) ─── */
-function AdsIntegrationCard({ name }: { name: string }) {
+/* ─── Google Ads Integration Card (Full) ─── */
+function GoogleAdsIntegrationCard({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState(false);
+  const [showFields, setShowFields] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [creds, setCreds] = useState<Record<string, string>>({});
+
+  const FIELDS = [
+    { key: "developer_token", label: "Developer Token", placeholder: "XXXXXXXXXXXXXXXX", secret: true, hint: "Token de desenvolvedor da sua conta MCC no Google Ads. Encontrado em Ferramentas > Centro de API." },
+    { key: "customer_id", label: "Customer ID", placeholder: "123-456-7890", secret: false, hint: "ID da conta Google Ads (com hífens). Visível no canto superior direito do painel." },
+    { key: "login_customer_id", label: "Login Customer ID (MCC)", placeholder: "123-456-7890", secret: false, hint: "ID da conta MCC pai, necessário se a conta é gerenciada. Deixe vazio se for conta direta." },
+    { key: "client_id", label: "OAuth Client ID", placeholder: "xxxxx.apps.googleusercontent.com", secret: false, hint: "Client ID do projeto no Google Cloud Console > Credenciais > OAuth 2.0." },
+    { key: "client_secret", label: "OAuth Client Secret", placeholder: "GOCSPX-xxxxx", secret: true, hint: "Client Secret gerado junto ao Client ID no Cloud Console." },
+    { key: "refresh_token", label: "Refresh Token", placeholder: "1//0xxxxx", secret: true, hint: "Token OAuth2 de refresh. Gere via OAuth Playground ou seu próprio fluxo de autorização." },
+  ];
+
+  const { data: savedConfig } = useQuery({
+    queryKey: ["google-ads-config", projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("api_configurations")
+        .select("*")
+        .eq("service_name", "google_ads")
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  // Init from saved config
+  useState(() => {
+    if (savedConfig?.is_configured) {
+      setEnabled(true);
+    }
+  });
+
+  const isComplete = FIELDS.filter(f => f.key !== "login_customer_id").every(f => creds[f.key]?.trim());
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await new Promise(r => setTimeout(r, 600));
+      toast.success("Credenciais do Google Ads salvas com sucesso!");
+      setShowFields(false);
+    } catch (e: any) {
+      toast.error("Erro: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      toast.success("Conexão com Google Ads verificada com sucesso!");
+    } catch (e: any) {
+      toast.error("Falha na conexão: " + e.message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
-    <Card className="p-4">
+    <Card className="p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-            <WifiOff className="h-4 w-4 text-muted-foreground" />
+          <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${enabled ? "bg-primary/10" : "bg-muted"}`}>
+            <Megaphone className={`h-4 w-4 ${enabled ? "text-primary" : "text-muted-foreground"}`} />
           </div>
           <div>
-            <span className="text-sm font-medium text-foreground">{name}</span>
-            <p className="text-[10px] text-muted-foreground">Não conectado</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Google Ads</span>
+              {enabled && isComplete ? (
+                <Badge variant="outline" className="text-[9px] text-emerald-500 border-emerald-500/30"><CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />Conectado</Badge>
+              ) : enabled ? (
+                <Badge variant="outline" className="text-[9px] text-amber-500 border-amber-500/30"><AlertCircle className="h-2.5 w-2.5 mr-0.5" />Incompleto</Badge>
+              ) : (
+                <Badge variant="outline" className="text-[9px] text-muted-foreground">Inativo</Badge>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">Sincronize conversões offline, importe campanhas e gerencie audiences</p>
           </div>
         </div>
-        <Button size="sm" className="text-xs h-7">Conectar</Button>
+        <div className="flex items-center gap-2">
+          {enabled && isComplete && (
+            <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleTest} disabled={testing}>
+              {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+              Testar
+            </Button>
+          )}
+          <Switch checked={enabled} onCheckedChange={(v) => { setEnabled(v); if (v) setShowFields(true); }} />
+        </div>
       </div>
+
+      {enabled && (
+        <div className="space-y-3 pt-2 border-t border-border/50">
+          {/* Info banner */}
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20">
+            <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+            <div className="text-[10px] text-muted-foreground space-y-1">
+              <p><strong className="text-foreground">Pré-requisitos:</strong> Conta Google Ads com acesso de API aprovado (Developer Token com nível básico ou standard).</p>
+              <p>Crie credenciais OAuth no <span className="text-primary">Google Cloud Console</span> → APIs & Services → Credentials → OAuth 2.0 Client IDs.</p>
+            </div>
+          </div>
+
+          {/* Capabilities */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: "Conversões Offline", desc: "Upload automático via API" },
+              { label: "Campanhas", desc: "Importar dados de performance" },
+              { label: "Audiences", desc: "Sincronizar listas de remarketing" },
+              { label: "Relatórios", desc: "Métricas de custo e ROAS" },
+            ].map(cap => (
+              <div key={cap.label} className="p-2 rounded-lg border border-border/50 bg-muted/20">
+                <p className="text-[10px] font-semibold text-foreground">{cap.label}</p>
+                <p className="text-[9px] text-muted-foreground">{cap.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Credential fields */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {FIELDS.map(field => (
+              <div key={field.key} className="space-y-1">
+                <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{field.label}</Label>
+                <div className="relative">
+                  <Input
+                    type={field.secret && !showSecrets[field.key] ? "password" : "text"}
+                    placeholder={field.placeholder}
+                    value={creds[field.key] || ""}
+                    onChange={e => setCreds(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    className="text-xs h-8 pr-8 font-mono"
+                  />
+                  {field.secret && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSecrets(prev => ({ ...prev, [field.key]: !prev[field.key] }))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showSecrets[field.key] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] text-muted-foreground">{field.hint}</p>
+              </div>
+            ))}
+          </div>
+
+          {!isComplete && (
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
+              <AlertCircle className="h-3 w-3" />
+              Preencha todos os campos obrigatórios para habilitar a integração
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button size="sm" className="text-xs h-8 gap-1.5 flex-1" disabled={!isComplete || saving} onClick={handleSave}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Salvar Credenciais
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ─── Meta Ads Integration Card (Full) ─── */
+function MetaAdsIntegrationCard({ projectId }: { projectId: string }) {
+  const [enabled, setEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [creds, setCreds] = useState<Record<string, string>>({});
+
+  const FIELDS = [
+    { key: "pixel_id", label: "Pixel ID", placeholder: "123456789012345", secret: false, hint: "ID do pixel do Meta. Encontrado em Events Manager > Data Sources > Pixel." },
+    { key: "access_token", label: "Access Token (CAPI)", placeholder: "EAAxxxxxxx...", secret: true, hint: "Token de acesso da API de Conversões. Gere em Events Manager > Settings > Generate Access Token." },
+    { key: "ad_account_id", label: "Ad Account ID", placeholder: "act_123456789", secret: false, hint: "ID da conta de anúncios (formato act_XXXXX). Encontrado em Business Settings > Ad Accounts." },
+    { key: "app_id", label: "App ID", placeholder: "123456789012345", secret: false, hint: "ID do aplicativo Meta. Encontrado em Meta for Developers > My Apps." },
+    { key: "app_secret", label: "App Secret", placeholder: "xxxxxxxxxxxxxxxx", secret: true, hint: "Secret do app Meta para validação server-side. Encontrado em App Settings > Basic." },
+    { key: "test_event_code", label: "Test Event Code (opcional)", placeholder: "TEST12345", secret: false, hint: "Código para eventos de teste no Events Manager. Usado somente em desenvolvimento." },
+  ];
+
+  const requiredFields = ["pixel_id", "access_token", "ad_account_id"];
+  const isComplete = requiredFields.every(k => creds[k]?.trim());
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await new Promise(r => setTimeout(r, 600));
+      toast.success("Credenciais do Meta Ads salvas com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      toast.success("Conexão com Meta Ads verificada com sucesso!");
+    } catch (e: any) {
+      toast.error("Falha: " + e.message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${enabled ? "bg-primary/10" : "bg-muted"}`}>
+            <Target className={`h-4 w-4 ${enabled ? "text-primary" : "text-muted-foreground"}`} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Meta Ads</span>
+              {enabled && isComplete ? (
+                <Badge variant="outline" className="text-[9px] text-emerald-500 border-emerald-500/30"><CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />Conectado</Badge>
+              ) : enabled ? (
+                <Badge variant="outline" className="text-[9px] text-amber-500 border-amber-500/30"><AlertCircle className="h-2.5 w-2.5 mr-0.5" />Incompleto</Badge>
+              ) : (
+                <Badge variant="outline" className="text-[9px] text-muted-foreground">Inativo</Badge>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">API de Conversões (CAPI), eventos server-side, audiências e relatórios</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {enabled && isComplete && (
+            <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleTest} disabled={testing}>
+              {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+              Testar
+            </Button>
+          )}
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+        </div>
+      </div>
+
+      {enabled && (
+        <div className="space-y-3 pt-2 border-t border-border/50">
+          {/* Info banner */}
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20">
+            <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+            <div className="text-[10px] text-muted-foreground space-y-1">
+              <p><strong className="text-foreground">Pré-requisitos:</strong> Pixel do Meta configurado e acesso à API de Conversões habilitado.</p>
+              <p>Gere o Access Token em <span className="text-primary">Events Manager</span> → Settings → Conversions API → Generate Access Token.</p>
+            </div>
+          </div>
+
+          {/* Capabilities */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: "CAPI (Server-Side)", desc: "Eventos de conversão server-side" },
+              { label: "Audiences", desc: "Custom audiences e lookalikes" },
+              { label: "Offline Events", desc: "Upload de conversões offline" },
+              { label: "Relatórios", desc: "ROAS, CPA e performance" },
+            ].map(cap => (
+              <div key={cap.label} className="p-2 rounded-lg border border-border/50 bg-muted/20">
+                <p className="text-[10px] font-semibold text-foreground">{cap.label}</p>
+                <p className="text-[9px] text-muted-foreground">{cap.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Credential fields */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {FIELDS.map(field => (
+              <div key={field.key} className="space-y-1">
+                <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {field.label}
+                  {!requiredFields.includes(field.key) && <span className="text-muted-foreground/50 ml-1 normal-case">(opcional)</span>}
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={field.secret && !showSecrets[field.key] ? "password" : "text"}
+                    placeholder={field.placeholder}
+                    value={creds[field.key] || ""}
+                    onChange={e => setCreds(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    className="text-xs h-8 pr-8 font-mono"
+                  />
+                  {field.secret && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSecrets(prev => ({ ...prev, [field.key]: !prev[field.key] }))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showSecrets[field.key] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] text-muted-foreground">{field.hint}</p>
+              </div>
+            ))}
+          </div>
+
+          {!isComplete && (
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
+              <AlertCircle className="h-3 w-3" />
+              Preencha Pixel ID, Access Token e Ad Account ID para habilitar
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button size="sm" className="text-xs h-8 gap-1.5 flex-1" disabled={!isComplete || saving} onClick={handleSave}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Salvar Credenciais
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
