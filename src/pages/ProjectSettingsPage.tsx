@@ -11,6 +11,7 @@ import {
   Globe, Link2, Tag, Wifi, WifiOff, Bell, Users, Bot, Settings2, Copy, Loader2,
   RefreshCw, Trash2, Pencil, CheckCircle2, AlertCircle, Upload, Search, BookOpen,
   ExternalLink, TestTube, Eye, EyeOff, Save, Info, Megaphone, Target,
+  Code2, Palette, KeyRound, Webhook,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,6 +152,13 @@ export default function ProjectSettingsPage() {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {tab === "general" && (
           <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <Settings2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Configurações Gerais</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Defina nome, domínio, tipo do site e módulos ativos. Essas informações são usadas pelo agente IA, relatórios e integrações para personalizar a experiência.</p>
+              </div>
+            </div>
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">Informações do Projeto</h3>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -250,8 +258,15 @@ export default function ProjectSettingsPage() {
           </div>
         )}
 
-        {tab === "integrations" && (
+         {tab === "integrations" && (
           <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <Wifi className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Integrações</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Conecte suas contas do Google Search Console, GA4, Google Ads e Meta Ads. As credenciais são armazenadas de forma segura e usadas para sincronizar dados automaticamente.</p>
+              </div>
+            </div>
             <GscIntegrationCard projectId={project.id} />
             <Ga4IntegrationCard projectId={project.id} />
             <GoogleAdsIntegrationCard projectId={project.id} />
@@ -261,6 +276,13 @@ export default function ProjectSettingsPage() {
 
         {tab === "tracking" && (
           <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <Code2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Script de Tracking</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Instale o script universal no seu site para capturar pageviews, cliques, conversões, Core Web Vitals e sessões automaticamente. Basta colar o snippet no {'<head>'} do seu HTML.</p>
+              </div>
+            </div>
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">Script de Tracking</h3>
               <div className="space-y-1.5">
@@ -292,6 +314,13 @@ export default function ProjectSettingsPage() {
 
         {tab === "api" && (
           <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <KeyRound className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">API & Webhooks</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Gerencie chaves de API para acesso programático e configure webhooks para receber notificações em tempo real. Integre com n8n, Zapier, Make, Slack, CRMs e ferramentas de BI.</p>
+              </div>
+            </div>
             <ApiKeysSettings projectId={project.id} />
             <WebhooksSettings projectId={project.id} />
             <IntegrationsInfoCard />
@@ -300,6 +329,13 @@ export default function ProjectSettingsPage() {
 
         {tab === "whitelabel" && (
           <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <Palette className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">White-Label</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Personalize a aparência da plataforma com a marca do seu cliente ou agência. Configure logo, cores, domínio customizado e remova referências ao Rankito.</p>
+              </div>
+            </div>
             <WhiteLabelSettings projectId={project.id} />
           </div>
         )}
