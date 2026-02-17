@@ -207,17 +207,57 @@ export default function SeoPage() {
 
   const prevFiltered = prevMetrics;
 
-  // KPIs - simple sums since each row is already a daily total (or aggregated by dimension)
-  const totalClicks = metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
-  const totalImpressions = metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
+  // Live data from GSC API - always fetch when GSC is connected
+  const hasGsc = !!gscConnection;
+  const isComparing = compareMode !== "none" && !!prevDateRange && hasGsc;
+  const { data: comparisonData, isLoading: loadingComparison } = useQuery({
+    queryKey: ["gsc-comparison", projectId, currentDateRange?.start, currentDateRange?.end, prevDateRange?.start, prevDateRange?.end, compareMode],
+    queryFn: async () => {
+      const prevStart = prevDateRange?.start || currentDateRange.start;
+      const prevEnd = prevDateRange?.end || currentDateRange.end;
+      const { data, error } = await supabase.functions.invoke("query-gsc-live", {
+        body: {
+          project_id: projectId,
+          current_start: currentDateRange.start,
+          current_end: currentDateRange.end,
+          previous_start: prevStart,
+          previous_end: prevEnd,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: hasGsc && !!projectId && !!currentDateRange?.start,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // KPIs - prefer live GSC data when available, fallback to stored data
+  const liveDeviceCurrent = comparisonData?.device?.current || [];
+  const liveDevicePrev = comparisonData?.device?.previous || [];
+  const useLive = liveDeviceCurrent.length > 0;
+
+  const totalClicks = useLive
+    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    : metrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
+  const totalImpressions = useLive
+    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    : metrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-  const weightedPositionSum = metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
+  const weightedPositionSum = useLive
+    ? liveDeviceCurrent.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
+    : metrics.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
   const avgPosition = totalImpressions > 0 ? weightedPositionSum / totalImpressions : 0;
 
-  const prevClicks = prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
-  const prevImpressions = prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
+  const prevClicks = useLive
+    ? liveDevicePrev.reduce((s: number, m: any) => s + (m.clicks || 0), 0)
+    : prevFiltered.reduce((s: number, m: any) => s + (m.clicks || 0), 0);
+  const prevImpressions = useLive
+    ? liveDevicePrev.reduce((s: number, m: any) => s + (m.impressions || 0), 0)
+    : prevFiltered.reduce((s: number, m: any) => s + (m.impressions || 0), 0);
   const prevAvgCtr = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
-  const prevWeightedPos = prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
+  const prevWeightedPos = useLive
+    ? liveDevicePrev.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0)
+    : prevFiltered.reduce((s: number, m: any) => s + (Number(m.position || 0) * (m.impressions || 0)), 0);
   const prevAvgPosition = prevImpressions > 0 ? prevWeightedPos / prevImpressions : 0;
 
   const pctChange = (curr: number, prev: number) => prev === 0 ? 0 : parseFloat((((curr - prev) / prev) * 100).toFixed(1));
@@ -254,28 +294,6 @@ export default function SeoPage() {
       position: m.position || 0,
     }));
   }, [deviceMetrics, combinedMetrics]);
-
-
-  // Live comparison data from GSC API
-  const isComparing = compareMode !== "none" && !!prevDateRange && !!gscConnection;
-  const { data: comparisonData, isLoading: loadingComparison } = useQuery({
-    queryKey: ["gsc-comparison", projectId, currentDateRange?.start, currentDateRange?.end, prevDateRange?.start, prevDateRange?.end],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("query-gsc-live", {
-        body: {
-          project_id: projectId,
-          current_start: currentDateRange.start,
-          current_end: currentDateRange.end,
-          previous_start: prevDateRange!.start,
-          previous_end: prevDateRange!.end,
-        },
-      });
-      if (error) throw error;
-      return data;
-    },
-    enabled: isComparing && !!projectId,
-    staleTime: 5 * 60 * 1000,
-  });
 
   // Merge comparison data into rows
   function mergeWithComparison(currentRows: any[], previousRows: any[]): any[] {
