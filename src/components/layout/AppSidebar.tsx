@@ -112,7 +112,14 @@ const rankRentNav = [
 ];
 
 const semanticNav = [
-  { title: "Grafo Semântico", url: "/semantic-graph", icon: Network },
+  { title: "Construtor de Grafo", url: "/semantic-graph#builder", icon: Network },
+  { title: "Dashboard", url: "/semantic-graph#dashboard", icon: LayoutDashboard },
+  { title: "Triplas", url: "/semantic-graph#triples", icon: Database },
+  { title: "Schema.org", url: "/semantic-graph#schema", icon: Layers },
+  { title: "Competidores", url: "/semantic-graph#competitors", icon: Target },
+  { title: "Recomendações", url: "/semantic-graph#recommendations", icon: Sparkles },
+  { title: "Metas", url: "/semantic-graph#goals", icon: Flag },
+  { title: "Feedback", url: "/semantic-graph#feedback", icon: Megaphone },
 ];
 
 const accountNav = [
@@ -420,18 +427,25 @@ export function AppSidebar() {
           </SidebarGroup>
         </Collapsible>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
-            🧠 SEO Semântico
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {semanticNav.map((item) => (
-                <NavItem key={item.url} item={item} end />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Collapsible defaultOpen={pathname.startsWith("/semantic-graph")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
+                <span>🧠 SEO Semântico</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {semanticNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <div className="mx-4 my-1">
           <div className="h-px bg-sidebar-border/50" />
