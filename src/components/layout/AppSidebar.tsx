@@ -28,7 +28,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
-  { title: "URLs", url: "/urls", icon: Globe },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
 ];
