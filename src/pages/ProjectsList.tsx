@@ -4,7 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, Plus, Loader2, Trash2, Settings, MoreVertical, MousePointerClick, Eye, BarChart3, FileText, Link2 } from "lucide-react";
+import { Globe, Plus, Loader2, Trash2, Settings, MoreVertical, MousePointerClick, Eye, BarChart3, FileText, Link2, LayoutDashboard } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -205,6 +205,9 @@ export default function ProjectsList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => navigate(`/project/${project.id}/dashboard`)} className="gap-2 text-xs">
+                            <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate(`/project-settings?id=${project.id}`)} className="gap-2 text-xs">
                             <Settings className="h-3.5 w-3.5" /> Configurações
                           </DropdownMenuItem>
