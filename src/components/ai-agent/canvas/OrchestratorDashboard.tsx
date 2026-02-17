@@ -8,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
   Loader2, ChevronDown, ChevronRight, Send, Plus, Clock,
-  AlertTriangle, Eye,
+  AlertTriangle, Eye, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { FREQUENCY_LABELS, PROFESSIONAL_ROLES, DEFAULT_HIERARCHY } from "./OrchestratorTemplates";
 import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
+import { CeoOnboardingChat } from "./CeoOnboardingChat";
 import type { Node, Edge } from "@xyflow/react";
 import { MarkerType } from "@xyflow/react";
 import type { CanvasNodeData } from "./types";
@@ -43,6 +44,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
   const [expandedDeployment, setExpandedDeployment] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [ceoOnboardingOpen, setCeoOnboardingOpen] = useState(false);
 
   const { data: deployments = [], refetch: refetchDeployments } = useQuery({
     queryKey: ["orchestrator-deployments", projectId],
@@ -242,9 +244,14 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
             Equipes autônomas de IA que analisam dados reais, geram relatórios e tomam ações automaticamente.
           </p>
         </div>
-        <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 text-xs">
-          <Plus className="h-3.5 w-3.5" /> Criar Equipe
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setCeoOnboardingOpen(true)} className="gap-1.5 text-xs">
+            <Plus className="h-3.5 w-3.5" /> Criar Equipe
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)} className="gap-1.5 text-xs">
+            <Users className="h-3.5 w-3.5" /> Modo Avançado
+          </Button>
+        </div>
       </div>
 
       {/* Stats summary */}
@@ -277,7 +284,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
           <p className="text-xs text-muted-foreground mb-4">
             Crie uma equipe autônoma de agentes de IA para analisar seu projeto automaticamente.
           </p>
-          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 text-xs">
+          <Button size="sm" onClick={() => setCeoOnboardingOpen(true)} className="gap-1.5 text-xs">
             <Plus className="h-3.5 w-3.5" /> Criar Primeira Equipe
           </Button>
         </Card>
@@ -461,7 +468,15 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
         })}
       </div>
 
-      {/* Create dialog */}
+      {/* CEO Onboarding Chat */}
+      <CeoOnboardingChat
+        open={ceoOnboardingOpen}
+        onOpenChange={setCeoOnboardingOpen}
+        projectId={projectId}
+        onDeployed={() => { refetchDeployments(); refetchRuns(); }}
+      />
+
+      {/* Advanced Create dialog */}
       <CreateOrchestratorDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
