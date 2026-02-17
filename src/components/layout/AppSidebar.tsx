@@ -278,18 +278,25 @@ export function AppSidebar() {
             <div className="absolute left-0 top-2 -translate-x-[3px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.5)]" />
 
             <div className="pl-4">
-              <SidebarGroup>
-                <SidebarGroupLabel className="sidebar-section-label">
-                  Projeto
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {projectNav.map((item) => (
-                      <NavItem key={item.url} item={item} end />
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+              <Collapsible defaultOpen={pathname === "/overview" || pathname === "/reports"}>
+                <SidebarGroup>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                      <span>📁 Projeto</span>
+                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {projectNav.map((item) => (
+                          <NavItem key={item.url} item={item} end />
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
 
               <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
                 <SidebarGroup>
