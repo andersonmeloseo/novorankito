@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { AgentChatTab } from "@/components/ai-agent/AgentChatTab";
 import { AgentCard } from "@/components/ai-agent/AgentCard";
 import { CreateAgentDialog } from "@/components/ai-agent/CreateAgentDialog";
-import { AgentWorkflows } from "@/components/ai-agent/AgentWorkflows";
+import { AgentWorkflows, type PresetWorkflow } from "@/components/ai-agent/AgentWorkflows";
 import { WorkflowSchedulesTab } from "@/components/ai-agent/WorkflowSchedulesTab";
 import { WorkflowCanvasTab } from "@/components/ai-agent/canvas/WorkflowCanvasTab";
 
@@ -372,6 +372,7 @@ export default function AiAgentPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<any>(null);
   const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string; speciality?: string } | null>(null);
+  const [canvasPreset, setCanvasPreset] = useState<PresetWorkflow | null>(null);
 
   // Use the active project from sidebar (localStorage)
   const projectId = typeof window !== "undefined" ? localStorage.getItem("rankito_current_project") : null;
@@ -546,6 +547,10 @@ export default function AiAgentPage() {
         {tab === "workflows" && (
           <AgentWorkflows
             projectId={projectId || undefined}
+            onEditInCanvas={(workflow) => {
+              setCanvasPreset(workflow);
+              setTab("canvas");
+            }}
             onExecuteWorkflow={(name, steps) => {
               const allPrompts = steps.map((s, i) => `**Passo ${i + 1} (${s.emoji} ${s.agent}):** ${s.prompt}`).join("\n\n");
               setChatAgent({
@@ -558,7 +563,11 @@ export default function AiAgentPage() {
         )}
 
         {tab === "canvas" && (
-          <WorkflowCanvasTab projectId={projectId || undefined} />
+          <WorkflowCanvasTab
+            projectId={projectId || undefined}
+            initialPreset={canvasPreset}
+            onPresetLoaded={() => setCanvasPreset(null)}
+          />
         )}
 
         {tab === "schedules" && (
