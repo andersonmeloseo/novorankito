@@ -162,14 +162,11 @@ export default function SeoPage() {
       from = parseISO(customFrom);
       to = parseISO(customTo);
     } else {
-      // GSC's "Last N days" counts N days backwards from the last day with complete data,
-      // which is typically 3 days ago. If we use "today" as end date, GSC only returns
-      // data through ~3 days ago, making our window shorter than N days and totals lower.
-      // Fix: anchor end date to today-3 so our window matches GSC's exactly.
+      // Use today as end date and count N days back — same as GSC's "Last N days"
       const today = new Date();
       const days = parseInt(dateRange);
-      to = subDays(today, 3);
-      from = subDays(to, days - 1);
+      to = today;
+      from = subDays(today, days);
     }
 
     const periodLength = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
