@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { Node, Edge } from "@xyflow/react";
-import type { CanvasNodeData, AgentData, ActionData, ConditionData, DelayData } from "./types";
+import type { CanvasNodeData, AgentData, ActionData, ConditionData, DelayData, ReportData } from "./types";
 import { streamChatToCompletion } from "@/lib/stream-chat";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,34 +21,23 @@ export function useWorkflowOrchestrator(projectId?: string) {
     abortRef.current = false;
     contextRef.current = {};
 
-    // Reset all nodes
     for (const n of nodes) {
       updateNode(n.id, { executionStatus: "idle", executionResult: undefined });
     }
 
-    // Find trigger node (start)
     const triggerNode = nodes.find(n => (n.data as unknown as CanvasNodeData).nodeType === "trigger");
-    if (!triggerNode) {
-      setIsRunning(false);
-      return;
-    }
+    if (!triggerNode) { setIsRunning(false); return; }
 
-    // BFS/DFS execution following edges
     const visited = new Set<string>();
-    const queue: string[] = [triggerNode.id];
 
-    // Mark trigger as success
     updateNode(triggerNode.id, { executionStatus: "success" });
     visited.add(triggerNode.id);
 
-    // Get outgoing edges for a node
     const getOutgoing = (nodeId: string, handleId?: string) =>
       edges.filter(e => e.source === nodeId && (!handleId || e.sourceHandle === handleId));
 
-    // Get node by id
     const getNode = (id: string) => nodes.find(n => n.id === id);
 
-    // Process queue
     const processNext = async (nodeIds: string[]) => {
       for (const nextId of nodeIds) {
         if (abortRef.current || visited.has(nextId)) continue;
@@ -65,14 +54,12 @@ export function useWorkflowOrchestrator(projectId?: string) {
           contextRef.current[nextId] = result;
           updateNode(nextId, { executionStatus: "success", executionResult: result });
 
-          // Determine next nodes
           if (nodeData.nodeType === "condition") {
             const condResult = evaluateCondition(nodeData.config as ConditionData, result, contextRef.current);
             const handleId = condResult ? "true" : "false";
             const nextEdges = getOutgoing(nextId, handleId);
             await processNext(nextEdges.map(e => e.target));
           } else if (nodeData.nodeType === "split") {
-            // Execute all branches in parallel
             const nextEdges = getOutgoing(nextId);
             const branchPromises = nextEdges.map(e => processNext([e.target]));
             await Promise.all(branchPromises);
@@ -86,7 +73,6 @@ export function useWorkflowOrchestrator(projectId?: string) {
       }
     };
 
-    // Start from trigger's outgoing
     const startEdges = getOutgoing(triggerNode.id);
     await processNext(startEdges.map(e => e.target));
 
@@ -151,23 +137,55 @@ async function executeNode(
       return `Ação ${cfg.actionType} executada`;
     }
 
+    case "report": {
+      const cfg = data.config as ReportData;
+      const allContext = Object.values(context).join("\n\n---\n\n");
+      const content = (cfg.template || "{{resultado}}").replace("{{resultado}}", allContext);
+      const results: string[] = [];
+
+      for (const recipient of (cfg.recipients || [])) {
+        if (cfg.channels?.includes("email") && recipient.email) {
+          await supabase.functions.invoke("send-workflow-notification", {
+            body: {
+              email: recipient.email,
+              content,
+              workflow_name: cfg.reportName || data.label,
+              recipient_name: recipient.name,
+            },
+          });
+          results.push(`Email → ${recipient.name} (${recipient.email})`);
+        }
+        if (cfg.channels?.includes("whatsapp") && recipient.phone) {
+          await supabase.functions.invoke("send-workflow-notification", {
+            body: {
+              phone: recipient.phone,
+              content,
+              workflow_name: cfg.reportName || data.label,
+              recipient_name: recipient.name,
+            },
+          });
+          results.push(`WhatsApp → ${recipient.name} (${recipient.phone})`);
+        }
+      }
+
+      return results.length > 0 ? `Relatório enviado:\n${results.join("\n")}` : "Nenhum destinatário configurado";
+    }
+
     case "condition":
       return Object.values(context).pop() || "";
 
     case "delay": {
       const cfg = data.config as DelayData;
       const ms = cfg.delaySeconds * (cfg.delayUnit === "minutes" ? 60000 : cfg.delayUnit === "hours" ? 3600000 : 1000);
-      await new Promise(r => setTimeout(r, Math.min(ms, 30000))); // Cap at 30s for UX
+      await new Promise(r => setTimeout(r, Math.min(ms, 30000)));
       return `Aguardou ${cfg.delaySeconds} ${cfg.delayUnit}`;
     }
 
     case "split":
       return Object.values(context).pop() || "";
 
-    case "merge": {
-      // Collect all incoming context
+    case "merge":
       return Object.values(context).join("\n\n---\n\n");
-    }
 
     default:
       return "";
