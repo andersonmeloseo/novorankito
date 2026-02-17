@@ -3,7 +3,8 @@ import {
   Target, Megaphone, FileText, Settings, Users, CreditCard, FolderOpen,
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus, Network,
-  History, CalendarClock, Wifi, Map,
+  History, CalendarClock, Wifi, Map, Monitor, Sparkles, TrendingDown,
+  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -28,7 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
-  { title: "SEO", url: "/seo", icon: Search, tourId: "seo" },
+  { title: "SEO", url: "/seo#queries", icon: Search, tourId: "seo" },
   { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
   { title: "Relatórios", url: "/reports", icon: FileText },
@@ -42,6 +43,25 @@ const indexingNav = [
   { title: "Histórico", url: "/indexing#history", icon: History },
   { title: "Agendar", url: "/indexing#schedule", icon: CalendarClock },
   { title: "Contas", url: "/indexing#accounts", icon: Wifi },
+];
+
+const seoNav = [
+  { title: "Consultas", url: "/seo#queries", icon: Search },
+  { title: "Páginas", url: "/seo#pages", icon: FileText },
+  { title: "Países", url: "/seo#countries", icon: Globe },
+  { title: "Dispositivos", url: "/seo#devices", icon: Monitor },
+  { title: "Aparência", url: "/seo#appearance", icon: Sparkles },
+  { title: "Oportunidades", url: "/seo#opportunities", icon: Target },
+  { title: "Declínio", url: "/seo#decay", icon: TrendingDown },
+  { title: "Canibalização", url: "/seo#cannibalization", icon: Copy },
+  { title: "Inspeção", url: "/seo#inspection", icon: ScanSearch },
+  { title: "Cobertura", url: "/seo#coverage", icon: Shield },
+  { title: "Sitemaps", url: "/seo#sitemaps", icon: MapPin },
+  { title: "Links", url: "/seo#links", icon: Link2 },
+  { title: "Discover & News", url: "/seo#discover", icon: Compass },
+  { title: "Histórico", url: "/seo#history", icon: History },
+  { title: "Agrupamento", url: "/seo#grouping", icon: FolderTree },
+  { title: "IA Insights", url: "/seo#ai-insights", icon: Sparkles },
 ];
 
 const analiticaNav = [
@@ -230,6 +250,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <Collapsible defaultOpen={pathname.startsWith("/seo")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>🔍 SEO</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {seoNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
           <SidebarGroup>

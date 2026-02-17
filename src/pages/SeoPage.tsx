@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,6 +56,18 @@ const PAGE_SIZE = 20;
 
 export default function SeoPage() {
   const { user } = useAuth();
+  const location = useLocation();
+
+  const getTabFromHash = (hash: string) => {
+    const tab = hash.replace("#", "");
+    const valid = ["queries","pages","countries","devices","appearance","opportunities","decay","cannibalization","inspection","coverage","sitemaps","links","discover","history","grouping","ai-insights"];
+    return valid.includes(tab) ? tab : "queries";
+  };
+  const [activeTab, setActiveTab] = useState(() => getTabFromHash(location.hash));
+
+  useEffect(() => {
+    setActiveTab(getTabFromHash(location.hash));
+  }, [location.hash]);
   const { data: projects = [] } = useQuery({
     queryKey: ["my-projects"],
     queryFn: async () => {
@@ -798,27 +811,7 @@ export default function SeoPage() {
                     Carregando dados de comparação do GSC...
                   </div>
                 )}
-                <Tabs defaultValue="queries">
-                  <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                     <TabsList className="flex-wrap h-auto gap-1">
-                      <TabsTrigger value="queries" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><Search className="h-3 w-3" />Consultas</TabsTrigger>
-                      <TabsTrigger value="pages" className="text-xs gap-1" onClick={() => { setSelectedQuery(null); setSelectedPage(null); }}><FileText className="h-3 w-3" />Páginas</TabsTrigger>
-                      <TabsTrigger value="countries" className="text-xs gap-1"><Globe className="h-3 w-3" />Países</TabsTrigger>
-                      <TabsTrigger value="devices" className="text-xs gap-1"><Monitor className="h-3 w-3" />Dispositivos</TabsTrigger>
-                      <TabsTrigger value="appearance" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Aparência</TabsTrigger>
-                      <TabsTrigger value="opportunities" className="text-xs gap-1"><Target className="h-3 w-3" />Oportunidades</TabsTrigger>
-                      <TabsTrigger value="decay" className="text-xs gap-1"><TrendingDown className="h-3 w-3" />Declínio de Conteúdo</TabsTrigger>
-                      <TabsTrigger value="cannibalization" className="text-xs gap-1"><Copy className="h-3 w-3" />Canibalização</TabsTrigger>
-                       <TabsTrigger value="inspection" className="text-xs gap-1"><ScanSearch className="h-3 w-3" />Inspeção</TabsTrigger>
-                       <TabsTrigger value="coverage" className="text-xs gap-1"><Shield className="h-3 w-3" />Cobertura</TabsTrigger>
-                      <TabsTrigger value="sitemaps" className="text-xs gap-1"><MapPin className="h-3 w-3" />Sitemaps</TabsTrigger>
-                      <TabsTrigger value="links" className="text-xs gap-1"><Link2 className="h-3 w-3" />Links</TabsTrigger>
-                       <TabsTrigger value="discover" className="text-xs gap-1"><Compass className="h-3 w-3" />Discover & News</TabsTrigger>
-                       <TabsTrigger value="history" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
-                       <TabsTrigger value="grouping" className="text-xs gap-1"><FolderTree className="h-3 w-3" />Agrupamento</TabsTrigger>
-                       <TabsTrigger value="ai-insights" className="text-xs gap-1.5 border border-primary/30 bg-primary/5 text-primary"><Sparkles className="h-3 w-3" />IA Insights</TabsTrigger>
-                    </TabsList>
-                  </div>
+                <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelectedQuery(null); setSelectedPage(null); }}>
 
                   <TabsContent value="queries" className="mt-0">
                     {selectedQuery ? (
