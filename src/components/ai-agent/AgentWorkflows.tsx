@@ -349,6 +349,7 @@ export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsP
   const [showSendForm, setShowSendForm] = useState(false);
   const [sendEmail, setSendEmail] = useState("");
   const [sendPhone, setSendPhone] = useState("");
+  const [sendRecipientName, setSendRecipientName] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [analysisPeriod, setAnalysisPeriod] = useState("30");
@@ -510,6 +511,7 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
     setSendSuccess(false);
     setSendEmail("");
     setSendPhone("");
+    setSendRecipientName("");
   };
 
   const copyAllResults = () => {
@@ -751,28 +753,42 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                   <Send className="h-3.5 w-3.5 text-primary" />
                   Enviar relatório agora
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <MessageCircle className="h-3 w-3" /> WhatsApp (com DDI)
+                      👤 Nome do destinatário
                     </Label>
                     <Input
-                      value={sendPhone}
-                      onChange={(e) => setSendPhone(e.target.value)}
-                      placeholder="+5511999999999"
+                      value={sendRecipientName}
+                      onChange={(e) => setSendRecipientName(e.target.value)}
+                      placeholder="Ex: João Silva"
                       className="text-xs h-8"
                     />
+                    <p className="text-[9px] text-muted-foreground">A mensagem será personalizada com este nome</p>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" /> Email
-                    </Label>
-                    <Input
-                      value={sendEmail}
-                      onChange={(e) => setSendEmail(e.target.value)}
-                      placeholder="email@exemplo.com"
-                      className="text-xs h-8"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" /> WhatsApp (com DDI)
+                      </Label>
+                      <Input
+                        value={sendPhone}
+                        onChange={(e) => setSendPhone(e.target.value)}
+                        placeholder="+5511999999999"
+                        className="text-xs h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> Email
+                      </Label>
+                      <Input
+                        value={sendEmail}
+                        onChange={(e) => setSendEmail(e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className="text-xs h-8"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -808,6 +824,7 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                             body: JSON.stringify({
                               report: fullReport,
                               workflow_name: executingWorkflow.name,
+                              recipient_name: sendRecipientName.trim() || undefined,
                               direct_send: {
                                 project_id: projectId,
                                 workflow_id: executingWorkflow.id,

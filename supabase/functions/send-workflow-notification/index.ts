@@ -18,7 +18,7 @@ serve(async (req) => {
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
-    const { schedule_id, report, workflow_name, direct_send } = body;
+    const { schedule_id, report, workflow_name, direct_send, recipient_name } = body;
 
     if (!report) {
       return new Response(JSON.stringify({ error: "report is required" }), {
@@ -62,6 +62,10 @@ serve(async (req) => {
       schedule = schedData;
     }
 
+    // Resolve recipient name from body or schedule
+    const resolvedName = recipient_name || schedule.recipient_name || "";
+    const firstName = resolvedName ? resolvedName.split(" ")[0] : "";
+
     // Generate summary (first 500 chars of the report)
     const summary = report.length > 500
       ? report.substring(0, 500) + "..."
@@ -73,14 +77,19 @@ serve(async (req) => {
     if (schedule.notify_email && RESEND_API_KEY) {
       for (const email of (schedule.email_recipients || [])) {
         try {
+          const greeting = firstName ? `Olá, ${firstName}!` : "Olá!";
           const emailBody = schedule.send_summary
             ? `<div style="font-family: Inter, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 24px; border-radius: 12px; margin-bottom: 20px;">
                   <h1 style="margin: 0; font-size: 18px;">📊 ${workflow_name}</h1>
-                  <p style="margin: 8px 0 0; opacity: 0.7; font-size: 12px;">Relatório automático — ${new Date().toLocaleDateString("pt-BR")}</p>
+                  <p style="margin: 8px 0 0; opacity: 0.7; font-size: 12px;">Relatório consultivo — ${new Date().toLocaleDateString("pt-BR")}</p>
+                </div>
+                <div style="padding: 0 4px; margin-bottom: 16px;">
+                  <p style="font-size: 14px; color: #333; margin: 0;">${greeting}</p>
+                  <p style="font-size: 13px; color: #555; margin: 8px 0 0;">Segue a análise que preparei para você. Revisei os dados e destaquei os pontos que merecem atenção imediata. Qualquer dúvida, me acione!</p>
                 </div>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${report.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-                <p style="text-align: center; color: #888; font-size: 11px; margin-top: 20px;">Enviado automaticamente pelo Rankito</p>
+                <p style="text-align: center; color: #888; font-size: 11px; margin-top: 20px;">Enviado automaticamente pelo Rankito — seu consultor de SEO</p>
               </div>`
             : `<p>Relatório em anexo.</p>`;
 
@@ -143,9 +152,10 @@ serve(async (req) => {
       }
 
       const plainReport = mdToWhatsApp(report);
+      const whatsappGreeting = firstName ? `Oi, ${firstName}! Tudo bem?` : "Oi! Tudo bem?";
       const fullWhatsappMessage = schedule.send_summary
-        ? `📊 *${workflow_name}*\n📅 ${new Date().toLocaleDateString("pt-BR")}\n\n${plainReport}`
-        : `📊 *${workflow_name}* — Relatório disponível.`;
+        ? `${whatsappGreeting}\n\nAcabei de finalizar a análise *${workflow_name}* do dia ${new Date().toLocaleDateString("pt-BR")} e quero compartilhar com você os pontos mais importantes que identifiquei. 👇\n\n${plainReport}\n\n💬 Fico à disposição se quiser discutir algum ponto ou precisar de mais detalhes!\n\n— Rankito, seu consultor de SEO 🚀`
+        : `${whatsappGreeting}\n\n📊 A análise *${workflow_name}* ficou pronta! Quando puder, dá uma olhada — tem insights importantes.\n\n— Rankito 🚀`;
 
       // Split into chunks of ~4000 chars to avoid WhatsApp limits
       const MAX_CHUNK = 4000;

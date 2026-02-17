@@ -1,0 +1,1 @@
+ALTER TABLE public.workflow_schedules ADD COLUMN recipient_name text DEFAULT '';

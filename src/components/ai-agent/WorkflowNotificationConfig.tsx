@@ -57,6 +57,7 @@ export function WorkflowNotificationConfig({
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(false);
   const [emailRecipients, setEmailRecipients] = useState("");
   const [whatsappRecipients, setWhatsappRecipients] = useState("");
+  const [recipientName, setRecipientName] = useState("");
   const [sendPdf, setSendPdf] = useState(true);
   const [sendSummary, setSendSummary] = useState(true);
 
@@ -100,6 +101,7 @@ export function WorkflowNotificationConfig({
       setNotifyWhatsapp(schedule.notify_whatsapp);
       setEmailRecipients((schedule.email_recipients || []).join(", "));
       setWhatsappRecipients((schedule.whatsapp_recipients || []).join(", "));
+      setRecipientName(schedule.recipient_name || "");
       setSendPdf(schedule.send_pdf);
       setSendSummary(schedule.send_summary);
     }
@@ -120,6 +122,7 @@ export function WorkflowNotificationConfig({
         notify_whatsapp: notifyWhatsapp,
         email_recipients: emailRecipients.split(",").map((e) => e.trim()).filter(Boolean),
         whatsapp_recipients: whatsappRecipients.split(",").map((w) => w.trim()).filter(Boolean),
+        recipient_name: recipientName.trim(),
         send_pdf: sendPdf,
         send_summary: sendSummary,
       };
@@ -260,6 +263,20 @@ export function WorkflowNotificationConfig({
                   <p className="text-[10px] text-muted-foreground">Números com DDI+DDD, separados por vírgula</p>
                 </div>
               )}
+            </div>
+
+            {/* Recipient name */}
+            <div className="space-y-2 p-3 rounded-lg border border-border">
+              <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                👤 Nome do destinatário
+              </Label>
+              <Input
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="Ex: João Silva"
+                className="text-xs h-8"
+              />
+              <p className="text-[10px] text-muted-foreground">A mensagem será personalizada com este nome em tom consultivo</p>
             </div>
 
             {/* Output format */}
