@@ -29,10 +29,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "URLs", url: "/urls", icon: Globe },
-  { title: "GA4", url: "/ga4", icon: BarChart3 },
   { title: "Rankito IA", url: "/rankito-ai", icon: Bot, tourId: "ai" },
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const ga4Nav = [
+  { title: "Visão Geral", url: "/ga4#overview", icon: TrendingUp },
+  { title: "Tempo Real", url: "/ga4#realtime", icon: Wifi },
+  { title: "Aquisição", url: "/ga4#acquisition", icon: MousePointerClick },
+  { title: "Tráfego de IA", url: "/ga4#ai-traffic", icon: Bot },
+  { title: "Performance", url: "/ga4#engagement", icon: Monitor },
+  { title: "Público", url: "/ga4#demographics", icon: Globe },
+  { title: "Tecnologia", url: "/ga4#technology", icon: Layers },
+  { title: "Retenção", url: "/ga4#retention", icon: Users },
+  { title: "E-commerce", url: "/ga4#ecommerce", icon: Store },
 ];
 
 const indexingNav = [
@@ -262,6 +273,26 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {seoNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
+        <Collapsible defaultOpen={pathname.startsWith("/ga4")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>📊 GA4</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {ga4Nav.map((item) => (
                     <NavItem key={item.url} item={item} end />
                   ))}
                 </SidebarMenu>
