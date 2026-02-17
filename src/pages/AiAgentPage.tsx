@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -102,8 +103,13 @@ ESTILO:
 
 export default function AiAgentPage() {
   const { user } = useAuth();
+  const { hash } = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState("chat");
+  const validTabs = ["chat", "agents", "workflows", "schedules"];
+  const hashTab = hash.replace("#", "");
+  const tab = validTabs.includes(hashTab) ? hashTab : "chat";
+  const setTab = (t: string) => navigate(`/rankito-ai#${t}`, { replace: true });
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<any>(null);
   const [chatAgent, setChatAgent] = useState<{ name: string; instructions: string; speciality?: string } | null>(null);
