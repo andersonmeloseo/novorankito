@@ -18,6 +18,7 @@ interface WhiteLabelConfig {
   login_subtitle: string | null;
   support_email: string | null;
   support_url: string | null;
+  gradient_end_color: string | null;
 }
 
 const defaults: WhiteLabelConfig = {
@@ -36,6 +37,7 @@ const defaults: WhiteLabelConfig = {
   login_subtitle: null,
   support_email: null,
   support_url: null,
+  gradient_end_color: null,
 };
 
 const WhiteLabelContext = createContext<WhiteLabelConfig>(defaults);
@@ -106,6 +108,7 @@ export function WhiteLabelProvider({ projectId, children }: { projectId: string 
       login_subtitle: d.login_subtitle,
       support_email: d.support_email,
       support_url: d.support_url,
+      gradient_end_color: d.gradient_end_color,
     };
   }, [data]);
 
@@ -118,6 +121,14 @@ export function WhiteLabelProvider({ projectId, children }: { projectId: string 
     applyHslVar(root, "--sidebar", config.sidebar_bg_color);
     applyHslVar(root, "--foreground", config.text_color);
     applyHslVar(root, "--sidebar-foreground", config.text_color);
+
+    // Gradient end color
+    if (config.gradient_end_color) {
+      const hsl = hexToHsl(config.gradient_end_color);
+      if (hsl) root.style.setProperty("--gradient-end", hsl);
+    } else {
+      root.style.removeProperty("--gradient-end");
+    }
 
     // Favicon
     if (config.favicon_url) {
@@ -136,7 +147,7 @@ export function WhiteLabelProvider({ projectId, children }: { projectId: string 
     }
 
     return () => {
-      ["--primary", "--sidebar-primary", "--accent", "--sidebar", "--foreground", "--sidebar-foreground"].forEach(v => root.style.removeProperty(v));
+      ["--primary", "--sidebar-primary", "--accent", "--sidebar", "--foreground", "--sidebar-foreground", "--gradient-end"].forEach(v => root.style.removeProperty(v));
     };
   }, [config]);
 
