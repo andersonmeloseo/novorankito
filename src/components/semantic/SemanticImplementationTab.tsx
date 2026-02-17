@@ -217,6 +217,7 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
   const [copiedSchema, setCopiedSchema] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["verdict", "pages"]));
 
+  // Load entities, relations, and saved plan
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -227,11 +228,20 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
       supabase.from("semantic_relations")
         .select("id, subject_id, object_id, predicate")
         .eq("project_id", projectId).eq("goal_project_id", semanticProjectId),
-    ]).then(([entRes, relRes]) => {
+      supabase.from("semantic_implementation_plans" as any)
+        .select("plan")
+        .eq("project_id", projectId)
+        .eq("goal_project_id", semanticProjectId)
+        .maybeSingle(),
+    ]).then(([entRes, relRes, planRes]) => {
       setEntities((entRes.data || []).map((e: any) => ({
         ...e, schema_properties: e.schema_properties as Record<string, string> | null,
       })));
       setRelations(relRes.data || []);
+      if ((planRes.data as any)?.plan) {
+        setAiPlan((planRes.data as any).plan as AiPlan);
+        setExpandedSections(new Set(["verdict", "pages", "knowledge", "quickwins"]));
+      }
       setLoading(false);
     });
   }, [user, projectId, semanticProjectId]);
@@ -324,7 +334,17 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
       if (data?.plan) {
         setAiPlan(data.plan);
         setExpandedSections(new Set(["verdict", "pages", "knowledge", "quickwins"]));
-        toast({ title: "✨ Plano de implementação gerado!", description: "Análise profissional completa disponível" });
+        
+        // Save plan to database
+        await supabase.from("semantic_implementation_plans" as any).upsert({
+          project_id: projectId,
+          goal_project_id: semanticProjectId,
+          owner_id: user.id,
+          plan: data.plan,
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: "project_id,goal_project_id" });
+        
+        toast({ title: "✨ Plano gerado e salvo!", description: "O plano ficará salvo mesmo ao trocar de aba" });
       } else {
         toast({ title: "IA não retornou o plano", description: "Tente novamente", variant: "destructive" });
       }
