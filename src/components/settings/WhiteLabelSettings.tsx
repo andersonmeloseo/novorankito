@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,12 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Globe, Type, Image, Loader2, Save, RotateCcw, Mail, Link2, LogIn, Eye, EyeOff, Blend } from "lucide-react";
+import { Palette, Globe, Type, Image, Loader2, Save, RotateCcw, Mail, Link2, LogIn, Eye, EyeOff, Blend, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface WhiteLabelSettingsProps {
   projectId: string;
 }
+
+type FormState = typeof defaultForm;
 
 const defaultForm = {
   brand_name: "Rankito",
@@ -35,6 +38,19 @@ const defaultForm = {
   gradient_end_color: "",
 };
 
+/* ─── Color Presets ─── */
+const COLOR_PRESETS = [
+  { name: "Indigo", primary: "#6366f1", accent: "#22c55e", gradient: "" },
+  { name: "Roxo Neon", primary: "#8b5cf6", accent: "#f59e0b", gradient: "#ec4899" },
+  { name: "Azul Ocean", primary: "#0ea5e9", accent: "#14b8a6", gradient: "#6366f1" },
+  { name: "Vermelho Fire", primary: "#ef4444", accent: "#f97316", gradient: "#ec4899" },
+  { name: "Esmeralda", primary: "#10b981", accent: "#06b6d4", gradient: "#22d3ee" },
+  { name: "Sunset", primary: "#f97316", accent: "#eab308", gradient: "#ef4444" },
+  { name: "Rose Gold", primary: "#e11d48", accent: "#f43f5e", gradient: "#fb923c" },
+  { name: "Midnight", primary: "#3b82f6", accent: "#8b5cf6", gradient: "#06b6d4" },
+];
+
+/* ─── Helpers ─── */
 function hexToHsl(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;
@@ -55,43 +71,41 @@ function hexToHsl(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-function applyLivePreview(form: typeof defaultForm) {
+function setHslVar(varName: string, hex: string | null) {
   const root = document.documentElement;
-  const vars: [string, string | null][] = [
-    ["--primary", form.primary_color || null],
-    ["--sidebar-primary", form.primary_color || null],
-    ["--accent", form.accent_color || null],
-    ["--sidebar", form.sidebar_bg_color || null],
-    ["--foreground", form.text_color || null],
-    ["--sidebar-foreground", form.text_color || null],
-  ];
-  vars.forEach(([varName, hex]) => {
-    if (hex) {
-      const hsl = hexToHsl(hex);
-      if (hsl) root.style.setProperty(varName, hsl);
-    } else {
-      root.style.removeProperty(varName);
-    }
-  });
-
-  // Gradient support
-  if (form.gradient_end_color && form.primary_color) {
-    root.style.setProperty("--gradient-end", hexToHsl(form.gradient_end_color) || "");
+  if (hex) {
+    const hsl = hexToHsl(hex);
+    if (hsl) root.style.setProperty(varName, hsl);
   } else {
-    root.style.removeProperty("--gradient-end");
+    root.style.removeProperty(varName);
   }
 }
 
-function removeLivePreview() {
-  const root = document.documentElement;
-  ["--primary", "--sidebar-primary", "--accent", "--sidebar", "--foreground", "--sidebar-foreground", "--gradient-end"].forEach(v => root.style.removeProperty(v));
+const CSS_VARS = ["--primary", "--sidebar-primary", "--accent", "--sidebar", "--foreground", "--sidebar-foreground", "--gradient-end"];
+
+function applyLivePreview(form: FormState) {
+  setHslVar("--primary", form.primary_color || null);
+  setHslVar("--sidebar-primary", form.primary_color || null);
+  setHslVar("--accent", form.accent_color || null);
+  setHslVar("--sidebar", form.sidebar_bg_color || null);
+  setHslVar("--foreground", form.text_color || null);
+  setHslVar("--sidebar-foreground", form.text_color || null);
+  setHslVar("--gradient-end", form.gradient_end_color || null);
 }
 
+function clearLivePreview() {
+  const root = document.documentElement;
+  CSS_VARS.forEach(v => root.style.removeProperty(v));
+}
+
+/* ─── Component ─── */
 export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [livePreview, setLivePreview] = useState(true);
+  const [form, setForm] = useState<FormState>(defaultForm);
+  const initializedRef = useRef(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["whitelabel", projectId],
@@ -106,10 +120,12 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     enabled: !!user && !!projectId,
   });
 
-  const [form, setForm] = useState(defaultForm);
-
-  const [synced, setSynced] = useState(false);
-  if (settings && !synced) {
+  // Sync form from DB — only once when settings first loads
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (isLoading) return; // wait for query to finish
+    initializedRef.current = true;
+    if (!settings) return; // no record yet, keep defaults
     const s = settings as any;
     setForm({
       brand_name: s.brand_name || "Rankito",
@@ -129,21 +145,20 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
       support_url: s.support_url || "",
       gradient_end_color: s.gradient_end_color || "",
     });
-    setSynced(true);
-  }
+  }, [settings, isLoading]);
 
-  // Live preview: apply CSS vars as user edits
+  // Live preview — apply CSS vars in real time
   useEffect(() => {
-    if (livePreview && synced) {
-      applyLivePreview(form);
-    }
-    return () => {
-      // On unmount, remove inline overrides so context takes over
-      removeLivePreview();
-    };
-  }, [form, livePreview, synced]);
+    if (!livePreview) return;
+    applyLivePreview(form);
+  }, [form, livePreview]);
 
-  const updateForm = useCallback((updates: Partial<typeof defaultForm>) => {
+  // Cleanup on unmount only
+  useEffect(() => {
+    return () => { clearLivePreview(); };
+  }, []);
+
+  const updateForm = useCallback((updates: Partial<FormState>) => {
     setForm(prev => ({ ...prev, ...updates }));
   }, []);
 
@@ -183,7 +198,7 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     );
   }
 
-  const colorField = (label: string, field: keyof typeof form, placeholder?: string) => (
+  const colorField = (label: string, field: keyof FormState, placeholder?: string) => (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       <div className="flex gap-2 items-center">
@@ -203,15 +218,18 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
     </div>
   );
 
-  // Gradient preview swatch
-  const gradientPreview = form.primary_color && form.gradient_end_color ? (
-    <div
-      className="h-8 w-full rounded-lg border"
-      style={{
-        background: `linear-gradient(135deg, ${form.primary_color}, ${form.gradient_end_color})`,
-      }}
-    />
-  ) : null;
+  const applyPreset = (preset: typeof COLOR_PRESETS[0]) => {
+    updateForm({
+      primary_color: preset.primary,
+      accent_color: preset.accent,
+      gradient_end_color: preset.gradient,
+    });
+  };
+
+  const isPresetActive = (preset: typeof COLOR_PRESETS[0]) =>
+    form.primary_color === preset.primary &&
+    form.accent_color === preset.accent &&
+    form.gradient_end_color === preset.gradient;
 
   return (
     <Card>
@@ -224,7 +242,7 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
               <Badge variant="secondary" className="text-[10px]">Enterprise</Badge>
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              Personalize completamente a marca do seu projeto para seus clientes
+              Personalize completamente a marca do seu projeto — alterações visuais aparecem em tempo real
             </CardDescription>
           </div>
           <Button
@@ -234,7 +252,8 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
             onClick={() => {
               const next = !livePreview;
               setLivePreview(next);
-              if (!next) removeLivePreview();
+              if (!next) clearLivePreview();
+              else applyLivePreview(form);
             }}
           >
             {livePreview ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -268,9 +287,51 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
 
         <Separator />
 
+        {/* Color Presets */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">🎨 Presets de Cores</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {COLOR_PRESETS.map((preset) => {
+              const active = isPresetActive(preset);
+              return (
+                <button
+                  key={preset.name}
+                  onClick={() => applyPreset(preset)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all duration-200 hover:scale-[1.03]",
+                    active
+                      ? "border-primary ring-2 ring-primary/30 bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  )}
+                >
+                  {/* Swatch row */}
+                  <div className="flex gap-1 w-full">
+                    <div
+                      className="h-5 flex-1 rounded-l-md"
+                      style={{ background: preset.gradient
+                        ? `linear-gradient(135deg, ${preset.primary}, ${preset.gradient})`
+                        : preset.primary
+                      }}
+                    />
+                    <div className="h-5 w-5 rounded-r-md" style={{ background: preset.accent }} />
+                  </div>
+                  <span className="text-[10px] font-medium text-foreground">{preset.name}</span>
+                  {active && (
+                    <div className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Colors */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Cores</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Cores Manuais</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {colorField("Cor primária", "primary_color", "#6366f1")}
             {colorField("Cor de destaque", "accent_color", "#22c55e")}
@@ -287,7 +348,7 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
             <Blend className="h-3 w-3" /> Degradê (Gradient)
           </p>
           <p className="text-[11px] text-muted-foreground mb-3">
-            Defina uma cor final para criar um degradê a partir da cor primária. Aplicado no logo, botões e destaques.
+            Defina uma cor final para criar um degradê a partir da cor primária. Aplicado no logo e destaques.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -304,10 +365,13 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
             </div>
             {colorField("Cor final (degradê)", "gradient_end_color", "#a855f7")}
           </div>
-          {gradientPreview && (
+          {form.primary_color && form.gradient_end_color && (
             <div className="mt-3 space-y-1.5">
               <Label className="text-xs">Preview do degradê</Label>
-              {gradientPreview}
+              <div
+                className="h-8 w-full rounded-lg border"
+                style={{ background: `linear-gradient(135deg, ${form.primary_color}, ${form.gradient_end_color})` }}
+              />
             </div>
           )}
           {form.gradient_end_color && (
@@ -377,7 +441,7 @@ export function WhiteLabelSettings({ projectId }: WhiteLabelSettingsProps) {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 h-8 text-sm gap-1.5" onClick={() => { updateForm(defaultForm); toast({ title: "Restaurado", description: "Valores padrão aplicados. Clique em Salvar para confirmar." }); }}>
+          <Button variant="outline" className="flex-1 h-8 text-sm gap-1.5" onClick={() => { setForm(defaultForm); toast({ title: "Restaurado", description: "Valores padrão aplicados. Clique em Salvar para confirmar." }); }}>
             <RotateCcw className="h-3.5 w-3.5" />
             Restaurar padrão
           </Button>
