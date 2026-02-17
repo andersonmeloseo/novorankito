@@ -225,7 +225,16 @@ export function AppSidebar() {
           {wl.logo_url ? (
             <img src={wl.logo_url} alt={wl.brand_name} className="h-9 w-9 rounded-xl object-contain" />
           ) : (
-            <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-glow ring-1 ring-white/10 animate-[spin_8s_linear_infinite]">
+            <div
+              className={cn(
+                "h-9 w-9 rounded-xl flex items-center justify-center shadow-glow ring-1 ring-white/10 animate-[spin_8s_linear_infinite]",
+                !wl.gradient_end_color && "gradient-primary"
+              )}
+              style={wl.gradient_end_color
+                ? { background: `linear-gradient(135deg, ${wl.primary_color || '#6366f1'}, ${wl.gradient_end_color})` }
+                : undefined
+              }
+            >
               <span className="text-sm font-bold text-primary-foreground font-display tracking-tight animate-[spin_8s_linear_infinite_reverse]">{wl.brand_name.charAt(0)}</span>
             </div>
           )}

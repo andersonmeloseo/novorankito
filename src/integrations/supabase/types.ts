@@ -2394,6 +2394,7 @@ export type Database = {
           custom_domain: string | null
           favicon_url: string | null
           footer_text: string | null
+          gradient_end_color: string | null
           hide_powered_by: boolean | null
           id: string
           login_subtitle: string | null
@@ -2416,6 +2417,7 @@ export type Database = {
           custom_domain?: string | null
           favicon_url?: string | null
           footer_text?: string | null
+          gradient_end_color?: string | null
           hide_powered_by?: boolean | null
           id?: string
           login_subtitle?: string | null
@@ -2438,6 +2440,7 @@ export type Database = {
           custom_domain?: string | null
           favicon_url?: string | null
           footer_text?: string | null
+          gradient_end_color?: string | null
           hide_powered_by?: boolean | null
           id?: string
           login_subtitle?: string | null
