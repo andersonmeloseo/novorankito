@@ -19,7 +19,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Loader2, Wand2, LayoutGrid, Network, Trash2 } from "lucide-react";
+import { Plus, Loader2, Wand2, LayoutGrid, Network, Trash2, Layout } from "lucide-react";
 import EntityNode, { type EntityNodeData } from "./EntityNode";
 import RelationEdge from "./RelationEdge";
 import { CreateEntityDialog, type EntityFormData } from "./CreateEntityDialog";
@@ -688,6 +688,12 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
             <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteAllOpen(true)}>
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Excluir Todos
+            </Button>
+          )}
+          {nodes.length > 0 && (
+            <Button size="sm" variant="default" className="bg-primary/90 hover:bg-primary" onClick={() => window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "implementation" }))}>
+              <Layout className="h-3.5 w-3.5 mr-1" />
+              Implementar
             </Button>
           )}
         </Panel>

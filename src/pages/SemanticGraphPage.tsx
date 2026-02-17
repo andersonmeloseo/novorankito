@@ -25,7 +25,6 @@ const TABS = [
   { id: "graph", label: "Construtor de Grafo", icon: Network },
   { id: "triples", label: "Triples", icon: GitBranch },
   { id: "schema", label: "Schema.org", icon: Code2 },
-  { id: "implementation", label: "Implementação", icon: Layout },
   { id: "competitors", label: "Concorrentes", icon: Users },
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "recommendations", label: "Recomendações", icon: Lightbulb },
