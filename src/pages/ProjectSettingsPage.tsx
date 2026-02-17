@@ -22,6 +22,7 @@ import { format, parseISO } from "date-fns";
 import { WhiteLabelSettings } from "@/components/settings/WhiteLabelSettings";
 import { ApiKeysSettings } from "@/components/settings/ApiKeysSettings";
 import { WebhooksSettings } from "@/components/settings/WebhooksSettings";
+import { IntegrationsInfoCard } from "@/components/settings/IntegrationsInfoCard";
 import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
@@ -353,6 +354,7 @@ export default function ProjectSettingsPage() {
           <div className="space-y-4">
             <ApiKeysSettings projectId={project.id} />
             <WebhooksSettings projectId={project.id} />
+            <IntegrationsInfoCard />
           </div>
         )}
 
