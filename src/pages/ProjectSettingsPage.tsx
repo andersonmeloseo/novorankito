@@ -305,7 +305,16 @@ export default function ProjectSettingsPage() {
         )}
 
         {tab === "goals" && (
-          <GoalsAlertsSettings projectId={project.id} />
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+              <Bell className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Metas & Alertas</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Configure metas de performance (cliques, impressões, posição) e alertas automáticos com notificações via painel, WhatsApp ou webhook quando métricas ultrapassarem os thresholds definidos.</p>
+              </div>
+            </div>
+            <GoalsAlertsSettings projectId={project.id} />
+          </div>
         )}
 
         {tab === "team" && (
