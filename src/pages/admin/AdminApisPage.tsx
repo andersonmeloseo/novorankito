@@ -5,14 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Key, CheckCircle2, XCircle, Eye, EyeOff,
+  Key, CheckCircle2, XCircle, Eye, EyeOff, Plus, Trash2,
   Brain, MessageSquare, Globe, Zap, Plug,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   useApiConfigurations,
+  useCreateApiConfig,
   useUpdateApiConfig,
+  useDeleteApiConfig,
 } from "@/hooks/use-api-configurations";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -24,15 +28,29 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   integration: Plug,
 };
 
+const CATEGORIES = [
+  { value: "ai", label: "Inteligência Artificial" },
+  { value: "messaging", label: "Mensageria" },
+  { value: "analytics", label: "Analytics" },
+  { value: "seo", label: "SEO" },
+  { value: "payment", label: "Pagamentos" },
+  { value: "integration", label: "Integração" },
+];
+
 export default function AdminApisPage() {
   const { data: apis = [], isLoading } = useApiConfigurations();
+  const createApi = useCreateApiConfig();
   const updateApi = useUpdateApiConfig();
+  const deleteApi = useDeleteApiConfig();
 
   // Track which card has the key input open and the typed value
   const [editingId, setEditingId] = useState<string | null>(null);
   const [keyValue, setKeyValue] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newForm, setNewForm] = useState({ name: "", service_name: "", secret_key_name: "", category: "integration", secret_value: "" });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleSaveKey = async (api: typeof apis[0]) => {
     if (!keyValue.trim()) {
@@ -68,15 +86,56 @@ export default function AdminApisPage() {
     }
   };
 
+  const handleCreateApi = async () => {
+    if (!newForm.name || !newForm.service_name) {
+      toast({ title: "Erro", description: "Preencha nome e serviço", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await createApi.mutateAsync({
+        name: newForm.name,
+        service_name: newForm.service_name,
+        secret_key_name: newForm.secret_key_name || newForm.service_name.toUpperCase().replace(/[^A-Z0-9]/g, '_') + "_API_KEY",
+        category: newForm.category,
+        status: newForm.secret_value ? "active" : "inactive",
+        is_configured: !!newForm.secret_value,
+        secret_value: newForm.secret_value || undefined,
+      });
+      toast({ title: `${newForm.name} adicionada!` });
+      setShowNewDialog(false);
+      setNewForm({ name: "", service_name: "", secret_key_name: "", category: "integration", secret_value: "" });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteApi.mutateAsync(id);
+      toast({ title: "API removida" });
+      setDeleteId(null);
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
   const activeCount = apis.filter(a => a.status === "active").length;
   const configuredCount = apis.filter(a => a.is_configured).length;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <PageHeader
-        title="APIs & Chaves"
-        description="Selecione a API, cole sua chave e ative. Simples assim."
-      />
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <PageHeader
+          title="APIs & Chaves"
+          description="Selecione a API, cole sua chave e ative. Simples assim."
+        />
+        <Button size="sm" className="text-xs h-8 gap-1" onClick={() => setShowNewDialog(true)}>
+          <Plus className="h-3 w-3" /> Nova API
+        </Button>
+      </div>
 
       {/* KPIs compactos */}
       <div className="flex gap-3 flex-wrap">
@@ -119,11 +178,21 @@ export default function AdminApisPage() {
                       <div className="text-[11px] text-muted-foreground">{api.service_name}</div>
                     </div>
                   </div>
-                  <Switch
-                    checked={isActive}
-                    onCheckedChange={() => toggleStatus(api)}
-                    disabled={!api.is_configured && !isActive}
-                  />
+                  <div className="flex items-center gap-1">
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={() => toggleStatus(api)}
+                      disabled={!api.is_configured && !isActive}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteId(api.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Status */}
@@ -191,7 +260,6 @@ export default function AdminApisPage() {
                   </Button>
                 )}
 
-                {/* Descrição */}
                 {api.description && (
                   <p className="text-[10px] text-muted-foreground leading-relaxed">{api.description}</p>
                 )}
@@ -200,6 +268,65 @@ export default function AdminApisPage() {
           })}
         </div>
       )}
+
+      {/* Dialog Nova API */}
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar Nova API</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Nome (ex: OpenAI API)"
+              value={newForm.name}
+              onChange={e => setNewForm(p => ({ ...p, name: e.target.value }))}
+              className="text-sm"
+            />
+            <Input
+              placeholder="Serviço (ex: OpenAI)"
+              value={newForm.service_name}
+              onChange={e => setNewForm(p => ({ ...p, service_name: e.target.value }))}
+              className="text-sm"
+            />
+            <Select value={newForm.category} onValueChange={v => setNewForm(p => ({ ...p, category: v }))}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map(c => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="password"
+              placeholder="Cole a API key aqui (opcional)"
+              value={newForm.secret_value}
+              onChange={e => setNewForm(p => ({ ...p, secret_value: e.target.value }))}
+              className="text-sm font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground">🔒 A chave será encriptada automaticamente</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancelar</Button>
+            <Button onClick={handleCreateApi} disabled={saving}>
+              {saving ? "Salvando..." : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Confirmar Delete */}
+      <Dialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover API</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Tem certeza que deseja remover esta API?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteId && handleDelete(deleteId)}>Remover</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
