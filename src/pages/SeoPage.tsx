@@ -520,7 +520,8 @@ export default function SeoPage() {
             </Card>
           </AnimatedContainer>
         )}
-        {/* Filters bar */}
+        {/* Filters bar — only for data tabs */}
+        {["queries","pages","countries","devices"].includes(activeTab) && (
         <AnimatedContainer>
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -605,6 +606,7 @@ export default function SeoPage() {
             </div>
           </Card>
         </AnimatedContainer>
+        )}
 
         {isLoading ? (
           <>
@@ -614,7 +616,8 @@ export default function SeoPage() {
           </>
         ) : (
           <>
-            {/* KPI Cards with period comparison */}
+            {/* KPI Cards — only visible on data tabs */}
+            {["queries","pages","countries","devices"].includes(activeTab) && (
             <StaggeredGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <KpiCard label="Cliques" value={totalClicks} change={pctChange(totalClicks, prevClicks)} prevValue={prevClicks} showComparison={compareMode !== "none" && prevClicks > 0}
                 sparklineData={trendData.map(d => d.clicks)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevClicks ?? 0) : undefined} sparklineColor="hsl(var(--chart-1))" />
@@ -625,9 +628,10 @@ export default function SeoPage() {
               <KpiCard label="Posição Média" value={Number(avgPosition.toFixed(1))} change={pctChange(avgPosition, prevAvgPosition)} prevValue={Number(prevAvgPosition.toFixed(1))} showComparison={compareMode !== "none" && prevImpressions > 0}
                 sparklineData={trendData.map(d => d.position)} sparklinePrevData={compareMode !== "none" ? trendData.map(d => d.prevPosition ?? 0) : undefined} sparklineColor="hsl(var(--chart-4))" />
             </StaggeredGrid>
+            )}
 
-            {/* Charts Section */}
-            {hasData && trendData.length > 1 && (
+            {/* Charts Section — only visible on data tabs */}
+            {["queries","pages","countries","devices"].includes(activeTab) && hasData && trendData.length > 1 && (
               <>
                 {/* Main trend chart - full width */}
                 <AnimatedContainer delay={0.1}>
@@ -803,9 +807,8 @@ export default function SeoPage() {
             )}
 
             {/* Data tables with tabs */}
-            {hasData && (
               <AnimatedContainer delay={0.25}>
-                {isComparing && loadingComparison && (
+                {isComparing && loadingComparison && ["queries","pages","countries","devices"].includes(activeTab) && (
                   <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Carregando dados de comparação do GSC...
@@ -987,7 +990,6 @@ export default function SeoPage() {
                   </TabsContent>
                 </Tabs>
               </AnimatedContainer>
-            )}
           </>
         )}
       </div>
