@@ -36,8 +36,12 @@ serve(async (req) => {
   try {
     const { deployment_id, project_id, owner_id, roles, hierarchy, trigger_type } = await req.json();
     
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Fetch OpenAI key from api_configurations table
-    const { data: apiKeyRow, error: apiKeyErr } = await supabase
+    const { data: apiKeyRow } = await supabase
       .from("api_configurations_decrypted")
       .select("secret_value")
       .eq("secret_key_name", "OPEN_AI_API_KEY")
@@ -54,10 +58,6 @@ serve(async (req) => {
     const aiModel = useOpenAI ? "gpt-4o-mini" : "google/gemini-2.5-flash";
 
     if (!aiApiKey) throw new Error("Nenhuma chave de IA configurada. Configure a OpenAI em Admin > APIs ou ative o Lovable AI.");
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch project context data
     const [seoData, overviewData] = await Promise.all([
