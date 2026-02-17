@@ -252,7 +252,7 @@ export function AppSidebar() {
 
       <SidebarContent className="scrollbar-thin py-1">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
             Projetos
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -263,7 +263,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
             Projeto
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -278,7 +278,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>⚙️ Configurações</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -298,7 +298,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>🤖 Rankito IA</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -318,7 +318,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/seo")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>🔍 SEO</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -338,7 +338,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/ga4")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>📊 GA4</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -358,7 +358,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>🗂️ Indexação</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -378,7 +378,7 @@ export function AppSidebar() {
         <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60 cursor-pointer hover:bg-sidebar-accent/80 transition-colors flex items-center justify-between w-full">
                 <span>📊 Analítica Rankito</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
               </SidebarGroupLabel>
@@ -401,7 +401,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
             💰 Rank & Rent
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -414,7 +414,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
             🧠 SEO Semântico
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -431,7 +431,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-4 py-1.5 mx-2 mb-1 rounded-md bg-sidebar-accent/60">
             Conta
           </SidebarGroupLabel>
           <SidebarGroupContent>

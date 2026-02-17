@@ -103,7 +103,7 @@ export function AdminSidebar() {
         {adminSections.map((section) => (
           <div key={section.label}>
             {!collapsed && (
-              <span className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/40 font-semibold px-3 mb-1 block">
+              <span className="text-[10px] uppercase tracking-[0.15em] text-white font-semibold px-3 py-1.5 mx-1 mb-1 rounded-md bg-sidebar-accent/60 block">
                 {section.label}
               </span>
             )}
