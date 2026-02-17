@@ -406,11 +406,37 @@ export default function SeoPage() {
       .sort((a: any, b: any) => b.clicks - a.clicks);
   }, [selectedPage, queryPageMetrics]);
 
-  // Trend data - each row from "date" dimension is already one day
+  // Trend data - prefer live GSC "date" dimension when available, fallback to stored metrics
   const trendData = useMemo(() => {
+    const liveCurrentDates = comparisonData?.date?.current || [];
+    const livePrevDates = comparisonData?.date?.previous || [];
+    const useLiveForTrend = liveCurrentDates.length > 0;
+
+    if (useLiveForTrend) {
+      const currentSorted = [...liveCurrentDates]
+        .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+      const prevSorted = [...livePrevDates]
+        .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+
+      return currentSorted.map((m: any, i: number) => {
+        const prev = prevSorted[i];
+        return {
+          date: format(parseISO(m.name), "dd MMM", { locale: ptBR }),
+          rawDate: m.name,
+          clicks: m.clicks || 0,
+          impressions: m.impressions || 0,
+          ctr: m.ctr || 0,
+          position: m.position || 0,
+          prevClicks: prev ? (prev.clicks || 0) : undefined,
+          prevImpressions: prev ? (prev.impressions || 0) : undefined,
+          prevCtr: prev ? (prev.ctr || 0) : undefined,
+          prevPosition: prev ? (prev.position || 0) : undefined,
+        };
+      });
+    }
+
     const currentSorted = [...metrics]
       .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""));
-    
     const prevSorted = [...prevFiltered]
       .sort((a: any, b: any) => (a.metric_date || "").localeCompare(b.metric_date || ""));
 
@@ -429,14 +455,14 @@ export default function SeoPage() {
         prevPosition: prev ? (prev.position || 0) : undefined,
       };
     });
-  }, [metrics, prevFiltered]);
+  }, [metrics, prevFiltered, comparisonData]);
 
   // Device distribution for pie chart (from dedicated device data)
   const deviceDistribution = useMemo(() => {
     return deviceRows.map((d: any) => ({ name: d.name, value: d.clicks }));
   }, [deviceRows]);
 
-  const hasData = metrics.length > 0;
+  const hasData = metrics.length > 0 || (comparisonData?.date?.current || []).length > 0;
 
   // Export
   function exportCSV(rows: any[], filename: string) {
