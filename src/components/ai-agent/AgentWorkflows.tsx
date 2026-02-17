@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   GitBranch, Play, ArrowRight, ArrowDown, Loader2, CheckCircle2,
-  Download, Copy, Bell, Send, Mail, MessageCircle, Check,
+  Download, Copy, Bell, Send, Mail, MessageCircle, Check, PenTool,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -19,14 +19,14 @@ import { MarkdownContent } from "@/components/ai-agent/AgentChatTab";
 import { WorkflowNotificationConfig } from "@/components/ai-agent/WorkflowNotificationConfig";
 import { useQuery } from "@tanstack/react-query";
 
-interface WorkflowStep {
+export interface WorkflowStep {
   agent: string;
   emoji: string;
   action: string;
   prompt: string;
 }
 
-interface PresetWorkflow {
+export interface PresetWorkflow {
   id: string;
   name: string;
   description: string;
@@ -321,6 +321,7 @@ function getStepColor(agent: string) {
 
 interface AgentWorkflowsProps {
   onExecuteWorkflow?: (workflowName: string, steps: WorkflowStep[]) => void;
+  onEditInCanvas?: (workflow: PresetWorkflow) => void;
   projectId?: string;
 }
 
@@ -331,7 +332,7 @@ const PERIOD_OPTIONS = [
   { value: "90", label: "Últimos 90 dias" },
 ];
 
-export function AgentWorkflows({ onExecuteWorkflow, projectId }: AgentWorkflowsProps) {
+export function AgentWorkflows({ onExecuteWorkflow, onEditInCanvas, projectId }: AgentWorkflowsProps) {
   const [activeWorkflows, setActiveWorkflows] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("rankito_active_workflows");
@@ -602,6 +603,17 @@ Execute EXATAMENTE o que é pedido. Seja específico, acionável e detalhado.`,
                       : <><Play className="h-3 w-3" /> Executar Agora</>
                     }
                   </Button>
+                  {onEditInCanvas && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1 px-2.5"
+                      onClick={() => onEditInCanvas(workflow)}
+                      title="Editar no Canvas"
+                    >
+                      <PenTool className="h-3 w-3" />
+                    </Button>
+                  )}
                   {projectId && (
                     <Button
                       size="sm"

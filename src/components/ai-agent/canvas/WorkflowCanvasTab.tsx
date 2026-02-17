@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -29,6 +29,7 @@ import { CanvasNode } from "./CanvasNode";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import { useWorkflowOrchestrator } from "./useWorkflowOrchestrator";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
+import type { PresetWorkflow } from "../AgentWorkflows";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -69,9 +70,11 @@ const DEFAULT_NODES: Node[] = [
 
 interface WorkflowCanvasTabProps {
   projectId?: string;
+  initialPreset?: PresetWorkflow | null;
+  onPresetLoaded?: () => void;
 }
 
-export function WorkflowCanvasTab({ projectId }: WorkflowCanvasTabProps) {
+export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: WorkflowCanvasTabProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [nodes, setNodes, onNodesChange] = useNodesState(DEFAULT_NODES);
@@ -82,6 +85,48 @@ export function WorkflowCanvasTab({ projectId }: WorkflowCanvasTabProps) {
   const idCounter = useRef(10);
 
   const { executeWorkflow, isRunning, abort } = useWorkflowOrchestrator(projectId);
+
+  // Load preset workflow into canvas
+  useEffect(() => {
+    if (!initialPreset) return;
+    const triggerNode: Node = {
+      id: "preset-trigger",
+      type: "canvasNode",
+      position: { x: 300, y: 30 },
+      data: createDefaultData("trigger"),
+    };
+    const agentNodes: Node[] = initialPreset.steps.map((step, i) => ({
+      id: `preset-step-${i}`,
+      type: "canvasNode",
+      position: { x: 300, y: 150 + i * 140 },
+      data: {
+        label: `${step.emoji} ${step.agent}`,
+        nodeType: "agent" as CanvasNodeType,
+        config: {
+          agentName: step.agent,
+          agentInstructions: "",
+          prompt: step.prompt,
+          emoji: step.emoji,
+        },
+      } as any,
+    }));
+    const allNodes = [triggerNode, ...agentNodes];
+    const newEdges: Edge[] = allNodes.slice(0, -1).map((n, i) => ({
+      id: `preset-edge-${i}`,
+      source: n.id,
+      target: allNodes[i + 1].id,
+      animated: true,
+      style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
+    }));
+    setNodes(allNodes);
+    setEdges(newEdges);
+    setWorkflowName(initialPreset.name);
+    setCurrentWorkflowId(null);
+    setSelectedNodeId(null);
+    onPresetLoaded?.();
+    toast.success(`Workflow "${initialPreset.name}" carregado no canvas!`);
+  }, [initialPreset]);
 
   // Saved workflows list
   const { data: savedWorkflows = [] } = useQuery({
