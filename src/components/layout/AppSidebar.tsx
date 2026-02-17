@@ -4,7 +4,7 @@ import {
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus, Network,
   History, CalendarClock, Wifi, Map, Monitor, Sparkles, TrendingDown,
-  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree,
+  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,7 +29,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const projectNav = [
   { title: "Visão Geral", url: "/overview", icon: LayoutDashboard },
   { title: "Relatórios", url: "/reports", icon: FileText },
-  { title: "Configurações", url: "/project-settings", icon: Settings },
+];
+
+const settingsNav = [
+  { title: "Geral", url: "/project-settings#general", icon: Settings },
+  { title: "Integrações", url: "/project-settings#integrations", icon: Plug },
+  { title: "Tracking", url: "/project-settings#tracking", icon: Code },
+  { title: "Metas & Alertas", url: "/project-settings#goals", icon: Bell },
+  { title: "Equipe", url: "/project-settings#team", icon: Users },
+  { title: "API & Webhooks", url: "/project-settings#api", icon: Key },
+  { title: "White-Label", url: "/project-settings#whitelabel", icon: Palette },
 ];
 
 const rankitoAiNav = [
@@ -265,6 +274,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold px-4 cursor-pointer hover:text-sidebar-foreground/60 transition-colors flex items-center justify-between w-full">
+                <span>⚙️ Configurações</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {settingsNav.map((item) => (
+                    <NavItem key={item.url} item={item} end />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
         <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
           <SidebarGroup>
