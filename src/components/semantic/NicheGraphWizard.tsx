@@ -729,7 +729,7 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
         </DialogHeader>
 
         {step === 1 && (
-          <ScrollArea className="flex-1 min-h-0 -mx-6 px-6" style={{ maxHeight: "calc(85vh - 180px)" }}>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6" style={{ maxHeight: "calc(85vh - 200px)" }}>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 py-2 pr-2">
               {NICHE_TEMPLATES.map((t) => {
                 const Icon = t.icon;
@@ -755,7 +755,7 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         {step === 2 && selectedNiche && (
