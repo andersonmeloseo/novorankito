@@ -780,7 +780,11 @@ function GraphBuilderInner({ semanticProjectId }: { semanticProjectId?: string }
             </Button>
           )}
           {nodes.length > 0 && (
-            <Button size="sm" variant="default" className="bg-primary/90 hover:bg-primary" onClick={() => window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "implementation" }))}>
+            <Button size="sm" variant="default" className="bg-primary/90 hover:bg-primary" onClick={() => {
+              console.log("Dispatching switch-semantic-tab: implementation");
+              window.dispatchEvent(new CustomEvent("switch-semantic-tab", { detail: "implementation" }));
+              toast({ title: "Implementação ativada", description: "Navegando para a aba de implementação..." });
+            }}>
               <Layout className="h-3.5 w-3.5 mr-1" />
               Implementar
             </Button>
