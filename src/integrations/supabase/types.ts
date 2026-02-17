@@ -1587,6 +1587,7 @@ export type Database = {
           created_at: string
           description: string | null
           entity_type: string
+          goal_project_id: string | null
           id: string
           metadata: Json | null
           name: string
@@ -1602,6 +1603,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           entity_type?: string
+          goal_project_id?: string | null
           id?: string
           metadata?: Json | null
           name: string
@@ -1617,6 +1619,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           entity_type?: string
+          goal_project_id?: string | null
           id?: string
           metadata?: Json | null
           name?: string
@@ -1695,6 +1698,7 @@ export type Database = {
         Row: {
           confidence: number | null
           created_at: string
+          goal_project_id: string | null
           id: string
           metadata: Json | null
           object_id: string
@@ -1707,6 +1711,7 @@ export type Database = {
         Insert: {
           confidence?: number | null
           created_at?: string
+          goal_project_id?: string | null
           id?: string
           metadata?: Json | null
           object_id: string
@@ -1719,6 +1724,7 @@ export type Database = {
         Update: {
           confidence?: number | null
           created_at?: string
+          goal_project_id?: string | null
           id?: string
           metadata?: Json | null
           object_id?: string

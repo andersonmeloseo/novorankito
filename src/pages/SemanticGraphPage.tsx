@@ -113,15 +113,15 @@ export default function SemanticGraphPage() {
           </TabsContent>
 
           <TabsContent value="graph" className="mt-4">
-            <GraphBuilder />
+            <GraphBuilder semanticProjectId={semanticProjectId} />
           </TabsContent>
 
           <TabsContent value="triples" className="mt-4">
-            <TriplesTable />
+            <TriplesTable semanticProjectId={semanticProjectId} />
           </TabsContent>
 
           <TabsContent value="schema" className="mt-4">
-            <SchemaOrgTab projectId={projectId} />
+            <SchemaOrgTab projectId={projectId} semanticProjectId={semanticProjectId} />
           </TabsContent>
 
           <TabsContent value="competitors" className="mt-4">
@@ -129,11 +129,11 @@ export default function SemanticGraphPage() {
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-4">
-            <SemanticDashboardTab />
+            <SemanticDashboardTab semanticProjectId={semanticProjectId} />
           </TabsContent>
 
           <TabsContent value="recommendations" className="mt-4">
-            <SemanticRecommendationsTab />
+            <SemanticRecommendationsTab semanticProjectId={semanticProjectId} />
           </TabsContent>
 
           <TabsContent value="exports" className="mt-4">

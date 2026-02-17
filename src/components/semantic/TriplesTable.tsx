@@ -48,7 +48,7 @@ interface TripleDisplay {
   confidence: number | null;
 }
 
-export function TriplesTable() {
+export function TriplesTable({ semanticProjectId }: { semanticProjectId?: string } = {}) {
   const projectId = localStorage.getItem("rankito_current_project");
   const [entities, setEntities] = useState<EntityRow[]>([]);
   const [relations, setRelations] = useState<RelationRow[]>([]);
@@ -61,15 +61,18 @@ export function TriplesTable() {
     if (!projectId) return;
     (async () => {
       setLoading(true);
-      const [entRes, relRes] = await Promise.all([
-        supabase.from("semantic_entities").select("id, name, entity_type, schema_type").eq("project_id", projectId),
-        supabase.from("semantic_relations").select("id, subject_id, object_id, predicate, confidence").eq("project_id", projectId),
-      ]);
+      let entQuery = supabase.from("semantic_entities").select("id, name, entity_type, schema_type").eq("project_id", projectId);
+      let relQuery = supabase.from("semantic_relations").select("id, subject_id, object_id, predicate, confidence").eq("project_id", projectId);
+      if (semanticProjectId) {
+        entQuery = entQuery.eq("goal_project_id", semanticProjectId);
+        relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+      }
+      const [entRes, relRes] = await Promise.all([entQuery, relQuery]);
       setEntities(entRes.data || []);
       setRelations(relRes.data || []);
       setLoading(false);
     })();
-  }, [projectId]);
+  }, [projectId, semanticProjectId]);
 
   const entityMap = useMemo(() => {
     const map: Record<string, EntityRow> = {};

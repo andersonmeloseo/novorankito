@@ -178,7 +178,7 @@ const RELATION_SUGGESTIONS: Array<{ subjectType: string; objectType: string; pre
   { subjectType: "faq", objectType: "pergunta", predicate: "contém", reason: "Pergunta individual" },
 ];
 
-export function SemanticRecommendationsTab() {
+export function SemanticRecommendationsTab({ semanticProjectId }: { semanticProjectId?: string } = {}) {
   const projectId = localStorage.getItem("rankito_current_project");
   const { user } = useAuth();
   const [entities, setEntities] = useState<EntityRow[]>([]);
@@ -189,16 +189,19 @@ export function SemanticRecommendationsTab() {
   const fetchData = async () => {
     if (!projectId) return;
     setLoading(true);
-    const [entRes, relRes] = await Promise.all([
-      supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description, position_x, position_y").eq("project_id", projectId),
-      supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId),
-    ]);
+    let entQuery = supabase.from("semantic_entities").select("id, name, entity_type, schema_type, description, position_x, position_y").eq("project_id", projectId);
+    let relQuery = supabase.from("semantic_relations").select("id, subject_id, object_id, predicate").eq("project_id", projectId);
+    if (semanticProjectId) {
+      entQuery = entQuery.eq("goal_project_id", semanticProjectId);
+      relQuery = relQuery.eq("goal_project_id", semanticProjectId);
+    }
+    const [entRes, relRes] = await Promise.all([entQuery, relQuery]);
     setEntities(entRes.data || []);
     setRelations(relRes.data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [projectId]);
+  useEffect(() => { fetchData(); }, [projectId, semanticProjectId]);
 
   const handleAction = async (rec: Recommendation) => {
     if (!projectId || !user) return;
@@ -284,7 +287,7 @@ export function SemanticRecommendationsTab() {
         const existingByType: Record<string, string> = {};
         entities.forEach((e) => { existingByType[e.entity_type] = e.id; });
 
-        const allInserts: Array<{ name: string; entity_type: string; description: string; schema_type: string; project_id: string; owner_id: string; position_x: number; position_y: number }> = [];
+        const allInserts: any[] = [];
 
         for (const [depthStr, group] of Object.entries(depthGroups)) {
           const depth = parseInt(depthStr);
@@ -301,6 +304,7 @@ export function SemanticRecommendationsTab() {
               owner_id: user.id,
               position_x: rootX + depth * 280,
               position_y: startY + idx * 150,
+              goal_project_id: semanticProjectId || null,
             });
           });
         }
@@ -316,7 +320,7 @@ export function SemanticRecommendationsTab() {
         (insertedEntities || []).forEach((e) => { createdEntities[e.entity_type] = e.id; });
 
         // Create all relations between parent → child
-        const relationInserts: Array<{ subject_id: string; object_id: string; predicate: string; project_id: string; owner_id: string }> = [];
+        const relationInserts: any[] = [];
 
         for (const t of typesToCreate) {
           const parentId = existingByType[t.parentType] || createdEntities[t.parentType];
@@ -337,6 +341,7 @@ export function SemanticRecommendationsTab() {
             predicate: relSuggestion?.predicate || "relacionado_a",
             project_id: projectId,
             owner_id: user.id,
+            goal_project_id: semanticProjectId || null,
           });
         }
 
@@ -364,7 +369,8 @@ export function SemanticRecommendationsTab() {
             predicate,
             project_id: projectId,
             owner_id: user.id,
-          });
+            goal_project_id: semanticProjectId || null,
+          } as any);
           if (error) throw error;
           toast({ title: "Relação criada!", description: `${subjectType} → ${predicate} → ${objectType}` });
           await fetchData();
