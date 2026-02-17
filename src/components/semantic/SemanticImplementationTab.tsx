@@ -227,7 +227,7 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
   const filledCount = entities.filter((e) => {
     if (!e.schema_properties || !e.schema_type) return false;
     const props = getSchemaProperties(e.schema_type);
-    const filled = props.filter((p) => e.schema_properties?.[p.name]?.trim());
+    const filled = props.filter((p) => String(e.schema_properties?.[p.name] ?? "").trim());
     return filled.length >= Math.min(3, props.length);
   }).length;
   const fillPercent = entities.length > 0 ? Math.round((filledCount / entities.length) * 100) : 0;
@@ -494,7 +494,7 @@ export function SemanticImplementationTab({ semanticProjectId, projectId }: Prop
                         const Icon = ENTITY_ICONS[entity.entity_type] || Code2;
                         const color = ENTITY_COLORS[entity.entity_type] || "hsl(0 0% 50%)";
                         const props = getSchemaProperties(entity.schema_type || "");
-                        const filledProps = props.filter((p) => entity.schema_properties?.[p.name]?.trim());
+                        const filledProps = props.filter((p) => String(entity.schema_properties?.[p.name] ?? "").trim());
                         const pct = props.length > 0 ? Math.round((filledProps.length / props.length) * 100) : 0;
 
                         return (
