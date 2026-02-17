@@ -4,8 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, Bot } from "lucide-react";
 import type { CanvasNodeData, CanvasNodeType } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface NodeConfigPanelProps {
   nodeId: string;
@@ -13,16 +15,48 @@ interface NodeConfigPanelProps {
   onUpdate: (nodeId: string, data: Partial<CanvasNodeData>) => void;
   onClose: () => void;
   onDelete: (nodeId: string) => void;
+  projectId?: string;
 }
 
-export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete }: NodeConfigPanelProps) {
+export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete, projectId }: NodeConfigPanelProps) {
   const [label, setLabel] = useState(data.label);
   const cfg = data.config as any;
 
   useEffect(() => { setLabel(data.label); }, [data.label]);
 
+  const { data: existingAgents = [] } = useQuery({
+    queryKey: ["ai-agents-for-canvas", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data } = await supabase
+        .from("ai_agents")
+        .select("id, name, speciality, instructions, description")
+        .eq("project_id", projectId)
+        .eq("enabled", true)
+        .order("name");
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
+
   const updateConfig = (partial: Record<string, any>) => {
     onUpdate(nodeId, { config: { ...data.config, ...partial } as any });
+  };
+
+  const selectExistingAgent = (agentId: string) => {
+    const agent = existingAgents.find((a: any) => a.id === agentId);
+    if (!agent) return;
+    onUpdate(nodeId, {
+      label: agent.name,
+      config: {
+        ...data.config,
+        agentName: agent.name,
+        agentInstructions: agent.instructions || "",
+        prompt: cfg.prompt || "",
+        emoji: "🤖",
+      } as any,
+    });
+    setLabel(agent.name);
   };
 
   return (
@@ -65,6 +99,28 @@ export function NodeConfigPanel({ nodeId, data, onUpdate, onClose, onDelete }: N
 
         {data.nodeType === "agent" && (
           <div className="space-y-3">
+            {existingAgents.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Usar agente existente</Label>
+                <Select onValueChange={selectExistingAgent}>
+                  <SelectTrigger className="text-xs h-8">
+                    <SelectValue placeholder="Selecionar agente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {existingAgents.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        <span className="flex items-center gap-2">
+                          <Bot className="h-3 w-3 text-blue-400" />
+                          <span>{agent.name}</span>
+                          <span className="text-muted-foreground text-[10px]">· {agent.speciality}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">Ou configure manualmente abaixo</p>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">Nome do Agente</Label>
               <Input value={cfg.agentName || ""} onChange={(e) => updateConfig({ agentName: e.target.value })} placeholder="Rankito SEO" className="text-xs h-8" />

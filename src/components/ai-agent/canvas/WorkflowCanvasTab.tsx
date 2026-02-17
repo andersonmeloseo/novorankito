@@ -290,6 +290,7 @@ export function WorkflowCanvasTab({ projectId }: WorkflowCanvasTabProps) {
           onUpdate={updateNodeData}
           onClose={() => setSelectedNodeId(null)}
           onDelete={deleteNode}
+          projectId={projectId}
         />
       )}
     </div>
