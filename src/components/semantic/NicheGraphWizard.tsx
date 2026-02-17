@@ -729,7 +729,7 @@ export function NicheGraphWizard({ open, onOpenChange, onGenerate, generating }:
         </DialogHeader>
 
         {step === 1 && (
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] -mx-6 px-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 py-2">
               {NICHE_TEMPLATES.map((t) => {
                 const Icon = t.icon;
