@@ -41,8 +41,13 @@ import {
 } from "@/components/ui/dialog";
 
 const PREDICATES = [
-  "é_dono_de", "oferece", "localizado_em", "trabalha_em",
-  "avalia", "relacionado_a", "parte_de", "criou",
+  "oferece", "presta", "localizado_em", "fundado_por", "listado_em",
+  "possui_website", "organiza", "responde_em", "publica", "possui_marca",
+  "trabalha_em", "possui_perfil", "possui_credencial", "é_autor_de", "afiliado_a",
+  "avaliado_por", "disponível_em", "pertence_a", "categorizado_em", "ilustrado_por",
+  "atende_em", "prestado_por", "tem_endereço", "funciona_em", "posicionado_em",
+  "realizado_em", "organizado_por", "tem_ingresso", "escrita_por", "tem_nota",
+  "escrito_por", "contém", "possui_busca", "relacionado_a", "parte_de", "criou",
 ];
 
 function GraphBuilderInner() {
