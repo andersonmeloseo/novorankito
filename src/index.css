@@ -305,6 +305,17 @@
   100% { --sidebar-border-angle: 360deg; }
 }
 
+@property --agent-border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes agent-border-spin {
+  0% { --agent-border-angle: 0deg; }
+  100% { --agent-border-angle: 360deg; }
+}
+
 .sidebar-active-glow {
   position: relative;
   border: 1.5px solid transparent;
