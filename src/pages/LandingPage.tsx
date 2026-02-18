@@ -14,6 +14,7 @@ import {
   Smartphone, Eye, BarChart2, PieChart, Repeat2, Megaphone
 } from "lucide-react";
 import plansAltImage from "@/assets/landing-plans-alt.png";
+import orchestratorImage from "@/assets/orchestrator-canvas.png";
 
 // ─── Animated Counter ───────────────────────────────────────────────────────
 function Counter({ end, suffix = "", prefix = "", duration = 2000 }: {
@@ -308,120 +309,101 @@ export default function LandingPage() {
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════
-          1. HERO — Proposta direta com feature real
+          1. HERO — Centralizado, dor de perder posição
       ══════════════════════════════════════════════════════════════ */}
-      <section ref={heroRef} className="relative pt-28 pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex flex-col justify-center">
+      <section ref={heroRef} className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex flex-col justify-center">
         <div className="absolute inset-0 pointer-events-none">
-          <FloatingOrb className="absolute top-10 left-1/4 w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[140px]" />
-          <FloatingOrb className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-indigo-600/8 rounded-full blur-[120px]" />
+          <FloatingOrb className="absolute top-10 left-1/4 w-[700px] h-[700px] bg-violet-600/10 rounded-full blur-[150px]" />
+          <FloatingOrb className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[130px]" />
+          <FloatingOrb className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-violet-500/5 rounded-full blur-[100px]" />
         </div>
 
-        <div className="max-w-7xl mx-auto relative w-full">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-black px-5 py-2.5 rounded-full border border-violet-200 dark:border-violet-700/50">
+        <div className="max-w-5xl mx-auto relative w-full text-center">
+          {/* Badge */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-black px-5 py-2.5 rounded-full border border-violet-200 dark:border-violet-700/50 shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
-              Indexação via Google API • Agentes de IA • Analytics GSC + GA4 em uma plataforma
+              Indexação • SEO • Agentes IA 24/7 • Analytics • WhatsApp — tudo em um lugar
             </div>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-            {/* Left copy */}
-            <div>
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className="text-5xl sm:text-6xl lg:text-[3.4rem] xl:text-[4rem] font-black tracking-tight leading-[1.06] mb-6">
-                Chega de esperar o{" "}
-                <span className="bg-gradient-to-r from-violet-600 via-indigo-500 to-violet-700 bg-clip-text text-transparent">
-                  Google te encontrar.
-                </span>{" "}
-                Você manda indexar.
-              </motion.h1>
+          {/* H1 */}
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.04] mb-6 mx-auto">
+            Pare de{" "}
+            <span className="bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 bg-clip-text text-transparent">
+              perder posição
+            </span>{" "}
+            no Google enquanto dorme
+          </motion.h1>
 
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                className="text-xl text-slate-600 dark:text-slate-400 leading-relaxed mb-6 max-w-lg">
-                O Rankito conecta seu <strong className="text-slate-800 dark:text-slate-200">Google Search Console e GA4</strong>, envia suas URLs direto para o Google indexar via API oficial, detecta oportunidades de tráfego com IA e manda relatório pelo WhatsApp.
-              </motion.p>
+          {/* H2 */}
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="text-xl sm:text-2xl text-slate-600 dark:text-slate-400 leading-relaxed mb-4 max-w-3xl mx-auto">
+            O Rankito monitora seu site, indexa suas páginas automaticamente via{" "}
+            <strong className="text-slate-800 dark:text-slate-200">Google API oficial</strong>, detecta quedas de posição em tempo real e envia{" "}
+            <strong className="text-slate-800 dark:text-slate-200">relatórios no WhatsApp</strong> — tudo sem você precisar abrir o Search Console.
+          </motion.p>
 
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex flex-wrap gap-2 mb-8">
-                {[
-                  { icon: Zap, text: "200 URLs indexadas/dia" },
-                  { icon: Brain, text: "IA lê dados reais do GSC" },
-                  { icon: MessageSquare, text: "Relatórios no WhatsApp" },
-                ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <Icon className="w-3 h-3 text-violet-500" /> {text}
-                  </div>
-                ))}
-              </motion.div>
+          {/* Trust line */}
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="text-sm text-slate-500 dark:text-slate-400 mb-8">
+            Usado por +500 profissionais de SEO, agências e criadores de conteúdo no Brasil
+          </motion.p>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-start gap-4 mb-8">
-                <a href="/login"
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-8 py-4 rounded-2xl text-base shadow-2xl shadow-violet-500/40 transition-all hover:scale-105 group">
-                  <Rocket className="w-5 h-5" /> Começar grátis
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </a>
-                <a href="#funcionalidades" className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-semibold px-4 py-4 text-base hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
-                  Ver tudo que está incluso <ChevronRight className="w-4 h-4" />
-                </a>
-              </motion.div>
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+            <a href="/login"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-10 py-5 rounded-2xl text-lg shadow-2xl shadow-violet-500/40 transition-all hover:scale-105 group">
+              <Rocket className="w-5 h-5" /> Começar grátis agora
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+            <a href="#rankito-ai" className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-semibold px-4 py-4 text-base hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              Ver como funciona <ChevronRight className="w-4 h-4" />
+            </a>
+          </motion.div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex flex-wrap gap-4 text-xs text-slate-500 dark:text-slate-400">
-                {[
-                  { icon: Shield, text: "7 dias de garantia" },
-                  { icon: Lock, text: "Sem contrato" },
-                  { icon: Timer, text: "Ativo em 10 minutos" },
-                  { icon: CheckCheck, text: "Google API oficial" },
-                ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-center gap-1.5">
-                    <Icon className="w-3.5 h-3.5 text-violet-500" /> {text}
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Right: live mockup tabs */}
-            <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.6 }} style={{ y: heroY }} className="relative">
-              <div className="flex gap-2 mb-3 flex-wrap">
-                {mockups.map((m, i) => (
-                  <button key={i} onClick={() => setActiveMockup(i)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeMockup === i ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-400"}`}>
-                    <m.icon className="w-3 h-3" /> {m.label}
-                  </button>
-                ))}
+          {/* Risk reversals */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            className="flex flex-wrap items-center justify-center gap-5 text-xs text-slate-500 dark:text-slate-400 mb-14">
+            {[
+              { icon: Shield, text: "7 dias de garantia total" },
+              { icon: Lock, text: "Sem contrato" },
+              { icon: Timer, text: "Ativo em 10 minutos" },
+              { icon: CheckCheck, text: "Google API oficial" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-1.5">
+                <Icon className="w-3.5 h-3.5 text-violet-500" /> {text}
               </div>
-              <AnimatePresence mode="wait">
-                <motion.div key={activeMockup} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }} transition={{ duration: 0.3 }}>
-                  {mockups[activeMockup].mockup}
-                </motion.div>
-              </AnimatePresence>
+            ))}
+          </motion.div>
 
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.9 }}
-                className="absolute -left-4 top-1/3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center"><CheckCheck className="w-4 h-4 text-white" /></div>
-                <div>
-                  <div className="text-xs font-black text-slate-900 dark:text-white">129 URLs indexadas</div>
-                  <div className="text-[9px] text-slate-400">via Google API hoje</div>
-                </div>
+          {/* Live mockup tabs — centered */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.6 }} style={{ y: heroY }} className="relative max-w-2xl mx-auto">
+            <div className="flex gap-2 mb-3 flex-wrap justify-center">
+              {mockups.map((m, i) => (
+                <button key={i} onClick={() => setActiveMockup(i)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeMockup === i ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-400"}`}>
+                  <m.icon className="w-3 h-3" /> {m.label}
+                </button>
+              ))}
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div key={activeMockup} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }} transition={{ duration: 0.3 }}>
+                {mockups[activeMockup].mockup}
               </motion.div>
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.1 }}
-                className="absolute -right-4 bottom-1/4 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-violet-500 flex items-center justify-center"><MessageSquare className="w-4 h-4 text-white" /></div>
-                <div>
-                  <div className="text-xs font-black text-slate-900 dark:text-white">Relatório semanal</div>
-                  <div className="text-[9px] text-slate-400">enviado no WhatsApp ✓</div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
+            </AnimatePresence>
+          </motion.div>
 
           {/* Stats bar */}
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-            className="max-w-5xl mx-auto w-full mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+            className="w-full mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { end: 200, suffix: "k", label: "URLs indexadas por dia na plataforma" },
               { end: 24, suffix: "h", label: "Tempo médio de indexação (antes: 6 semanas)" },
               { end: 500, suffix: "+", label: "Profissionais e agências usando" },
-              { end: 8, suffix: "h", label: "Economizadas/semana em relatórios" },
+              { end: 8, suffix: "h", label: "Economizadas/semana em relatórios manuais" },
             ].map(s => (
               <div key={s.label} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center">
                 <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1"><Counter end={s.end} suffix={s.suffix} /></div>
@@ -502,7 +484,119 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          3. FUNCIONALIDADES REAIS — O que está dentro
+          3. RANKITO AI — Orquestrador de Agentes
+      ══════════════════════════════════════════════════════════════ */}
+      <section id="rankito-ai" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-[#080c18]">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-violet-700/12 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-indigo-600/8 rounded-full blur-[100px]" />
+        </div>
+        <div className="max-w-7xl mx-auto relative">
+
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-violet-900/40 text-violet-300 text-xs font-black px-5 py-2.5 rounded-full border border-violet-700/50 mb-6">
+              <Bot className="w-3.5 h-3.5" /> Rankito AI — Orquestrador de Agentes Autônomos
+            </div>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-5 text-white">
+              Seus agentes de IA trabalham como{" "}
+              <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+                funcionários 24/7
+              </span>
+            </h2>
+            <p className="text-slate-400 text-xl max-w-3xl mx-auto leading-relaxed">
+              Sem você precisar abrir o Search Console, o GA4 ou o projeto. O sistema analisa tudo, detecta oportunidades, faz relatórios e traz insights — sem mimimi, sem reclamar, sem faltar, sem problema algum.
+            </p>
+          </motion.div>
+
+          {/* Canvas Image */}
+          <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
+            className="relative mb-12 rounded-2xl overflow-hidden border border-violet-700/30 shadow-2xl shadow-violet-900/40 max-w-5xl mx-auto">
+            {/* Glow effect overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080c18] via-transparent to-transparent z-10 pointer-events-none" style={{ background: "linear-gradient(to top, #080c18 0%, transparent 30%)" }} />
+            <div className="absolute inset-0 ring-1 ring-inset ring-violet-500/20 rounded-2xl z-20 pointer-events-none" />
+            <img
+              src={orchestratorImage}
+              alt="Canvas do Orquestrador Rankito AI com agentes SEO em nodes conectados"
+              className="w-full h-auto block"
+            />
+            {/* Floating live badge */}
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-violet-500/30 rounded-xl px-3 py-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-bold text-white">Orquestrador rodando agora</span>
+            </div>
+            <div className="absolute top-4 right-4 z-30 flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-violet-500/30 rounded-xl px-3 py-2">
+              <Cpu className="w-3 h-3 text-violet-400" />
+              <span className="text-xs font-bold text-violet-300">5 agentes ativos</span>
+            </div>
+          </motion.div>
+
+          {/* What agents do — 3 columns */}
+          <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+            {[
+              {
+                icon: Brain,
+                color: "from-violet-500 to-indigo-600",
+                bg: "bg-violet-900/20 border-violet-700/30",
+                title: "Analisa. Sem você pedir.",
+                desc: "O agente conecta ao seu GSC e GA4, lê os dados reais e identifica automaticamente keywords caindo, páginas com oportunidade e problemas de indexação — sem você abrir nenhuma ferramenta.",
+              },
+              {
+                icon: Bell,
+                color: "from-amber-500 to-orange-500",
+                bg: "bg-amber-900/20 border-amber-700/30",
+                title: "Alerta. Antes do estrago.",
+                desc: "Queda de posição? Erro de indexação? Página fora do índice? O agente detecta e manda alerta no WhatsApp instantaneamente — você age antes de perder tráfego.",
+              },
+              {
+                icon: MessageSquare,
+                color: "from-emerald-500 to-teal-500",
+                bg: "bg-emerald-900/20 border-emerald-700/30",
+                title: "Reporta. Toda semana.",
+                desc: "Segunda-feira você acorda com o relatório da semana já no WhatsApp: posições, cliques, top oportunidades e o checklist de ações priorizadas por impacto — pronto para executar.",
+              },
+            ].map((c, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
+                className={`rounded-2xl p-6 border ${c.bg}`}>
+                <div className={`inline-flex w-10 h-10 rounded-xl bg-gradient-to-br ${c.color} items-center justify-center mb-4`}>
+                  <c.icon className="w-5 h-5 text-white" />
+                </div>
+                <h4 className="text-lg font-black text-white mb-2">{c.title}</h4>
+                <p className="text-sm text-slate-400 leading-relaxed">{c.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bottom proof line */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="max-w-3xl mx-auto bg-violet-900/20 border border-violet-700/30 rounded-2xl p-6 text-center">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+                <span>Sem precisar ficar olhando dashboards</span>
+              </div>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+                <span>Sem relatório manual</span>
+              </div>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+                <span>Sem monitorar posições na mão</span>
+              </div>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+                <span>Agentes ativos 24/7, 365 dias</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          4. FUNCIONALIDADES REAIS — O que está dentro
       ══════════════════════════════════════════════════════════════ */}
       <section id="funcionalidades" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
