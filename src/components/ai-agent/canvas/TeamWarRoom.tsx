@@ -1121,49 +1121,99 @@ interface LiveConvoDialogProps {
   targetRole: any | null;
   entries: LiveConvoEntry[];
   isWorking: boolean;
+  allRoles: any[];
+  currentSpotlightId: string | null;
+  hierarchy: Record<string, string>;
 }
 
-function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, isWorking }: LiveConvoDialogProps) {
+function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, isWorking, allRoles, currentSpotlightId, hierarchy }: LiveConvoDialogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [localEntries, setLocalEntries] = useState<LiveConvoEntry[]>([]);
+  const localTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localIdxRef = useRef(0);
+
+  // Sync external entries into local entries
+  useEffect(() => {
+    setLocalEntries(entries);
+  }, [entries]);
+
+  // When dialog opens: immediately seed one entry per agent so there's instant activity
+  useEffect(() => {
+    if (!open || allRoles.length === 0) return;
+    // Seed initial entries for each role (staggered)
+    allRoles.forEach((role, i) => {
+      setTimeout(() => {
+        const parentId = hierarchy[role.id];
+        const parentRole = parentId ? allRoles.find(r => r.id === parentId) : null;
+        const entry: LiveConvoEntry = {
+          fromEmoji: role.emoji || "🤖",
+          fromTitle: role.name || role.title,
+          toEmoji: parentRole?.emoji,
+          toTitle: parentRole ? (parentRole.name || parentRole.title) : undefined,
+          text: getWorkPhrase(role),
+          ts: Date.now() + i * 100,
+          type: parentRole ? "report" : "work",
+        };
+        setLocalEntries(prev => [...prev.slice(-29), entry]);
+      }, i * 600);
+    });
+
+    // Then keep cycling every 5s while dialog is open
+    localTimerRef.current = setInterval(() => {
+      const role = allRoles[localIdxRef.current % allRoles.length];
+      localIdxRef.current++;
+      const parentId = hierarchy[role.id];
+      const parentRole = parentId ? allRoles.find(r => r.id === parentId) : null;
+      const entry: LiveConvoEntry = {
+        fromEmoji: role.emoji || "🤖",
+        fromTitle: role.name || role.title,
+        toEmoji: parentRole?.emoji,
+        toTitle: parentRole ? (parentRole.name || parentRole.title) : undefined,
+        text: getWorkPhrase(role),
+        ts: Date.now(),
+        type: parentRole ? "report" : "work",
+      };
+      setLocalEntries(prev => [...prev.slice(-29), entry]);
+    }, 5000);
+
+    return () => {
+      if (localTimerRef.current) clearInterval(localTimerRef.current);
+    };
+  }, [open, allRoles, hierarchy]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [entries]);
+  }, [localEntries]);
 
   if (!activeRole) return null;
 
+  // Build the ordered queue: sorted by hierarchy depth (top first)
+  const getDepth = (id: string, d = 0): number => {
+    if (d > 8) return d;
+    const p = hierarchy[id];
+    return p ? getDepth(p, d + 1) : d;
+  };
+  const orderedRoles = [...allRoles].sort((a, b) => getDepth(a.id) - getDepth(b.id));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden border-blue-500/50 bg-background shadow-2xl shadow-blue-500/10">
+      <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-blue-500/40 bg-background shadow-2xl shadow-blue-500/10">
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-blue-600/10 shrink-0">
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border bg-blue-600/10 shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <span className="text-3xl">{activeRole.emoji}</span>
-              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-blue-400 border-2 border-background animate-pulse" />
+              <span className="text-2xl">{activeRole.emoji}</span>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-400 border-2 border-background animate-pulse" />
             </div>
-            {targetRole && (
-              <>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <div className="h-px w-8 bg-blue-400/50" />
-                  <MessageSquare className="h-4 w-4 text-blue-400" />
-                  <div className="h-px w-8 bg-blue-400/50" />
-                </div>
-                <span className="text-3xl">{targetRole.emoji}</span>
-              </>
-            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">
-              {activeRole.title}
-              {targetRole && <span className="text-blue-400 font-normal"> → {targetRole.title}</span>}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
-              <p className="text-[10px] text-blue-400 font-semibold">{isWorking ? "🔴 em atividade ao vivo" : "standby"}</p>
-              <span className="text-[10px] text-muted-foreground">· todas as conversas e ações da equipe</span>
+            <p className="text-sm font-bold">Atividade ao Vivo — {activeRole.title}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              <p className="text-[10px] text-red-400 font-bold tracking-wide">AO VIVO</p>
+              <span className="text-[10px] text-muted-foreground">· {allRoles.length} agentes em operação</span>
             </div>
           </div>
           <button onClick={() => onOpenChange(false)} className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors shrink-0">
@@ -1171,67 +1221,127 @@ function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, 
           </button>
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1">
-          <div ref={scrollRef as any} className="p-5 space-y-3">
-            {entries.length === 0 && (
-              <div className="py-12 text-center">
-                <Loader2 className="h-10 w-10 mx-auto mb-3 text-blue-400/40 animate-spin" />
-                <p className="text-sm text-muted-foreground font-medium">Aguardando atividade da equipe…</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">As conversas e ações aparecerão aqui em tempo real</p>
-              </div>
-            )}
-            {entries.map((entry, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex gap-3 animate-fade-in",
-                  entry.type === "report" ? "flex-row-reverse" : "flex-row",
-                )}
-              >
-                <div className="text-2xl shrink-0 mt-0.5">{entry.fromEmoji}</div>
-                <div className={cn(
-                  "flex-1 rounded-xl px-4 py-3 text-[12px] leading-relaxed",
-                  entry.type === "report"
-                    ? "bg-primary/10 border border-primary/30 text-right"
-                    : entry.type === "question"
-                    ? "bg-blue-500/10 border border-blue-500/30"
-                    : "bg-muted/40 border border-border",
-                )}>
-                  <p className="font-bold text-[10px] text-muted-foreground mb-1.5">
-                    {entry.fromTitle}{entry.toTitle && ` → ${entry.toTitle}`}
-                    {entry.type === "report" && <span className="ml-2 text-primary">📝 relatório</span>}
-                    {entry.type === "question" && <span className="ml-2 text-blue-400">💬 comunicação</span>}
-                  </p>
-                  <p className="text-foreground/90 whitespace-pre-wrap">{entry.text}</p>
-                </div>
-              </div>
-            ))}
-            {isWorking && (
-              <div className="flex gap-3">
-                <div className="text-2xl shrink-0">{activeRole.emoji}</div>
-                <div className="bg-blue-600/10 border border-blue-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
-                  <div className="flex gap-1 items-center">
-                    {[0, 150, 300].map(d => (
-                      <div key={d} className="h-2.5 w-2.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                    ))}
-                  </div>
-                  <span className="text-[11px] text-blue-400 font-medium">processando…</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Footer status */}
-        <div className="px-5 py-2.5 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">{entries.length} mensagens · atualizando em tempo real</span>
-          {isWorking && (
-            <div className="flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
-              <span className="text-[10px] text-blue-400 font-semibold">ao vivo</span>
+        {/* Body: two columns — queue | feed */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* Left: Agent Queue */}
+          <div className="w-56 shrink-0 border-r border-border bg-muted/10 flex flex-col">
+            <div className="px-3 py-2 border-b border-border/50 shrink-0">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Ordem de Trabalho</p>
             </div>
-          )}
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {orderedRoles.map((role, idx) => {
+                  const isActive = currentSpotlightId === role.id;
+                  const depth = getDepth(role.id);
+                  const recentEntry = [...localEntries].reverse().find(e => e.fromTitle === (role.name || role.title));
+                  return (
+                    <div
+                      key={role.id}
+                      className={cn(
+                        "flex items-start gap-2 rounded-lg px-2 py-2 transition-all",
+                        isActive
+                          ? "bg-blue-500/20 border border-blue-500/40"
+                          : "hover:bg-muted/30",
+                      )}
+                      style={{ paddingLeft: `${8 + depth * 10}px` }}
+                    >
+                      <div className="relative shrink-0 mt-0.5">
+                        <span className="text-base">{role.emoji || "🤖"}</span>
+                        {isActive && (
+                          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-400 animate-ping" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("text-[10px] font-semibold truncate leading-tight", isActive && "text-blue-300")}>
+                          {role.name || role.title}
+                        </p>
+                        {recentEntry ? (
+                          <p className="text-[9px] text-muted-foreground truncate leading-tight mt-0.5">
+                            {recentEntry.text.slice(0, 40)}…
+                          </p>
+                        ) : (
+                          <p className="text-[9px] text-muted-foreground/50 leading-tight mt-0.5">
+                            {isActive ? "trabalhando…" : "em standby"}
+                          </p>
+                        )}
+                      </div>
+                      <div className={cn(
+                        "shrink-0 h-1.5 w-1.5 rounded-full mt-1.5",
+                        isActive ? "bg-blue-400 animate-pulse" : "bg-muted-foreground/30",
+                      )} />
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Right: Live feed */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="px-4 py-2 border-b border-border/50 shrink-0 flex items-center justify-between bg-muted/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Feed de Atividade</p>
+              <span className="text-[9px] text-muted-foreground">{localEntries.length} atualizações</span>
+            </div>
+            <ScrollArea className="flex-1">
+              <div ref={scrollRef as any} className="p-4 space-y-2.5">
+                {localEntries.length === 0 && (
+                  <div className="py-10 text-center">
+                    <Loader2 className="h-8 w-8 mx-auto mb-2 text-blue-400/40 animate-spin" />
+                    <p className="text-xs text-muted-foreground">Inicializando equipe…</p>
+                  </div>
+                )}
+                {localEntries.map((entry, i) => (
+                  <div key={`${entry.ts}-${i}`} className={cn(
+                    "flex gap-2.5 animate-fade-in",
+                    entry.type === "report" ? "flex-row-reverse" : "flex-row",
+                  )}>
+                    <div className="text-lg shrink-0 mt-0.5">{entry.fromEmoji}</div>
+                    <div className={cn(
+                      "flex-1 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed",
+                      entry.type === "report"
+                        ? "bg-primary/10 border border-primary/20 text-right"
+                        : entry.type === "question"
+                        ? "bg-blue-500/10 border border-blue-500/20"
+                        : "bg-muted/40 border border-border",
+                    )}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <p className="font-bold text-[9px] text-muted-foreground">
+                          {entry.fromTitle}
+                          {entry.toTitle && <span className="text-blue-400"> → {entry.toTitle}</span>}
+                        </p>
+                        {entry.type === "report" && <span className="text-[8px] bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">relatório</span>}
+                        {entry.type === "question" && <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded font-semibold">comunicação</span>}
+                        <span className="text-[8px] text-muted-foreground/40 ml-auto">
+                          {new Date(entry.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-foreground/90 whitespace-pre-wrap">{entry.text}</p>
+                    </div>
+                  </div>
+                ))}
+                {isWorking && (
+                  <div className="flex gap-2.5">
+                    <div className="text-lg shrink-0">{activeRole.emoji}</div>
+                    <div className="bg-blue-600/10 border border-blue-500/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                      {[0, 150, 300].map(d => (
+                        <div key={d} className="h-2 w-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                      ))}
+                      <span className="text-[10px] text-blue-400 font-medium">processando…</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-2 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">{allRoles.length} agentes · atualizando a cada 5s</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] text-red-400 font-bold">ao vivo</span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -2738,6 +2848,9 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
          targetRole={spotlightTargetRole}
          entries={liveConvoEntries}
          isWorking={liveConvoTyping || !!spotlightRoleId || isRunning}
+         allRoles={activeRoles}
+         currentSpotlightId={spotlightRoleId}
+         hierarchy={hierarchy}
        />
     </div>
   );
