@@ -404,7 +404,7 @@ function EmployeeProfileDialog({
     : 0;
 
   const catalogRole = ROLE_CATALOG.find(c => c.title === role.title);
-  const skills: string[] = catalogRole?.skills || role.skills || [];
+  const skills: string[] = catalogRole?.skills || (Array.isArray(role.skills) ? role.skills : []);
 
   const handleSaveEdit = async () => {
     setSaving(true);
@@ -538,7 +538,7 @@ function EmployeeProfileDialog({
                   <p className="text-xs text-muted-foreground mt-1">
                     <span className="font-semibold text-foreground">Hierarquia:</span>{" "}
                     {parentRole.emoji} {parentRole.title} → {role.emoji} {role.title}
-                    {directReports.length > 0 && ` → ${directReports.map((r: any) => `${r.emoji} ${r.title}`).join(", ")}`}
+                    {Array.isArray(directReports) && directReports.length > 0 && ` → ${directReports.map((r: any) => `${r.emoji} ${r.title}`).join(", ")}`}
                   </p>
                 )}
               </div>
