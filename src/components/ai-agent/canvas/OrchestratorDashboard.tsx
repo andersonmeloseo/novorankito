@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
   Loader2, ChevronDown, ChevronRight, Send, Plus, Clock,
-  AlertTriangle, MonitorPlay, Users,
+  AlertTriangle, MonitorPlay, Users, ListChecks, Map,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +17,8 @@ import { FREQUENCY_LABELS } from "./OrchestratorTemplates";
 import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
 import { CeoOnboardingChat } from "./CeoOnboardingChat";
 import { TeamWarRoom } from "./TeamWarRoom";
+import { OrchestratorTaskBoard } from "./OrchestratorTaskBoard";
+import { StrategicPlanPanel } from "./StrategicPlanPanel";
 
 interface OrchestratorDashboardProps {
   projectId?: string;
@@ -289,17 +292,40 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                   ))}
                 </div>
 
-                {/* War Room inline */}
+                {/* War Room — full command center */}
                 {isWarRoomOpen && (
-                  <TeamWarRoom
-                    deployment={dep}
-                    runs={runs}
-                    onClose={() => setWarRoomDepId(null)}
-                    onRunNow={() => handleRunNow(dep)}
-                    isRunning={runningId === dep.id}
-                    onRefresh={() => { refetchDeployments(); refetchRuns(); }}
-                    projectId={projectId}
-                  />
+                  <div className="mt-3 border-t border-border pt-3 space-y-3">
+                    <Tabs defaultValue="warroom" className="w-full">
+                      <TabsList className="w-full h-8 text-xs grid grid-cols-3">
+                        <TabsTrigger value="warroom" className="gap-1.5 text-[11px]">
+                          <MonitorPlay className="h-3.5 w-3.5" /> War Room
+                        </TabsTrigger>
+                        <TabsTrigger value="tasks" className="gap-1.5 text-[11px]">
+                          <ListChecks className="h-3.5 w-3.5" /> Tarefas do Time
+                        </TabsTrigger>
+                        <TabsTrigger value="plan" className="gap-1.5 text-[11px]">
+                          <Map className="h-3.5 w-3.5" /> Plano Estratégico
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="warroom" className="mt-3">
+                        <TeamWarRoom
+                          deployment={dep}
+                          runs={runs}
+                          onClose={() => setWarRoomDepId(null)}
+                          onRunNow={() => handleRunNow(dep)}
+                          isRunning={runningId === dep.id}
+                          onRefresh={() => { refetchDeployments(); refetchRuns(); }}
+                          projectId={projectId}
+                        />
+                      </TabsContent>
+                      <TabsContent value="tasks" className="mt-3">
+                        <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />
+                      </TabsContent>
+                      <TabsContent value="plan" className="mt-3">
+                        <StrategicPlanPanel deploymentId={dep.id} projectId={projectId} />
+                      </TabsContent>
+                    </Tabs>
+                  </div>
                 )}
               </CardHeader>
 

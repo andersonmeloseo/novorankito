@@ -1192,6 +1192,100 @@ export type Database = {
           },
         ]
       }
+      orchestrator_tasks: {
+        Row: {
+          assigned_role: string | null
+          assigned_role_emoji: string | null
+          assigned_to_human: string | null
+          category: string
+          completed_at: string | null
+          context_url: string | null
+          created_at: string
+          deployment_id: string | null
+          description: string | null
+          due_date: string | null
+          estimated_impact: string | null
+          id: string
+          metadata: Json | null
+          owner_id: string
+          priority: string
+          project_id: string | null
+          run_id: string | null
+          status: string
+          success_metric: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_role?: string | null
+          assigned_role_emoji?: string | null
+          assigned_to_human?: string | null
+          category?: string
+          completed_at?: string | null
+          context_url?: string | null
+          created_at?: string
+          deployment_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_impact?: string | null
+          id?: string
+          metadata?: Json | null
+          owner_id: string
+          priority?: string
+          project_id?: string | null
+          run_id?: string | null
+          status?: string
+          success_metric?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_role?: string | null
+          assigned_role_emoji?: string | null
+          assigned_to_human?: string | null
+          category?: string
+          completed_at?: string | null
+          context_url?: string | null
+          created_at?: string
+          deployment_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_impact?: string | null
+          id?: string
+          metadata?: Json | null
+          owner_id?: string
+          priority?: string
+          project_id?: string | null
+          run_id?: string | null
+          status?: string
+          success_metric?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orchestrator_tasks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "orchestrator_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orchestrator_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orchestrator_tasks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "orchestrator_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_features: {
         Row: {
           created_at: string
