@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, Building2, Users, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, Building2, Users, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PROFESSIONAL_ROLES, DEFAULT_HIERARCHY, type ProfessionalRole } from "./OrchestratorTemplates";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +82,26 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
   const [suggestedTeam, setSuggestedTeam] = useState<ProfessionalRole[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const suggestedTeamRef = useRef<ProfessionalRole[]>([]);
+
+  // Keep ref in sync for use inside closures
+  useEffect(() => { suggestedTeamRef.current = suggestedTeam; }, [suggestedTeam]);
+
+  const handleRemoveMember = useCallback((roleId: string) => {
+    if (roleId === "ceo") {
+      toast.error("O CEO não pode ser removido da equipe.");
+      return;
+    }
+    setSuggestedTeam(prev => {
+      const updated = prev.filter(r => r.id !== roleId);
+      // Also update the last team-preview message
+      setMessages(msgs => msgs.map(m => 
+        m.teamPreview ? { ...m, teamPreview: updated } : m
+      ));
+      return updated;
+    });
+    toast.success("Membro removido da equipe.");
+  }, []);
 
   const addCeoMessage = useCallback((content: string, options?: ChatMessage["options"], teamPreview?: ProfessionalRole[]) => {
     const msg: ChatMessage = {
@@ -197,7 +217,7 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
 
       case "confirm":
         if (answer === "deploy") {
-          handleDeploy();
+          handleDeployRef.current();
         } else if (answer === "more") {
           const biggerTeam = suggestTeam({ ...answers, teamSize: "full" });
           setSuggestedTeam(biggerTeam);
@@ -221,10 +241,17 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
         }
         break;
     }
-  }, [answers, addCeoMessage, addUserMessage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, addCeoMessage, addUserMessage, projectId, user]);
 
-  const handleDeploy = async () => {
-    if (!projectId || !user || suggestedTeam.length === 0) return;
+  const handleDeployRef = useRef<() => void>(() => {});
+  
+  handleDeployRef.current = async () => {
+    if (!projectId || !user || suggestedTeamRef.current.length === 0) {
+      toast.error("Nenhuma equipe para implantar. Tente novamente.");
+      return;
+    }
+    const currentTeam = suggestedTeamRef.current;
     setStep("deploying");
     setDeploying(true);
 
@@ -232,14 +259,14 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
 
     try {
       const activeHierarchy: Record<string, string> = {};
-      const selectedIds = new Set(suggestedTeam.map(r => r.id));
-      suggestedTeam.forEach(r => {
+      const selectedIds = new Set(currentTeam.map(r => r.id));
+      currentTeam.forEach(r => {
         if (r.id === "ceo") return;
         const parentId = DEFAULT_HIERARCHY[r.id];
         activeHierarchy[r.id] = parentId && selectedIds.has(parentId) ? parentId : "ceo";
       });
 
-      const rolesPayload = suggestedTeam.map(r => ({
+      const rolesPayload = currentTeam.map(r => ({
         id: r.id,
         title: r.title,
         emoji: r.emoji,
@@ -267,7 +294,6 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
 
       if (error) throw error;
 
-      // Trigger first run
       supabase.functions.invoke("run-orchestrator", {
         body: {
           deployment_id: deployment.id,
@@ -357,12 +383,21 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
                   {msg.teamPreview && msg.teamPreview.length > 0 && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {msg.teamPreview.map(role => (
-                        <div key={role.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card/50 text-xs">
+                        <div key={role.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card/50 text-xs group relative">
                           <span className="text-base">{role.emoji}</span>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="font-semibold truncate">{role.title}</p>
                             <p className="text-[10px] text-muted-foreground">{role.department}</p>
                           </div>
+                          {role.id !== "ceo" && step !== "deploying" && step !== "done" && (
+                            <button
+                              onClick={() => handleRemoveMember(role.id)}
+                              className="h-5 w-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/10 hover:bg-destructive/20 text-destructive shrink-0"
+                              title="Remover membro"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
