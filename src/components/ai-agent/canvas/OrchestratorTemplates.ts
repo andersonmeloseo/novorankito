@@ -381,6 +381,37 @@ Liste oportunidades com DA, relevância e probabilidade de sucesso.`,
   },
 ];
 
+export const SQUAD_PRESETS: OrchestratorTemplate[] = [
+  {
+    id: "squad_seo",
+    name: "Squad SEO",
+    description: "Squad enxuto focado em SEO: Gerente + Analista + Conteúdo",
+    emoji: "🎯",
+    roles: PROFESSIONAL_ROLES.filter(r => ["ceo", "seo_manager", "seo_analyst", "content_strategist"].includes(r.id)),
+  },
+  {
+    id: "squad_growth",
+    name: "Squad Growth",
+    description: "Squad de crescimento rápido: CEO + Ads + Analytics",
+    emoji: "⚡",
+    roles: PROFESSIONAL_ROLES.filter(r => ["ceo", "ads_manager", "analytics_manager"].includes(r.id)),
+  },
+  {
+    id: "squad_content",
+    name: "Squad Conteúdo",
+    description: "Squad editorial: CEO + Estrategista + Social Media",
+    emoji: "✍️",
+    roles: PROFESSIONAL_ROLES.filter(r => ["ceo", "content_strategist", "social_media"].includes(r.id)),
+  },
+  {
+    id: "squad_tech",
+    name: "Squad Técnico",
+    description: "Squad técnico: CEO + Analista SEO + Dev",
+    emoji: "💻",
+    roles: PROFESSIONAL_ROLES.filter(r => ["ceo", "seo_analyst", "dev_tech"].includes(r.id)),
+  },
+];
+
 export const ORCHESTRATOR_PRESETS: OrchestratorTemplate[] = [
   {
     id: "full_agency",

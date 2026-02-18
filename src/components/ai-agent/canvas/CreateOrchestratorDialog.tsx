@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Building2, Sparkles, Clock, Zap, Send, Loader2 } from "lucide-react";
+import { Users, Building2, Sparkles, Clock, Zap, Send, Loader2, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PROFESSIONAL_ROLES, ORCHESTRATOR_PRESETS, DEFAULT_HIERARCHY, FREQUENCY_LABELS, type ProfessionalRole } from "./OrchestratorTemplates";
+import { PROFESSIONAL_ROLES, ORCHESTRATOR_PRESETS, SQUAD_PRESETS, DEFAULT_HIERARCHY, FREQUENCY_LABELS, type ProfessionalRole } from "./OrchestratorTemplates";
 import type { Node, Edge } from "@xyflow/react";
 import { MarkerType } from "@xyflow/react";
 import type { CanvasNodeData } from "./types";
@@ -26,7 +26,8 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
   const { user } = useAuth();
   const [name, setName] = useState("Minha Agência");
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set(["ceo"]));
-  const [step, setStep] = useState<"preset" | "custom" | "review">("preset");
+  const [step, setStep] = useState<"type" | "preset" | "custom" | "review">("type");
+  const [creationType, setCreationType] = useState<"orchestrator" | "squad">("orchestrator");
   const [deploying, setDeploying] = useState(false);
 
   const toggleRole = (id: string) => {
@@ -40,11 +41,19 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
   };
 
   const selectPreset = (presetId: string) => {
-    const preset = ORCHESTRATOR_PRESETS.find(p => p.id === presetId);
+    const allPresets = [...ORCHESTRATOR_PRESETS, ...SQUAD_PRESETS];
+    const preset = allPresets.find(p => p.id === presetId);
     if (!preset) return;
     setSelectedRoles(new Set(preset.roles.map(r => r.id)));
     setName(preset.name);
     setStep("custom");
+  };
+
+  const selectType = (type: "orchestrator" | "squad") => {
+    setCreationType(type);
+    setName(type === "squad" ? "Meu Squad" : "Minha Agência");
+    setSelectedRoles(new Set(["ceo"]));
+    setStep("preset");
   };
 
   const departments = useMemo(() => {
@@ -120,11 +129,12 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
 
       if (runError) throw runError;
 
-      toast.success(`🏢 "${name}" implantado! Primeira execução em andamento...`);
+      toast.success(`${creationType === "squad" ? "⚡" : "🏢"} "${name}" implantado! Primeira execução em andamento...`);
       onOpenChange(false);
-      setStep("preset");
+      setStep("type");
       setSelectedRoles(new Set(["ceo"]));
       setName("Minha Agência");
+      setCreationType("orchestrator");
     } catch (err: any) {
       toast.error(err.message || "Erro ao implantar orquestrador");
     } finally {
@@ -249,31 +259,81 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
     });
 
     const allNodes = [triggerNode, ...Array.from(nodeMap.values())];
-    onGenerated(allNodes, allEdges, `🏢 ${name}`);
-    onOpenChange(false);
-    setStep("preset");
-    setSelectedRoles(new Set(["ceo"]));
-    setName("Minha Agência");
+      toast.success(`${creationType === "squad" ? "⚡" : "🏢"} Canvas "${name}" gerado!`);
+      onGenerated(allNodes, allEdges, `${creationType === "squad" ? "⚡" : "🏢"} ${name}`);
+      onOpenChange(false);
+      setStep("type");
+      setSelectedRoles(new Set(["ceo"]));
+      setName("Minha Agência");
+      setCreationType("orchestrator");
   };
+
+  const currentPresets = creationType === "squad" ? SQUAD_PRESETS : ORCHESTRATOR_PRESETS;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            Criar Orquestrador Autônomo
+            {creationType === "squad"
+              ? <Swords className="h-5 w-5 text-primary" />
+              : <Building2 className="h-5 w-5 text-primary" />}
+            {step === "type" ? "Criar Equipe de IA" : creationType === "squad" ? `Squad: ${name}` : `Orquestrador: ${name}`}
           </DialogTitle>
           <DialogDescription>
-            Monte sua equipe de IA que trabalha autonomamente, com rotinas definidas e relatórios automáticos.
+            {step === "type"
+              ? "Escolha como quer montar sua equipe autônoma de agentes."
+              : "Monte sua equipe de IA que trabalha autonomamente, com rotinas definidas e relatórios automáticos."}
           </DialogDescription>
         </DialogHeader>
 
-        {step === "preset" ? (
+        {step === "type" ? (
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground font-medium">Escolha um template ou monte do zero:</p>
+            <p className="text-xs text-muted-foreground font-medium">Qual tipo de equipe deseja criar?</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => selectType("orchestrator")}
+                className="text-left p-5 rounded-xl border border-border hover:border-primary/50 hover:bg-muted/30 transition-all group"
+              >
+                <Building2 className="h-8 w-8 text-primary mb-3" />
+                <h4 className="text-sm font-bold group-hover:text-primary transition-colors">Orquestrador</h4>
+                <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Equipe completa com hierarquia. Ideal para agências com múltiplos departamentos e fluxos de aprovação.
+                </p>
+                <div className="flex flex-wrap gap-1 mt-3">
+                  {["SEO", "Ads", "Analytics", "CS"].map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-[9px]">{tag}</Badge>
+                  ))}
+                </div>
+              </button>
+
+              <button
+                onClick={() => selectType("squad")}
+                className="text-left p-5 rounded-xl border border-border hover:border-primary/50 hover:bg-muted/30 transition-all group"
+              >
+                <Swords className="h-8 w-8 text-primary mb-3" />
+                <h4 className="text-sm font-bold group-hover:text-primary transition-colors">Squad</h4>
+                <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Mini equipe de 2–4 agentes com foco específico. Mais ágil e direto ao ponto para um objetivo concreto.
+                </p>
+                <div className="flex flex-wrap gap-1 mt-3">
+                  {["Enxuto", "Ágil", "Focado", "Rápido"].map(tag => (
+                    <Badge key={tag} variant="outline" className="text-[9px]">{tag}</Badge>
+                  ))}
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : step === "preset" ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setStep("type")}>← Voltar</Button>
+              <p className="text-xs text-muted-foreground font-medium">
+                {creationType === "squad" ? "Escolha um Squad pronto:" : "Escolha um template ou monte do zero:"}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              {ORCHESTRATOR_PRESETS.map(preset => (
+              {currentPresets.map(preset => (
                 <button
                   key={preset.id}
                   onClick={() => selectPreset(preset.id)}
@@ -287,7 +347,7 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
               ))}
             </div>
             <Button variant="outline" className="w-full text-xs gap-2" onClick={() => setStep("custom")}>
-              <Users className="h-3.5 w-3.5" /> Montar equipe personalizada
+              <Users className="h-3.5 w-3.5" /> {creationType === "squad" ? "Montar Squad personalizado" : "Montar equipe personalizada"}
             </Button>
           </div>
         ) : step === "custom" ? (
@@ -297,7 +357,7 @@ export function CreateOrchestratorDialog({ open, onOpenChange, onGenerated, proj
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Nome do orquestrador"
+                placeholder={creationType === "squad" ? "Nome do squad" : "Nome do orquestrador"}
                 className="text-sm h-8 flex-1"
               />
             </div>
