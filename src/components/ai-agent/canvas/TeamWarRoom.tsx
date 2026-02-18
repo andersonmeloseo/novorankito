@@ -167,11 +167,37 @@ const STATUS_DOT: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   idle: "standby",
   waiting: "aguardando…",
-  running: "executando…",
+  running: "analisando…",
   success: "✓ concluído",
   error: "✗ falhou",
   vacation: "🌴 férias",
 };
+
+// Dynamic action labels per role type (shown while running)
+function getRunningActionLabel(title: string, department: string): string {
+  const t = title.toLowerCase();
+  const d = department.toLowerCase();
+  if (t.includes("analista") || t.includes("analyst")) {
+    if (d.includes("seo")) return "🔍 auditando SEO…";
+    if (d.includes("dado") || d.includes("data")) return "📊 processando dados…";
+    if (d.includes("marketing")) return "📈 analisando campanhas…";
+    return "🔎 analisando…";
+  }
+  if (t.includes("gerente") || t.includes("manager")) {
+    if (d.includes("seo")) return "📋 definindo estratégia…";
+    if (d.includes("marketing")) return "🎯 planejando campanha…";
+    return "📋 coordenando equipe…";
+  }
+  if (t.includes("estrategista") || t.includes("content")) return "✍️ criando pauta…";
+  if (t.includes("ceo") || t.includes("diretor")) return "🧠 consolidando…";
+  if (t.includes("cto") || t.includes("tech") || t.includes("dev")) return "⚙️ implementando…";
+  if (t.includes("sdr") || t.includes("bdr") || t.includes("closer")) return "📞 prospectando…";
+  if (t.includes("cro") || t.includes("conversão")) return "🧪 testando…";
+  if (t.includes("link") || t.includes("outreach")) return "🔗 conquistando links…";
+  if (t.includes("social") || t.includes("mídia")) return "📱 criando conteúdo…";
+  if (t.includes("ads") || t.includes("mídia paga")) return "💰 otimizando anúncios…";
+  return "⚡ executando…";
+}
 
 const STATUS_LABEL_COLOR: Record<string, string> = {
   idle: "text-muted-foreground",
@@ -227,118 +253,145 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
   const d = data as unknown as AgentNodeData;
   const [hovered, setHovered] = useState(false);
   const status = d.isOnVacation ? "vacation" : (d.status || "idle");
+  const isRunning = status === "running";
+  const dynamicLabel = isRunning
+    ? getRunningActionLabel(d.title, d.department)
+    : STATUS_LABEL[status];
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => d.onClick?.(d.roleId)}
+      style={isRunning ? {
+        background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6, #3b82f6)",
+        animation: "agent-border-spin 2s linear infinite",
+        padding: "2px",
+        borderRadius: "16px",
+      } : undefined}
       className={cn(
-        "relative flex flex-col items-center gap-2 px-3 py-3 rounded-2xl border-2 bg-card min-w-[120px] max-w-[140px] cursor-pointer active:cursor-grabbing transition-all duration-300",
-        STATUS_RING[status],
+        "relative cursor-pointer active:cursor-grabbing transition-all duration-300",
+        !isRunning && "p-[2px] rounded-2xl",
+        !isRunning && STATUS_RING[status] + " border-2 bg-card",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         status === "vacation" && "opacity-75",
       )}
     >
-      {/* Pulsing glow ring for running */}
-      {status === "running" && (
-        <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/40 animate-ping pointer-events-none" />
+      {/* Animated glow for running */}
+      {isRunning && (
+        <div
+          className="absolute inset-0 opacity-40 blur-xl pointer-events-none"
+          style={{
+            background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6)",
+            animation: "agent-border-spin 2s linear infinite",
+            borderRadius: "16px",
+          }}
+        />
       )}
 
-      {/* Action buttons on hover */}
-      {hovered && d.isEditable && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg z-20 whitespace-nowrap">
-          {d.onPromote && (
-            <button
-              onClick={(e) => { e.stopPropagation(); d.onPromote!(d.roleId); }}
-              className="h-5 w-5 rounded-full bg-amber-500/80 text-white flex items-center justify-center hover:bg-amber-500 transition-colors"
-              title="Promover"
-            >
-              <TrendingUp className="h-2.5 w-2.5" />
-            </button>
-          )}
-          {d.onDemote && (
-            <button
-              onClick={(e) => { e.stopPropagation(); d.onDemote!(d.roleId); }}
-              className="h-5 w-5 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
-              title="Regredir"
-            >
-              <TrendingDown className="h-2.5 w-2.5" />
-            </button>
-          )}
-          {d.onVacation && (
-            <button
-              onClick={(e) => { e.stopPropagation(); d.onVacation!(d.roleId); }}
-              className={cn(
-                "h-5 w-5 rounded-full flex items-center justify-center transition-colors",
-                d.isOnVacation
-                  ? "bg-emerald-500/80 hover:bg-emerald-500 text-white"
-                  : "bg-orange-400/80 hover:bg-orange-400 text-white"
-              )}
-              title={d.isOnVacation ? "Retornar de férias" : "Colocar em férias"}
-            >
-              <PalmtreeIcon className="h-2.5 w-2.5" />
-            </button>
-          )}
-          {d.onDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); d.onDelete!(d.roleId); }}
-              className="h-5 w-5 rounded-full bg-destructive/80 text-white flex items-center justify-center hover:bg-destructive transition-colors"
-              title="Demitir"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
+      {/* Inner card */}
+      <div className={cn(
+        "relative flex flex-col items-center gap-2 px-3 py-3 rounded-[14px] bg-card min-w-[120px] max-w-[140px]",
+      )}>
+        {/* Action buttons on hover */}
+        {hovered && d.isEditable && (
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg z-20 whitespace-nowrap">
+            {d.onPromote && (
+              <button
+                onClick={(e) => { e.stopPropagation(); d.onPromote!(d.roleId); }}
+                className="h-5 w-5 rounded-full bg-amber-500/80 text-white flex items-center justify-center hover:bg-amber-500 transition-colors"
+                title="Promover"
+              >
+                <TrendingUp className="h-2.5 w-2.5" />
+              </button>
+            )}
+            {d.onDemote && (
+              <button
+                onClick={(e) => { e.stopPropagation(); d.onDemote!(d.roleId); }}
+                className="h-5 w-5 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
+                title="Regredir"
+              >
+                <TrendingDown className="h-2.5 w-2.5" />
+              </button>
+            )}
+            {d.onVacation && (
+              <button
+                onClick={(e) => { e.stopPropagation(); d.onVacation!(d.roleId); }}
+                className={cn(
+                  "h-5 w-5 rounded-full flex items-center justify-center transition-colors",
+                  d.isOnVacation
+                    ? "bg-emerald-500/80 hover:bg-emerald-500 text-white"
+                    : "bg-orange-400/80 hover:bg-orange-400 text-white"
+                )}
+                title={d.isOnVacation ? "Retornar de férias" : "Colocar em férias"}
+              >
+                <PalmtreeIcon className="h-2.5 w-2.5" />
+              </button>
+            )}
+            {d.onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); d.onDelete!(d.roleId); }}
+                className="h-5 w-5 rounded-full bg-destructive/80 text-white flex items-center justify-center hover:bg-destructive transition-colors"
+                title="Demitir"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Hierarchical handles: source only at bottom, target only at top */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top-target"
+          className="!w-3 !h-3 !bg-muted-foreground/50 !border-2 !border-background"
+          isConnectable={true}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom-source"
+          className="!w-3 !h-3 !bg-primary/70 !border-2 !border-background"
+          isConnectable={true}
+        />
+
+        {/* Avatar */}
+        <div className={cn(
+          "relative h-12 w-12 rounded-full border-2 flex items-center justify-center text-2xl transition-all duration-300 bg-card",
+          isRunning ? "border-blue-400/60" : STATUS_RING[status],
+        )}>
+          {status === "vacation" ? "🌴" : d.emoji}
+          <span className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-colors", STATUS_DOT[status])} />
+          {isRunning && (
+            <div className="absolute inset-0 rounded-full flex items-center justify-center bg-blue-500/10">
+              <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+            </div>
           )}
         </div>
-      )}
 
-      {/* Hierarchical handles: source only at bottom, target only at top */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        className="!w-3 !h-3 !bg-muted-foreground/50 !border-2 !border-background"
-        isConnectable={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-source"
-        className="!w-3 !h-3 !bg-primary/70 !border-2 !border-background"
-        isConnectable={true}
-      />
+        {/* Name & Status */}
+        <div className="text-center space-y-0.5">
+          <p className="text-[10px] font-bold leading-tight line-clamp-2">{d.title}</p>
+          <p className="text-[8px] text-muted-foreground">{d.department}</p>
+          <p className={cn(
+            "text-[9px] font-semibold transition-all duration-300",
+            STATUS_LABEL_COLOR[status],
+            isRunning && "animate-pulse",
+          )}>{dynamicLabel}</p>
+        </div>
 
-      {/* Avatar */}
-      <div className={cn(
-        "relative h-12 w-12 rounded-full border-2 flex items-center justify-center text-2xl transition-all duration-300 bg-card",
-        STATUS_RING[status],
-      )}>
-        {status === "vacation" ? "🌴" : d.emoji}
-        <span className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-colors", STATUS_DOT[status])} />
-        {status === "running" && (
-          <div className="absolute inset-0 rounded-full flex items-center justify-center bg-blue-500/10">
-            <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+        {d.result && status === "success" && (
+          <div className="w-full mt-1 px-1.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <p className="text-[7px] text-emerald-400 line-clamp-3 leading-relaxed">{d.result}</p>
+          </div>
+        )}
+        {d.result && status === "error" && (
+          <div className="w-full mt-1 px-1.5 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
+            <p className="text-[7px] text-destructive line-clamp-2">{d.result.slice(0, 80)}</p>
           </div>
         )}
       </div>
-
-      {/* Name & Status */}
-      <div className="text-center space-y-0.5">
-        <p className="text-[10px] font-bold leading-tight line-clamp-2">{d.title}</p>
-        <p className="text-[8px] text-muted-foreground">{d.department}</p>
-        <p className={cn("text-[9px] font-semibold", STATUS_LABEL_COLOR[status])}>{STATUS_LABEL[status]}</p>
-      </div>
-
-      {d.result && status === "success" && (
-        <div className="w-full mt-1 px-1.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-          <p className="text-[7px] text-emerald-400 line-clamp-3 leading-relaxed">{d.result}</p>
-        </div>
-      )}
-      {d.result && status === "error" && (
-        <div className="w-full mt-1 px-1.5 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
-          <p className="text-[7px] text-destructive line-clamp-2">{d.result.slice(0, 80)}</p>
-        </div>
-      )}
     </div>
   );
 });
@@ -1098,13 +1151,39 @@ function buildNodesAndEdges(
     };
   });
 
+  // Helper: determine the kind of communication flowing on each edge
+  const getEdgeFlowLabel = (childRole: any, parentRole: any, childStatus: string, isRunning: boolean): string | undefined => {
+    if (!parentRole) return undefined;
+    const childT = (childRole.title || "").toLowerCase();
+    const parentT = (parentRole.title || "").toLowerCase();
+    if (childStatus === "success") {
+      // Describe what was delivered
+      if (childT.includes("analista") && parentT.includes("gerente")) return "📊 análise →";
+      if (childT.includes("analista") && parentT.includes("estrategista")) return "📊 dados →";
+      if (childT.includes("estrategista")) return "📋 pauta →";
+      if (childT.includes("gerente") && (parentT.includes("ceo") || parentT.includes("diretor"))) return "📈 relatório →";
+      if (childT.includes("sdr") || childT.includes("bdr")) return "🎯 leads →";
+      if (childT.includes("closer")) return "💰 deals →";
+      return "✓ entregue";
+    }
+    if (isRunning && childStatus === "running") {
+      if (childT.includes("analista")) return "🔍 analisando";
+      if (childT.includes("estrategista")) return "✍️ criando";
+      if (childT.includes("gerente")) return "📋 coordenando";
+      return "⚡ executando";
+    }
+    return undefined;
+  };
+
   const rfEdges = roles
     .filter(r => r.id !== "ceo" && hierarchy[r.id])
     .map(r => {
       const parentId = hierarchy[r.id] || "ceo";
+      const parentRole = roles.find((p: any) => p.id === parentId);
       const childStatus = getStatus(r.id);
       const isActive = childStatus === "running" || (lastRun?.status === "running" && childStatus !== "success");
       const isSuccess = childStatus === "success";
+      const flowLabel = getEdgeFlowLabel(r, parentRole, childStatus, isActive);
 
       return {
         id: `e-${parentId}-${r.id}`,
@@ -1125,8 +1204,12 @@ function buildNodesAndEdges(
           color: isSuccess ? "hsl(142, 71%, 45%)" : isActive ? "hsl(217, 91%, 60%)" : "hsl(var(--muted-foreground))",
           width: 16, height: 16,
         },
-        label: isSuccess ? "✓ relatório" : undefined,
-        labelStyle: { fontSize: 8, fill: "hsl(142, 71%, 45%)", fontWeight: 600 },
+        label: flowLabel,
+        labelStyle: {
+          fontSize: 8,
+          fill: isSuccess ? "hsl(142, 71%, 45%)" : "hsl(217, 91%, 60%)",
+          fontWeight: 600,
+        },
         labelBgStyle: { fill: "hsl(var(--card))", fillOpacity: 0.9 },
       };
     });
