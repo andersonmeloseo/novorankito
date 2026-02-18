@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,17 +60,38 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Fetch OpenAI key from admin api_configurations
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: apiKeyRow, error: keyError } = await supabase
+      .from("api_configurations_decrypted")
+      .select("secret_value")
+      .eq("secret_key_name", "OPEN_AI_API_KEY")
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (keyError || !apiKeyRow?.secret_value) {
+      return new Response(JSON.stringify({ 
+        error: "Chave da OpenAI não configurada. Vá em Admin > APIs & Chaves para configurar." 
+      }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const openAiKey = apiKeyRow.secret_value;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${openAiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,
@@ -109,20 +131,26 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns segundos." }), {
+        return new Response(JSON.stringify({ error: "Rate limit da OpenAI excedido. Tente novamente em alguns segundos." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA insuficientes. Faça upgrade do plano." }), {
+      if (response.status === 401) {
+        return new Response(JSON.stringify({ error: "Chave da OpenAI inválida. Verifique em Admin > APIs & Chaves." }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402 || response.status === 403) {
+        return new Response(JSON.stringify({ error: "Sem créditos na OpenAI. Verifique sua conta OpenAI." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
-      return new Response(JSON.stringify({ error: "Erro no gateway de IA" }), {
+      console.error("OpenAI error:", response.status, errText);
+      return new Response(JSON.stringify({ error: "Erro na API da OpenAI" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
