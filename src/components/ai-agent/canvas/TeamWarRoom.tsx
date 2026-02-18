@@ -1349,20 +1349,25 @@ function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, 
 }
 
 
-function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations }: {
+function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations, deploymentId }: {
   roles: any[];
   hierarchy: Record<string, string>;
   agentResults: Record<string, any>;
   lastRun: any;
   setNodes: (nodes: any[]) => void;
   vacations: Set<string>;
+  deploymentId: string;
 }) {
   const { fitView } = useReactFlow();
   const handleReorganize = useCallback(() => {
     const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, undefined, undefined, undefined, undefined, vacations);
+    // Save freshly computed positions
+    const freshPositions: Record<string, { x: number; y: number }> = {};
+    rfNodes.forEach((n: any) => { freshPositions[n.id] = n.position; });
+    savePositions(deploymentId, freshPositions);
     setNodes(rfNodes);
     setTimeout(() => fitView({ padding: 0.3, duration: 500 }), 50);
-  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView, vacations]);
+  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView, vacations, deploymentId]);
 
   return (
     <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm" onClick={handleReorganize}>
@@ -1372,8 +1377,24 @@ function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, v
 }
 
 /* ─── Layout builder ───────────────────────────────────────── */
-const H_GAP = 210;
-const V_GAP = 170;
+const H_GAP = 240; // wider horizontal gap to avoid overlap
+const V_GAP = 190; // taller vertical gap to avoid overlap
+
+/* ─── Position persistence helpers ─────────────────────────── */
+function posStorageKey(deploymentId: string) {
+  return `rankito_warroom_positions_${deploymentId}`;
+}
+function loadSavedPositions(deploymentId: string): Record<string, { x: number; y: number }> {
+  try {
+    const raw = localStorage.getItem(posStorageKey(deploymentId));
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function savePositions(deploymentId: string, positions: Record<string, { x: number; y: number }>) {
+  try {
+    localStorage.setItem(posStorageKey(deploymentId), JSON.stringify(positions));
+  } catch {}
+}
 
 /** Proper hierarchical tree layout — children always below their own parent, no crossings */
 function computeTreePositions(roles: any[], hierarchy: Record<string, string>): Map<string, { x: number; y: number }> {
@@ -2253,9 +2274,17 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
         data: { ...n.data, isActiveSpotlight: n.id === spotlightRoleId },
       }));
     }
+    // Preserve user-dragged positions — only apply saved pos, keep computed for unsaved nodes
+    const saved = loadSavedPositions(deployment.id);
+    if (Object.keys(saved).length > 0) {
+      result.rfNodes = result.rfNodes.map(n => ({
+        ...n,
+        position: saved[n.id] ?? n.position,
+      }));
+    }
     setNodes(result.rfNodes);
     setEdges(result.rfEdges);
-  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId]);
+  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId, deployment.id]);
 
   const messages = useMemo(() => buildMessages(depRuns, roles, hierarchy), [depRuns, roles, hierarchy]);
 
@@ -2371,6 +2400,12 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                 className="!bg-background"
                 deleteKeyCode={["Backspace", "Delete"]}
                 proOptions={{ hideAttribution: true }}
+                onNodeDragStop={(_event, _node, allNodes) => {
+                  // Persist positions so they survive data refreshes
+                  const positions: Record<string, { x: number; y: number }> = {};
+                  allNodes.forEach(n => { positions[n.id] = n.position; });
+                  savePositions(deployment.id, positions);
+                }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
                 <Controls className="!bg-card !border-border !shadow-lg" showInteractive={false} />
@@ -2380,6 +2415,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                     <ReorganizeButton
                       roles={roles} hierarchy={hierarchy} agentResults={agentResults}
                       lastRun={lastRun} setNodes={setNodes} vacations={vacations}
+                      deploymentId={deployment.id}
                     />
                     <Button variant="outline" size="sm"
                       className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm"
