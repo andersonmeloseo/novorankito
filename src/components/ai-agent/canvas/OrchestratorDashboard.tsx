@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,12 +42,14 @@ function friendlyError(raw: string): string {
 
 export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorDashboardProps) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDeployment, setExpandedDeployment] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [ceoOnboardingOpen, setCeoOnboardingOpen] = useState(false);
   const [warRoomDepId, setWarRoomDepId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, string>>({});
 
   const { data: deployments = [], refetch: refetchDeployments } = useQuery({
     queryKey: ["orchestrator-deployments", projectId],
@@ -82,6 +84,8 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
   const handleRunNow = async (deployment: any) => {
     if (!user || !projectId) return;
     setRunningId(deployment.id);
+    // Auto-open war room
+    setWarRoomDepId(deployment.id);
     try {
       const { data, error } = await supabase.functions.invoke("run-orchestrator", {
         body: {
@@ -97,9 +101,17 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
       if (data?.error) {
         toast.error(friendlyError(data.error));
       } else {
-        toast.success("Execução iniciada!");
-        // Auto-open war room for this deployment
-        setWarRoomDepId(deployment.id);
+        const depId = deployment.id;
+        toast.success(`✅ Execução concluída! ${data.tasks_created || 0} tarefas + ${data.daily_plan_days || 0} dias de plano gerados.`);
+        // Invalidate all panel queries so they refresh immediately
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["orchestrator-tasks", depId] }),
+          qc.invalidateQueries({ queryKey: ["daily-plan", depId] }),
+          qc.invalidateQueries({ queryKey: ["orchestrator-last-run-plan", depId] }),
+          qc.invalidateQueries({ queryKey: ["orchestrator-runs", projectId] }),
+        ]);
+        // Switch to tasks tab to show results
+        setActiveTab(prev => ({ ...prev, [depId]: "tasks" }));
       }
       refetchRuns();
       refetchDeployments();
@@ -296,7 +308,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                 {/* War Room — full command center */}
                 {isWarRoomOpen && (
                   <div className="mt-3 border-t border-border pt-3 space-y-3">
-                    <Tabs defaultValue="warroom" className="w-full">
+                    <Tabs value={activeTab[dep.id] || "warroom"} onValueChange={(v) => setActiveTab(prev => ({ ...prev, [dep.id]: v }))} className="w-full">
                       <TabsList className="w-full h-8 text-xs grid grid-cols-4">
                         <TabsTrigger value="warroom" className="gap-1 text-[10px]">
                           <MonitorPlay className="h-3 w-3" /> War Room
