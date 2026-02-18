@@ -676,6 +676,44 @@ REGRAS:
       action_url: `/rankito-ai#canvas`,
     });
 
+    // Auto-send WhatsApp to CEO if configured
+    const { data: depRoles } = await supabase
+      .from("orchestrator_deployments")
+      .select("roles, name")
+      .eq("id", deployment_id)
+      .single();
+
+    if (depRoles?.roles && ceoResult) {
+      const ceoRole = (depRoles.roles as any[]).find((r: any) => !r.id || r.id === "ceo" || !(r as any).parent);
+      // Find the root role (no parent in hierarchy)
+      const { data: dep } = await supabase
+        .from("orchestrator_deployments")
+        .select("roles, hierarchy")
+        .eq("id", deployment_id)
+        .single();
+      if (dep?.roles) {
+        const hierarchy = dep.hierarchy as Record<string, string> || {};
+        const rootRole = (dep.roles as any[]).find((r: any) => !hierarchy[r.id]);
+        if (rootRole?.whatsapp) {
+          try {
+            await supabase.functions.invoke("send-workflow-notification", {
+              body: {
+                workflow_name: `🏢 ${depRoles.name || "Orquestrador"} — Relatório Executivo`,
+                report: ceoResult,
+                recipient_name: rootRole.title || "CEO",
+                direct_send: {
+                  phones: [rootRole.whatsapp],
+                },
+              },
+            });
+            console.log(`[run-orchestrator] WhatsApp enviado para CEO: ${rootRole.whatsapp}`);
+          } catch (waErr) {
+            console.warn("[run-orchestrator] Falha ao enviar WhatsApp para CEO:", waErr);
+          }
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       run_id: runId,
