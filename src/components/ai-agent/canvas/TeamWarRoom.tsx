@@ -287,15 +287,21 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
         </div>
       )}
 
-      {/* ALL SIDE HANDLES */}
-      <Handle type="target" position={Position.Top} id="top-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="source" position={Position.Top} id="top-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[15%]" />
-      <Handle type="target" position={Position.Left} id="left-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="source" position={Position.Left} id="left-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[65%]" />
-      <Handle type="target" position={Position.Right} id="right-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="source" position={Position.Right} id="right-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[65%]" />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="source" position={Position.Bottom} id="bottom-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background" />
+      {/* Hierarchical handles: source only at bottom, target only at top */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-target"
+        className="!w-3 !h-3 !bg-muted-foreground/50 !border-2 !border-background"
+        isConnectable={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-source"
+        className="!w-3 !h-3 !bg-primary/70 !border-2 !border-background"
+        isConnectable={true}
+      />
 
       {/* Avatar */}
       <div className={cn(
@@ -888,6 +894,8 @@ function buildNodesAndEdges(
         id: `e-${parentId}-${r.id}`,
         source: parentId,
         target: r.id,
+        sourceHandle: "bottom-source",
+        targetHandle: "top-target",
         animated: isActive || isSuccess,
         type: "deletable",
         data: { onDelete: onDeleteEdge },
