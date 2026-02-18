@@ -1784,17 +1784,59 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
           lastRun ? `• Última execução: ${new Date(lastRun.started_at).toLocaleString("pt-BR")}` : `• Sem execuções registradas`,
         ].filter(Boolean).join("\n");
 
-        const { data, error } = await supabase.functions.invoke("ai-chat", {
-          body: {
+        // ai-chat returns SSE streaming — consume it via fetch
+        const chatUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const resp = await fetch(chatUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: cmdRaw },
             ],
             project_id: projectId || deployment.project_id,
-          },
+          }),
         });
-        if (error) throw error;
-        report = data?.content || data?.message || "Sem resposta da IA.";
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => `HTTP ${resp.status}`);
+          throw new Error(errText || `HTTP ${resp.status}`);
+        }
+
+        // Consume SSE stream and collect full text
+        let accumulated = "";
+        if (resp.body) {
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          let done = false;
+          while (!done) {
+            const { done: d, value } = await reader.read();
+            if (d) break;
+            buf += decoder.decode(value, { stream: true });
+            let nl: number;
+            while ((nl = buf.indexOf("\n")) !== -1) {
+              let line = buf.slice(0, nl);
+              buf = buf.slice(nl + 1);
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (!line.startsWith("data: ")) continue;
+              const json = line.slice(6).trim();
+              if (json === "[DONE]") { done = true; break; }
+              try {
+                const parsed = JSON.parse(json);
+                const chunk = parsed.choices?.[0]?.delta?.content as string | undefined;
+                if (chunk) accumulated += chunk;
+              } catch { /* skip partial */ }
+            }
+          }
+        }
+        report = accumulated.trim() || "Sem resposta da IA.";
       }
 
       setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
