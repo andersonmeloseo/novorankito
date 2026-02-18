@@ -1353,70 +1353,100 @@ export type Database = {
       }
       plans: {
         Row: {
+          advanced_analytics_enabled: boolean
           ai_requests_limit: number
+          api_access_enabled: boolean
           billing_interval: string
           created_at: string
           currency: string
           description: string | null
           events_limit: number
+          ga4_enabled: boolean
+          gsc_accounts_per_project: number
           id: string
           indexing_daily_limit: number
           is_active: boolean
           is_default: boolean
           members_limit: number
           name: string
+          orchestrator_executions_limit: number
           payment_methods: string[] | null
+          pixel_tracking_enabled: boolean
           price: number
           projects_limit: number
+          rank_rent_enabled: boolean
           slug: string
           sort_order: number
           stripe_checkout_url: string | null
           stripe_price_id: string | null
           updated_at: string
+          webhooks_enabled: boolean
+          whatsapp_reports_enabled: boolean
+          white_label_enabled: boolean
         }
         Insert: {
+          advanced_analytics_enabled?: boolean
           ai_requests_limit?: number
+          api_access_enabled?: boolean
           billing_interval?: string
           created_at?: string
           currency?: string
           description?: string | null
           events_limit?: number
+          ga4_enabled?: boolean
+          gsc_accounts_per_project?: number
           id?: string
           indexing_daily_limit?: number
           is_active?: boolean
           is_default?: boolean
           members_limit?: number
           name: string
+          orchestrator_executions_limit?: number
           payment_methods?: string[] | null
+          pixel_tracking_enabled?: boolean
           price?: number
           projects_limit?: number
+          rank_rent_enabled?: boolean
           slug: string
           sort_order?: number
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
           updated_at?: string
+          webhooks_enabled?: boolean
+          whatsapp_reports_enabled?: boolean
+          white_label_enabled?: boolean
         }
         Update: {
+          advanced_analytics_enabled?: boolean
           ai_requests_limit?: number
+          api_access_enabled?: boolean
           billing_interval?: string
           created_at?: string
           currency?: string
           description?: string | null
           events_limit?: number
+          ga4_enabled?: boolean
+          gsc_accounts_per_project?: number
           id?: string
           indexing_daily_limit?: number
           is_active?: boolean
           is_default?: boolean
           members_limit?: number
           name?: string
+          orchestrator_executions_limit?: number
           payment_methods?: string[] | null
+          pixel_tracking_enabled?: boolean
           price?: number
           projects_limit?: number
+          rank_rent_enabled?: boolean
           slug?: string
           sort_order?: number
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
           updated_at?: string
+          webhooks_enabled?: boolean
+          whatsapp_reports_enabled?: boolean
+          white_label_enabled?: boolean
         }
         Relationships: []
       }

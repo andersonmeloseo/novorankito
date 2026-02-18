@@ -21,6 +21,17 @@ export interface Plan {
   stripe_price_id: string | null;
   stripe_checkout_url: string | null;
   payment_methods: string[];
+  // Granular feature controls
+  gsc_accounts_per_project: number;
+  orchestrator_executions_limit: number;
+  pixel_tracking_enabled: boolean;
+  whatsapp_reports_enabled: boolean;
+  white_label_enabled: boolean;
+  api_access_enabled: boolean;
+  rank_rent_enabled: boolean;
+  ga4_enabled: boolean;
+  advanced_analytics_enabled: boolean;
+  webhooks_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

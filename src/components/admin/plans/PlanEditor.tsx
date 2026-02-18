@@ -35,7 +35,20 @@ const LIMIT_FIELDS = [
   { key: "events_limit", label: "Eventos / mês", icon: Activity, description: "Eventos de tracking mensais", unit: "eventos" },
   { key: "ai_requests_limit", label: "IA / mês", icon: Bot, description: "Chamadas ao Rankito IA", unit: "requisições" },
   { key: "members_limit", label: "Membros", icon: Users, description: "Membros por conta", unit: "membros" },
-  { key: "indexing_daily_limit", label: "Indexação / dia", icon: Send, description: "Notificações de indexação diárias", unit: "urls" },
+  { key: "indexing_daily_limit", label: "Indexação / dia", icon: Send, description: "URLs enviadas p/ indexação diariamente", unit: "urls" },
+  { key: "gsc_accounts_per_project", label: "Contas GSC / projeto", icon: Send, description: "Contas GSC de indexação por projeto (-1 = ilimitado)", unit: "contas" },
+  { key: "orchestrator_executions_limit", label: "Execuções Orquestrador", icon: Bot, description: "Execuções do orquestrador IA por mês (-1 = ilimitado)", unit: "exec/mês" },
+] as const;
+
+const FEATURE_TOGGLES = [
+  { key: "pixel_tracking_enabled", label: "Pixel de Tracking", description: "Tracking de eventos e conversões" },
+  { key: "ga4_enabled", label: "GA4 Analytics", description: "Integração Google Analytics 4" },
+  { key: "rank_rent_enabled", label: "Rank & Rent", description: "Módulo de portfólio e contratos" },
+  { key: "whatsapp_reports_enabled", label: "Relatórios WhatsApp", description: "Envio automático de relatórios por WhatsApp" },
+  { key: "advanced_analytics_enabled", label: "Analytics Avançado", description: "Heatmaps, jornada, funil e retenção" },
+  { key: "white_label_enabled", label: "White-label", description: "Logo, cor e domínio personalizados" },
+  { key: "api_access_enabled", label: "Acesso à API Pública", description: "Acesso via API key programática" },
+  { key: "webhooks_enabled", label: "Webhooks", description: "Notificações push para sistemas externos" },
 ] as const;
 
 interface PlanEditorProps {
@@ -226,10 +239,16 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                 <Shield className="h-3.5 w-3.5 mr-1.5" /> Limites
               </TabsTrigger>
               <TabsTrigger
+                value="modules"
+                className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent px-4 py-2.5"
+              >
+                <ToggleLeft className="h-3.5 w-3.5 mr-1.5" /> Módulos
+              </TabsTrigger>
+              <TabsTrigger
                 value="features"
                 className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent px-4 py-2.5"
               >
-                <ToggleLeft className="h-3.5 w-3.5 mr-1.5" /> Features
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Features
                 <Badge variant="secondary" className="text-[8px] ml-1.5 font-mono">
                   {enabledCount}/{features.length}
                 </Badge>
@@ -370,6 +389,50 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                     </div>
                   );
                 })}
+              </div>
+            </TabsContent>
+
+            {/* ──── MODULES ──── */}
+            <TabsContent value="modules" className="mt-0 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Ative ou desative módulos e funcionalidades individuais para este plano. O <strong>Pixel de Tracking</strong> está sempre ativo.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {FEATURE_TOGGLES.map(toggle => {
+                  const isEnabled = getValue(toggle.key as keyof Plan) as boolean;
+                  const isAlwaysOn = toggle.key === "pixel_tracking_enabled";
+                  return (
+                    <div
+                      key={toggle.key}
+                      className={cn(
+                        "flex items-center justify-between rounded-xl border p-4 transition-all",
+                        isEnabled
+                          ? "border-primary/25 bg-primary/4"
+                          : "border-border bg-card",
+                        isAlwaysOn && "border-success/30 bg-success/5"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0 pr-3">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs font-semibold text-foreground">{toggle.label}</span>
+                          {isAlwaysOn && (
+                            <Badge className="text-[8px] bg-success/15 text-success border-success/30 py-0">Sempre ativo</Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{toggle.description}</p>
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        disabled={isAlwaysOn}
+                        onCheckedChange={v => setValue(toggle.key as keyof Plan, v)}
+                        className="shrink-0"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-[11px] text-muted-foreground">
+                💡 Lembre de clicar em <strong>Salvar</strong> no cabeçalho para aplicar as alterações de módulos.
               </div>
             </TabsContent>
 
