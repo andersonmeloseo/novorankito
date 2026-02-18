@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -130,6 +130,7 @@ interface AgentNodeData {
   onClick?: (id: string) => void;
   isEditable?: boolean;
   isOnVacation?: boolean;
+  isActiveSpotlight?: boolean;
 }
 
 interface ConvoMessage {
@@ -143,6 +144,80 @@ interface ConvoMessage {
   content: string;
   type: "message" | "report" | "error";
   ts: number;
+}
+
+/* ─── Live Convo Dialog ─────────────────────────────────────── */
+interface LiveConvoEntry {
+  fromEmoji: string;
+  fromTitle: string;
+  toEmoji?: string;
+  toTitle?: string;
+  text: string;
+  ts: number;
+  type: "work" | "report" | "question";
+}
+
+const WORK_PHRASES: Record<string, string[]> = {
+  seo: [
+    "Analisando posições orgânicas para palavras-chave de cauda longa…",
+    "Identificamos oportunidade de melhoria em CTR para query com posição média 6.2",
+    "Auditoria técnica detectou 3 páginas com conteúdo duplicado",
+    "Schema markup ausente em 12 páginas de produto — prioridade alta",
+    "Backlink profile: 2 novos domínios autoritativos linkando esta semana",
+  ],
+  analytics: [
+    "Bounce rate aumentou 8% — correlacionado com mudança de layout mobile",
+    "Funil de conversão: queda de 22% na etapa de checkout",
+    "Sessões orgânicas cresceram 15% vs. semana anterior",
+    "Evento de compra disparando corretamente em 97% das conversões",
+    "Segmento de usuários recorrentes com LTV 3x maior que novos",
+  ],
+  marketing: [
+    "Campanha Google Ads: ROAS atual 4.2x — meta é 5x",
+    "Email open rate: 24% acima da média do setor",
+    "A/B test em landing page mostrando variante B com +18% de conversão",
+    "CPL do Meta Ads caiu 12% após ajuste de segmentação",
+    "Funil de nurturing: 340 leads qualificados aguardando follow-up",
+  ],
+  comercial: [
+    "Pipeline atualizado: 18 oportunidades em negociação ativa",
+    "Demo agendada com cliente enterprise — potencial R$8k/mês",
+    "3 propostas enviadas hoje, follow-up programado para amanhã",
+    "Taxa de fechamento este mês: 31% vs. meta de 25%",
+    "Churn alert: cliente Acme Corp sinalizou insatisfação",
+  ],
+  default: [
+    "Relatório de performance concluído — aguardando revisão",
+    "Identificamos 3 oportunidades de melhoria de alta prioridade",
+    "Dados consolidados e prontos para apresentação ao CEO",
+    "Plano de ação atualizado com base nos resultados da semana",
+    "Reunião de alinhamento com equipe concluída — próximos passos definidos",
+  ],
+};
+
+function getWorkPhrase(role: any): string {
+  const t = (role.title || "").toLowerCase();
+  const d = (role.department || "").toLowerCase();
+  if (t.includes("seo") || d.includes("seo")) return WORK_PHRASES.seo[Math.floor(Math.random() * WORK_PHRASES.seo.length)];
+  if (t.includes("analytics") || d.includes("analytics") || d.includes("dado")) return WORK_PHRASES.analytics[Math.floor(Math.random() * WORK_PHRASES.analytics.length)];
+  if (t.includes("marketing") || d.includes("marketing") || t.includes("ads")) return WORK_PHRASES.marketing[Math.floor(Math.random() * WORK_PHRASES.marketing.length)];
+  if (t.includes("comercial") || t.includes("sdr") || t.includes("bdr") || t.includes("closer")) return WORK_PHRASES.comercial[Math.floor(Math.random() * WORK_PHRASES.comercial.length)];
+  return WORK_PHRASES.default[Math.floor(Math.random() * WORK_PHRASES.default.length)];
+}
+
+const PM_REPORT_PHRASES = [
+  "📊 Status do projeto: {n} tarefas em andamento, {s} concluídas esta semana. Taxa de progresso: {p}% no prazo.",
+  "📋 Update do projeto: equipe operando com {n} frentes ativas. Próximas entregas: relatório SEO e ajustes de campanhas.",
+  "⏱️ Check-in de 30min: todos os agentes responderam. Destaque positivo: analytics detectou aumento de 15% em conversões orgânicas.",
+  "🚦 Report de status: sem bloqueios críticos. {n} ações previstas para as próximas 4h. Equipe 100% operacional.",
+];
+
+function getPmReport(totalAgents: number): string {
+  const phrase = PM_REPORT_PHRASES[Math.floor(Math.random() * PM_REPORT_PHRASES.length)];
+  return phrase
+    .replace("{n}", String(Math.floor(totalAgents * 1.5)))
+    .replace("{s}", String(Math.floor(totalAgents * 0.8)))
+    .replace("{p}", String(Math.floor(72 + Math.random() * 20)));
 }
 
 /* ─── Status helpers ───────────────────────────────────────── */
@@ -254,7 +329,10 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
   const [hovered, setHovered] = useState(false);
   const status = d.isOnVacation ? "vacation" : (d.status || "idle");
   const isRunning = status === "running";
-  const dynamicLabel = isRunning
+  const isSpotlight = d.isActiveSpotlight && !isRunning;
+  const dynamicLabel = isSpotlight
+    ? "💬 em atividade…"
+    : isRunning
     ? getRunningActionLabel(d.title, d.department)
     : STATUS_LABEL[status];
 
@@ -263,26 +341,31 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => d.onClick?.(d.roleId)}
-      style={isRunning ? {
-        background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6, #3b82f6)",
+      style={isRunning || isSpotlight ? {
+        background: isSpotlight
+          ? "linear-gradient(var(--agent-border-angle, 0deg), #2563eb, #3b82f6, #60a5fa, #2563eb)"
+          : "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6, #3b82f6)",
         animation: "agent-border-spin 2s linear infinite",
         padding: "2px",
         borderRadius: "16px",
       } : undefined}
       className={cn(
         "relative cursor-pointer active:cursor-grabbing transition-all duration-300",
-        !isRunning && "p-[2px] rounded-2xl",
-        !isRunning && STATUS_RING[status] + " border-2 bg-card",
+        !isRunning && !isSpotlight && "p-[2px] rounded-2xl",
+        !isRunning && !isSpotlight && STATUS_RING[status] + " border-2 bg-card",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         status === "vacation" && "opacity-75",
+        isSpotlight && "scale-110 z-10",
       )}
     >
-      {/* Animated glow for running */}
-      {isRunning && (
+      {/* Animated glow for running/spotlight */}
+      {(isRunning || isSpotlight) && (
         <div
           className="absolute inset-0 opacity-40 blur-xl pointer-events-none"
           style={{
-            background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6)",
+            background: isSpotlight
+              ? "linear-gradient(var(--agent-border-angle, 0deg), #2563eb, #3b82f6, #60a5fa)"
+              : "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6)",
             animation: "agent-border-spin 2s linear infinite",
             borderRadius: "16px",
           }}
@@ -292,6 +375,7 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
       {/* Inner card */}
       <div className={cn(
         "relative flex flex-col items-center gap-2 px-3 py-3 rounded-[14px] bg-card min-w-[120px] max-w-[140px]",
+        isSpotlight && "bg-blue-950/60",
       )}>
         {/* Action buttons on hover */}
         {hovered && d.isEditable && (
@@ -340,32 +424,28 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
           </div>
         )}
 
-        {/* Hierarchical handles: source only at bottom, target only at top */}
-        <Handle
-          type="target"
-          position={Position.Top}
-          id="top-target"
-          className="!w-3 !h-3 !bg-muted-foreground/50 !border-2 !border-background"
-          isConnectable={true}
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom-source"
-          className="!w-3 !h-3 !bg-primary/70 !border-2 !border-background"
-          isConnectable={true}
-        />
+        {/* Hierarchical handles */}
+        <Handle type="target" position={Position.Top} id="top-target" className="!w-3 !h-3 !bg-muted-foreground/50 !border-2 !border-background" isConnectable={true} />
+        <Handle type="source" position={Position.Bottom} id="bottom-source" className="!w-3 !h-3 !bg-primary/70 !border-2 !border-background" isConnectable={true} />
 
         {/* Avatar */}
         <div className={cn(
           "relative h-12 w-12 rounded-full border-2 flex items-center justify-center text-2xl transition-all duration-300 bg-card",
-          isRunning ? "border-blue-400/60" : STATUS_RING[status],
+          isRunning ? "border-blue-400/60" : isSpotlight ? "border-blue-400" : STATUS_RING[status],
         )}>
           {status === "vacation" ? "🌴" : d.emoji}
-          <span className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-colors", STATUS_DOT[status])} />
+          <span className={cn(
+            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-colors",
+            isSpotlight ? "bg-blue-400 animate-pulse" : STATUS_DOT[status],
+          )} />
           {isRunning && (
             <div className="absolute inset-0 rounded-full flex items-center justify-center bg-blue-500/10">
               <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+            </div>
+          )}
+          {isSpotlight && (
+            <div className="absolute inset-0 rounded-full flex items-center justify-center bg-blue-500/10">
+              <MessageSquare className="h-3 w-3 text-blue-300 animate-pulse" />
             </div>
           )}
         </div>
@@ -376,12 +456,12 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
           <p className="text-[8px] text-muted-foreground">{d.department}</p>
           <p className={cn(
             "text-[9px] font-semibold transition-all duration-300",
-            STATUS_LABEL_COLOR[status],
-            isRunning && "animate-pulse",
+            isSpotlight ? "text-blue-400 animate-pulse" : STATUS_LABEL_COLOR[status],
+            (isRunning || isSpotlight) && "animate-pulse",
           )}>{dynamicLabel}</p>
         </div>
 
-        {d.result && status === "success" && (
+        {d.result && status === "success" && !isSpotlight && (
           <div className="w-full mt-1 px-1.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
             <p className="text-[7px] text-emerald-400 line-clamp-3 leading-relaxed">{d.result}</p>
           </div>
@@ -1018,7 +1098,114 @@ function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: Hir
   );
 }
 
-/* ─── Reorganize Button ────────────────────────────────────── */
+/* ─── Live Conversation Dialog ──────────────────────────────── */
+interface LiveConvoDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  activeRole: any | null;
+  targetRole: any | null;
+  entries: LiveConvoEntry[];
+  isWorking: boolean;
+}
+
+function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, isWorking }: LiveConvoDialogProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [entries]);
+
+  if (!activeRole) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[75vh] flex flex-col p-0 overflow-hidden border-blue-500/30 bg-background">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-blue-500/5 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <span className="text-2xl">{activeRole.emoji}</span>
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-blue-400 border border-background animate-pulse" />
+            </div>
+            {targetRole && (
+              <>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <div className="h-px w-6 bg-blue-400/40" />
+                  <MessageSquare className="h-3 w-3 text-blue-400" />
+                  <div className="h-px w-6 bg-blue-400/40" />
+                </div>
+                <span className="text-2xl">{targetRole.emoji}</span>
+              </>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold truncate">
+              {activeRole.title}
+              {targetRole && <span className="text-blue-400 font-normal"> → {targetRole.title}</span>}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <p className="text-[9px] text-blue-400 font-semibold">{isWorking ? "em atividade agora" : "standby"}</p>
+            </div>
+          </div>
+          <button onClick={() => onOpenChange(false)} className="h-6 w-6 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors shrink-0">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <ScrollArea className="flex-1">
+          <div ref={scrollRef as any} className="p-4 space-y-3">
+            {entries.length === 0 && (
+              <div className="py-8 text-center">
+                <Loader2 className="h-8 w-8 mx-auto mb-2 text-blue-400/30 animate-spin" />
+                <p className="text-xs text-muted-foreground">Iniciando atividade…</p>
+              </div>
+            )}
+            {entries.map((entry, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex gap-2.5 animate-fade-in",
+                  entry.type === "report" ? "flex-row-reverse" : "flex-row",
+                )}
+              >
+                <div className="text-xl shrink-0 mt-0.5">{entry.fromEmoji}</div>
+                <div className={cn(
+                  "flex-1 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed",
+                  entry.type === "report"
+                    ? "bg-primary/10 border border-primary/20 text-right"
+                    : entry.type === "question"
+                    ? "bg-blue-500/10 border border-blue-500/20"
+                    : "bg-muted/40 border border-border",
+                )}>
+                  <p className="font-bold text-[9px] text-muted-foreground mb-1">{entry.fromTitle}{entry.toTitle && ` → ${entry.toTitle}`}</p>
+                  <p className="text-foreground/90">{entry.text}</p>
+                </div>
+              </div>
+            ))}
+            {isWorking && (
+              <div className="flex gap-2.5">
+                <div className="text-xl shrink-0">{activeRole.emoji}</div>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5">
+                  <div className="flex gap-1 items-center h-4">
+                    {[0, 150, 300].map(d => (
+                      <div key={d} className="h-2 w-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations }: {
   roles: any[];
   hierarchy: Record<string, string>;
@@ -1260,6 +1447,15 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   const [profileRoleId, setProfileRoleId] = useState<string | null>(null);
   const [vacations, setVacations] = useState<Set<string>>(new Set((deployment.vacations as string[]) || []));
 
+  // Live activity cycling state
+  const [spotlightRoleId, setSpotlightRoleId] = useState<string | null>(null);
+  const [liveConvoOpen, setLiveConvoOpen] = useState(false);
+  const [liveConvoEntries, setLiveConvoEntries] = useState<LiveConvoEntry[]>([]);
+  const [liveConvoTyping, setLiveConvoTyping] = useState(false);
+  const spotlightIndexRef = useRef(0);
+  const pmReportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const roles: any[] = useMemo(() => (deployment.roles as any[]) || [], [deployment.roles]);
   const hierarchy: Record<string, string> = useMemo(() => (deployment.hierarchy as Record<string, string>) || {}, [deployment.hierarchy]);
 
@@ -1276,6 +1472,128 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     if (id === "ceo" || d > 8) return d;
     const p = hierarchy[id];
     return p ? getDepth(p, d + 1) : d;
+  }, [hierarchy]);
+
+  /* ─── Live Activity Cycling ─────────────────────────────── */
+  const activeRoles = useMemo(() => roles.filter(r => !vacations.has(r.id)), [roles, vacations]);
+
+  // Cycle through agents every ~60s, showing their activity for ~8s
+  useEffect(() => {
+    if (isRunning || activeRoles.length === 0) return;
+
+    const runCycle = () => {
+      const idx = spotlightIndexRef.current % activeRoles.length;
+      const activeRole = activeRoles[idx];
+      spotlightIndexRef.current = (spotlightIndexRef.current + 1) % activeRoles.length;
+
+      setSpotlightRoleId(activeRole.id);
+
+      // After 8s, clear spotlight and wait before next cycle
+      activityTimerRef.current = setTimeout(() => {
+        setSpotlightRoleId(null);
+        // Wait 52s before next spotlight (total ~60s cycle per agent)
+        activityTimerRef.current = setTimeout(runCycle, 52000);
+      }, 8000);
+    };
+
+    // Start first cycle after 5s delay
+    activityTimerRef.current = setTimeout(runCycle, 5000);
+
+    return () => {
+      if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+    };
+  }, [isRunning, activeRoles]);
+
+  // When spotlight changes, add a convo entry
+  useEffect(() => {
+    if (!spotlightRoleId) return;
+    const activeRole = roles.find(r => r.id === spotlightRoleId);
+    if (!activeRole) return;
+
+    const parentId = hierarchy[activeRole.id];
+    const parentRole = parentId ? roles.find(r => r.id === parentId) : null;
+    const workPhrase = getWorkPhrase(activeRole);
+
+    setLiveConvoTyping(true);
+    const t = setTimeout(() => {
+      setLiveConvoTyping(false);
+      const newEntry: LiveConvoEntry = {
+        fromEmoji: activeRole.emoji,
+        fromTitle: activeRole.title,
+        toEmoji: parentRole?.emoji,
+        toTitle: parentRole?.title,
+        text: workPhrase,
+        ts: Date.now(),
+        type: parentRole ? "report" : "work",
+      };
+      setLiveConvoEntries(prev => [...prev.slice(-19), newEntry]);
+    }, 1500);
+
+    return () => clearTimeout(t);
+  }, [spotlightRoleId, roles, hierarchy]);
+
+  /* ─── PM 30-min report ──────────────────────────────────── */
+  useEffect(() => {
+    if (isRunning || activeRoles.length === 0) return;
+
+    const sendPmReport = () => {
+      // Find project manager / gerente de projetos or fallback to second in hierarchy
+      const pmRole = activeRoles.find(r =>
+        (r.title || "").toLowerCase().includes("projeto") ||
+        (r.title || "").toLowerCase().includes("gerente") ||
+        (r.title || "").toLowerCase().includes("scrum")
+      ) || activeRoles[Math.min(1, activeRoles.length - 1)];
+
+      const ceoRole = activeRoles.find(r => r.id === "ceo" || !hierarchy[r.id]) || activeRoles[0];
+      if (!pmRole || !ceoRole) return;
+
+      const reportText = getPmReport(activeRoles.length);
+      const newEntry: LiveConvoEntry = {
+        fromEmoji: pmRole.emoji,
+        fromTitle: pmRole.title,
+        toEmoji: ceoRole.emoji,
+        toTitle: ceoRole.title,
+        text: reportText,
+        ts: Date.now(),
+        type: "report",
+      };
+      setLiveConvoEntries(prev => [...prev.slice(-19), newEntry]);
+      setSpotlightRoleId(pmRole.id);
+      setLiveConvoOpen(true);
+
+      // Send WhatsApp if CEO has number configured
+      const ceosWhatsapp = ceoRole.whatsapp;
+      if (ceosWhatsapp) {
+        supabase.functions.invoke("send-workflow-notification", {
+          body: {
+            workflow_name: `⏱️ Report 30min — ${deployment.name}`,
+            report: `${pmRole.emoji} ${pmRole.title} → ${ceoRole.emoji} ${ceoRole.title}\n\n${reportText}`,
+            recipient_name: ceoRole.title,
+            direct_send: { phones: [ceosWhatsapp] },
+          },
+        }).then(() => {
+          toast.success(`📲 Report enviado ao CEO via WhatsApp`);
+        }).catch(() => {});
+      }
+
+      // Clear spotlight after 10s
+      setTimeout(() => setSpotlightRoleId(null), 10000);
+    };
+
+    // Run every 30 minutes (30 * 60 * 1000 ms)
+    pmReportTimerRef.current = setTimeout(sendPmReport, 30 * 60 * 1000);
+    const interval = setInterval(sendPmReport, 30 * 60 * 1000);
+
+    return () => {
+      if (pmReportTimerRef.current) clearTimeout(pmReportTimerRef.current);
+      clearInterval(interval);
+    };
+  }, [isRunning, activeRoles, hierarchy, deployment.name, deployment.id]);
+
+  const getDepth2 = useCallback((id: string, d = 0): number => {
+    if (id === "ceo" || d > 8) return d;
+    const p = hierarchy[id];
+    return p ? getDepth2(p, d + 1) : d;
   }, [hierarchy]);
 
   /* ─── Member management ─── */
@@ -1379,22 +1697,50 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     onRefresh?.();
   }, [roles, deployment.id, onRefresh]);
 
-  /* ── Build nodes/edges ── */
+  /* ── Build nodes/edges (with spotlight awareness) ── */
+  const buildArgs = useMemo(
+    () => [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id: string) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge, spotlightRoleId] as const,
+    [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId],
+  );
+
   const { rfNodes: initialNodes, rfEdges: initialEdges } = useMemo(
-    () => buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge),
-    [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge],
+    () => {
+      const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
+      // Apply spotlight
+      if (spotlightRoleId) {
+        result.rfNodes = result.rfNodes.map(n => ({
+          ...n,
+          data: { ...n.data, isActiveSpotlight: n.id === spotlightRoleId },
+        }));
+      }
+      return result;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...buildArgs],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   useEffect(() => {
-    const { rfNodes, rfEdges } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
-    setNodes(rfNodes);
-    setEdges(rfEdges);
-  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge]);
+    const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
+    if (spotlightRoleId) {
+      result.rfNodes = result.rfNodes.map(n => ({
+        ...n,
+        data: { ...n.data, isActiveSpotlight: n.id === spotlightRoleId },
+      }));
+    }
+    setNodes(result.rfNodes);
+    setEdges(result.rfEdges);
+  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId]);
 
   const messages = useMemo(() => buildMessages(depRuns, roles, hierarchy), [depRuns, roles, hierarchy]);
+
+  // Derived values for spotlight dialog
+  const spotlightRole = spotlightRoleId ? roles.find(r => r.id === spotlightRoleId) : null;
+  const spotlightTargetId = spotlightRole ? hierarchy[spotlightRole.id] : null;
+  const spotlightTargetRole = spotlightTargetId ? roles.find(r => r.id === spotlightTargetId) : null;
+
 
   const successCount = Object.values(agentResults).filter((a: any) => a.status === "success").length;
   const totalAgents = roles.length;
@@ -1535,13 +1881,35 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                   <Panel position="top-center">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
                       <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
-                      <span className="text-[11px] font-semibold text-blue-400">Equipe em reunião…</span>
+                      <span className="text-[11px] font-semibold text-blue-400">Equipe em execução…</span>
                       <div className="flex gap-0.5 ml-1">
                         {[0, 150, 300].map(d => (
                           <div key={d} className="h-1 w-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
                         ))}
                       </div>
                     </div>
+                  </Panel>
+                )}
+
+                {/* Live activity spotlight indicator */}
+                {spotlightRole && !isRunning && (
+                  <Panel position="top-center">
+                    <button
+                      onClick={() => setLiveConvoOpen(true)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm hover:bg-blue-500/30 transition-colors cursor-pointer"
+                    >
+                      <span className="text-sm">{spotlightRole.emoji}</span>
+                      <div className="flex gap-0.5">
+                        {[0, 150, 300].map(d => (
+                          <div key={d} className="h-1 w-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-semibold text-blue-400">{spotlightRole.title} em atividade</span>
+                      {spotlightTargetRole && (
+                        <span className="text-[10px] text-blue-300/70">→ {spotlightTargetRole.emoji} {spotlightTargetRole.title}</span>
+                      )}
+                      <MessageSquare className="h-3 w-3 text-blue-400 ml-1" />
+                    </button>
                   </Panel>
                 )}
 
@@ -1699,6 +2067,16 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
           lastRunSummary={lastRun?.summary || undefined}
         />
       )}
+
+      {/* ── Live Convo Dialog ── */}
+      <LiveConvoDialog
+        open={liveConvoOpen}
+        onOpenChange={setLiveConvoOpen}
+        activeRole={spotlightRole}
+        targetRole={spotlightTargetRole}
+        entries={liveConvoEntries}
+        isWorking={liveConvoTyping || !!spotlightRoleId}
+      />
     </div>
   );
 }
