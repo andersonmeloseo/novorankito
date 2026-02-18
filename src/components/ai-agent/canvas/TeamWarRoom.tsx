@@ -12,6 +12,7 @@ import {
   BackgroundVariant,
   Panel,
   MiniMap,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CheckCircle2, XCircle, Loader2, MessageSquare,
-  X, Maximize2, Minimize2, Send, Zap, Users,
+  X, Maximize2, Minimize2, Send, Zap, Users, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -345,6 +346,38 @@ function buildMessages(
   return msgs.sort((a, b) => a.ts - b.ts);
 }
 
+/* ─── Reorganize Button (needs ReactFlow context) ──────────── */
+function ReorganizeButton({
+  roles, hierarchy, agentResults, lastRun, setNodes,
+}: {
+  roles: any[];
+  hierarchy: Record<string, string>;
+  agentResults: Record<string, any>;
+  lastRun: any;
+  setNodes: (nodes: any[]) => void;
+}) {
+  const { fitView } = useReactFlow();
+
+  const handleReorganize = useCallback(() => {
+    const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun);
+    setNodes(rfNodes);
+    setTimeout(() => fitView({ padding: 0.25, duration: 500 }), 50);
+  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView]);
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="absolute top-3 right-3 z-10 h-7 text-[10px] gap-1.5 px-2 bg-card/90 backdrop-blur-sm"
+      onClick={handleReorganize}
+      title="Reorganizar por hierarquia"
+    >
+      <LayoutDashboard className="h-3 w-3" />
+      Reorganizar
+    </Button>
+  );
+}
+
 /* ─── Main Component ───────────────────────────────────────── */
 interface TeamWarRoomProps {
   deployment: any;
@@ -455,7 +488,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning }: 
         {/* ReactFlow Canvas */}
         <div className={cn(
           "relative",
-          expanded ? "h-full" : "h-[420px]",
+          expanded ? "h-full" : "h-[620px]",
         )}>
           <ReactFlow
             nodes={nodes}
@@ -478,6 +511,16 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning }: 
               color="hsl(var(--border))"
             />
             <Controls className="!bg-card !border-border !shadow-lg" showInteractive={false} />
+            {/* Reorganize button inside ReactFlow context */}
+            <Panel position="top-right">
+              <ReorganizeButton
+                roles={roles}
+                hierarchy={hierarchy}
+                agentResults={agentResults}
+                lastRun={lastRun}
+                setNodes={setNodes}
+              />
+            </Panel>
             {expanded && (
               <MiniMap
                 className="!bg-card !border-border"
