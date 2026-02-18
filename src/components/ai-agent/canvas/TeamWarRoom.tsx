@@ -120,6 +120,7 @@ const ROLE_SUGGESTIONS_BY_DEPTH: Record<number, string[]> = {
 interface AgentNodeData {
   roleId: string;
   name?: string; // specialist personal name, shown above title
+  livePhase?: string; // dynamic phase label during CEO orchestration
   title: string;
   emoji: string;
   department: string;
@@ -333,7 +334,9 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
   const status = d.isOnVacation ? "vacation" : (d.status || "idle");
   const isRunning = status === "running";
   const isSpotlight = d.isActiveSpotlight && !isRunning;
-  const dynamicLabel = isSpotlight
+  const dynamicLabel = d.livePhase
+    ? d.livePhase
+    : isSpotlight
     ? "💬 em atividade…"
     : isRunning
     ? getRunningActionLabel(d.title, d.department)
@@ -353,7 +356,9 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
       className={cn(
         "relative cursor-pointer active:cursor-grabbing transition-all duration-300",
         !isRunning && "p-[2px] rounded-2xl border-2",
-        !isRunning && (isSpotlight
+        !isRunning && (d.livePhase
+          ? "border-violet-400/80 shadow-[0_0_12px_2px_hsl(263_90%_65%/0.35)] animate-pulse"
+          : isSpotlight
           ? "border-blue-400 shadow-[0_0_12px_2px_hsl(217_91%_60%/0.3)]"
           : STATUS_RING[status] + " bg-card"),
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
@@ -459,8 +464,8 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
           <p className="text-[8px] text-muted-foreground">{d.department}</p>
           <p className={cn(
             "text-[9px] font-semibold transition-all duration-300",
-            isSpotlight ? "text-blue-400 animate-pulse" : STATUS_LABEL_COLOR[status],
-            (isRunning || isSpotlight) && "animate-pulse",
+            d.livePhase ? "text-violet-400 animate-pulse" : isSpotlight ? "text-blue-400 animate-pulse" : STATUS_LABEL_COLOR[status],
+            (isRunning || isSpotlight || !!d.livePhase) && "animate-pulse",
           )}>{dynamicLabel}</p>
         </div>
 
@@ -1470,10 +1475,18 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   // CEO Command Chat state
   const [ceoCmdInput, setCeoCmdInput] = useState("");
   const [ceoCmdSending, setCeoCmdSending] = useState(false);
-  const [ceoCmdHistory, setCeoCmdHistory] = useState<{ cmd: string; response: string; ts: number }[]>([]);
+  const [ceoCmdHistory, setCeoCmdHistory] = useState<{
+    cmd: string;
+    response: string;
+    ts: number;
+    steps?: { agentEmoji: string; agentTitle: string; phase: string; content: string }[];
+  }[]>([]);
+  // Ref so handleCeoCommand (defined before setNodes) can patch nodes live during orchestration
+  const setNodesRef = useRef<((updater: any) => void) | null>(null);
 
   const roles: any[] = useMemo(() => (deployment.roles as any[]) || [], [deployment.roles]);
   const hierarchy: Record<string, string> = useMemo(() => (deployment.hierarchy as Record<string, string>) || {}, [deployment.hierarchy]);
+
 
   const depRuns = useMemo(() => runs.filter(r => r.deployment_id === deployment.id), [runs, deployment.id]);
   const lastRun = depRuns[0];
@@ -1769,74 +1782,189 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         // Predefined command shortcut — use local data
         report = matched[1].response();
       } else {
-        // Free text — call AI with full project context
-        const { pending, inProgress, done, urgent, overdue, pct, total } = taskStats;
-        const teamList = roles.map((r: any) => `${r.emoji} ${r.title}${r.name ? ` (${r.name})` : ""}`).join(", ");
-        const systemPrompt = [
-          `Você é o assistente executivo da equipe "${deployment.name}".`,
-          `Responda de forma direta, objetiva e profissional. Não faça perguntas ao final — encerre sempre com uma recomendação clara.`,
-          ``,
-          `CONTEXTO DO PROJETO:`,
-          `• Equipe: ${teamList}`,
-          `• Total de tarefas: ${total} | Concluídas: ${done.length} (${pct}%) | Em progresso: ${inProgress.length} | Pendentes: ${pending.length}`,
-          urgent.length > 0 ? `• Urgentes abertas: ${urgent.map(t => t.title).slice(0, 3).join(", ")}` : `• Sem urgências abertas`,
-          overdue.length > 0 ? `• Atrasadas: ${overdue.map(t => t.title).slice(0, 3).join(", ")}` : `• Sem atrasos`,
-          lastRun ? `• Última execução: ${new Date(lastRun.started_at).toLocaleString("pt-BR")}` : `• Sem execuções registradas`,
-        ].filter(Boolean).join("\n");
-
-        // ai-chat returns SSE streaming — consume it via fetch
+        // ── Real orchestration: route → specialist → manager → CEO ──
         const chatUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
         const { data: { session } } = await supabase.auth.getSession();
         const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const pid = projectId || deployment.project_id;
 
-        const resp = await fetch(chatUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: cmdRaw },
-            ],
-            project_id: projectId || deployment.project_id,
-          }),
-        });
-
-        if (!resp.ok) {
-          const errText = await resp.text().catch(() => `HTTP ${resp.status}`);
-          throw new Error(errText || `HTTP ${resp.status}`);
-        }
-
-        // Consume SSE stream and collect full text
-        let accumulated = "";
-        if (resp.body) {
-          const reader = resp.body.getReader();
-          const decoder = new TextDecoder();
-          let buf = "";
-          let done = false;
-          while (!done) {
-            const { done: d, value } = await reader.read();
-            if (d) break;
-            buf += decoder.decode(value, { stream: true });
-            let nl: number;
-            while ((nl = buf.indexOf("\n")) !== -1) {
-              let line = buf.slice(0, nl);
-              buf = buf.slice(nl + 1);
-              if (line.endsWith("\r")) line = line.slice(0, -1);
-              if (!line.startsWith("data: ")) continue;
-              const json = line.slice(6).trim();
-              if (json === "[DONE]") { done = true; break; }
-              try {
-                const parsed = JSON.parse(json);
-                const chunk = parsed.choices?.[0]?.delta?.content as string | undefined;
-                if (chunk) accumulated += chunk;
-              } catch { /* skip partial */ }
+        // Helper: consume SSE stream and return full text, with live streaming callback
+        const streamSSE = async (
+          messages: { role: string; content: string }[],
+          onChunk?: (chunk: string, accumulated: string) => void,
+        ): Promise<string> => {
+          const resp = await fetch(chatUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+            body: JSON.stringify({ messages, project_id: pid }),
+          });
+          if (!resp.ok) {
+            const t = await resp.text().catch(() => `HTTP ${resp.status}`);
+            throw new Error(t || `HTTP ${resp.status}`);
+          }
+          let accumulated = "";
+          if (resp.body) {
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = "";
+            let done = false;
+            while (!done) {
+              const { done: d, value } = await reader.read();
+              if (d) break;
+              buf += decoder.decode(value, { stream: true });
+              let nl: number;
+              while ((nl = buf.indexOf("\n")) !== -1) {
+                let line = buf.slice(0, nl);
+                buf = buf.slice(nl + 1);
+                if (line.endsWith("\r")) line = line.slice(0, -1);
+                if (!line.startsWith("data: ")) continue;
+                const json = line.slice(6).trim();
+                if (json === "[DONE]") { done = true; break; }
+                try {
+                  const parsed = JSON.parse(json);
+                  const chunk = parsed.choices?.[0]?.delta?.content as string | undefined;
+                  if (chunk) { accumulated += chunk; onChunk?.(chunk, accumulated); }
+                } catch { /* skip partial */ }
+              }
             }
           }
+          return accumulated.trim();
+        };
+
+        // Helper: update a single node's status/livePhase without rebuilding entire graph
+        const patchNode = (roleId: string, status: AgentNodeData["status"], phase?: string) => {
+          setNodesRef.current?.((prev: any[]) => prev.map((n: any) =>
+            n.id === roleId
+              ? { ...n, data: { ...n.data, status, livePhase: phase } }
+              : n
+          ));
+        };
+
+        // ── STEP 1: Route the command to the best specialist ──
+        const nonCeoRoles = roles.filter((r: any) => r.id !== "ceo" && hierarchy[r.id]);
+        const routingPrompt = `Você é um roteador de tarefas. Com base na solicitação do CEO abaixo, identifique o ÚNICO agente mais adequado para responder.
+
+Agentes disponíveis:
+${nonCeoRoles.map((r: any, i: number) => `${i}. ID="${r.id}" | ${r.emoji} ${r.title} | Área: ${r.department}`).join("\n")}
+
+Solicitação do CEO: "${cmdRaw}"
+
+Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
+
+        const routingResp = await streamSSE([
+          { role: "system", content: "Você é um roteador de tarefas especializado. Responda apenas com o número do índice." },
+          { role: "user", content: routingPrompt },
+        ]);
+        const routeIndex = parseInt(routingResp.trim(), 10);
+        const specialistRole = nonCeoRoles[isNaN(routeIndex) || routeIndex < 0 || routeIndex >= nonCeoRoles.length ? 0 : routeIndex];
+
+        // Find manager of specialist (or fallback to CEO)
+        const managerId = hierarchy[specialistRole.id];
+        const managerRole = managerId ? roles.find((r: any) => r.id === managerId) : null;
+        const ceoRoleObj = roles.find((r: any) => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
+
+        const orchestrationSteps: { agentEmoji: string; agentTitle: string; phase: string; content: string }[] = [];
+
+        // ── STEP 2: Specialist analysis (streaming, live node update) ──
+        patchNode(specialistRole.id, "running", `🔍 analisando…`);
+
+        const { pending, inProgress, done, urgent, overdue, pct } = taskStats;
+        const specialistSystemPrompt = [
+          `Você é ${specialistRole.emoji} ${specialistRole.title}${specialistRole.name ? ` (${specialistRole.name})` : ""}, especialista em ${specialistRole.department}.`,
+          specialistRole.instructions ? `Suas instruções: ${specialistRole.instructions}` : "",
+          ``,
+          `CONTEXTO DA EQUIPE "${deployment.name}":`,
+          `• Total de tarefas: ${taskStats.total} | Concluídas: ${done.length} (${pct}%) | Em progresso: ${inProgress.length} | Pendentes: ${pending.length}`,
+          urgent.length > 0 ? `• Urgentes abertas: ${urgent.map((t: any) => t.title).slice(0, 3).join(", ")}` : "",
+          overdue.length > 0 ? `• Atrasadas: ${overdue.map((t: any) => t.title).slice(0, 3).join(", ")}` : "",
+          lastRun ? `• Última execução: ${new Date(lastRun.started_at).toLocaleString("pt-BR")}` : "",
+          ``,
+          `Responda de forma analítica, direta e orientada a dados. Inclua métricas quando relevante.`,
+          `Finalize com recomendações priorizadas. Nunca termine com perguntas.`,
+        ].filter(Boolean).join("\n");
+
+        let specialistAccum = "";
+        const specialistResult = await streamSSE(
+          [
+            { role: "system", content: specialistSystemPrompt },
+            { role: "user", content: `O CEO solicitou: "${cmdRaw}"\n\nFaça sua análise completa e entregue ao seu gerente.` },
+          ],
+          (_chunk, acc) => {
+            specialistAccum = acc;
+            patchNode(specialistRole.id, "running", `🔍 ${acc.slice(-60).trim()}…`);
+          },
+        );
+
+        patchNode(specialistRole.id, "success", `✅ análise entregue`);
+        orchestrationSteps.push({
+          agentEmoji: specialistRole.emoji,
+          agentTitle: specialistRole.title + (specialistRole.name ? ` (${specialistRole.name})` : ""),
+          phase: "Análise",
+          content: specialistResult,
+        });
+
+        // ── STEP 3: Manager consolidation ──
+        let managerResult = "";
+        if (managerRole && managerRole.id !== ceoRoleObj.id) {
+          patchNode(managerRole.id, "running", `📋 consolidando análise…`);
+
+          const managerSystemPrompt = [
+            `Você é ${managerRole.emoji} ${managerRole.title}${managerRole.name ? ` (${managerRole.name})` : ""}, gerente de ${managerRole.department}.`,
+            managerRole.instructions ? `Suas instruções: ${managerRole.instructions}` : "",
+            ``,
+            `Você recebeu a análise do especialista ${specialistRole.emoji} ${specialistRole.title} e precisa consolidar em um relatório executivo para o ${ceoRoleObj.emoji} ${ceoRoleObj.title || "CEO"}.`,
+            `Seja objetivo. Destaque os pontos críticos, riscos e próximos passos. Máximo 300 palavras.`,
+          ].filter(Boolean).join("\n");
+
+          managerResult = await streamSSE(
+            [
+              { role: "system", content: managerSystemPrompt },
+              { role: "user", content: `Análise do especialista:\n\n${specialistResult}\n\nSolicitação original do CEO: "${cmdRaw}"\n\nElabore o relatório executivo.` },
+            ],
+            (_chunk, acc) => {
+              patchNode(managerRole.id, "running", `📋 ${acc.slice(-60).trim()}…`);
+            },
+          );
+
+          patchNode(managerRole.id, "success", `📤 relatório enviado ao CEO`);
+          orchestrationSteps.push({
+            agentEmoji: managerRole.emoji,
+            agentTitle: managerRole.title + (managerRole.name ? ` (${managerRole.name})` : ""),
+            phase: "Consolidação",
+            content: managerResult,
+          });
         }
-        report = accumulated.trim() || "Sem resposta da IA.";
+
+        // ── Final report delivered to CEO ──
+        report = managerResult || specialistResult || "Sem resposta da IA.";
+
+        // Reset node statuses after a short delay so user sees the final state
+        setTimeout(() => {
+          patchNode(specialistRole.id, "idle", undefined);
+          if (managerRole && managerRole.id !== ceoRoleObj.id) patchNode(managerRole.id, "idle", undefined);
+        }, 4000);
+
+        // Update history with full step breakdown
+        setCeoCmdHistory(prev => [...prev, {
+          cmd: cmdRaw,
+          response: report,
+          ts: Date.now(),
+          steps: orchestrationSteps,
+        }]);
+        if (ceoWhatsapp) {
+          const stepsSummary = orchestrationSteps.map(s => `${s.agentEmoji} ${s.agentTitle}: ${s.content.slice(0, 200)}`).join("\n\n---\n\n");
+          await supabase.functions.invoke("send-workflow-notification", {
+            body: {
+              workflow_name: `🎯 CEO Query — ${deployment.name}`,
+              report: `📩 Consulta: "${cmdRaw}"\n\n${stepsSummary}\n\n📋 RELATÓRIO FINAL:\n${report}`,
+              recipient_name: ceoDisplayName,
+              direct_send: { phones: [ceoWhatsapp] },
+            },
+          });
+          toast.success(`📲 Relatório enviado ao CEO via WhatsApp`);
+        }
+        // Skip the default setCeoCmdHistory below since we already added it above
+        return;
       }
 
       setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
@@ -1987,6 +2115,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  setNodesRef.current = setNodes; // wire ref so handleCeoCommand can patch nodes live
 
   useEffect(() => {
     const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
@@ -2268,7 +2397,36 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                               <span className="text-[7px] text-muted-foreground/60">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                               <div className="h-px flex-1 bg-border/50" />
                             </div>
+                            {/* User command bubble */}
+                            <div className="flex justify-end">
+                              <div className="rounded-xl bg-primary/15 border border-primary/20 px-2.5 py-1.5 max-w-[85%]">
+                                <p className="text-[9px] font-semibold text-primary">{item.cmd}</p>
+                              </div>
+                            </div>
+                            {/* Orchestration steps if present */}
+                            {item.steps && item.steps.length > 0 && (
+                              <div className="space-y-1 pl-1 border-l-2 border-dashed border-border/40 ml-1">
+                                {item.steps.map((step, si) => (
+                                  <div key={si} className="flex items-start gap-1.5 py-1">
+                                    <span className="text-[11px] shrink-0">{step.agentEmoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1 mb-0.5">
+                                        <span className="text-[7px] font-semibold text-muted-foreground truncate">{step.agentTitle}</span>
+                                        <span className="text-[6px] text-muted-foreground/50 shrink-0">· {step.phase}</span>
+                                      </div>
+                                      <p className="text-[8px] text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">{step.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Final CEO report */}
                             <div className="rounded-xl border border-border bg-card/80 p-2.5">
+                              {item.steps && item.steps.length > 0 && (
+                                <div className="flex items-center gap-1 mb-1.5 pb-1 border-b border-border/40">
+                                  <span className="text-[7px] font-bold text-primary">📋 Relatório Final ao CEO</span>
+                                </div>
+                              )}
                               <p className="text-[9px] text-foreground/85 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
                             </div>
                           </div>
