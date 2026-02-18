@@ -15,7 +15,14 @@ const STRIPE_PLANS = {
     period: "/mês",
     priceId: "price_1T1VifRvsu6nPBN1bgPaETX4",
     productId: "prod_TzUiyUrbaDCwAX",
-    features: ["3 projetos", "10.000 eventos/mês", "GSC + GA4", "Relatórios básicos", "1 usuário"],
+    features: [
+      "3 projetos",
+      "1 conta GSC de indexação/projeto (200 URLs/dia)",
+      "SEO + GA4 básicos",
+      "Orquestrador IA — limitado (5 execuções/mês)",
+      "Tracking Pixel básico",
+      "1 usuário",
+    ],
   },
   growth: {
     name: "Growth",
@@ -23,7 +30,15 @@ const STRIPE_PLANS = {
     period: "/mês",
     priceId: "price_1T1VjfRvsu6nPBN1eAHvAPTy",
     productId: "prod_TzUjFnIptSNEkV",
-    features: ["10 projetos", "100.000 eventos/mês", "Todas integrações", "Agente IA", "5 usuários", "Indexação GSC API"],
+    features: [
+      "10 projetos",
+      "Até 4 contas GSC de indexação/projeto (800 URLs/dia)",
+      "SEO + GA4 completos",
+      "Orquestrador IA — limitado (20 execuções/mês)",
+      "Agente IA + relatórios WhatsApp",
+      "Tracking Pixel v4.1 + Rank & Rent",
+      "5 usuários",
+    ],
   },
   unlimited: {
     name: "Unlimited",
@@ -31,7 +46,15 @@ const STRIPE_PLANS = {
     period: "/mês",
     priceId: "price_1T1Vk6Rvsu6nPBN1Piw9lyMk",
     productId: "prod_TzUjdgygGogyta",
-    features: ["Projetos ilimitados", "Eventos ilimitados", "Todas integrações", "Agente IA avançado", "Usuários ilimitados", "API + Webhooks", "Suporte prioritário"],
+    features: [
+      "Projetos ilimitados",
+      "Contas GSC de indexação ilimitadas/projeto",
+      "Orquestrador IA completo (ilimitado)",
+      "White-label + domínio próprio",
+      "API pública + Webhooks",
+      "Usuários ilimitados",
+      "Suporte prioritário + onboarding dedicado",
+    ],
   },
 };
 

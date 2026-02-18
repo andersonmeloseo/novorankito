@@ -1085,54 +1085,58 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             <PricingCard
-              name="Starter"
-              price="Grátis"
-              period=""
-              desc="Para começar a explorar a plataforma com dados reais do Google."
-              features={[
-                "1 projeto",
-                "SEO via Google Search Console",
-                "KPIs básicos GA4",
-                "50 indexações/mês",
-                "Agente IA (5 mensagens/dia)",
-                "Suporte por e-mail",
-              ]}
-              cta="Começar grátis"
-            />
-            <PricingCard
-              name="Pro"
+              name="Start"
               price="R$97"
               period="/mês"
-              desc="Para profissionais que precisam de indexação automática e IA ilimitada."
+              desc="Para quem está começando com dados reais do Google e quer indexar mais rápido."
               features={[
-                "5 projetos",
-                "SEO + GA4 completos",
-                "200 indexações/dia (6.000/mês)",
-                "IA ilimitada + relatórios por WhatsApp",
-                "Indexador automático com agendamento",
-                "Tracking Pixel v4.1",
-                "Rank & Rent completo",
-                "Suporte prioritário",
+                "3 projetos",
+                "SEO via Google Search Console",
+                "KPIs básicos GA4",
+                "1 conta GSC para indexação/projeto",
+                "200 URLs indexadas/dia",
+                "Orquestrador IA (limitado — 5 execuções/mês)",
+                "Tracking Pixel básico",
+                "1 usuário",
               ]}
-              cta="Assinar Pro"
+              cta="Assinar Start"
+            />
+            <PricingCard
+              name="Growth"
+              price="R$297"
+              period="/mês"
+              desc="Para profissionais que gerenciam múltiplos projetos com indexação em escala."
+              features={[
+                "10 projetos",
+                "SEO + GA4 completos",
+                "Até 4 contas GSC de indexação/projeto",
+                "800 URLs indexadas/dia (4 × 200)",
+                "Orquestrador IA (limitado — 20 exec/mês)",
+                "Agente IA + relatórios WhatsApp",
+                "Tracking Pixel v4.1 + Rank & Rent",
+                "5 usuários",
+              ]}
+              cta="Assinar Growth"
               highlight
               badge="⭐ Mais popular"
             />
             <PricingCard
-              name="Agência"
-              price="R$247"
+              name="Unlimited"
+              price="R$697"
               period="/mês"
-              desc="Para agências com múltiplos clientes, white-label e escala total."
+              desc="Para agências com escala total, white-label e indexação sem limites."
               features={[
-                "20 projetos",
-                "Tudo do Pro",
-                "White-label completo",
-                "Multi-usuários e permissões",
+                "Projetos ilimitados",
+                "Tudo do Growth",
+                "Contas GSC de indexação ilimitadas/projeto",
+                "Indexação sem limites diários",
+                "Orquestrador IA completo (ilimitado)",
+                "White-label completo + domínio próprio",
                 "API pública + Webhooks",
-                "Relatórios PDF personalizados",
-                "Onboarding dedicado",
+                "Usuários ilimitados",
+                "Suporte prioritário + onboarding dedicado",
               ]}
-              cta="Assinar Agência"
+              cta="Assinar Unlimited"
             />
           </div>
 
