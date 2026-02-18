@@ -501,7 +501,7 @@ interface EmployeeProfileDialogProps {
   onPromote: (id: string) => void;
   onDemote: (id: string) => void;
   onVacation: (id: string) => void;
-  onEdit: (id: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => Promise<void>;
+  onEdit: (id: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string; notification_config: any }>) => Promise<void>;
   isOnVacation?: boolean;
   lastRunSummary?: string;
 }
@@ -519,6 +519,12 @@ function EmployeeProfileDialog({
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
+  // Notification config state
+  const [notifyOnExecution, setNotifyOnExecution] = useState(true);
+  const [notifyOnError, setNotifyOnError] = useState(true);
+  const [notifyOnTaskOverdue, setNotifyOnTaskOverdue] = useState(true);
+  const [reportFrequency, setReportFrequency] = useState<"every_run" | "daily" | "weekly" | "never">("every_run");
+  const [reportAlerts, setReportAlerts] = useState<string[]>(["seo_drop", "ctr_alert", "indexing_error"]);
 
   useEffect(() => {
     if (role && open) {
@@ -529,6 +535,13 @@ function EmployeeProfileDialog({
       setEditInstructions(role.instructions || "");
       setEditMemory(role.memory || "");
       setEditWhatsapp(role.whatsapp || "");
+      // Load notification config
+      const nc = role.notification_config || {};
+      setNotifyOnExecution(nc.notify_on_execution !== false);
+      setNotifyOnError(nc.notify_on_error !== false);
+      setNotifyOnTaskOverdue(nc.notify_on_task_overdue !== false);
+      setReportFrequency(nc.report_frequency || "every_run");
+      setReportAlerts(nc.report_alerts || ["seo_drop", "ctr_alert", "indexing_error"]);
     }
   }, [role, open]);
 
@@ -566,6 +579,13 @@ function EmployeeProfileDialog({
         instructions: editInstructions,
         memory: editMemory,
         whatsapp: editWhatsapp,
+        notification_config: {
+          notify_on_execution: notifyOnExecution,
+          notify_on_error: notifyOnError,
+          notify_on_task_overdue: notifyOnTaskOverdue,
+          report_frequency: reportFrequency,
+          report_alerts: reportAlerts,
+        },
       });
       toast.success("Agente atualizado com sucesso!");
     } finally {
@@ -654,6 +674,7 @@ function EmployeeProfileDialog({
             <TabsTrigger value="memory" className="text-[11px]">🧠 Memória</TabsTrigger>
             <TabsTrigger value="history" className="text-[11px]">📋 Histórico</TabsTrigger>
             <TabsTrigger value="team" className="text-[11px]">👥 Equipe</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-[11px]">🔔 Notificações</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1">
@@ -942,6 +963,133 @@ function EmployeeProfileDialog({
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-6">Nenhum subordinado direto.</p>
               )}
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="p-4 space-y-5 mt-0">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+                  🔔 Configurar Notificações
+                </p>
+                <p className="text-[10px] text-muted-foreground/70">
+                  Defina quando e quais alertas este agente deve enviar para o WhatsApp configurado.
+                </p>
+              </div>
+
+              {!editWhatsapp && !role.whatsapp && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2">
+                  <span className="text-amber-400 text-sm mt-0.5">⚠️</span>
+                  <p className="text-[10px] text-amber-400/90">
+                    Configure o número WhatsApp na aba <strong>Editar</strong> para ativar as notificações.
+                  </p>
+                </div>
+              )}
+
+              {/* Frequência do relatório */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold flex items-center gap-1.5">
+                  <span>📊</span> Frequência do Relatório
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Com que frequência o relatório de execução deve ser enviado via WhatsApp?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: "every_run", label: "A cada execução", desc: "Envia sempre que a equipe rodar" },
+                    { value: "daily", label: "Apenas 1x ao dia", desc: "Resume todas as execuções do dia" },
+                    { value: "weekly", label: "Semanal (sexta)", desc: "Consolida a semana toda" },
+                    { value: "never", label: "Nunca", desc: "Não enviar relatórios automáticos" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setReportFrequency(opt.value)}
+                      className={cn(
+                        "rounded-lg border p-2.5 text-left transition-all cursor-pointer",
+                        reportFrequency === opt.value
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-card/50 hover:border-primary/40 hover:bg-primary/5"
+                      )}
+                    >
+                      <p className={cn("text-[11px] font-semibold", reportFrequency === opt.value ? "text-primary" : "text-foreground")}>{opt.label}</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gatilhos de notificação */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold flex items-center gap-1.5"><span>⚡</span> Gatilhos de Notificação</p>
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Quais eventos devem gerar um alerta imediato no WhatsApp?</p>
+                <div className="space-y-2">
+                  {[
+                    { key: "notify_on_execution", label: "✅ Execução concluída", desc: "Notificar quando a equipe finalizar uma rodada", value: notifyOnExecution, setter: setNotifyOnExecution },
+                    { key: "notify_on_error", label: "❌ Erro de agente", desc: "Notificar quando algum agente falhar durante execução", value: notifyOnError, setter: setNotifyOnError },
+                    { key: "notify_on_task_overdue", label: "⏰ Tarefa atrasada", desc: "Alerta diário sobre tarefas vencidas no plano semanal", value: notifyOnTaskOverdue, setter: setNotifyOnTaskOverdue },
+                  ].map((item) => (
+                    <div key={item.key} className={cn(
+                      "flex items-center justify-between rounded-lg border p-3 transition-all cursor-pointer",
+                      item.value ? "border-primary/30 bg-primary/5" : "border-border bg-card/50"
+                    )} onClick={() => item.setter(!item.value)}>
+                      <div className="flex-1 min-w-0 pr-3">
+                        <p className="text-[11px] font-semibold">{item.label}</p>
+                        <p className="text-[9px] text-muted-foreground/80 mt-0.5">{item.desc}</p>
+                      </div>
+                      <div className={cn(
+                        "h-5 w-9 rounded-full transition-all shrink-0 relative",
+                        item.value ? "bg-primary" : "bg-muted"
+                      )}>
+                        <div className={cn(
+                          "absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-all",
+                          item.value ? "left-[18px]" : "left-[2px]"
+                        )} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tipos de alerta SEO/Analytics */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold flex items-center gap-1.5"><span>🎯</span> Alertas de Performance</p>
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Quais tipos de alerta de dados devem ser incluídos nos relatórios?</p>
+                <div className="space-y-1.5">
+                  {[
+                    { key: "seo_drop", label: "📉 Queda de tráfego orgânico", desc: "Queda >20% vs semana anterior" },
+                    { key: "ctr_alert", label: "🎯 CTR abaixo do esperado", desc: "Queries top-5 com CTR < 2%" },
+                    { key: "indexing_error", label: "🔍 Erros de indexação", desc: "Páginas com falha de indexação detectadas" },
+                    { key: "position_drop", label: "📊 Queda de posição", desc: "Keywords caíram mais de 3 posições" },
+                    { key: "ranking_win", label: "🚀 Vitória de ranking", desc: "Páginas que subiram para o TOP 3" },
+                    { key: "new_competitor", label: "⚔️ Concorrente detectado", desc: "Novo domínio apareceu nas top 10 queries" },
+                  ].map((alert) => {
+                    const active = reportAlerts.includes(alert.key);
+                    return (
+                      <div
+                        key={alert.key}
+                        onClick={() => setReportAlerts(prev => active ? prev.filter(k => k !== alert.key) : [...prev, alert.key])}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-all",
+                          active ? "border-primary/30 bg-primary/5" : "border-border bg-card/30 opacity-60 hover:opacity-80"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-4 w-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
+                          active ? "border-primary bg-primary" : "border-muted-foreground/40 bg-transparent"
+                        )}>
+                          {active && <CheckCheck className="h-2.5 w-2.5 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-medium">{alert.label}</p>
+                          <p className="text-[9px] text-muted-foreground/70">{alert.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button onClick={handleSaveEdit} disabled={saving} className="w-full h-9 gap-2">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                Salvar Configurações de Notificação
+              </Button>
             </TabsContent>
           </ScrollArea>
         </Tabs>
@@ -2256,7 +2404,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
     onRefresh?.();
   }, [hierarchy, roles, deployment.id, onRefresh]);
 
-  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => {
+  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string; notification_config: any }>) => {
     const updatedRoles = roles.map(r => r.id === roleId ? { ...r, ...patch } : r);
     const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any }).eq("id", deployment.id);
     if (error) { toast.error(error.message); throw error; }
