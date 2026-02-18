@@ -281,7 +281,8 @@ export function DailyPlanPanel({ deploymentId, projectId }: DailyPlanPanelProps)
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterArea, setFilterArea] = useState<string>("all");
 
-  const { data: runData, isLoading, refetch } = useQuery({
+  // Primary: fetch daily_plan from runs delivery_status
+  const { data: runData, isLoading: isLoadingRun, refetch } = useQuery({
     queryKey: ["daily-plan", deploymentId],
     queryFn: async () => {
       const { data } = await supabase
@@ -290,12 +291,32 @@ export function DailyPlanPanel({ deploymentId, projectId }: DailyPlanPanelProps)
         .eq("deployment_id", deploymentId)
         .in("status", ["completed", "partial"])
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10); // check more runs in case earlier ones had the plan
+      // Return the most recent run that has a daily_plan
       return (data || []).find(r => (r.delivery_status as any)?.daily_plan?.length > 0) || null;
     },
     enabled: !!deploymentId,
     refetchInterval: 30000,
   });
+
+  // Fallback: if no delivery_status plan found, build plan from orchestrator_tasks with source=daily_plan
+  const { data: dailyTasks = [], isLoading: isLoadingTasks } = useQuery({
+    queryKey: ["daily-plan-tasks-fallback", deploymentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orchestrator_tasks")
+        .select("*")
+        .eq("deployment_id", deploymentId)
+        .filter("metadata->>source", "eq", "daily_plan")
+        .order("due_date", { ascending: true })
+        .order("metadata->>scheduled_time", { ascending: true });
+      return data || [];
+    },
+    enabled: !!deploymentId,
+    refetchInterval: 30000,
+  });
+
+  const isLoading = isLoadingRun || isLoadingTasks;
 
   const [localPlan, setLocalPlan] = useState<DailyPlanDay[] | null>(null);
 
@@ -304,10 +325,46 @@ export function DailyPlanPanel({ deploymentId, projectId }: DailyPlanPanelProps)
     if (remote?.length > 0 && !localPlan) setLocalPlan(remote);
   }, [runData]); // eslint-disable-line
 
+  // Build plan from tasks if delivery_status doesn't have it
+  const planFromTasks = useMemo((): DailyPlanDay[] => {
+    if (!dailyTasks.length) return [];
+    const grouped: Record<string, DailyPlanDay> = {};
+    for (const task of dailyTasks) {
+      const date = task.due_date || new Date().toISOString().split("T")[0];
+      const meta = (task.metadata as any) || {};
+      if (!grouped[date]) {
+        grouped[date] = {
+          date,
+          day_name: meta.day_name || new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" }),
+          theme: meta.day_theme || "",
+          actions: [],
+          kpi_targets: [],
+          areas_covered: [],
+        };
+      }
+      grouped[date].actions.push({
+        time: meta.scheduled_time || "09:00",
+        title: task.title,
+        description: task.description || "",
+        area: meta.area || task.category || "seo",
+        priority: task.priority as any || "normal",
+        duration_min: meta.duration_min || 30,
+        responsible: task.assigned_role || "Equipe",
+        success_metric: task.success_metric || "",
+        status: task.status === "done" ? "done" : task.status === "in_progress" ? "in_progress" : "scheduled",
+        tools: meta.tools || [],
+      });
+      if (!grouped[date].areas_covered.includes(meta.area || task.category)) {
+        grouped[date].areas_covered.push(meta.area || task.category);
+      }
+    }
+    return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+  }, [dailyTasks]);
+
   const activePlan: DailyPlanDay[] = useMemo(() => {
     const remote = (runData?.delivery_status as any)?.daily_plan as DailyPlanDay[];
-    return localPlan || remote || [];
-  }, [runData, localPlan]);
+    return localPlan || remote || planFromTasks;
+  }, [runData, localPlan, planFromTasks]);
 
   useEffect(() => {
     if (activePlan.length > 0 && !selectedDate) {

@@ -145,10 +145,17 @@ function TaskCard({ task, onStatusChange }: {
           </div>
         </div>
 
-        <button onClick={() => setExpanded(!expanded)} className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors mt-0.5">
+        <button onClick={() => setExpanded(!expanded)} className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-0.5">
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
+
+      {/* Description — always visible (gerada pelo agente) */}
+      {task.description && (
+        <p className="text-[10px] text-muted-foreground leading-relaxed mt-2 line-clamp-3">
+          {task.description}
+        </p>
+      )}
 
       {/* Due date */}
       {task.due_date && (
@@ -165,15 +172,16 @@ function TaskCard({ task, onStatusChange }: {
       {task.estimated_impact && (
         <div className="flex items-center gap-1 text-[9px] text-emerald-400 mt-1">
           <TrendingUp className="h-3 w-3" />
-          {task.estimated_impact}
+          <span className="line-clamp-1">{task.estimated_impact}</span>
         </div>
       )}
 
-      {/* Expanded */}
+      {/* Expanded — additional details */}
       {expanded && (
         <div className="pt-2 space-y-2 border-t border-border/50 mt-2">
-          {task.description && (
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{task.description}</p>
+          {/* Full description when expanded */}
+          {task.description && task.description.length > 120 && (
+            <p className="text-[10px] text-muted-foreground leading-relaxed">{task.description}</p>
           )}
           {task.success_metric && (
             <div className="flex items-start gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/15">
@@ -405,18 +413,18 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
 
       {/* ── Kanban ── */}
       {viewMode === "kanban" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {STATUS_COLUMNS.map(col => {
-            const colTasks = filtered.filter(t => t.status === col.key);
-            return (
-              <div key={col.key} className={cn("rounded-xl border-2 border-dashed p-3 space-y-2 min-h-[180px]", col.color)}>
-                <div className={cn("flex items-center justify-between mb-2 px-1 py-1.5 rounded-lg", col.headerBg)}>
-                  <p className="text-xs font-bold flex items-center gap-1">
-                    <span>{col.emoji}</span> {col.label}
-                  </p>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{colTasks.length}</Badge>
-                </div>
-                <ScrollArea className="max-h-[460px] pr-1">
+        <ScrollArea className="w-full">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 min-h-[300px]">
+            {STATUS_COLUMNS.map(col => {
+              const colTasks = filtered.filter(t => t.status === col.key);
+              return (
+                <div key={col.key} className={cn("rounded-xl border-2 border-dashed p-3 space-y-2", col.color)}>
+                  <div className={cn("flex items-center justify-between px-1 py-1.5 rounded-lg", col.headerBg)}>
+                    <p className="text-xs font-bold flex items-center gap-1">
+                      <span>{col.emoji}</span> {col.label}
+                    </p>
+                    <Badge variant="outline" className="text-[9px] h-4 px-1.5">{colTasks.length}</Badge>
+                  </div>
                   <div className="space-y-2">
                     {colTasks.map(task => (
                       <TaskCard key={task.id} task={task}
@@ -426,11 +434,11 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
                       <p className="text-[10px] text-muted-foreground/30 text-center py-8">Nenhuma tarefa aqui</p>
                     )}
                   </div>
-                </ScrollArea>
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
       )}
 
       {/* ── List ── */}
