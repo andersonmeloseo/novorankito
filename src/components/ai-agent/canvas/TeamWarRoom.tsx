@@ -207,18 +207,19 @@ function getWorkPhrase(role: any): string {
 }
 
 const PM_REPORT_PHRASES = [
-  "📊 Status do projeto: {n} tarefas em andamento, {s} concluídas esta semana. Taxa de progresso: {p}% no prazo.",
-  "📋 Update do projeto: equipe operando com {n} frentes ativas. Próximas entregas: relatório SEO e ajustes de campanhas.",
-  "⏱️ Check-in de 30min: todos os agentes responderam. Destaque positivo: analytics detectou aumento de 15% em conversões orgânicas.",
-  "🚦 Report de status: sem bloqueios críticos. {n} ações previstas para as próximas 4h. Equipe 100% operacional.",
+  "Relatório de status do projeto — {n} iniciativas em andamento, {s} entregues neste ciclo. Taxa de execução: {p}% no prazo. Sem bloqueios críticos identificados.",
+  "Check-in operacional: {n} frentes ativas no momento. Progresso geral do projeto: {p}%. Próximas entregas previstas para as próximas 4h.",
+  "Update do projeto: equipe operando com {n} ações simultâneas. {s} tarefas concluídas no último ciclo. Nenhum impedimento crítico registrado.",
+  "Status consolidado: {p}% das entregas no prazo. {n} atividades em execução, {s} finalizadas. Equipe operacional e responsiva.",
 ];
 
-function getPmReport(totalAgents: number): string {
+function getPmReport(totalAgents: number, senderName?: string): string {
   const phrase = PM_REPORT_PHRASES[Math.floor(Math.random() * PM_REPORT_PHRASES.length)];
-  return phrase
+  const filled = phrase
     .replace("{n}", String(Math.floor(totalAgents * 1.5)))
     .replace("{s}", String(Math.floor(totalAgents * 0.8)))
     .replace("{p}", String(Math.floor(72 + Math.random() * 20)));
+  return senderName ? `${senderName} informa:\n${filled}` : filled;
 }
 
 /* ─── Status helpers ───────────────────────────────────────── */
@@ -1521,21 +1522,24 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   // When spotlight changes, add a convo entry
   useEffect(() => {
     if (!spotlightRoleId) return;
-    const activeRole = roles.find(r => r.id === spotlightRoleId);
+    const activeRole = roles.find((r: any) => r.id === spotlightRoleId);
     if (!activeRole) return;
 
     const parentId = hierarchy[activeRole.id];
-    const parentRole = parentId ? roles.find(r => r.id === parentId) : null;
+    const parentRole = parentId ? roles.find((r: any) => r.id === parentId) : null;
     const workPhrase = getWorkPhrase(activeRole);
+    // Use personal name if set on the card
+    const senderName = activeRole.name || activeRole.title;
+    const targetName = parentRole ? (parentRole.name || parentRole.title) : undefined;
 
     setLiveConvoTyping(true);
     const t = setTimeout(() => {
       setLiveConvoTyping(false);
       const newEntry: LiveConvoEntry = {
         fromEmoji: activeRole.emoji,
-        fromTitle: activeRole.title,
+        fromTitle: senderName,
         toEmoji: parentRole?.emoji,
-        toTitle: parentRole?.title,
+        toTitle: targetName,
         text: workPhrase,
         ts: Date.now(),
         type: parentRole ? "report" : "work",
@@ -1561,12 +1565,15 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
       const ceoRole = activeRoles.find(r => r.id === "ceo" || !hierarchy[r.id]) || activeRoles[0];
       if (!pmRole || !ceoRole) return;
 
-      const reportText = getPmReport(activeRoles.length);
+      // Use personal name if set, fallback to title
+      const pmDisplayName = pmRole.name || pmRole.title;
+      const ceoDisplayName = ceoRole.name || ceoRole.title;
+      const reportText = getPmReport(activeRoles.length, pmDisplayName);
       const newEntry: LiveConvoEntry = {
         fromEmoji: pmRole.emoji,
-        fromTitle: pmRole.title,
+        fromTitle: pmDisplayName,
         toEmoji: ceoRole.emoji,
-        toTitle: ceoRole.title,
+        toTitle: ceoDisplayName,
         text: reportText,
         ts: Date.now(),
         type: "report",
@@ -1581,12 +1588,12 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         supabase.functions.invoke("send-workflow-notification", {
           body: {
             workflow_name: `⏱️ Report 30min — ${deployment.name}`,
-            report: `${pmRole.emoji} ${pmRole.title} → ${ceoRole.emoji} ${ceoRole.title}\n\n${reportText}`,
-            recipient_name: ceoRole.title,
+            report: `${pmRole.emoji} ${pmDisplayName} → ${ceoRole.emoji} ${ceoDisplayName}\n\n${reportText}`,
+            recipient_name: ceoDisplayName,
             direct_send: { phones: [ceosWhatsapp] },
           },
         }).then(() => {
-          toast.success(`📲 Report enviado ao CEO via WhatsApp`);
+          toast.success(`📲 Report enviado a ${ceoDisplayName} via WhatsApp`);
         }).catch(() => {});
       }
 
@@ -1611,41 +1618,88 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   }, [hierarchy]);
 
   /* ─── CEO Command Chat ─── */
-  const CEO_COMMANDS: Record<string, { label: string; response: (roles: any[], lastRun: any) => string }> = {
+  const CEO_COMMANDS: Record<string, { label: string; icon: string; description: string; response: (roles: any[], lastRun: any) => string }> = {
     "status report": {
-      label: "📊 Status Report",
+      label: "Status do Projeto",
+      icon: "📊",
+      description: "Visão geral do andamento",
       response: (r, run) => {
         const total = r.length;
         const success = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "success").length : 0;
-        const lastRunTime = run ? new Date(run.started_at).toLocaleString("pt-BR") : "nunca";
-        return `📊 *Status Report — ${deployment.name}*\n\n` +
-          `👥 Equipe: ${total} agentes ativos\n` +
-          `✅ Última execução: ${success}/${total} agentes concluídos\n` +
-          `🕒 Última execução em: ${lastRunTime}\n` +
-          `📌 Status: ${run?.status === "completed" ? "Concluído ✅" : run?.status === "running" ? "Em execução 🔄" : "Aguardando ⏳"}\n\n` +
-          `_Report gerado automaticamente pelo War Room_`;
+        const errors = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "error").length : 0;
+        const lastRunTime = run ? new Date(run.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+        const runStatusLabel = run?.status === "completed" ? "Concluído" : run?.status === "running" ? "Em execução" : "Aguardando";
+        const pct = total > 0 ? Math.round((success / total) * 100) : 0;
+        return (
+          `STATUS DO PROJETO — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📅 Última execução: ${lastRunTime}\n` +
+          `📌 Status: ${runStatusLabel}\n` +
+          `✅ Concluídos com sucesso: ${success}/${total} (${pct}%)\n` +
+          (errors > 0 ? `⚠️ Com falhas: ${errors}\n` : ``) +
+          `👥 Integrantes da equipe: ${total}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
       }
     },
     "resumo executivo": {
-      label: "📋 Resumo Executivo",
-      response: (r, run) => {
-        const summary = run?.summary || "Nenhuma execução registrada ainda.";
-        return `📋 *Resumo Executivo — ${deployment.name}*\n\n${String(summary).slice(0, 800)}\n\n_Gerado pelo War Room_`;
+      label: "Resumo Executivo",
+      icon: "📋",
+      description: "Síntese do último relatório",
+      response: (_r, run) => {
+        if (!run?.summary || run.summary.includes("AI error")) {
+          return `RESUMO EXECUTIVO — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma execução registrada. Execute a equipe para gerar o resumo.`;
+        }
+        return (
+          `RESUMO EXECUTIVO — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `${String(run.summary).slice(0, 900)}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
       }
     },
-    "lista equipe": {
-      label: "👥 Lista da Equipe",
-      response: (r) => {
-        const lines = r.map((role: any) => `${role.emoji} ${role.title} (${role.department})`);
-        return `👥 *Equipe — ${deployment.name}*\n\n${lines.join("\n")}\n\nTotal: ${r.length} membros`;
+    "tarefas pendentes": {
+      label: "Tarefas Pendentes",
+      icon: "📌",
+      description: "O que está pendente de ação",
+      response: (r, run) => {
+        const pending = run
+          ? ((run.agent_results as any[]) || [])
+              .filter((a: any) => a.status === "waiting" || a.status === "pending")
+          : [];
+        const inProgress = run
+          ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "running")
+          : [];
+        if (pending.length === 0 && inProgress.length === 0) {
+          return `TAREFAS PENDENTES — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma tarefa pendente. ${run ? "Todas as entregas foram concluídas." : "Execute a equipe para gerar tarefas."}`;
+        }
+        const lines = [
+          ...inProgress.map((a: any) => `🔄 Em execução: ${a.role_title}`),
+          ...pending.map((a: any) => `⏳ Aguardando: ${a.role_title}`),
+        ];
+        return (
+          `TAREFAS PENDENTES — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `${lines.join("\n")}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
       }
     },
     "alertas": {
-      label: "🚨 Alertas",
-      response: (r, run) => {
+      label: "Alertas e Falhas",
+      icon: "🚨",
+      description: "Itens que precisam de atenção",
+      response: (_r, run) => {
         const errors = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "error") : [];
-        if (errors.length === 0) return `✅ *Sem alertas críticos* — ${deployment.name}\n\nTodos os agentes operando normalmente.`;
-        return `🚨 *Alertas — ${deployment.name}*\n\n${errors.map((e: any) => `❌ ${e.role_title}: ${String(e.result || "erro").slice(0, 100)}`).join("\n")}`;
+        if (errors.length === 0) {
+          return `ALERTAS — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhum alerta crítico. Todos os agentes operando dentro do esperado.`;
+        }
+        return (
+          `ALERTAS — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `${errors.map((e: any) => `❌ ${e.role_title}:\n   ${String(e.result || "Erro não especificado").slice(0, 120)}`).join("\n\n")}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
       }
     },
   };
@@ -1655,12 +1709,13 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     if (!cmd) return;
 
     const matched = Object.entries(CEO_COMMANDS).find(([key]) => cmd.includes(key));
-    const ceoRole = roles.find(r => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
+    const ceoRole = roles.find((r: any) => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
+    // Use the personal name if set on the card, otherwise fallback to role title
+    const ceoDisplayName = ceoRole?.name || ceoRole?.title || "CEO";
     const ceoWhatsapp = ceoRole?.whatsapp;
 
     if (!matched) {
-      // Unknown command — show tip
-      const tip = `❓ Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.label}`).join("\n")}`;
+      const tip = `Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.icon} ${c.label}`).join("\n")}`;
       setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: tip, ts: Date.now() }]);
       return;
     }
@@ -1674,14 +1729,14 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
       if (ceoWhatsapp) {
         const { error } = await supabase.functions.invoke("send-workflow-notification", {
           body: {
-            workflow_name: `🧠 Comando CEO — ${matched[1].label}`,
+            workflow_name: `${matched[1].icon} ${matched[1].label} — ${deployment.name}`,
             report,
-            recipient_name: ceoRole?.title || "CEO",
+            recipient_name: ceoDisplayName,
             direct_send: { phones: [ceoWhatsapp] },
           },
         });
         if (error) throw error;
-        toast.success(`📲 Enviado via WhatsApp para ${ceoWhatsapp}`);
+        toast.success(`📲 Enviado para ${ceoDisplayName} via WhatsApp`);
       } else {
         toast.info("Configure o WhatsApp do CEO no perfil para envio automático");
       }
@@ -2062,17 +2117,21 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                   {/* CEO Commands Tab */}
                   <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
                     {/* Command shortcuts */}
-                    <div className="px-3 pt-2.5 shrink-0">
-                      <p className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Atalhos rápidos</p>
-                      <div className="flex flex-wrap gap-1">
+                    <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
+                      <div className="grid grid-cols-2 gap-1.5">
                         {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
                           <button
                             key={key}
                             onClick={() => handleCeoCommand(key)}
                             disabled={ceoCmdSending}
-                            className="text-[8px] px-2 py-0.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium"
+                            className="flex items-start gap-1.5 text-left px-2.5 py-2 rounded-lg border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
                           >
-                            {cmd.label}
+                            <span className="text-sm leading-none mt-0.5 shrink-0">{cmd.icon}</span>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">{cmd.label}</p>
+                              <p className="text-[7px] text-muted-foreground leading-tight mt-0.5">{cmd.description}</p>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -2081,23 +2140,22 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                     {/* History */}
                     <ScrollArea className="flex-1 px-3 py-2">
                       {ceoCmdHistory.length === 0 && (
-                        <div className="py-8 text-center">
-                          <Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-                          <p className="text-[10px] text-muted-foreground">Digite um comando ou use os atalhos acima.</p>
-                          <p className="text-[9px] text-muted-foreground/60 mt-1">A resposta é enviada via WhatsApp automaticamente se o CEO tiver número configurado.</p>
+                        <div className="py-10 text-center">
+                          <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+                          <p className="text-[10px] text-muted-foreground font-medium">Nenhum relatório gerado ainda</p>
+                          <p className="text-[9px] text-muted-foreground/60 mt-1">Use os atalhos acima para consultar dados do projeto.</p>
                         </div>
                       )}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {ceoCmdHistory.map((item, i) => (
-                          <div key={i} className="space-y-1">
+                          <div key={i} className="space-y-1.5">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[8px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
-                                &gt; {item.cmd}
-                              </span>
-                              <span className="text-[7px] text-muted-foreground ml-auto">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <div className="h-px flex-1 bg-border/50" />
+                              <span className="text-[7px] text-muted-foreground/60">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <div className="h-px flex-1 bg-border/50" />
                             </div>
-                            <div className="rounded-lg border border-border bg-card/60 p-2">
-                              <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{item.response}</p>
+                            <div className="rounded-xl border border-border bg-card/80 p-2.5">
+                              <p className="text-[9px] text-foreground/85 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
                             </div>
                           </div>
                         ))}
@@ -2107,12 +2165,12 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                     {/* Input */}
                     <div className="p-3 border-t border-border shrink-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-mono text-muted-foreground/60">&gt;</span>
+                        <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
                         <Input
                           value={ceoCmdInput}
                           onChange={e => setCeoCmdInput(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                          placeholder="status report, resumo executivo…"
+                          placeholder="status report, alertas, tarefas pendentes…"
                           className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
                           disabled={ceoCmdSending}
                         />
@@ -2227,44 +2285,42 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
 
                 {/* CEO Commands Tab */}
                 <TabsContent value="cmd" className="m-0 flex flex-col">
-                  <div className="px-3 pt-2 shrink-0">
-                    <p className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Atalhos rápidos</p>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="px-3 pt-2.5 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
+                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Relatórios do Projeto</p>
+                    <div className="grid grid-cols-2 gap-1">
                       {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
                         <button
                           key={key}
                           onClick={() => handleCeoCommand(key)}
                           disabled={ceoCmdSending}
-                          className="text-[8px] px-2 py-0.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium"
+                          className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
                         >
-                          {cmd.label}
+                          <span className="text-xs leading-none shrink-0">{cmd.icon}</span>
+                          <p className="text-[8px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight truncate">{cmd.label}</p>
                         </button>
                       ))}
                     </div>
                   </div>
                   <ScrollArea className="max-h-40 px-3 py-2">
                     {ceoCmdHistory.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground text-center py-4">Digite um comando ou use os atalhos acima.</p>
+                      <p className="text-[10px] text-muted-foreground text-center py-4">Selecione um relatório acima para consultar dados do projeto.</p>
                     )}
                     <div className="space-y-2">
-                      {ceoCmdHistory.map((item, i) => (
-                        <div key={i} className="space-y-1">
-                          <span className="text-[8px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">&gt; {item.cmd}</span>
-                          <div className="rounded-lg border border-border bg-card/60 p-2">
-                            <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{item.response}</p>
-                          </div>
+                      {ceoCmdHistory.slice(-3).map((item, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card/80 p-2">
+                          <p className="text-[9px] text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
                         </div>
                       ))}
                     </div>
                   </ScrollArea>
-                  <div className="p-3 border-t border-border shrink-0">
+                  <div className="p-2.5 border-t border-border shrink-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-muted-foreground/60">&gt;</span>
+                      <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
                       <Input
                         value={ceoCmdInput}
                         onChange={e => setCeoCmdInput(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                        placeholder="status report, resumo executivo…"
+                        placeholder="status report, alertas, tarefas pendentes…"
                         className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
                         disabled={ceoCmdSending}
                       />
