@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
@@ -44,7 +44,6 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
   const { user } = useAuth();
   const qc = useQueryClient();
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
-  const [expandedDeployment, setExpandedDeployment] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [ceoOnboardingOpen, setCeoOnboardingOpen] = useState(false);
@@ -84,7 +83,6 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
   const handleRunNow = async (deployment: any) => {
     if (!user || !projectId) return;
     setRunningId(deployment.id);
-    // Auto-open war room
     setWarRoomDepId(deployment.id);
     try {
       const { data, error } = await supabase.functions.invoke("run-orchestrator", {
@@ -103,14 +101,12 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
       } else {
         const depId = deployment.id;
         toast.success(`✅ Execução concluída! ${data.tasks_created || 0} tarefas + ${data.daily_plan_days || 0} dias de plano gerados.`);
-        // Invalidate all panel queries so they refresh immediately
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["orchestrator-tasks", depId] }),
           qc.invalidateQueries({ queryKey: ["daily-plan", depId] }),
           qc.invalidateQueries({ queryKey: ["orchestrator-last-run-plan", depId] }),
           qc.invalidateQueries({ queryKey: ["orchestrator-runs", projectId] }),
         ]);
-        // Switch to tasks tab to show results
         setActiveTab(prev => ({ ...prev, [depId]: "tasks" }));
       }
       refetchRuns();
@@ -218,7 +214,6 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
           const depRuns = runs.filter((r: any) => r.deployment_id === dep.id);
           const lastRun = depRuns[0];
           const roles = (dep.roles as any[]) || [];
-          const isExpanded = expandedDeployment === dep.id;
           const isWarRoomOpen = warRoomDepId === dep.id;
           const allFailed = lastRun && (lastRun.agent_results as any[])?.every((r: any) => r.status === "error");
           const hasCreditsError = lastRun && JSON.stringify(lastRun.agent_results || "").includes("402");
@@ -228,11 +223,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
             <Card key={dep.id} className="border-border overflow-hidden">
               <CardHeader className="pb-3 pt-4 px-5">
                 <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setExpandedDeployment(isExpanded ? null : dep.id)}
-                    className="flex items-center gap-3 text-left flex-1"
-                  >
-                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <div className="flex items-center gap-3 flex-1">
                     <div>
                       <CardTitle className="text-sm font-bold flex items-center gap-2">
                         🏢 {dep.name}
@@ -240,7 +231,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                           {dep.status === "active" ? "Ativo" : "Pausado"}
                         </Badge>
                         {lastRun?.status === "running" && (
-                          <Badge className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/30 gap-1">
+                          <Badge className="text-[9px] bg-primary/20 text-primary border border-primary/30 gap-1">
                             <Loader2 className="h-2.5 w-2.5 animate-spin" /> Em execução
                           </Badge>
                         )}
@@ -250,9 +241,8 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                         {dep.last_run_at && ` · Última: ${new Date(dep.last_run_at).toLocaleString("pt-BR")}`}
                       </p>
                     </div>
-                  </button>
+                  </div>
                   <div className="flex items-center gap-1.5">
-                    {/* War Room toggle */}
                     <Button
                       variant={isWarRoomOpen ? "default" : "outline"}
                       size="sm"
@@ -305,9 +295,9 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                   ))}
                 </div>
 
-                {/* War Room — full command center */}
+                {/* War Room tabs */}
                 {isWarRoomOpen && (
-                  <div className="mt-3 border-t border-border pt-3 space-y-3">
+                  <div className="mt-3 border-t border-border pt-3">
                     <Tabs value={activeTab[dep.id] || "warroom"} onValueChange={(v) => setActiveTab(prev => ({ ...prev, [dep.id]: v }))} className="w-full">
                       <TabsList className="w-full h-8 text-xs grid grid-cols-4">
                         <TabsTrigger value="warroom" className="gap-1 text-[10px]">
@@ -323,7 +313,9 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                           <Map className="h-3 w-3" /> Semanal
                         </TabsTrigger>
                       </TabsList>
-                      <TabsContent value="warroom" className="mt-3">
+
+                      {/* War Room — execution history lives here only */}
+                      <TabsContent value="warroom" className="mt-3 space-y-4">
                         <TeamWarRoom
                           deployment={dep}
                           runs={runs}
@@ -333,19 +325,109 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                           onRefresh={() => { refetchDeployments(); refetchRuns(); }}
                           projectId={projectId}
                         />
+
+                        {/* Execution history — exclusively in War Room */}
+                        {depRuns.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                              Histórico de Execuções
+                            </p>
+                            <ScrollArea className="max-h-[40vh]">
+                              <div className="space-y-2 pr-2">
+                                {depRuns.slice(0, 10).map((run: any) => {
+                                  const isRunExpanded = expandedRun === run.id;
+                                  const results = (run.agent_results as any[]) || [];
+                                  const successCount = results.filter((r: any) => r.status === "success").length;
+                                  return (
+                                    <div key={run.id} className="rounded-lg border border-border bg-card/50">
+                                      <button
+                                        onClick={() => setExpandedRun(isRunExpanded ? null : run.id)}
+                                        className="flex items-center gap-3 w-full p-3 text-left hover:bg-muted/30 transition-colors rounded-lg"
+                                      >
+                                        {run.status === "running" ? (
+                                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                        ) : run.status === "completed" ? (
+                                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 text-destructive" />
+                                        )}
+                                        <div className="flex-1">
+                                          <span className="text-xs font-medium">
+                                            {new Date(run.started_at).toLocaleString("pt-BR")}
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground ml-2">
+                                            {run.status === "running" ? "Em execução..." : run.status === "completed" ? "Concluído" : successCount === 0 ? "Falhou" : "Parcial"}
+                                          </span>
+                                        </div>
+                                        <Badge variant="outline" className="text-[9px]">
+                                          {successCount}/{results.length} ✓
+                                        </Badge>
+                                        {run.completed_at && (
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {Math.round((new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000)}s
+                                          </span>
+                                        )}
+                                        {isRunExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                      </button>
+
+                                      {isRunExpanded && (
+                                        <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
+                                          {results.map((ar: any, i: number) => (
+                                            <div key={i} className="p-3 rounded-lg bg-muted/30 space-y-1.5">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-sm">{ar.emoji}</span>
+                                                <span className="text-xs font-semibold">{ar.role_title}</span>
+                                                {ar.status === "success" ? (
+                                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
+                                                ) : (
+                                                  <XCircle className="h-3.5 w-3.5 text-destructive ml-auto" />
+                                                )}
+                                              </div>
+                                              <ScrollArea className="max-h-48">
+                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                                                  {ar.status === "error" ? friendlyError(ar.result) : ar.result}
+                                                </p>
+                                              </ScrollArea>
+                                            </div>
+                                          ))}
+                                          {run.summary && !run.summary.includes("AI error") && (
+                                            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                                              <p className="text-xs font-semibold text-primary mb-1.5">📝 Resumo Executivo (CEO)</p>
+                                              <ScrollArea className="max-h-60">
+                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                                                  {run.summary}
+                                                </p>
+                                              </ScrollArea>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
                       </TabsContent>
+
                       <TabsContent value="daily" className="mt-3">
-                        <ScrollArea className="max-h-[70vh] pr-1">
+                        <ScrollArea className="h-[60vh] pr-2">
                           <DailyPlanPanel deploymentId={dep.id} projectId={projectId} />
                         </ScrollArea>
                       </TabsContent>
+
                       <TabsContent value="tasks" className="mt-3">
-                        <ScrollArea className="max-h-[70vh] pr-1">
-                          <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />
+                        <ScrollArea className="h-[60vh] pr-2">
+                          <div className="pb-6">
+                            <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />
+                          </div>
                         </ScrollArea>
                       </TabsContent>
+
                       <TabsContent value="plan" className="mt-3">
-                        <ScrollArea className="max-h-[70vh] pr-1">
+                        <ScrollArea className="h-[60vh] pr-2">
                           <StrategicPlanPanel deploymentId={dep.id} projectId={projectId} />
                         </ScrollArea>
                       </TabsContent>
@@ -353,92 +435,6 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                   </div>
                 )}
               </CardHeader>
-
-              {/* Expanded content - runs history */}
-              {isExpanded && (
-                <CardContent className="px-5 pb-4 pt-0 space-y-3 border-t border-border">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase pt-3">Histórico de Execuções</p>
-
-                  {depRuns.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">Nenhuma execução ainda. Clique em "Executar" para iniciar.</p>
-                  )}
-
-                  {depRuns.slice(0, 10).map((run: any) => {
-                    const isRunExpanded = expandedRun === run.id;
-                    const results = (run.agent_results as any[]) || [];
-                    const successCount = results.filter((r: any) => r.status === "success").length;
-
-                    return (
-                      <div key={run.id} className="rounded-lg border border-border bg-card/50">
-                        <button
-                          onClick={() => setExpandedRun(isRunExpanded ? null : run.id)}
-                          className="flex items-center gap-3 w-full p-3 text-left hover:bg-muted/30 transition-colors rounded-lg"
-                        >
-                          {run.status === "running" ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                          ) : run.status === "completed" ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-destructive" />
-                          )}
-                          <div className="flex-1">
-                            <span className="text-xs font-medium">
-                              {new Date(run.started_at).toLocaleString("pt-BR")}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground ml-2">
-                              {run.status === "running" ? "Em execução..." : run.status === "completed" ? "Concluído" : successCount === 0 ? "Falhou" : "Parcial"}
-                            </span>
-                          </div>
-                          <Badge variant="outline" className="text-[9px]">
-                            {successCount}/{results.length} ✓
-                          </Badge>
-                          {run.completed_at && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {Math.round((new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000)}s
-                            </span>
-                          )}
-                          {isRunExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </button>
-
-                        {isRunExpanded && (
-                          <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
-                            {results.map((ar: any, i: number) => (
-                              <div key={i} className="p-3 rounded-lg bg-muted/30 space-y-1.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm">{ar.emoji}</span>
-                                  <span className="text-xs font-semibold">{ar.role_title}</span>
-                                  {ar.status === "success" ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
-                                  ) : (
-                                    <XCircle className="h-3.5 w-3.5 text-destructive ml-auto" />
-                                  )}
-                                </div>
-                                <ScrollArea className="max-h-48">
-                                  <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                                    {ar.status === "error" ? friendlyError(ar.result) : ar.result}
-                                  </p>
-                                </ScrollArea>
-                              </div>
-                            ))}
-
-                            {run.summary && !run.summary.includes("AI error") && (
-                              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                                <p className="text-xs font-semibold text-primary mb-1.5">📝 Resumo Executivo (CEO)</p>
-                                <ScrollArea className="max-h-60">
-                                  <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                                    {run.summary}
-                                  </p>
-                                </ScrollArea>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              )}
             </Card>
           );
         })}
