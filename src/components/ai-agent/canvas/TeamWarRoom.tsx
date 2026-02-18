@@ -2685,13 +2685,13 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                 {/* Tabs: Team Chat + CEO Commands */}
                 <Tabs defaultValue="cmd" className="flex flex-col h-full">
                    <div className="px-2 pt-2 shrink-0 border-b border-border bg-card/50">
-                     <TabsList className="h-10 gap-1.5 bg-transparent p-0">
-                       <TabsTrigger value="cmd" className="h-9 text-xs px-4 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
-                         <Brain className="h-4 w-4" /> Comandos CEO
+                     <TabsList className="h-14 gap-2 bg-transparent p-0 w-full">
+                       <TabsTrigger value="cmd" className="flex-1 h-12 text-sm px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2.5">
+                         <Brain className="h-5 w-5" /> Comandos CEO
                        </TabsTrigger>
-                       <TabsTrigger value="chat" className="h-9 text-xs px-4 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
-                         <MessageSquare className="h-4 w-4" /> Chat Equipe
-                         {messages.length > 0 && <span className="ml-0.5 text-[9px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                       <TabsTrigger value="chat" className="flex-1 h-12 text-sm px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2.5">
+                         <MessageSquare className="h-5 w-5" /> Chat Equipe
+                         {messages.length > 0 && <span className="ml-1 text-[10px] bg-primary/20 text-primary rounded-full px-2 py-0.5">{messages.length}</span>}
                        </TabsTrigger>
                      </TabsList>
                    </div>
