@@ -2734,7 +2734,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
        <LiveConvoDialog
          open={liveConvoOpen}
          onOpenChange={setLiveConvoOpen}
-         activeRole={spotlightRole || (isRunning ? { emoji: "🏢", title: deployment.name } : null)}
+         activeRole={spotlightRole || { emoji: "🏢", title: deployment.name }}
          targetRole={spotlightTargetRole}
          entries={liveConvoEntries}
          isWorking={liveConvoTyping || !!spotlightRoleId || isRunning}
