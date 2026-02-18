@@ -274,21 +274,21 @@ export default function LandingPage() {
   const mockups = [
     {
       label: "Indexador", icon: Zap, mockup: <IndexerMockup />,
-      badge: "Indexação automática",
-      title: "Sua página no Google em até 24h",
-      desc: "Chega de esperar 6 semanas pelo Google rastrear seu site. Com a Google Indexing API oficial, você envia a URL — o Google indexa.",
+      badge: "Indexação automática via API",
+      title: "Pare de esperar o Google decidir quando olhar suas páginas",
+      desc: "Envio automático de URLs, fila inteligente com priorização e monitoramento de status — você sabe exatamente o que está no índice e por quê.",
     },
     {
       label: "SEO / GSC", icon: Search, mockup: <GSCMockup />,
-      badge: "SEO & Search Console",
-      title: "Dados reais do Google em um dashboard",
-      desc: "Queries, posições, CTR, canibalização, cobertura de indexação — tudo do GSC e GA4 integrado, com IA destacando as oportunidades.",
+      badge: "Visão completa em um painel",
+      title: "Tudo o que importa em um único lugar",
+      desc: "Performance por páginas e consultas, histórico de posições, detecção de canibalização, decay, cobertura de índice e oportunidades de crescimento.",
     },
     {
       label: "Agente IA", icon: Bot, mockup: <AgentMockup />,
-      badge: "Agentes IA 24/7",
-      title: "IA que lê seus dados reais e age",
-      desc: "O agente acessa seu GSC e GA4, identifica as oportunidades, manda alerta quando algo cai e entrega relatório no WhatsApp toda semana.",
+      badge: "Diagnósticos contínuos com IA",
+      title: "Um estrategista olhando seus dados o tempo todo",
+      desc: "Agentes especializados analisam continuamente e mostram o que está acontecendo e o que merece atenção. Como ter um analista sênior 24h por dia.",
     },
   ];
 
@@ -337,24 +337,28 @@ export default function LandingPage() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-5">
             <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-black px-4 py-2 rounded-full border border-violet-200 dark:border-violet-700/50">
               <Sparkles className="w-3.5 h-3.5" />
-              Indexação automática · SEO com IA · Analytics · WhatsApp
+              Para quem não pode descobrir problemas tarde demais
             </div>
           </motion.div>
 
           {/* H1 */}
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-center text-5xl sm:text-6xl lg:text-[74px] font-black tracking-tight leading-[1.03] mb-5">
-            Pare de perder{" "}
-            <span className="bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 bg-clip-text text-transparent">
-              posição no Google
-            </span>{" "}
-            enquanto dorme
+            className="text-center text-5xl sm:text-6xl lg:text-[70px] font-black tracking-tight leading-[1.05] mb-6">
+            Seu SEO não cai de repente.{" "}
+            <span className="bg-gradient-to-r from-red-500 via-rose-500 to-orange-400 bg-clip-text text-transparent">
+              Ele quebra enquanto você ainda acha que está tudo bem.
+            </span>
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-            className="text-center text-lg sm:text-xl text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-2xl mx-auto">
-            Indexação via Google API oficial, dados do Search Console com IA analisando e relatórios automáticos no WhatsApp — em uma plataforma.
+            className="text-center text-lg sm:text-xl text-slate-500 dark:text-slate-400 leading-relaxed mb-4 max-w-2xl mx-auto">
+            O Rankito conecta Search Console, Analytics, indexação e comportamento do usuário em um único painel e mostra, com precisão, o que está fazendo você perder ranking, tráfego e dinheiro.
+          </motion.p>
+
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
+            className="text-center text-sm text-slate-400 dark:text-slate-500 leading-relaxed mb-8 max-w-xl mx-auto">
+            A IA analisa continuamente seus dados e entrega diagnósticos claros do que mudou, por que mudou e onde agir primeiro.
           </motion.p>
 
           {/* CTAs */}
@@ -362,11 +366,11 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
             <a href="/login"
               className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-9 py-4 rounded-2xl text-base shadow-2xl shadow-violet-500/40 transition-all hover:scale-105 group">
-              <Rocket className="w-4 h-4" /> Começar grátis por 7 dias
+              <Rocket className="w-4 h-4" /> Começar agora
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
             <a href="#como-funciona" className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold px-4 py-3.5 text-sm hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
-              Como funciona <ChevronRight className="w-3.5 h-3.5" />
+              <Play className="w-3.5 h-3.5" /> Ver demonstração
             </a>
           </motion.div>
 
@@ -447,27 +451,27 @@ export default function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900 dark:bg-[#04060f] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/8 rounded-full blur-[100px] pointer-events-none" />
         <div className="max-w-5xl mx-auto relative">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-red-900/30 text-red-400 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-red-800/40">
-              <AlertTriangle className="w-3.5 h-3.5" /> Quem gerencia SEO sem plataforma integrada passa por isso
+              <AlertTriangle className="w-3.5 h-3.5" /> Se você gerencia sites ou clientes, já passou por isso
             </div>
             <h2 className="text-4xl sm:text-5xl font-black leading-tight text-white mb-4">
-              Você perde tempo e dinheiro{" "}
-              <span className="text-red-400">resolvendo o que uma ferramenta deveria resolver</span>
+              O problema não é falta de dados.{" "}
+              <span className="text-red-400">É falta de interpretação estratégica.</span>
             </h2>
             <p className="text-slate-400 text-base max-w-2xl mx-auto">
-              Não é culpa sua — você está usando 4 ferramentas separadas para algo que precisava ser centralizado.
+              Você abre 5 ferramentas diferentes — e mesmo assim não tem clareza.
             </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { emoji: "⏳", title: "Página publicada. Sumiu no vácuo.", text: "Você publica conteúdo e ele fica invisível por 2 a 6 semanas. Seu concorrente com indexação via API aparece no dia seguinte." },
-              { emoji: "📊", title: "Search Console em 10 abas diferentes.", text: "Você alterna entre GSC, GA4 e planilhas para montar uma visão que deveria estar em um único dashboard." },
-              { emoji: "🤖", title: "IA genérica que não sabe nada do seu site.", text: "Usa ChatGPT para análise de SEO, mas ela não tem seus dados reais. Te dá respostas genéricas e inúteis." },
-              { emoji: "📱", title: "Relatório para cliente: 4 horas para montar.", text: "Toda semana: exporta GSC, atualiza planilha, formata, manda. Um processo que drena seu tempo de estratégia." },
-              { emoji: "🔎", title: "Não sabe quais páginas não estão indexadas.", text: "Sem visibilidade centralizada. Você só descobre o problema quando alguém reclama que a página sumiu." },
-              { emoji: "💸", title: "Keywords na posição 11 — invisíveis para você.", text: "Você tem dezenas de keywords na zona de ouro (pos. 8-15). Um ajuste simples as colocaria no top 5. Mas você nem sabe que existem." },
+              { emoji: "📉", title: "O tráfego começa a cair.", text: "O ranking oscila. O cliente pergunta o que aconteceu. Você não tem uma resposta clara e imediata." },
+              { emoji: "📊", title: "5 ferramentas abertas. Nenhuma resposta.", text: "Você alterna entre GSC, GA4, planilhas e relatórios para montar uma visão que deveria estar em um único lugar." },
+              { emoji: "🤖", title: "IA genérica que não sabe nada do seu site.", text: "Usa ChatGPT para análise de SEO, mas ela não tem seus dados reais. Respostas genéricas e inúteis." },
+              { emoji: "⏳", title: "Página publicada. Google não viu.", text: "Você publica conteúdo e ele fica invisível por semanas. Seu concorrente aparece no dia seguinte." },
+              { emoji: "🔎", title: "Não sabe o que não está indexado.", text: "Sem visibilidade centralizada. Você só descobre o problema quando alguém reclama que a página sumiu." },
+              { emoji: "💸", title: "Keywords na zona de ouro — invisíveis.", text: "Você tem dezenas na posição 8–15 com centenas de impressões. Um ajuste as colocaria no top 5. Mas você nem sabe." },
             ].map((p, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
                 className="flex items-start gap-3.5 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5">
@@ -482,7 +486,7 @@ export default function LandingPage() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mt-10">
             <p className="text-xl font-black text-white mb-2">Tudo isso tem solução — e está em um único lugar.</p>
-            <p className="text-slate-400 text-sm mb-6">O Rankito centraliza, automatiza e entrega resultado direto no seu WhatsApp.</p>
+            <p className="text-slate-400 text-sm mb-6">Sem caça ao erro manual.</p>
             <ChevronDown className="w-7 h-7 text-violet-400 mx-auto animate-bounce" />
           </motion.div>
         </div>
@@ -495,16 +499,16 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-violet-200 dark:border-violet-700/50">
-              <Layers className="w-3.5 h-3.5" /> O que o Rankito faz pelo seu SEO
+              <Layers className="w-3.5 h-3.5" /> Um centro de diagnóstico para tudo que impacta seu SEO
             </div>
             <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4">
-              Uma plataforma.{" "}
+              O Rankito não substitui suas ferramentas.{" "}
               <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">
-                Três módulos que resolvem tudo.
+                Ele conecta todas elas.
               </span>
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-base max-w-2xl mx-auto">
-              Cada módulo resolve um problema real — do indexador automático ao relatório no WhatsApp.
+              Mostra onde está o problema, onde está a oportunidade, o que precisa de atenção imediata — e o que pode esperar.
             </p>
           </motion.div>
 
@@ -516,17 +520,17 @@ export default function LandingPage() {
                 <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-black px-3 py-1.5 rounded-full mb-5 self-start">
                   <Zap className="w-3 h-3" /> Indexador Automático
                 </div>
-                <h3 className="text-2xl font-black mb-3">Sua página publicada hoje. No Google amanhã.</h3>
+                <h3 className="text-2xl font-black mb-3">Pare de esperar o Google decidir quando olhar suas páginas.</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                  Sem o Rankito, o Google leva até 6 semanas para descobrir seu conteúdo. Com a Google Indexing API, você envia direto — e aparece em até 24h.
+                  Envio automático via API oficial. Você passa a saber exatamente o que está no índice e o que não está — e por quê.
                 </p>
                 <ul className="space-y-2.5">
                   {[
-                    "Envio via Google Indexing API oficial",
-                    "Agendamento diário automático",
-                    "Dashboard de status em tempo real",
-                    "Alertas de erros de indexação",
-                    "Relatório de cobertura do GSC",
+                    "Envio automático de URLs via API",
+                    "Fila inteligente com priorização",
+                    "Agendamento de indexação",
+                    "Monitoramento de status em tempo real",
+                    "Inspeção individual com diagnóstico",
                   ].map(f => (
                     <li key={f} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
                       <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0" /> {f}
@@ -551,15 +555,15 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-2xl font-black mb-3">Todos os dados do Google. Com IA analisando.</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                  Queries, posições, CTR, impressões, dispositivos e países — em um dashboard. A IA destaca onde está o dinheiro que você ainda não está capturando.
+                  Tudo o que importa em um único lugar. Você deixa de reagir tarde e passa a antecipar movimentos.
                 </p>
                 <ul className="space-y-2.5">
                   {[
-                    "Queries com cliques, CTR e posição por página",
+                    "Performance por páginas e consultas",
+                    "Histórico de posições e detecção de decay",
                     "Detecção automática de canibalização",
-                    "Histórico de posição por keyword",
-                    "Análise de search appearance",
-                    "IA identificando a Zona de Ouro (pos. 8-15)",
+                    "Cobertura de índice, erros e links",
+                    "Oportunidades de crescimento com IA",
                   ].map(f => (
                     <li key={f} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
                       <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" /> {f}
@@ -576,17 +580,17 @@ export default function LandingPage() {
                 <div className="inline-flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-black px-3 py-1.5 rounded-full mb-5 self-start">
                   <Bot className="w-3 h-3" /> Agentes IA & Orquestrador
                 </div>
-                <h3 className="text-2xl font-black mb-3">IA que lê seus dados reais — e age.</h3>
+                <h3 className="text-2xl font-black mb-3">Um estrategista olhando seus dados o tempo todo.</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                  Não é uma IA genérica. O agente se conecta ao seu GSC e GA4, analisa seus dados reais, identifica oportunidades e manda relatório no WhatsApp toda semana.
+                  Como ter um analista sênior monitorando seus ativos 24 horas por dia. Eles não executam mudanças — eles mostram o que está acontecendo e o que merece atenção.
                 </p>
                 <ul className="space-y-2.5">
                   {[
-                    "Chat com IA treinada nos seus dados reais",
-                    "Detecção automática de quedas de posição",
-                    "Alertas no WhatsApp em tempo real",
-                    "Relatório semanal automático no WhatsApp",
-                    "Orquestrador multi-agente 24/7",
+                    "Agentes especializados em SEO, técnico e conteúdo",
+                    "Análise contínua dos seus dados reais",
+                    "Geração de tarefas acionáveis e priorizadas",
+                    "Kanban de prioridades por projeto",
+                    "Relatórios multicanal — WhatsApp e e-mail",
                   ].map(f => (
                     <li key={f} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
                       <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" /> {f}
@@ -609,21 +613,18 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
             <div className="inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-emerald-200 dark:border-emerald-700/50">
-              <Timer className="w-3.5 h-3.5" /> Ativo em 10 minutos — sem código, sem técnico
+              <Timer className="w-3.5 h-3.5" /> Sem implementação complexa
             </div>
             <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4">
-              Configure uma vez.{" "}
-              <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                Receba resultado toda semana.
-              </span>
+              Como funciona
             </h2>
           </motion.div>
 
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { n: "1", icon: Settings, color: "from-violet-500 to-indigo-600", title: "Conecte o Google Search Console", desc: "Vincule via Service Account em menos de 5 minutos. Seguro e oficial.", time: "5 min" },
-              { n: "2", icon: Database, color: "from-indigo-500 to-blue-600", title: "Importe suas URLs", desc: "O Rankito importa as páginas do seu site e mostra o status de indexação de cada uma.", time: "2 min" },
-              { n: "3", icon: Bot, color: "from-violet-600 to-pink-600", title: "Ative os agentes", desc: "Configure o indexador automático e os agentes IA. A partir daí, você só recebe o relatório no WhatsApp.", time: "3 min" },
+              { n: "1", icon: Settings, color: "from-violet-500 to-indigo-600", title: "Conecte suas contas", desc: "Vincule o Google Search Console e o Analytics via Service Account em menos de 5 minutos. Seguro e oficial.", time: "5 min" },
+              { n: "2", icon: Brain, color: "from-indigo-500 to-blue-600", title: "Rankito analisa os dados", desc: "A IA cruza seus dados de indexação, posição, tráfego e comportamento — e identifica onde estão os problemas e oportunidades.", time: "automático" },
+              { n: "3", icon: Bell, color: "from-violet-600 to-pink-600", title: "Receba diagnósticos acionáveis", desc: "Você recebe no painel (e no WhatsApp) o que mudou, por que mudou e o que fazer primeiro — ordenado por impacto.", time: "contínuo" },
             ].map((step, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
                 className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
@@ -642,7 +643,7 @@ export default function LandingPage() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-10 text-center">
             <a href="/login" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-8 py-4 rounded-2xl text-base shadow-2xl shadow-violet-500/40 transition-all hover:scale-105 group">
-              <Rocket className="w-5 h-5" /> Começar agora — grátis por 7 dias
+              <Rocket className="w-5 h-5" /> Começar agora
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
           </motion.div>
@@ -709,9 +710,9 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-amber-200 dark:border-amber-800/30">
               <Clock className="w-3.5 h-3.5" /> Preços de lançamento — por tempo limitado
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black mb-3">Quanto custa ter o Google trabalhando para você?</h2>
+            <h2 className="text-4xl sm:text-5xl font-black mb-3">Quanto custa ter visibilidade total do seu SEO?</h2>
             <p className="text-slate-500 dark:text-slate-400 text-base max-w-xl mx-auto">
-              Uma posição a mais no Google pode valer <strong className="text-slate-800 dark:text-slate-200">R$10.000+ por mês</strong>. O Rankito Start começa em R$97.
+              Se você depende do Google para ganhar dinheiro, não pode operar sem visibilidade total. O Rankito Start começa em <strong className="text-slate-800 dark:text-slate-200">R$97/mês</strong>.
             </p>
           </motion.div>
 
@@ -853,26 +854,25 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto relative text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <div className="inline-flex items-center gap-2 bg-violet-900/50 text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-6 border border-violet-700/50">
-              <Flame className="w-3.5 h-3.5 text-orange-400" /> Cada dia sem indexação automática é tráfego perdido para o concorrente
+              <Flame className="w-3.5 h-3.5 text-orange-400" /> Rankito — clareza estratégica para quem não pode errar no SEO
             </div>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-5 text-white">
-              Pare de publicar{" "}
+              Entre no Rankito e pare de descobrir{" "}
               <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-                e rezar para o Google achar.
+                problemas tarde demais.
               </span>
             </h2>
             <p className="text-base text-slate-400 leading-relaxed mb-2 max-w-xl mx-auto">
-              Com o Rankito, você indexa com autoridade, monitora com dados reais e recebe relatório toda semana — por{" "}
-              <strong className="text-white">R$97/mês</strong>.
+              Se você depende do Google para ganhar dinheiro, não pode operar sem visibilidade total.
             </p>
             <p className="text-slate-500 mb-10 text-sm">
-              Uma hora de consultoria SEO custa R$300. O Rankito inteiro custa R$97/mês.
+              Comece agora. Sem implementação complexa.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
               <a href="/login"
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black px-10 py-5 rounded-2xl text-lg shadow-2xl shadow-violet-500/40 transition-all hover:scale-105 group">
-                <Rocket className="w-5 h-5" /> Começar agora — grátis por 7 dias
+                <Rocket className="w-5 h-5" /> Começar agora
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
@@ -897,7 +897,7 @@ export default function LandingPage() {
             <span className="font-black bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Rankito</span>
           </div>
           <p className="text-xs text-slate-500 text-center">
-            © 2025 Rankito. Indexação automática, SEO com IA e analytics completo em uma plataforma.
+            © 2025 Rankito. Clareza estratégica para quem não pode errar no SEO.
           </p>
           <div className="flex items-center gap-6 text-xs text-slate-500">
             <a href="/login" className="hover:text-violet-400 transition-colors">Entrar</a>
