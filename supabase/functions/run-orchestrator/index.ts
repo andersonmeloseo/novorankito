@@ -97,6 +97,7 @@ serve(async (req) => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
     
+    // ── Fetch GSC data ──
     const [seoData, overviewData, gscData] = await Promise.all([
       supabase.from("seo_metrics")
         .select("query, url, clicks, impressions, position, ctr")
@@ -112,22 +113,177 @@ serve(async (req) => {
         .limit(30),
     ]);
 
+    // ── Fetch GA4 data directly via API ──
+    let ga4Context = "### Google Analytics 4: sem conexão ou dados ainda não sincronizados.\n";
+    try {
+      const { data: ga4Conn } = await supabase
+        .from("ga4_connections")
+        .select("client_email, private_key, property_id")
+        .eq("project_id", project_id)
+        .maybeSingle();
+
+      if (ga4Conn?.property_id && ga4Conn?.client_email && ga4Conn?.private_key) {
+        // Build JWT + get access token
+        const createGA4JWT = async (creds: { client_email: string; private_key: string }) => {
+          const header = { alg: "RS256", typ: "JWT" };
+          const now = Math.floor(Date.now() / 1000);
+          const payload = {
+            iss: creds.client_email,
+            scope: "https://www.googleapis.com/auth/analytics.readonly",
+            aud: "https://oauth2.googleapis.com/token",
+            iat: now,
+            exp: now + 3600,
+          };
+          const encode = (obj: unknown) => btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          const unsignedToken = `${encode(header)}.${encode(payload)}`;
+          const pemContents = creds.private_key
+            .replace(/-----BEGIN PRIVATE KEY-----/, "")
+            .replace(/-----END PRIVATE KEY-----/, "")
+            .replace(/\n/g, "");
+          const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+          const key = await crypto.subtle.importKey("pkcs8", binaryDer, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+          const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsignedToken));
+          const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          return `${unsignedToken}.${signatureB64}`;
+        };
+
+        const jwt = await createGA4JWT({ client_email: ga4Conn.client_email, private_key: ga4Conn.private_key });
+        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+        });
+        const { access_token } = await tokenRes.json();
+
+        if (access_token) {
+          const ga4Url = `https://analyticsdata.googleapis.com/v1beta/properties/${ga4Conn.property_id}:runReport`;
+          const dateRanges = [{ startDate: "28daysAgo", endDate: "yesterday" }];
+
+          const parseGA4 = (report: any): any[] => {
+            if (!report?.rows) return [];
+            const dims = (report.dimensionHeaders || []).map((h: any) => h.name);
+            const mets = (report.metricHeaders || []).map((h: any) => h.name);
+            return report.rows.map((row: any) => {
+              const obj: any = {};
+              (row.dimensionValues || []).forEach((v: any, i: number) => { obj[dims[i]] = v.value; });
+              (row.metricValues || []).forEach((v: any, i: number) => { obj[mets[i]] = parseFloat(v.value) || 0; });
+              return obj;
+            });
+          };
+
+          const ga4Fetch = (body: any) => fetch(ga4Url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ ...body, dateRanges }),
+          }).then(r => r.json());
+
+          // Parallel GA4 requests: overview totals, channels, top pages, devices, countries
+          const [ga4Totals, ga4Channels, ga4TopPages, ga4Devices, ga4Countries, ga4Trend] = await Promise.all([
+            ga4Fetch({
+              dimensions: [],
+              metrics: [
+                { name: "totalUsers" }, { name: "newUsers" }, { name: "sessions" },
+                { name: "engagedSessions" }, { name: "engagementRate" },
+                { name: "averageSessionDuration" }, { name: "bounceRate" },
+                { name: "conversions" }, { name: "totalRevenue" }, { name: "screenPageViews" },
+              ],
+            }),
+            ga4Fetch({
+              dimensions: [{ name: "sessionDefaultChannelGroup" }],
+              metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "conversions" }, { name: "engagementRate" }],
+              orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+              limit: 10,
+            }),
+            ga4Fetch({
+              dimensions: [{ name: "pagePath" }],
+              metrics: [{ name: "screenPageViews" }, { name: "totalUsers" }, { name: "averageSessionDuration" }, { name: "engagementRate" }],
+              orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+              limit: 15,
+            }),
+            ga4Fetch({
+              dimensions: [{ name: "deviceCategory" }],
+              metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "engagementRate" }, { name: "bounceRate" }],
+              orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+              limit: 5,
+            }),
+            ga4Fetch({
+              dimensions: [{ name: "country" }],
+              metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "conversions" }],
+              orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+              limit: 10,
+            }),
+            ga4Fetch({
+              dimensions: [{ name: "date" }],
+              metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "conversions" }, { name: "totalRevenue" }],
+              orderBys: [{ metric: { metricName: "date" }, desc: false }],
+              limit: 28,
+            }),
+          ]);
+
+          const totals = parseGA4(ga4Totals)[0] || {};
+          const channels = parseGA4(ga4Channels);
+          const topPages = parseGA4(ga4TopPages);
+          const devices = parseGA4(ga4Devices);
+          const countries = parseGA4(ga4Countries);
+          const trend = parseGA4(ga4Trend);
+
+          // Calculate trend (last 7 days vs previous 7 days)
+          const recentSessions = trend.slice(-7).reduce((s: number, r: any) => s + (r.sessions || 0), 0);
+          const prevSessions = trend.slice(-14, -7).reduce((s: number, r: any) => s + (r.sessions || 0), 0);
+          const sessionsDelta = prevSessions > 0 ? (((recentSessions - prevSessions) / prevSessions) * 100).toFixed(1) : "N/A";
+
+          ga4Context = `
+### Google Analytics 4 — Últimos 28 dias (propriedade: ${ga4Conn.property_id})
+**Resumo Geral:**
+- Usuários totais: ${totals.totalUsers?.toLocaleString("pt-BR") || 0}
+- Novos usuários: ${totals.newUsers?.toLocaleString("pt-BR") || 0}
+- Sessões: ${totals.sessions?.toLocaleString("pt-BR") || 0}
+- Sessões engajadas: ${totals.engagedSessions?.toLocaleString("pt-BR") || 0}
+- Taxa de engajamento: ${((totals.engagementRate || 0) * 100).toFixed(1)}%
+- Taxa de rejeição: ${((totals.bounceRate || 0) * 100).toFixed(1)}%
+- Duração média de sessão: ${Math.floor((totals.averageSessionDuration || 0) / 60)}min ${Math.floor((totals.averageSessionDuration || 0) % 60)}s
+- Pageviews: ${totals.screenPageViews?.toLocaleString("pt-BR") || 0}
+- Conversões: ${totals.conversions?.toLocaleString("pt-BR") || 0}
+- Receita total: R$ ${(totals.totalRevenue || 0).toFixed(2)}
+- Tendência (últimos 7 vs 7 anteriores): ${sessionsDelta}% em sessões
+
+**Canais de Aquisição (top ${channels.length}):**
+${channels.map((c: any) => `- ${c.sessionDefaultChannelGroup || "Desconhecido"}: ${Math.round(c.sessions || 0)} sessões, ${Math.round(c.totalUsers || 0)} usuários, ${Math.round(c.conversions || 0)} conv., eng. ${((c.engagementRate || 0) * 100).toFixed(0)}%`).join("\n") || "Sem dados"}
+
+**Top Páginas por Visualizações:**
+${topPages.slice(0, 10).map((p: any) => `- ${p.pagePath || "/"}: ${Math.round(p.screenPageViews || 0)} views, ${Math.round(p.totalUsers || 0)} usuários, ${Math.floor((p.averageSessionDuration || 0) / 60)}min${Math.floor((p.averageSessionDuration || 0) % 60)}s médio`).join("\n") || "Sem dados"}
+
+**Dispositivos:**
+${devices.map((d: any) => `- ${d.deviceCategory}: ${Math.round(d.sessions || 0)} sessões, eng. ${((d.engagementRate || 0) * 100).toFixed(0)}%, rejeição ${((d.bounceRate || 0) * 100).toFixed(0)}%`).join("\n") || "Sem dados"}
+
+**Top Países:**
+${countries.slice(0, 5).map((c: any) => `- ${c.country}: ${Math.round(c.sessions || 0)} sessões, ${Math.round(c.totalUsers || 0)} usuários, ${Math.round(c.conversions || 0)} conv.`).join("\n") || "Sem dados"}
+`;
+        }
+      }
+    } catch (ga4Err) {
+      console.warn("GA4 fetch error in orchestrator:", ga4Err);
+      ga4Context = "### Google Analytics 4: erro ao buscar dados — verifique a conexão nas configurações do projeto.\n";
+    }
+
     const projectContext = `
 ## Dados do Projeto (contexto real) — ${todayStr}
-### Overview:
+### Overview GSC (Search Console):
 ${JSON.stringify(overviewData.data || {}, null, 2)}
 
-### Top Queries/Páginas (últimos 28 dias):
+### Top Queries/Páginas GSC (últimos 28 dias):
 ${(seoData.data || []).slice(0, 20).map((r: any) => 
   `- ${r.query || r.url}: ${r.clicks} cliques, ${r.impressions} impressões, pos ${r.position?.toFixed(1)}`
 ).join("\n")}
 
-### Queries com Alto Volume e Baixo CTR (oportunidades):
+### Queries GSC com Alto Volume e Baixo CTR (oportunidades):
 ${(gscData.data || [])
   .filter((r: any) => r.impressions > 100 && r.position < 20)
   .slice(0, 10)
   .map((r: any) => `- "${r.query}": ${r.impressions} impressões, pos ${r.position?.toFixed(1)}, ${r.clicks} cliques`)
   .join("\n") || "Sem dados disponíveis"}
+
+${ga4Context}
 `;
 
     // Create run record
