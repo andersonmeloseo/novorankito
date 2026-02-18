@@ -2196,6 +2196,56 @@ export type Database = {
         }
         Relationships: []
       }
+      team_hub_entries: {
+        Row: {
+          content: string | null
+          created_at: string
+          deployment_id: string
+          id: string
+          notify_whatsapp: boolean
+          owner_id: string
+          project_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          deployment_id: string
+          id?: string
+          notify_whatsapp?: boolean
+          owner_id: string
+          project_id?: string | null
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          deployment_id?: string
+          id?: string
+          notify_whatsapp?: boolean
+          owner_id?: string
+          project_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_hub_entries_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "orchestrator_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tracking_events: {
         Row: {
           browser: string | null

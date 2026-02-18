@@ -297,6 +297,8 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                     onClose={() => setWarRoomDepId(null)}
                     onRunNow={() => handleRunNow(dep)}
                     isRunning={runningId === dep.id}
+                    onRefresh={() => { refetchDeployments(); refetchRuns(); }}
+                    projectId={projectId}
                   />
                 )}
               </CardHeader>
