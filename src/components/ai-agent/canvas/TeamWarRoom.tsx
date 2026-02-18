@@ -1794,45 +1794,6 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [CEO_COMMANDS, roles, hierarchy, deployment.name]);
-    const cmd = cmdRaw.trim().toLowerCase();
-    if (!cmd) return;
-
-    const matched = Object.entries(CEO_COMMANDS).find(([key]) => cmd.includes(key));
-    const ceoRole = roles.find((r: any) => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
-    const ceoDisplayName = ceoRole?.name || ceoRole?.title || "CEO";
-    const ceoWhatsapp = ceoRole?.whatsapp;
-
-    if (!matched) {
-      const tip = `Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.icon} ${c.label}`).join("\n")}`;
-      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: tip, ts: Date.now() }]);
-      return;
-    }
-
-    setCeoCmdSending(true);
-    try {
-      const report = matched[1].response();
-      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
-
-      if (ceoWhatsapp) {
-        const { error } = await supabase.functions.invoke("send-workflow-notification", {
-          body: {
-            workflow_name: `${matched[1].icon} ${matched[1].label} — ${deployment.name}`,
-            report,
-            recipient_name: ceoDisplayName,
-            direct_send: { phones: [ceoWhatsapp] },
-          },
-        });
-        if (error) throw error;
-        toast.success(`📲 Enviado para ${ceoDisplayName} via WhatsApp`);
-      } else {
-        toast.info("Configure o WhatsApp do CEO no perfil para envio automático");
-      }
-    } catch (err: any) {
-      toast.error(`Erro ao processar comando: ${err.message}`);
-    } finally {
-      setCeoCmdSending(false);
-      setCeoCmdInput("");
-    }
 
   /* ─── Member management ─── */
   const handleFireMember = useCallback(async (roleId: string) => {
