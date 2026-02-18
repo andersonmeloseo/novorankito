@@ -8,20 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
   Loader2, ChevronDown, ChevronRight, Send, Plus, Clock,
-  AlertTriangle, Eye, Users,
+  AlertTriangle, MonitorPlay, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FREQUENCY_LABELS, PROFESSIONAL_ROLES, DEFAULT_HIERARCHY } from "./OrchestratorTemplates";
+import { FREQUENCY_LABELS } from "./OrchestratorTemplates";
 import { CreateOrchestratorDialog } from "./CreateOrchestratorDialog";
 import { CeoOnboardingChat } from "./CeoOnboardingChat";
-import type { Node, Edge } from "@xyflow/react";
-import { MarkerType } from "@xyflow/react";
-import type { CanvasNodeData } from "./types";
+import { TeamWarRoom } from "./TeamWarRoom";
 
 interface OrchestratorDashboardProps {
   projectId?: string;
-  onViewCanvas?: (nodes: Node[], edges: Edge[], name: string) => void;
+  onViewCanvas?: (nodes: any[], edges: any[], name: string) => void;
 }
 
 /** Translate raw AI error messages into user-friendly Portuguese */
@@ -45,6 +43,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
   const [runningId, setRunningId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [ceoOnboardingOpen, setCeoOnboardingOpen] = useState(false);
+  const [warRoomDepId, setWarRoomDepId] = useState<string | null>(null);
 
   const { data: deployments = [], refetch: refetchDeployments } = useQuery({
     queryKey: ["orchestrator-deployments", projectId],
@@ -95,6 +94,8 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
         toast.error(friendlyError(data.error));
       } else {
         toast.success("Execução iniciada!");
+        // Auto-open war room for this deployment
+        setWarRoomDepId(deployment.id);
       }
       refetchRuns();
       refetchDeployments();
@@ -126,148 +127,9 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
     if (error) toast.error(error.message);
     else {
       toast.success("Orquestrador removido");
+      if (warRoomDepId === id) setWarRoomDepId(null);
       refetchDeployments();
     }
-  };
-
-  const handleViewCanvas = (dep: any) => {
-    if (!onViewCanvas) return;
-    const roles = (dep.roles as any[]) || [];
-    const hierarchyMap = (dep.hierarchy as Record<string, string>) || {};
-    const ts = Date.now();
-    const HORIZONTAL_SPACING = 280;
-    const VERTICAL_SPACING = 180;
-
-    const nodeMap = new Map<string, Node>();
-    const allEdges: Edge[] = [];
-
-    // Compute hierarchy depth for each role
-    const getDepth = (roleId: string): number => {
-      if (roleId === "ceo") return 0;
-      const parentId = hierarchyMap[roleId];
-      if (!parentId) return 0;
-      return 1 + getDepth(parentId);
-    };
-
-    // Build children map
-    const childrenOf = new Map<string, any[]>();
-    roles.forEach((r: any) => {
-      if (r.id === "ceo") return;
-      const parentId = hierarchyMap[r.id] || "ceo";
-      if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
-      childrenOf.get(parentId)!.push(r);
-    });
-
-    // Find the latest run for this deployment to get statuses
-    const depRuns = runs.filter((r: any) => r.deployment_id === dep.id);
-    const lastRun = depRuns[0];
-    const agentResults = (lastRun?.agent_results as any[]) || [];
-    const resultByRole = new Map<string, any>();
-    agentResults.forEach((ar: any) => {
-      if (ar.role_id) resultByRole.set(ar.role_id, ar);
-    });
-
-    const positionSubtree = (roleId: string, depth: number, startX: number): number => {
-      const role = roles.find((r: any) => r.id === roleId);
-      if (!role) return startX;
-      const children = childrenOf.get(roleId) || [];
-      const runResult = resultByRole.get(roleId);
-
-      const executionStatus = runResult
-        ? (runResult.status === "success" ? "success" : "error")
-        : (lastRun?.status === "running" ? "waiting" : "idle");
-
-      if (children.length === 0) {
-        nodeMap.set(roleId, {
-          id: `orch-${ts}-${roleId}`,
-          type: "canvasNode",
-          position: { x: startX, y: depth * VERTICAL_SPACING + 50 },
-          data: {
-            label: `${role.emoji} ${role.title}`,
-            nodeType: "agent",
-            config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
-            hierarchyDepth: getDepth(roleId),
-            roleId: roleId,
-            executionStatus,
-            executionResult: runResult?.result ? String(runResult.result).slice(0, 200) : undefined,
-          } as CanvasNodeData,
-        });
-        return startX + HORIZONTAL_SPACING;
-      }
-
-      let currentX = startX;
-      children.forEach((child: any) => { currentX = positionSubtree(child.id, depth + 1, currentX); });
-
-      const firstChild = nodeMap.get(children[0].id)!;
-      const lastChild = nodeMap.get(children[children.length - 1].id)!;
-      const centerX = (firstChild.position.x + lastChild.position.x) / 2;
-
-      nodeMap.set(roleId, {
-        id: `orch-${ts}-${roleId}`,
-        type: "canvasNode",
-        position: { x: centerX, y: depth * VERTICAL_SPACING + 50 },
-        data: {
-          label: `${role.emoji} ${role.title}`,
-          nodeType: "agent",
-          config: { agentName: role.title, agentInstructions: role.instructions, emoji: role.emoji },
-          hierarchyDepth: getDepth(roleId),
-          roleId: roleId,
-          executionStatus,
-          executionResult: runResult?.result ? String(runResult.result).slice(0, 200) : undefined,
-        } as CanvasNodeData,
-      });
-
-      children.forEach((child: any) => {
-        const edgeStatus = resultByRole.get(roleId)?.status === "success";
-        allEdges.push({
-          id: `e-${ts}-${roleId}-${child.id}`,
-          source: `orch-${ts}-${roleId}`,
-          target: `orch-${ts}-${child.id}`,
-          animated: edgeStatus || lastRun?.status === "running",
-          style: {
-            stroke: edgeStatus ? "hsl(142, 71%, 45%)" : "hsl(var(--primary))",
-            strokeWidth: edgeStatus ? 3 : 2,
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: edgeStatus ? "hsl(142, 71%, 45%)" : "hsl(var(--primary))",
-          },
-          label: edgeStatus ? "✓ dados passados" : undefined,
-          labelStyle: { fontSize: 9, fill: "hsl(142, 71%, 45%)" },
-        });
-      });
-
-      return currentX;
-    };
-
-    const triggerNode: Node = {
-      id: `orch-${ts}-trigger`,
-      type: "canvasNode",
-      position: { x: 0, y: 0 },
-      data: {
-        label: "Iniciar Orquestrador",
-        nodeType: "trigger",
-        config: { triggerType: "manual" },
-        executionStatus: lastRun ? "success" : "idle",
-      } as CanvasNodeData,
-    };
-
-    positionSubtree("ceo", 1, 0);
-
-    const ceoNode = nodeMap.get("ceo");
-    if (ceoNode) {
-      triggerNode.position = { x: ceoNode.position.x, y: 0 };
-      allEdges.unshift({
-        id: `e-${ts}-trigger-ceo`,
-        source: triggerNode.id,
-        target: ceoNode.id,
-        animated: true,
-        style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--primary))" },
-      });
-    }
-
-    onViewCanvas([triggerNode, ...Array.from(nodeMap.values())], allEdges, `🏢 ${dep.name}`);
   };
 
   const handleGenerated = () => {
@@ -341,6 +203,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
           const lastRun = depRuns[0];
           const roles = (dep.roles as any[]) || [];
           const isExpanded = expandedDeployment === dep.id;
+          const isWarRoomOpen = warRoomDepId === dep.id;
           const allFailed = lastRun && (lastRun.agent_results as any[])?.every((r: any) => r.status === "error");
           const hasCreditsError = lastRun && JSON.stringify(lastRun.agent_results || "").includes("402");
           const hasRateLimit = lastRun && JSON.stringify(lastRun.agent_results || "").includes("429");
@@ -360,6 +223,11 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                         <Badge variant={dep.status === "active" ? "default" : "secondary"} className="text-[9px]">
                           {dep.status === "active" ? "Ativo" : "Pausado"}
                         </Badge>
+                        {lastRun?.status === "running" && (
+                          <Badge className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/30 gap-1">
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" /> Em execução
+                          </Badge>
+                        )}
                       </CardTitle>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         {roles.length} agentes · {dep.run_count || 0} execuções
@@ -368,16 +236,16 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                     </div>
                   </button>
                   <div className="flex items-center gap-1.5">
-                    {onViewCanvas && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => handleViewCanvas(dep)}
-                      >
-                        <Eye className="h-3 w-3" /> Canvas
-                      </Button>
-                    )}
+                    {/* War Room toggle */}
+                    <Button
+                      variant={isWarRoomOpen ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => setWarRoomDepId(isWarRoomOpen ? null : dep.id)}
+                    >
+                      <MonitorPlay className="h-3 w-3" />
+                      War Room
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -420,9 +288,20 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                     </Badge>
                   ))}
                 </div>
+
+                {/* War Room inline */}
+                {isWarRoomOpen && (
+                  <TeamWarRoom
+                    deployment={dep}
+                    runs={runs}
+                    onClose={() => setWarRoomDepId(null)}
+                    onRunNow={() => handleRunNow(dep)}
+                    isRunning={runningId === dep.id}
+                  />
+                )}
               </CardHeader>
 
-              {/* Expanded content - runs */}
+              {/* Expanded content - runs history */}
               {isExpanded && (
                 <CardContent className="px-5 pb-4 pt-0 space-y-3 border-t border-border">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase pt-3">Histórico de Execuções</p>
