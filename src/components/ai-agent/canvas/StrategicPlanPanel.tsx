@@ -61,7 +61,7 @@ export function StrategicPlanPanel({ deploymentId, projectId }: StrategicPlanPan
   const days = Object.entries(plan.daily_focus || {}) as [string, string][];
 
   return (
-    <ScrollArea className="max-h-[600px] pr-2">
+    <ScrollArea className="h-[480px] pr-2">
       <div className="space-y-4 pb-2">
         {/* Week theme */}
         <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
