@@ -619,7 +619,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
-                <Zap className="w-3 h-3" /> Módulo 1 — Indexador Automático
+                <Zap className="w-3 h-3" /> Indexação Automática
               </div>
               <h2 className="text-3xl font-black mb-4">Sua página publicada hoje aparece no Google amanhã</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
@@ -657,7 +657,7 @@ export default function LandingPage() {
             </motion.div>
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2">
               <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
-                <Search className="w-3 h-3" /> Módulo 2 — SEO & Google Search Console
+                <Search className="w-3 h-3" /> SEO & Google Search Console
               </div>
               <h2 className="text-3xl font-black mb-4">Todos os dados do Google. Em um dashboard. Com IA analisando.</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
@@ -690,7 +690,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <div className="inline-flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
-                <Bot className="w-3 h-3" /> Módulo 3 — Agentes de IA + Orquestrador
+                <Bot className="w-3 h-3" /> Agentes de IA & Orquestrador
               </div>
               <h2 className="text-3xl font-black mb-4">IA que lê seus dados reais e age — não uma IA genérica</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
