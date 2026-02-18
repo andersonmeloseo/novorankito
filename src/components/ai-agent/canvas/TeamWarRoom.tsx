@@ -1114,7 +1114,18 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   }, [roles, hierarchy, deployment.id, onRefresh]);
 
   const handleHireMember = useCallback(async (roleData: { title: string; emoji: string; department: string; instructions: string; skills: string[] }, parentId: string) => {
-    const newRole = { id: `role-${Date.now()}`, ...roleData, routine: { frequency: "daily" } };
+    const newRole = {
+      id: `role-${Date.now()}`,
+      ...roleData,
+      skills: Array.isArray(roleData.skills) ? roleData.skills : [],
+      routine: {
+        frequency: "daily",
+        tasks: ["Análise geral da área", "Geração de relatório de resultados"],
+        dataSources: ["Dados do projeto", "Métricas de performance"],
+        outputs: ["Relatório detalhado com ações recomendadas"],
+        autonomousActions: ["Análise e recomendações estratégicas"],
+      },
+    };
     const updatedRoles = [...roles, newRole];
     const updatedHierarchy = { ...hierarchy, [newRole.id]: parentId };
     const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any, hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
