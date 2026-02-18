@@ -2345,17 +2345,17 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
               <div className="flex flex-col border-l border-border h-full">
                 {/* Tabs: Team Chat + CEO Commands */}
                 <Tabs defaultValue="cmd" className="flex flex-col h-full">
-                  <div className="px-2 pt-2 shrink-0 border-b border-border bg-card/50">
-                    <TabsList className="h-6 gap-0.5 bg-transparent p-0">
-                      <TabsTrigger value="cmd" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                        <Brain className="h-2.5 w-2.5" /> Comandos CEO
-                      </TabsTrigger>
-                      <TabsTrigger value="chat" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                        <MessageSquare className="h-2.5 w-2.5" /> Chat Equipe
-                        {messages.length > 0 && <span className="ml-0.5 text-[7px] bg-primary/20 text-primary rounded-full px-1">{messages.length}</span>}
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
+                   <div className="px-2 pt-2 shrink-0 border-b border-border bg-card/50">
+                     <TabsList className="h-8 gap-1 bg-transparent p-0">
+                       <TabsTrigger value="cmd" className="h-7 text-[11px] px-3 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1.5">
+                         <Brain className="h-3.5 w-3.5" /> Comandos CEO
+                       </TabsTrigger>
+                       <TabsTrigger value="chat" className="h-7 text-[11px] px-3 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1.5">
+                         <MessageSquare className="h-3.5 w-3.5" /> Chat Equipe
+                         {messages.length > 0 && <span className="ml-0.5 text-[8px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                       </TabsTrigger>
+                     </TabsList>
+                   </div>
 
                   {/* CEO Commands Tab */}
                    <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
@@ -2380,6 +2380,20 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                        </div>
                      </div>
 
+                     {/* History header */}
+                     <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0 bg-muted/5">
+                       <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Histórico</span>
+                       {ceoCmdHistory.length > 0 && (
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           className="h-6 text-[9px] gap-1 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                           onClick={() => setCeoCmdHistory([])}
+                         >
+                           <Trash2 className="h-3 w-3" /> Limpar chat
+                         </Button>
+                       )}
+                     </div>
                      {/* History */}
                      <ScrollArea className="flex-1 px-3 py-2">
                        {ceoCmdHistory.length === 0 && (
