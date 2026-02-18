@@ -16,6 +16,10 @@ import {
   addEdge,
   type Connection,
   type OnConnectEnd,
+  type EdgeProps,
+  BaseEdge,
+  getSmoothStepPath,
+  EdgeLabelRenderer,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,39 +30,84 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   CheckCircle2, XCircle, Loader2, MessageSquare, X, Maximize2, Minimize2,
-  Send, Zap, Users, LayoutDashboard, UserPlus, TrendingUp,
-  FileText, Target, Lightbulb, HelpCircle, ListChecks, Plus, Star,
+  Send, Zap, Users, LayoutDashboard, UserPlus, TrendingUp, TrendingDown,
+  FileText, Star, Briefcase, Award, Clock, PalmtreeIcon, History,
+  ChevronDown, ChevronRight, Trash2, Plus, Brain, Target, BarChart3,
+  Hammer, Palette, ShoppingCart, Megaphone, HeartHandshake, Code2,
+  DollarSign, Scale, Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TeamHubTab } from "./TeamHubTab";
 
-/* ─── Role suggestions by hierarchy depth ─────────────────── */
-const ROLE_SUGGESTIONS: Record<number, Array<{ title: string; emoji: string; department: string; instructions: string }>> = {
-  0: [
-    { title: "Gerente de SEO", emoji: "🔍", department: "SEO", instructions: "Você é o Gerente de SEO. Coordene estratégias de SEO, analise dados do Search Console e reporte diretamente ao CEO com insights estratégicos e resultados de posicionamento." },
-    { title: "Gerente de Analytics", emoji: "📊", department: "Analytics", instructions: "Você é o Gerente de Analytics. Analise dados de desempenho do projeto no GA4, identifique tendências e apresente relatórios detalhados ao CEO." },
-    { title: "Gerente de Conteúdo", emoji: "✍️", department: "Conteúdo", instructions: "Você é o Gerente de Conteúdo. Planeje e analise estratégia de conteúdo. Reporte ao CEO com métricas de engajamento e sugestões de melhoria." },
-    { title: "Gerente de Growth", emoji: "🚀", department: "Growth", instructions: "Você é o Gerente de Growth. Identifique oportunidades de crescimento, analise dados de aquisição e reporte estratégias de crescimento ao CEO." },
-    { title: "Gerente de Performance", emoji: "⚡", department: "Performance", instructions: "Você é o Gerente de Performance. Monitore métricas de performance do site, identifique gargalos e reporte ações de melhoria ao CEO." },
-  ],
-  1: [
-    { title: "Especialista SEO On-Page", emoji: "📝", department: "SEO", instructions: "Você é o Especialista em SEO On-Page. Analise títulos, meta descriptions, headings e conteúdo. Reporte ao seu gerente com oportunidades de otimização." },
-    { title: "Especialista Link Building", emoji: "🔗", department: "SEO", instructions: "Você é o Especialista em Link Building. Analise perfil de backlinks, identifique oportunidades e riscos. Reporte estratégias ao seu gerente." },
-    { title: "Analista de Dados", emoji: "📈", department: "Analytics", instructions: "Você é o Analista de Dados. Analise profundamente os dados do projeto, identifique padrões e anomalias. Reporte insights ao seu gerente." },
-    { title: "Especialista GA4", emoji: "📉", department: "Analytics", instructions: "Você é o Especialista em GA4. Monitore dados do Google Analytics 4, analise eventos e metas. Reporte métricas-chave ao seu gerente." },
-    { title: "Copywriter Estratégico", emoji: "✏️", department: "Conteúdo", instructions: "Você é o Copywriter Estratégico. Analise o conteúdo existente, identifique oportunidades de melhoria de copy e CTAs. Reporte sugestões ao seu gerente." },
-    { title: "Especialista CRO", emoji: "🎯", department: "CRO", instructions: "Você é o Especialista em CRO. Analise taxas de conversão, identifique pontos de fricção e sugira testes A/B. Reporte ao seu gerente com hipóteses." },
-    { title: "Especialista em Ads", emoji: "📣", department: "Ads", instructions: "Você é o Especialista em Ads. Analise campanhas pagas, ROAS e métricas. Reporte otimizações ao seu gerente." },
-    { title: "Especialista E-commerce", emoji: "🛒", department: "E-commerce", instructions: "Você é o Especialista em E-commerce. Analise métricas de vendas e abandono de carrinho. Reporte insights ao seu gerente." },
-  ],
-  2: [
-    { title: "Analista Junior", emoji: "🎓", department: "Geral", instructions: "Você é um Analista Junior. Execute análises básicas, colete dados e reporte ao seu superior com findings organizados." },
-    { title: "Assistente de Conteúdo", emoji: "📋", department: "Conteúdo", instructions: "Você é o Assistente de Conteúdo. Auxilie com análise de conteúdo e pesquisa de palavras-chave. Reporte ao seu superior." },
-    { title: "Monitor de SEO", emoji: "🔎", department: "SEO", instructions: "Você é o Monitor de SEO. Acompanhe rankings e alertas de erros técnicos. Reporte irregularidades ao seu superior." },
-  ],
+/* ─── Extended Role Suggestions ─────────────────────────────── */
+const ROLE_CATALOG: Array<{ title: string; emoji: string; department: string; category: string; instructions: string; skills: string[] }> = [
+  // C-Suite / Diretoria
+  { title: "CEO / Diretor", emoji: "👔", department: "Diretoria", category: "C-Suite", skills: ["Visão estratégica", "OKRs", "Gestão"], instructions: "Você é o CEO da agência. Defina visão estratégica, coordene equipes, tome decisões de alto nível e gere relatórios executivos." },
+  { title: "COO / Dir. Operações", emoji: "⚙️", department: "Diretoria", category: "C-Suite", skills: ["Operações", "Processos", "Eficiência"], instructions: "Você é o COO. Otimize processos operacionais, garanta eficiência entre departamentos e reporte ao CEO." },
+  { title: "CFO / Dir. Financeiro", emoji: "💼", department: "Financeiro", category: "C-Suite", skills: ["Finanças", "Budget", "ROI"], instructions: "Você é o CFO. Analise KPIs financeiros, controle custos, monitore receita e reporte saúde financeira ao CEO." },
+  { title: "CMO / Dir. Marketing", emoji: "📢", department: "Marketing", category: "C-Suite", skills: ["Marketing", "Branding", "Aquisição"], instructions: "Você é o CMO. Lidere estratégia de marketing, campanhas de aquisição, branding e reporte ao CEO." },
+  { title: "CTO / Dir. Tecnologia", emoji: "💻", department: "Tecnologia", category: "C-Suite", skills: ["Tech Stack", "Arquitetura", "Performance"], instructions: "Você é o CTO. Supervisione a infraestrutura técnica, performance, segurança e evolução tecnológica." },
+  // Comercial / Vendas
+  { title: "Head Comercial", emoji: "🤝", department: "Comercial", category: "Comercial", skills: ["Vendas", "Negociação", "Pipeline"], instructions: "Você é o Head Comercial. Gerencie pipeline de vendas, analise oportunidades de negócio e reporte ao CEO." },
+  { title: "Gerente de Vendas", emoji: "📈", department: "Comercial", category: "Comercial", skills: ["CRM", "Prospecção", "Closing"], instructions: "Você é o Gerente de Vendas. Analise pipeline, gerencie oportunidades e reporte métricas de vendas." },
+  { title: "Representante Comercial", emoji: "📞", department: "Comercial", category: "Comercial", skills: ["Prospecção", "Follow-up", "Proposta"], instructions: "Você é o Representante Comercial. Execute prospecção, prepare propostas e acompanhe negociações." },
+  { title: "Analista de CRM", emoji: "🗃️", department: "Comercial", category: "Comercial", skills: ["CRM", "Dados", "Automação"], instructions: "Você é o Analista de CRM. Mantenha base de dados de clientes, segmente e analise oportunidades." },
+  // Marketing
+  { title: "Head de Marketing", emoji: "🎯", department: "Marketing", category: "Marketing", skills: ["Estratégia", "Brand", "Campanhas"], instructions: "Você é o Head de Marketing. Coordene todas as estratégias de marketing, branding e aquisição." },
+  { title: "Gerente de Marketing", emoji: "📣", department: "Marketing", category: "Marketing", skills: ["Planejamento", "Campanhas", "ROI"], instructions: "Você é o Gerente de Marketing. Planeje e execute campanhas, analise resultados e otimize investimentos." },
+  { title: "Gerente de Growth", emoji: "🚀", department: "Growth", category: "Marketing", skills: ["Growth Hacking", "A/B Testing", "Funil"], instructions: "Você é o Gerente de Growth. Identifique alavancas de crescimento, teste hipóteses e reporte ao Head." },
+  { title: "Social Media Manager", emoji: "📱", department: "Social", category: "Marketing", skills: ["Instagram", "LinkedIn", "Engajamento"], instructions: "Você é o Social Media Manager. Crie estratégia social, analise engajamento e distribua conteúdos." },
+  { title: "Especialista em Ads", emoji: "📣", department: "Ads", category: "Marketing", skills: ["Google Ads", "Meta Ads", "ROAS"], instructions: "Você é o Especialista em Ads. Gerencie campanhas pagas, otimize ROAS e reporte performance." },
+  { title: "Email Marketing", emoji: "📧", department: "Marketing", category: "Marketing", skills: ["Automação", "Segmentação", "Taxa abertura"], instructions: "Você é o Especialista em Email Marketing. Crie fluxos de automação, segmente audiências e analise resultados." },
+  { title: "Analista de Marketing", emoji: "🔎", department: "Marketing", category: "Marketing", skills: ["Analytics", "Relatórios", "KPIs"], instructions: "Você é o Analista de Marketing. Coleta e analisa dados de campanhas, gera relatórios e identifica oportunidades." },
+  // SEO
+  { title: "Gerente de SEO", emoji: "🔍", department: "SEO", category: "SEO", skills: ["Estratégia SEO", "Keyword Research", "Link Building"], instructions: "Você é o Gerente de SEO. Defina estratégia, coordene analistas e reporte ao Head/CEO." },
+  { title: "Analista de SEO", emoji: "📊", department: "SEO", category: "SEO", skills: ["Auditoria Técnica", "On-page", "Schema"], instructions: "Você é o Analista de SEO. Execute auditorias técnicas, otimize páginas e monitore rankings." },
+  { title: "Especialista Link Building", emoji: "🔗", department: "SEO", category: "SEO", skills: ["Outreach", "Digital PR", "Backlinks"], instructions: "Você é o Especialista em Link Building. Prospecte backlinks, execute outreach e reporte autoridade." },
+  { title: "Estrategista de Conteúdo", emoji: "✍️", department: "Conteúdo", category: "SEO", skills: ["Calendário editorial", "Content gaps", "E-E-A-T"], instructions: "Você é o Estrategista de Conteúdo. Crie calendário editorial, identifique gaps e priorize otimizações." },
+  { title: "Especialista CRO", emoji: "🎯", department: "CRO", category: "SEO", skills: ["A/B Test", "Heatmap", "Conversão"], instructions: "Você é o Especialista em CRO. Analise taxas de conversão, proponha testes e reporte melhorias." },
+  // Analytics / Dados
+  { title: "Gerente de Analytics", emoji: "📉", department: "Analytics", category: "Analytics", skills: ["GA4", "GTM", "Data Studio"], instructions: "Você é o Gerente de Analytics. Configure tracking, analise dados e suporte todas as equipes." },
+  { title: "Analista de Dados", emoji: "🧮", department: "Analytics", category: "Analytics", skills: ["SQL", "BI", "Visualização"], instructions: "Você é o Analista de Dados. Colete, processe e visualize dados para suportar decisões estratégicas." },
+  { title: "Cientista de Dados", emoji: "🔬", department: "Analytics", category: "Analytics", skills: ["ML", "Estatística", "Previsão"], instructions: "Você é o Cientista de Dados. Construa modelos preditivos e identifique padrões nos dados." },
+  // RH / Pessoas
+  { title: "Head de RH", emoji: "👥", department: "RH", category: "RH", skills: ["Cultura", "Recrutamento", "Desenvolvimento"], instructions: "Você é o Head de RH. Gerencie cultura, recrutamento e desenvolvimento de pessoas." },
+  { title: "Gerente de RH", emoji: "🧑‍💼", department: "RH", category: "RH", skills: ["Onboarding", "Retenção", "Performance"], instructions: "Você é o Gerente de RH. Coordene processos de onboarding, avaliações e bem-estar da equipe." },
+  { title: "Analista de RH", emoji: "📋", department: "RH", category: "RH", skills: ["Recrutamento", "Benefícios", "Treinamento"], instructions: "Você é o Analista de RH. Apoie processos de seleção, integração e treinamento de colaboradores." },
+  // Produto / UX
+  { title: "Head de Produto", emoji: "🧩", department: "Produto", category: "Produto", skills: ["Roadmap", "OKRs", "Discovery"], instructions: "Você é o Head de Produto. Defina roadmap, priorize features e alinhe produto com negócio." },
+  { title: "Product Manager", emoji: "📌", department: "Produto", category: "Produto", skills: ["Backlog", "Stakeholders", "Métricas"], instructions: "Você é o PM. Gerencie backlog, coordene desenvolvimento e meça impacto de features." },
+  { title: "UX Designer", emoji: "🎨", department: "Design", category: "Produto", skills: ["UI/UX", "Wireframe", "Pesquisa"], instructions: "Você é o UX Designer. Crie interfaces centradas no usuário e otimize experiência de conversão." },
+  { title: "Designer Gráfico", emoji: "🖌️", department: "Design", category: "Produto", skills: ["Identidade visual", "Criativos", "Branding"], instructions: "Você é o Designer Gráfico. Crie materiais visuais, criativos para Ads e mantenha consistência de marca." },
+  // CS / Suporte
+  { title: "Head de CS", emoji: "⭐", department: "Customer Success", category: "CS", skills: ["NPS", "Churn", "Health Score"], instructions: "Você é o Head de CS. Lidere estratégia de retenção, monitore NPS e aumente receita por cliente." },
+  { title: "Gerente de CS", emoji: "🤝", department: "Customer Success", category: "CS", skills: ["Onboarding", "Expansão", "Satisfação"], instructions: "Você é o Gerente de CS. Garanta sucesso dos clientes, identifique churn risk e expanda contas." },
+  { title: "Analista de CS", emoji: "💬", department: "Customer Success", category: "CS", skills: ["Suporte", "Follow-up", "Relatórios"], instructions: "Você é o Analista de CS. Atenda clientes, colete feedback e reporte health score da carteira." },
+  // Financeiro / Jurídico
+  { title: "Controller Financeiro", emoji: "📊", department: "Financeiro", category: "Financeiro", skills: ["Controle", "DRE", "Fluxo de Caixa"], instructions: "Você é o Controller. Monitore DRE, fluxo de caixa, custos e reporte ao CFO." },
+  { title: "Analista Financeiro", emoji: "💰", department: "Financeiro", category: "Financeiro", skills: ["Budget", "Análise", "Previsão"], instructions: "Você é o Analista Financeiro. Controle orçamento, preveja receitas e identifique oportunidades de economia." },
+  { title: "Analista Jurídico", emoji: "⚖️", department: "Jurídico", category: "Jurídico", skills: ["Contratos", "Compliance", "LGPD"], instructions: "Você é o Analista Jurídico. Revise contratos, garanta compliance e monitore obrigações legais." },
+  // Tecnologia
+  { title: "Dev Full Stack", emoji: "💻", department: "Tecnologia", category: "Tech", skills: ["Frontend", "Backend", "APIs"], instructions: "Você é o Dev Full Stack. Implemente features, integre APIs e otimize performance técnica." },
+  { title: "Dev Front-end", emoji: "🖥️", department: "Tecnologia", category: "Tech", skills: ["React", "CSS", "Performance"], instructions: "Você é o Dev Front-end. Desenvolva interfaces, otimize Core Web Vitals e implemente UX." },
+  { title: "Dev Back-end", emoji: "⚙️", department: "Tecnologia", category: "Tech", skills: ["APIs", "Banco de dados", "Segurança"], instructions: "Você é o Dev Back-end. Construa APIs, gerencie banco de dados e garanta segurança." },
+  { title: "DevOps / Infra", emoji: "☁️", department: "Tecnologia", category: "Tech", skills: ["Cloud", "CI/CD", "Monitoramento"], instructions: "Você é o DevOps. Gerencie infraestrutura, automatize deploys e monitore uptime." },
+  // Projetos
+  { title: "Gerente de Projetos", emoji: "📋", department: "Projetos", category: "Gestão", skills: ["Scrum", "Cronograma", "Riscos"], instructions: "Você é o Gerente de Projetos. Organize sprints, monitore entregas e identifique bloqueios." },
+  { title: "Scrum Master", emoji: "🔄", department: "Projetos", category: "Gestão", skills: ["Ágil", "Cerimônias", "Impedimentos"], instructions: "Você é o Scrum Master. Facilite cerimônias ágeis, remova impedimentos e aumente velocity." },
+  { title: "Analista de PMO", emoji: "📐", department: "Projetos", category: "Gestão", skills: ["Portfólio", "Governança", "Relatórios"], instructions: "Você é o Analista de PMO. Monitore portfólio de projetos, garanta governança e reporte ao CPO." },
+];
+
+const ROLE_CATEGORIES = ["C-Suite", "Comercial", "Marketing", "SEO", "Analytics", "RH", "Produto", "CS", "Financeiro", "Tech", "Gestão"];
+
+const ROLE_SUGGESTIONS_BY_DEPTH: Record<number, string[]> = {
+  0: ["C-Suite", "Comercial", "Marketing", "SEO", "Analytics", "CS"],
+  1: ["Marketing", "SEO", "Analytics", "Comercial", "Produto", "RH"],
+  2: ["SEO", "Analytics", "Marketing", "CS", "Tech", "Gestão"],
 };
 
 /* ─── Types ────────────────────────────────────────────────── */
@@ -67,11 +116,15 @@ interface AgentNodeData {
   title: string;
   emoji: string;
   department: string;
-  status: "idle" | "waiting" | "running" | "success" | "error";
+  status: "idle" | "waiting" | "running" | "success" | "error" | "vacation";
   result?: string;
   onDelete?: (id: string) => void;
   onPromote?: (id: string) => void;
+  onDemote?: (id: string) => void;
+  onVacation?: (id: string) => void;
+  onClick?: (id: string) => void;
   isEditable?: boolean;
+  isOnVacation?: boolean;
 }
 
 interface ConvoMessage {
@@ -94,6 +147,7 @@ const STATUS_RING: Record<string, string> = {
   running: "border-blue-400 shadow-blue-400/40 shadow-lg",
   success: "border-emerald-500 shadow-emerald-500/30 shadow-md",
   error: "border-destructive shadow-destructive/30 shadow-md",
+  vacation: "border-orange-400/60",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -102,6 +156,7 @@ const STATUS_DOT: Record<string, string> = {
   running: "bg-blue-400",
   success: "bg-emerald-500",
   error: "bg-destructive",
+  vacation: "bg-orange-400",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -110,6 +165,7 @@ const STATUS_LABEL: Record<string, string> = {
   running: "executando…",
   success: "✓ concluído",
   error: "✗ falhou",
+  vacation: "🌴 férias",
 };
 
 const STATUS_LABEL_COLOR: Record<string, string> = {
@@ -118,22 +174,65 @@ const STATUS_LABEL_COLOR: Record<string, string> = {
   running: "text-blue-400",
   success: "text-emerald-400",
   error: "text-destructive",
+  vacation: "text-orange-400",
 };
+
+/* ─── Deletable Edge ───────────────────────────────────────── */
+function DeletableEdge({
+  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+  style, markerEnd, label, labelStyle, labelBgStyle, data,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+  });
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd as any} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: "absolute",
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: "all",
+          }}
+          className="nodrag nopan group"
+        >
+          {label ? (
+            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-card border border-border/80 text-emerald-400 shadow-sm">
+              {label as string}
+            </span>
+          ) : (
+            <button
+              onClick={() => (data as any)?.onDelete?.(id)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-sm hover:scale-110"
+              title="Remover conexão"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
 
 /* ─── Agent Node ───────────────────────────────────────────── */
 const AgentNode = memo(({ data, selected }: NodeProps) => {
   const d = data as unknown as AgentNodeData;
   const [hovered, setHovered] = useState(false);
-  const status = d.status || "idle";
+  const status = d.isOnVacation ? "vacation" : (d.status || "idle");
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => d.onClick?.(d.roleId)}
       className={cn(
-        "relative flex flex-col items-center gap-2 px-3 py-3 rounded-2xl border-2 bg-card min-w-[110px] max-w-[130px] cursor-grab active:cursor-grabbing transition-all duration-300",
+        "relative flex flex-col items-center gap-2 px-3 py-3 rounded-2xl border-2 bg-card min-w-[120px] max-w-[140px] cursor-pointer active:cursor-grabbing transition-all duration-300",
         STATUS_RING[status],
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        status === "vacation" && "opacity-75",
       )}
     >
       {/* Pulsing glow ring for running */}
@@ -141,39 +240,69 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
         <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/40 animate-ping pointer-events-none" />
       )}
 
-      {/* Delete button (hover, not CEO) */}
-      {hovered && d.isEditable && d.onDelete && (
-        <button
-          onClick={(e) => { e.stopPropagation(); d.onDelete!(d.roleId); }}
-          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center z-10 hover:scale-110 transition-transform shadow-sm"
-          title="Demitir membro"
-        >
-          <X className="h-3 w-3" />
-        </button>
+      {/* Action buttons on hover */}
+      {hovered && d.isEditable && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg z-20 whitespace-nowrap">
+          {d.onPromote && (
+            <button
+              onClick={(e) => { e.stopPropagation(); d.onPromote!(d.roleId); }}
+              className="h-5 w-5 rounded-full bg-amber-500/80 text-white flex items-center justify-center hover:bg-amber-500 transition-colors"
+              title="Promover"
+            >
+              <TrendingUp className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {d.onDemote && (
+            <button
+              onClick={(e) => { e.stopPropagation(); d.onDemote!(d.roleId); }}
+              className="h-5 w-5 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
+              title="Regredir"
+            >
+              <TrendingDown className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {d.onVacation && (
+            <button
+              onClick={(e) => { e.stopPropagation(); d.onVacation!(d.roleId); }}
+              className={cn(
+                "h-5 w-5 rounded-full flex items-center justify-center transition-colors",
+                d.isOnVacation
+                  ? "bg-emerald-500/80 hover:bg-emerald-500 text-white"
+                  : "bg-orange-400/80 hover:bg-orange-400 text-white"
+              )}
+              title={d.isOnVacation ? "Retornar de férias" : "Colocar em férias"}
+            >
+              <PalmtreeIcon className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {d.onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); d.onDelete!(d.roleId); }}
+              className="h-5 w-5 rounded-full bg-destructive/80 text-white flex items-center justify-center hover:bg-destructive transition-colors"
+              title="Demitir"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Promote button (hover) */}
-      {hovered && d.isEditable && d.onPromote && (
-        <button
-          onClick={(e) => { e.stopPropagation(); d.onPromote!(d.roleId); }}
-          className="absolute -top-2 -left-2 h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center z-10 hover:scale-110 transition-transform shadow-sm"
-          title="Promover membro (subir na hierarquia)"
-        >
-          <Star className="h-2.5 w-2.5" />
-        </button>
-      )}
+      {/* ALL SIDE HANDLES */}
+      <Handle type="target" position={Position.Top} id="top-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
+      <Handle type="source" position={Position.Top} id="top-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[15%]" />
+      <Handle type="target" position={Position.Left} id="left-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
+      <Handle type="source" position={Position.Left} id="left-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[65%]" />
+      <Handle type="target" position={Position.Right} id="right-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
+      <Handle type="source" position={Position.Right} id="right-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background !top-[65%]" />
+      <Handle type="target" position={Position.Bottom} id="bottom-target" className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
+      <Handle type="source" position={Position.Bottom} id="bottom-source" className="!w-2.5 !h-2.5 !bg-primary/60 !border-2 !border-background" />
 
-      {/* TOP HANDLE */}
-      <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="target" id="left" position={Position.Left} className="!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-2 !border-background" />
-      <Handle type="source" id="right" position={Position.Right} className="!w-2.5 !h-2.5 !bg-primary/70 !border-2 !border-background" />
-
-      {/* Avatar circle */}
+      {/* Avatar */}
       <div className={cn(
         "relative h-12 w-12 rounded-full border-2 flex items-center justify-center text-2xl transition-all duration-300 bg-card",
         STATUS_RING[status],
       )}>
-        {d.emoji}
+        {status === "vacation" ? "🌴" : d.emoji}
         <span className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-colors", STATUS_DOT[status])} />
         {status === "running" && (
           <div className="absolute inset-0 rounded-full flex items-center justify-center bg-blue-500/10">
@@ -182,7 +311,7 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
         )}
       </div>
 
-      {/* Name */}
+      {/* Name & Status */}
       <div className="text-center space-y-0.5">
         <p className="text-[10px] font-bold leading-tight line-clamp-2">{d.title}</p>
         <p className="text-[8px] text-muted-foreground">{d.department}</p>
@@ -199,14 +328,289 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
           <p className="text-[7px] text-destructive line-clamp-2">{d.result.slice(0, 80)}</p>
         </div>
       )}
-
-      <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !bg-primary/70 !border-2 !border-background" />
     </div>
   );
 });
 AgentNode.displayName = "AgentNode";
 
 const nodeTypes = { agentNode: AgentNode };
+const edgeTypes = { deletable: DeletableEdge };
+
+/* ─── Employee Profile Dialog ─────────────────────────────── */
+interface EmployeeProfileDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  role: any;
+  agentResult?: any;
+  runs: any[];
+  hierarchy: Record<string, string>;
+  allRoles: any[];
+  onFire: (id: string) => void;
+  onPromote: (id: string) => void;
+  onDemote: (id: string) => void;
+  onVacation: (id: string) => void;
+  isOnVacation?: boolean;
+}
+
+function EmployeeProfileDialog({
+  open, onOpenChange, role, agentResult, runs, hierarchy, allRoles,
+  onFire, onPromote, onDemote, onVacation, isOnVacation,
+}: EmployeeProfileDialogProps) {
+  if (!role) return null;
+
+  const parentId = hierarchy[role.id];
+  const parentRole = parentId ? allRoles.find((r: any) => r.id === parentId) : null;
+  const directReports = allRoles.filter((r: any) => hierarchy[r.id] === role.id);
+
+  // Build history from all runs
+  const history = runs
+    .map(run => {
+      const ar = ((run.agent_results as any[]) || []).find((r: any) => r.role_id === role.id);
+      return ar ? { run, ar } : null;
+    })
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const successRate = history.length > 0
+    ? Math.round(history.filter((h: any) => h?.ar.status === "success").length / history.length * 100)
+    : 0;
+
+  const catalogRole = ROLE_CATALOG.find(c => c.title === role.title);
+  const skills: string[] = catalogRole?.skills || role.skills || [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
+          <div className="flex items-start gap-4">
+            <div className={cn(
+              "h-16 w-16 rounded-2xl border-2 flex items-center justify-center text-3xl bg-card shrink-0",
+              isOnVacation ? "border-orange-400" : "border-primary/30",
+            )}>
+              {isOnVacation ? "🌴" : role.emoji}
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                {role.title}
+                {isOnVacation && <Badge variant="outline" className="text-orange-400 border-orange-400/40 text-[10px]">🌴 Férias</Badge>}
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">{role.department}</p>
+              {parentRole && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Reporta a: <span className="font-semibold text-foreground">{parentRole.emoji} {parentRole.title}</span>
+                </p>
+              )}
+            </div>
+            {/* Action buttons */}
+            <div className="flex flex-col gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                onClick={() => { onPromote(role.id); onOpenChange(false); }}
+              >
+                <TrendingUp className="h-3 w-3" /> Promover
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] gap-1.5 text-blue-400 border-blue-400/30 hover:bg-blue-400/10"
+                onClick={() => { onDemote(role.id); onOpenChange(false); }}
+              >
+                <TrendingDown className="h-3 w-3" /> Regredir
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn("h-7 text-[10px] gap-1.5", isOnVacation
+                  ? "text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
+                  : "text-orange-400 border-orange-400/30 hover:bg-orange-400/10"
+                )}
+                onClick={() => { onVacation(role.id); onOpenChange(false); }}
+              >
+                <PalmtreeIcon className="h-3 w-3" />
+                {isOnVacation ? "Retornar" : "Férias"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => { onFire(role.id); onOpenChange(false); }}
+              >
+                <Trash2 className="h-3 w-3" /> Demitir
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col">
+          <TabsList className="h-8 bg-muted/30 shrink-0">
+            <TabsTrigger value="profile" className="text-[11px]">👤 Perfil</TabsTrigger>
+            <TabsTrigger value="history" className="text-[11px]">📋 Histórico</TabsTrigger>
+            <TabsTrigger value="team" className="text-[11px]">👥 Equipe</TabsTrigger>
+            <TabsTrigger value="instructions" className="text-[11px]">⚙️ Instruções</TabsTrigger>
+          </TabsList>
+
+          <ScrollArea className="flex-1">
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="p-4 space-y-4 mt-0">
+              {/* Performance Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-border bg-card/50 p-3 text-center">
+                  <p className="text-2xl font-bold text-primary">{history.length}</p>
+                  <p className="text-[10px] text-muted-foreground">Execuções</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card/50 p-3 text-center">
+                  <p className={cn("text-2xl font-bold", successRate >= 70 ? "text-emerald-400" : successRate >= 40 ? "text-amber-400" : "text-destructive")}>
+                    {successRate}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Taxa de sucesso</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card/50 p-3 text-center">
+                  <p className="text-2xl font-bold">{directReports.length}</p>
+                  <p className="text-[10px] text-muted-foreground">Subordinados</p>
+                </div>
+              </div>
+
+              {/* Skills */}
+              {skills.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Brain className="h-3 w-3" /> Competências
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {skills.map(skill => (
+                      <Badge key={skill} variant="secondary" className="text-[10px] gap-1">
+                        <Star className="h-2 w-2 text-amber-400" />
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Last result */}
+              {agentResult?.result && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <FileText className="h-3 w-3" /> Último relatório
+                  </p>
+                  <div className={cn(
+                    "rounded-lg border p-3 text-xs leading-relaxed whitespace-pre-wrap",
+                    agentResult.status === "success"
+                      ? "bg-emerald-500/5 border-emerald-500/20 text-foreground/80"
+                      : "bg-destructive/5 border-destructive/20 text-destructive/80"
+                  )}>
+                    {String(agentResult.result).slice(0, 600)}
+                    {String(agentResult.result).length > 600 && "…"}
+                  </div>
+                </div>
+              )}
+
+              {/* Department */}
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Departamento:</span> {role.department}
+                </p>
+                {parentRole && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="font-semibold text-foreground">Hierarquia:</span>{" "}
+                    {parentRole.emoji} {parentRole.title} → {role.emoji} {role.title}
+                    {directReports.length > 0 && ` → ${directReports.map((r: any) => `${r.emoji} ${r.title}`).join(", ")}`}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* History Tab */}
+            <TabsContent value="history" className="p-4 space-y-3 mt-0">
+              {history.length === 0 ? (
+                <div className="py-10 text-center">
+                  <History className="h-10 w-10 mx-auto mb-3 text-muted-foreground/20" />
+                  <p className="text-sm text-muted-foreground">Nenhuma execução registrada ainda.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Execute a equipe para ver o histórico.</p>
+                </div>
+              ) : (
+                history.map((h: any, i) => (
+                  <div key={i} className={cn(
+                    "rounded-lg border p-3 space-y-1.5",
+                    h.ar.status === "success"
+                      ? "border-emerald-500/20 bg-emerald-500/5"
+                      : "border-destructive/20 bg-destructive/5"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      {h.ar.status === "success"
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                      }
+                      <span className="text-[10px] font-semibold">
+                        {new Date(h.run.started_at).toLocaleString("pt-BR")}
+                      </span>
+                      {h.run.completed_at && (
+                        <span className="text-[9px] text-muted-foreground ml-auto flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {Math.round((new Date(h.run.completed_at).getTime() - new Date(h.run.started_at).getTime()) / 1000)}s
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-foreground/70 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                      {String(h.ar.result || "").slice(0, 300)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+
+            {/* Team Tab */}
+            <TabsContent value="team" className="p-4 space-y-4 mt-0">
+              {parentRole && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Reporta para</p>
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50">
+                    <span className="text-2xl">{parentRole.emoji}</span>
+                    <div>
+                      <p className="text-sm font-semibold">{parentRole.title}</p>
+                      <p className="text-xs text-muted-foreground">{parentRole.department}</p>
+                    </div>
+                    <Badge variant="outline" className="ml-auto text-[9px]">Superior</Badge>
+                  </div>
+                </div>
+              )}
+              {directReports.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Subordinados Diretos</p>
+                  <div className="space-y-2">
+                    {directReports.map((r: any) => (
+                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50">
+                        <span className="text-xl">{r.emoji}</span>
+                        <div>
+                          <p className="text-sm font-semibold">{r.title}</p>
+                          <p className="text-xs text-muted-foreground">{r.department}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-6">Nenhum subordinado direto.</p>
+              )}
+            </TabsContent>
+
+            {/* Instructions Tab */}
+            <TabsContent value="instructions" className="p-4 mt-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Instruções do Agente</p>
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/80">
+                  {role.instructions || "Sem instruções configuradas."}
+                </p>
+              </div>
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /* ─── Hire Dialog ──────────────────────────────────────────── */
 interface HireDialogProps {
@@ -214,10 +618,12 @@ interface HireDialogProps {
   onOpenChange: (v: boolean) => void;
   parentRole: any;
   parentDepth: number;
-  onHire: (roleData: { title: string; emoji: string; department: string; instructions: string }, parentId: string) => Promise<void>;
+  onHire: (roleData: { title: string; emoji: string; department: string; instructions: string; skills: string[] }, parentId: string) => Promise<void>;
 }
 
 function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: HireDialogProps) {
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [customMode, setCustomMode] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
@@ -226,20 +632,27 @@ function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: Hir
   const [customInstructions, setCustomInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const suggestions = ROLE_SUGGESTIONS[Math.min(parentDepth + 1, 2)] || ROLE_SUGGESTIONS[2];
+  const suggestedCategories = ROLE_SUGGESTIONS_BY_DEPTH[Math.min(parentDepth + 1, 2)] || ROLE_SUGGESTIONS_BY_DEPTH[2];
+
+  const filtered = ROLE_CATALOG.filter(r => {
+    const matchSearch = !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.department.toLowerCase().includes(search.toLowerCase());
+    const matchCat = !selectedCategory || r.category === selectedCategory;
+    return matchSearch && matchCat;
+  });
 
   const handleConfirm = async () => {
     if (!parentRole) return;
     const roleData = customMode
-      ? { title: customTitle, emoji: customEmoji, department: customDept, instructions: customInstructions }
-      : selected;
-    if (!roleData?.title) { toast.error("Selecione ou crie um papel"); return; }
+      ? { title: customTitle, emoji: customEmoji, department: customDept, instructions: customInstructions, skills: [] }
+      : { ...selected, skills: selected?.skills || [] };
+    if (!roleData?.title) { toast.error("Selecione ou crie um cargo"); return; }
     setLoading(true);
     try {
       await onHire(roleData, parentRole.id);
       onOpenChange(false);
       setSelected(null);
       setCustomMode(false);
+      setSearch("");
     } finally {
       setLoading(false);
     }
@@ -247,8 +660,8 @@ function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: Hir
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-4 w-4 text-primary" />
             Contratar Novo Membro
@@ -260,77 +673,97 @@ function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: Hir
           )}
         </DialogHeader>
 
-        <div className="space-y-3">
-          {!customMode ? (
-            <>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Sugestões para este nível</p>
-              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                {suggestions.map((s) => (
+        {!customMode ? (
+          <div className="flex flex-col gap-3 min-h-0 flex-1">
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar cargo…"
+              className="shrink-0 h-8 text-sm"
+            />
+
+            {/* Category filters */}
+            <div className="flex flex-wrap gap-1.5 shrink-0">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={cn("px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all",
+                  !selectedCategory ? "bg-primary text-primary-foreground border-primary" : "border-border bg-card/50 text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                Todos
+              </button>
+              {ROLE_CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
+                  className={cn("px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all",
+                    selectedCategory === cat ? "bg-primary text-primary-foreground border-primary" : "border-border bg-card/50 text-muted-foreground hover:border-primary/50",
+                    suggestedCategories.includes(cat) && !selectedCategory && "border-primary/40 text-primary"
+                  )}
+                >
+                  {cat}
+                  {suggestedCategories.includes(cat) && !selectedCategory && " ✨"}
+                </button>
+              ))}
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="grid grid-cols-2 gap-2 pr-2">
+                {filtered.map((r) => (
                   <button
-                    key={s.title}
-                    onClick={() => setSelected(s)}
+                    key={r.title}
+                    onClick={() => setSelected(selected?.title === r.title ? null : r)}
                     className={cn(
-                      "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all hover:border-primary/60",
-                      selected?.title === s.title
+                      "flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all hover:border-primary/50",
+                      selected?.title === r.title
                         ? "border-primary bg-primary/10"
                         : "border-border bg-card/60"
                     )}
                   >
-                    <span className="text-xl">{s.emoji}</span>
-                    <div>
-                      <p className="text-[10px] font-semibold leading-tight">{s.title}</p>
-                      <p className="text-[9px] text-muted-foreground">{s.department}</p>
+                    <span className="text-xl shrink-0">{r.emoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold leading-tight truncate">{r.title}</p>
+                      <p className="text-[9px] text-muted-foreground truncate">{r.department}</p>
+                      <div className="flex flex-wrap gap-0.5 mt-1">
+                        {r.skills.slice(0, 2).map(s => (
+                          <span key={s} className="text-[8px] bg-muted/50 rounded px-1">{s}</span>
+                        ))}
+                      </div>
                     </div>
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setCustomMode(true)}
-                className="text-xs text-primary hover:underline w-full text-center"
-              >
-                + Criar papel personalizado
-              </button>
-            </>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Papel personalizado</p>
-              <div className="flex gap-2">
-                <Input
-                  value={customEmoji}
-                  onChange={e => setCustomEmoji(e.target.value)}
-                  className="w-16 text-center text-lg"
-                  placeholder="🤖"
-                />
-                <Input
-                  value={customTitle}
-                  onChange={e => setCustomTitle(e.target.value)}
-                  placeholder="Título do cargo"
-                  className="flex-1"
-                />
-              </div>
-              <Input
-                value={customDept}
-                onChange={e => setCustomDept(e.target.value)}
-                placeholder="Departamento"
-              />
-              <Textarea
-                value={customInstructions}
-                onChange={e => setCustomInstructions(e.target.value)}
-                placeholder="Instruções para o agente (o que ele deve analisar e reportar)…"
-                className="text-xs"
-                rows={3}
-              />
-              <button
-                onClick={() => setCustomMode(false)}
-                className="text-xs text-muted-foreground hover:underline"
-              >
-                ← Voltar para sugestões
-              </button>
-            </div>
-          )}
-        </div>
+            </ScrollArea>
 
-        <DialogFooter>
+            <button
+              onClick={() => setCustomMode(true)}
+              className="text-xs text-primary hover:underline shrink-0 text-center"
+            >
+              + Criar cargo personalizado
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3 flex-1">
+            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Cargo personalizado</p>
+            <div className="flex gap-2">
+              <Input value={customEmoji} onChange={e => setCustomEmoji(e.target.value)} className="w-16 text-center text-lg" placeholder="🤖" />
+              <Input value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder="Título do cargo" className="flex-1" />
+            </div>
+            <Input value={customDept} onChange={e => setCustomDept(e.target.value)} placeholder="Departamento" />
+            <Textarea
+              value={customInstructions}
+              onChange={e => setCustomInstructions(e.target.value)}
+              placeholder="Instruções para o agente…"
+              className="text-xs"
+              rows={4}
+            />
+            <button onClick={() => setCustomMode(false)} className="text-xs text-muted-foreground hover:underline">
+              ← Voltar para catálogo
+            </button>
+          </div>
+        )}
+
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} size="sm">Cancelar</Button>
           <Button onClick={handleConfirm} size="sm" disabled={loading || (!customMode && !selected)}>
             {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
@@ -343,39 +776,31 @@ function HireDialog({ open, onOpenChange, parentRole, parentDepth, onHire }: Hir
 }
 
 /* ─── Reorganize Button ────────────────────────────────────── */
-function ReorganizeButton({
-  roles, hierarchy, agentResults, lastRun, setNodes,
-}: {
+function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations }: {
   roles: any[];
   hierarchy: Record<string, string>;
   agentResults: Record<string, any>;
   lastRun: any;
   setNodes: (nodes: any[]) => void;
+  vacations: Set<string>;
 }) {
   const { fitView } = useReactFlow();
-
   const handleReorganize = useCallback(() => {
-    const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun);
+    const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, undefined, undefined, undefined, undefined, vacations);
     setNodes(rfNodes);
-    setTimeout(() => fitView({ padding: 0.25, duration: 500 }), 50);
-  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView]);
+    setTimeout(() => fitView({ padding: 0.3, duration: 500 }), 50);
+  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView, vacations]);
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm"
-      onClick={handleReorganize}
-    >
-      <LayoutDashboard className="h-3 w-3" />
-      Reorganizar
+    <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm" onClick={handleReorganize}>
+      <LayoutDashboard className="h-3 w-3" /> Reorganizar
     </Button>
   );
 }
 
 /* ─── Layout builder ───────────────────────────────────────── */
 const H_GAP = 200;
-const V_GAP = 160;
+const V_GAP = 170;
 
 function buildNodesAndEdges(
   roles: any[],
@@ -384,6 +809,11 @@ function buildNodesAndEdges(
   lastRun: any,
   onDeleteNode?: (id: string) => void,
   onPromoteNode?: (id: string) => void,
+  onDemoteNode?: (id: string) => void,
+  onVacationNode?: (id: string) => void,
+  vacations: Set<string> = new Set(),
+  onClickNode?: (id: string) => void,
+  onDeleteEdge?: (id: string) => void,
 ) {
   const getDepth = (id: string, d = 0): number => {
     if (id === "ceo" || d > 8) return d;
@@ -412,6 +842,7 @@ function buildNodesAndEdges(
     });
 
   const getStatus = (roleId: string): AgentNodeData["status"] => {
+    if (vacations.has(roleId)) return "vacation";
     if (!lastRun) return "idle";
     const ar = agentResults[roleId];
     if (!ar) return lastRun.status === "running" ? "waiting" : "idle";
@@ -432,11 +863,13 @@ function buildNodesAndEdges(
         emoji: r.emoji,
         department: r.department || "",
         status: getStatus(r.id),
-        result: agentResults[r.id]?.result
-          ? String(agentResults[r.id].result).slice(0, 120)
-          : undefined,
+        isOnVacation: vacations.has(r.id),
+        result: agentResults[r.id]?.result ? String(agentResults[r.id].result).slice(0, 120) : undefined,
         onDelete: !isCeo ? onDeleteNode : undefined,
         onPromote: !isCeo ? onPromoteNode : undefined,
+        onDemote: !isCeo ? onDemoteNode : undefined,
+        onVacation: !isCeo ? onVacationNode : undefined,
+        onClick: onClickNode,
         isEditable: true,
       } as unknown as Record<string, unknown>,
       draggable: true,
@@ -448,7 +881,7 @@ function buildNodesAndEdges(
     .map(r => {
       const parentId = hierarchy[r.id] || "ceo";
       const childStatus = getStatus(r.id);
-      const isActive = childStatus === "running" || (lastRun?.status === "running");
+      const isActive = childStatus === "running" || (lastRun?.status === "running" && childStatus !== "success");
       const isSuccess = childStatus === "success";
 
       return {
@@ -456,13 +889,10 @@ function buildNodesAndEdges(
         source: parentId,
         target: r.id,
         animated: isActive || isSuccess,
-        type: "smoothstep",
+        type: "deletable",
+        data: { onDelete: onDeleteEdge },
         style: {
-          stroke: isSuccess
-            ? "hsl(142, 71%, 45%)"
-            : isActive
-              ? "hsl(217, 91%, 60%)"
-              : "hsl(var(--border))",
+          stroke: isSuccess ? "hsl(142, 71%, 45%)" : isActive ? "hsl(217, 91%, 60%)" : "hsl(var(--border))",
           strokeWidth: isSuccess || isActive ? 2.5 : 1.5,
           strokeDasharray: isActive ? undefined : "4 3",
         },
@@ -471,7 +901,7 @@ function buildNodesAndEdges(
           color: isSuccess ? "hsl(142, 71%, 45%)" : isActive ? "hsl(217, 91%, 60%)" : "hsl(var(--muted-foreground))",
           width: 16, height: 16,
         },
-        label: isSuccess ? "✓ relatório enviado" : undefined,
+        label: isSuccess ? "✓ relatório" : undefined,
         labelStyle: { fontSize: 8, fill: "hsl(142, 71%, 45%)", fontWeight: 600 },
         labelBgStyle: { fill: "hsl(var(--card))", fillOpacity: 0.9 },
       };
@@ -481,46 +911,24 @@ function buildNodesAndEdges(
 }
 
 /* ─── Message builder ──────────────────────────────────────── */
-function buildMessages(
-  depRuns: any[],
-  roles: any[],
-  hierarchy: Record<string, string>,
-): ConvoMessage[] {
+function buildMessages(depRuns: any[], roles: any[], hierarchy: Record<string, string>): ConvoMessage[] {
   const msgs: ConvoMessage[] = [];
   const lastRun = depRuns[0];
   if (!lastRun) return msgs;
-
   const roleMap = new Map(roles.map(r => [r.id, r]));
   const results: any[] = (lastRun.agent_results as any[]) || [];
-
   results.forEach((ar, i) => {
     const parentId = hierarchy[ar.role_id];
     const parent = parentId ? roleMap.get(parentId) : undefined;
-
     if (ar.status === "success" && ar.result) {
-      msgs.push({
-        id: `m-${i}`, fromId: ar.role_id, fromEmoji: ar.emoji || "🤖", fromTitle: ar.role_title,
-        toId: parentId, toEmoji: parent?.emoji, toTitle: parent?.title,
-        content: String(ar.result).slice(0, 200), type: "message",
-        ts: new Date(lastRun.started_at).getTime() + i * 1000,
-      });
+      msgs.push({ id: `m-${i}`, fromId: ar.role_id, fromEmoji: ar.emoji || "🤖", fromTitle: ar.role_title, toId: parentId, toEmoji: parent?.emoji, toTitle: parent?.title, content: String(ar.result).slice(0, 200), type: "message", ts: new Date(lastRun.started_at).getTime() + i * 1000 });
     } else if (ar.status === "error") {
-      msgs.push({
-        id: `err-${i}`, fromId: ar.role_id, fromEmoji: ar.emoji || "🤖", fromTitle: ar.role_title,
-        content: `Falha: ${ar.result || "erro desconhecido"}`, type: "error",
-        ts: new Date(lastRun.started_at).getTime() + i * 1000,
-      });
+      msgs.push({ id: `err-${i}`, fromId: ar.role_id, fromEmoji: ar.emoji || "🤖", fromTitle: ar.role_title, content: `Falha: ${ar.result || "erro desconhecido"}`, type: "error", ts: new Date(lastRun.started_at).getTime() + i * 1000 });
     }
   });
-
   if (lastRun.summary && !lastRun.summary.includes("AI error")) {
-    msgs.push({
-      id: `ceo-sum`, fromId: "ceo", fromEmoji: "👔", fromTitle: "CEO / Diretor",
-      content: String(lastRun.summary).slice(0, 400), type: "report",
-      ts: lastRun.completed_at ? new Date(lastRun.completed_at).getTime() : Date.now(),
-    });
+    msgs.push({ id: `ceo-sum`, fromId: "ceo", fromEmoji: "👔", fromTitle: "CEO / Diretor", content: String(lastRun.summary).slice(0, 400), type: "report", ts: lastRun.completed_at ? new Date(lastRun.completed_at).getTime() : Date.now() });
   }
-
   return msgs.sort((a, b) => a.ts - b.ts);
 }
 
@@ -541,76 +949,53 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   const [hireOpen, setHireOpen] = useState(false);
   const [hireParentRole, setHireParentRole] = useState<any>(null);
   const [hireParentDepth, setHireParentDepth] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileRoleId, setProfileRoleId] = useState<string | null>(null);
+  const [vacations, setVacations] = useState<Set<string>>(new Set((deployment.vacations as string[]) || []));
 
   const roles: any[] = useMemo(() => (deployment.roles as any[]) || [], [deployment.roles]);
-  const hierarchy: Record<string, string> = useMemo(
-    () => (deployment.hierarchy as Record<string, string>) || {},
-    [deployment.hierarchy],
-  );
+  const hierarchy: Record<string, string> = useMemo(() => (deployment.hierarchy as Record<string, string>) || {}, [deployment.hierarchy]);
 
   const depRuns = useMemo(() => runs.filter(r => r.deployment_id === deployment.id), [runs, deployment.id]);
   const lastRun = depRuns[0];
 
   const agentResults = useMemo(() => {
     const map: Record<string, any> = {};
-    if (lastRun) {
-      ((lastRun.agent_results as any[]) || []).forEach((ar: any) => { map[ar.role_id] = ar; });
-    }
+    if (lastRun) ((lastRun.agent_results as any[]) || []).forEach((ar: any) => { map[ar.role_id] = ar; });
     return map;
   }, [lastRun]);
 
-  /* ── Hire/fire helpers ── */
   const getDepth = useCallback((id: string, d = 0): number => {
     if (id === "ceo" || d > 8) return d;
     const p = hierarchy[id];
     return p ? getDepth(p, d + 1) : d;
   }, [hierarchy]);
 
+  /* ─── Member management ─── */
   const handleFireMember = useCallback(async (roleId: string) => {
     const updatedRoles = roles.filter(r => r.id !== roleId);
     const updatedHierarchy = { ...hierarchy };
     const firedParent = updatedHierarchy[roleId];
     delete updatedHierarchy[roleId];
-    // Reassign children to grandparent
     Object.keys(updatedHierarchy).forEach(childId => {
-      if (updatedHierarchy[childId] === roleId) {
-        updatedHierarchy[childId] = firedParent || "ceo";
-      }
+      if (updatedHierarchy[childId] === roleId) updatedHierarchy[childId] = firedParent || "ceo";
     });
-    const { error } = await supabase
-      .from("orchestrator_deployments")
-      .update({ roles: updatedRoles as any, hierarchy: updatedHierarchy as any })
-      .eq("id", deployment.id);
+    const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any, hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
     if (error) { toast.error(error.message); return; }
     const fired = roles.find(r => r.id === roleId);
     toast.success(`${fired?.emoji || ""} ${fired?.title || "Membro"} removido da equipe`);
     onRefresh?.();
   }, [roles, hierarchy, deployment.id, onRefresh]);
 
-  const handleHireMember = useCallback(async (
-    roleData: { title: string; emoji: string; department: string; instructions: string },
-    parentId: string,
-  ) => {
-    const newRole = {
-      id: `role-${Date.now()}`,
-      title: roleData.title,
-      emoji: roleData.emoji,
-      department: roleData.department,
-      instructions: roleData.instructions,
-      routine: { frequency: "daily", at: "08:00" },
-    };
+  const handleHireMember = useCallback(async (roleData: { title: string; emoji: string; department: string; instructions: string; skills: string[] }, parentId: string) => {
+    const newRole = { id: `role-${Date.now()}`, ...roleData, routine: { frequency: "daily" } };
     const updatedRoles = [...roles, newRole];
     const updatedHierarchy = { ...hierarchy, [newRole.id]: parentId };
-    const { error } = await supabase
-      .from("orchestrator_deployments")
-      .update({ roles: updatedRoles as any, hierarchy: updatedHierarchy as any })
-      .eq("id", deployment.id);
+    const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any, hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${roleData.emoji} ${roleData.title} contratado! Na próxima execução receberá o briefing completo.`);
+    toast.success(`${roleData.emoji} ${roleData.title} contratado!`);
     onRefresh?.();
-    // Auto-trigger run for briefing
-    setTimeout(() => onRunNow?.(), 500);
-  }, [roles, hierarchy, deployment.id, onRefresh, onRunNow]);
+  }, [roles, hierarchy, deployment.id, onRefresh]);
 
   const handlePromoteMember = useCallback(async (roleId: string) => {
     const currentParentId = hierarchy[roleId];
@@ -618,29 +1003,71 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     const grandParentId = hierarchy[currentParentId];
     if (!grandParentId) { toast("Já está no nível mais alto possível"); return; }
     const updatedHierarchy = { ...hierarchy, [roleId]: grandParentId };
-    await supabase
-      .from("orchestrator_deployments")
-      .update({ hierarchy: updatedHierarchy as any })
-      .eq("id", deployment.id);
+    await supabase.from("orchestrator_deployments").update({ hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
     const promoted = roles.find(r => r.id === roleId);
     toast.success(`⬆️ ${promoted?.emoji || ""} ${promoted?.title} promovido!`);
     onRefresh?.();
   }, [hierarchy, roles, deployment.id, onRefresh]);
 
+  const handleDemoteMember = useCallback(async (roleId: string) => {
+    // Find a peer to become the new parent (first child of same parent)
+    const currentParentId = hierarchy[roleId];
+    if (!currentParentId) return;
+    const peers = roles.filter(r => hierarchy[r.id] === currentParentId && r.id !== roleId);
+    if (peers.length === 0) { toast("Não há par disponível para se tornar superior"); return; }
+    const newParent = peers[0];
+    const updatedHierarchy = { ...hierarchy, [roleId]: newParent.id };
+    await supabase.from("orchestrator_deployments").update({ hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
+    const demoted = roles.find(r => r.id === roleId);
+    toast.success(`⬇️ ${demoted?.emoji || ""} ${demoted?.title} regredido para reportar a ${newParent.emoji} ${newParent.title}`);
+    onRefresh?.();
+  }, [hierarchy, roles, deployment.id, onRefresh]);
+
+  const handleVacationToggle = useCallback(async (roleId: string) => {
+    const newVacations = new Set(vacations);
+    if (newVacations.has(roleId)) {
+      newVacations.delete(roleId);
+      toast.success(`${roles.find(r => r.id === roleId)?.emoji || ""} retornou das férias!`);
+    } else {
+      newVacations.add(roleId);
+      toast.success(`🌴 ${roles.find(r => r.id === roleId)?.title || "Membro"} colocado em férias`);
+    }
+    setVacations(newVacations);
+    // Persist vacations as metadata on deployment (using delivery_config for now)
+    await supabase.from("orchestrator_deployments")
+      .update({ delivery_config: { ...(deployment.delivery_config || {}), vacations: Array.from(newVacations) } as any })
+      .eq("id", deployment.id);
+  }, [vacations, roles, deployment.id, deployment.delivery_config]);
+
+  const handleDeleteEdge = useCallback(async (edgeId: string) => {
+    // edgeId format: e-{parentId}-{childId}
+    const parts = edgeId.replace("e-", "").split("-");
+    if (parts.length < 2) return;
+    // Find the child role (last segment is child, rest is parent)
+    // Find edge in edges and identify child node
+    const childRoleId = roles.find(r => `e-${hierarchy[r.id]}-${r.id}` === edgeId)?.id;
+    if (!childRoleId) return;
+    const updatedHierarchy = { ...hierarchy };
+    delete updatedHierarchy[childRoleId];
+    await supabase.from("orchestrator_deployments").update({ hierarchy: updatedHierarchy as any }).eq("id", deployment.id);
+    toast.success("Conexão removida");
+    onRefresh?.();
+  }, [hierarchy, roles, deployment.id, onRefresh]);
+
   /* ── Build nodes/edges ── */
   const { rfNodes: initialNodes, rfEdges: initialEdges } = useMemo(
-    () => buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember),
-    [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember],
+    () => buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge),
+    [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   useEffect(() => {
-    const { rfNodes, rfEdges } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember);
+    const { rfNodes, rfEdges } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
     setNodes(rfNodes);
     setEdges(rfEdges);
-  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember]);
+  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge]);
 
   const messages = useMemo(() => buildMessages(depRuns, roles, hierarchy), [depRuns, roles, hierarchy]);
 
@@ -648,25 +1075,15 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   const totalAgents = roles.length;
   const runStatus = lastRun?.status;
 
-  /* ── onConnect: update hierarchy ── */
   const onConnect = useCallback((connection: Connection) => {
     if (connection.source && connection.target && connection.source !== connection.target) {
       const updatedHierarchy = { ...hierarchy, [connection.target]: connection.source };
-      supabase
-        .from("orchestrator_deployments")
-        .update({ hierarchy: updatedHierarchy as any })
-        .eq("id", deployment.id)
-        .then(({ error }) => {
-          if (!error) {
-            toast.success("Hierarquia atualizada");
-            onRefresh?.();
-          }
-        });
+      supabase.from("orchestrator_deployments").update({ hierarchy: updatedHierarchy as any }).eq("id", deployment.id)
+        .then(({ error }) => { if (!error) { toast.success("Hierarquia atualizada"); onRefresh?.(); } });
     }
     setEdges(eds => addEdge(connection, eds));
   }, [hierarchy, deployment.id, onRefresh, setEdges]);
 
-  /* ── onConnectEnd: drag to empty = hire ── */
   const onConnectEnd: OnConnectEnd = useCallback((_, connectionState) => {
     if (!connectionState.isValid) {
       const sourceId = (connectionState as any).fromNode?.id;
@@ -680,22 +1097,20 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     }
   }, [roles, getDepth]);
 
+  const profileRole = profileRoleId ? roles.find(r => r.id === profileRoleId) : null;
+
   return (
-    <div
-      className={cn(
-        "mt-3 rounded-xl border border-border overflow-hidden transition-all duration-300 bg-background",
-        expanded ? "fixed inset-3 z-50 border-primary/40 shadow-2xl flex flex-col" : "flex flex-col",
-      )}
-    >
+    <div className={cn(
+      "mt-3 rounded-xl border border-border overflow-hidden transition-all duration-300 bg-background",
+      expanded ? "fixed inset-3 z-50 border-primary/40 shadow-2xl flex flex-col" : "flex flex-col",
+    )}>
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div className={cn(
             "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border",
-            runStatus === "running"
-              ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-              : runStatus === "completed"
-                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+            runStatus === "running" ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+              : runStatus === "completed" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                 : "bg-muted/30 text-muted-foreground border-border",
           )}>
             {runStatus === "running" && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
@@ -704,13 +1119,9 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
             {runStatus === "running" ? "Em execução" : runStatus === "completed" ? "Concluído" : "Standby"}
           </div>
           <span className="text-xs font-bold">🏢 {deployment.name}</span>
-          {lastRun && (
-            <Badge variant="outline" className="text-[9px]">{successCount}/{totalAgents} ✓</Badge>
-          )}
-          <Badge variant="outline" className="text-[9px] gap-1">
-            <Users className="h-2.5 w-2.5" />
-            {roles.length} membros
-          </Badge>
+          {lastRun && <Badge variant="outline" className="text-[9px]">{successCount}/{totalAgents} ✓</Badge>}
+          <Badge variant="outline" className="text-[9px] gap-1"><Users className="h-2.5 w-2.5" />{roles.length}</Badge>
+          {vacations.size > 0 && <Badge variant="outline" className="text-[9px] text-orange-400 border-orange-400/30">🌴 {vacations.size} em férias</Badge>}
         </div>
         <div className="flex items-center gap-1.5">
           {onRunNow && (
@@ -719,14 +1130,9 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
               Executar
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 text-[10px] gap-1 px-2"
-            onClick={() => { setHireParentRole(roles[0] || null); setHireParentDepth(0); setHireOpen(true); }}
-          >
-            <UserPlus className="h-2.5 w-2.5" />
-            Contratar
+          <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2"
+            onClick={() => { setHireParentRole(roles[0] || null); setHireParentDepth(0); setHireOpen(true); }}>
+            <UserPlus className="h-2.5 w-2.5" /> Contratar
           </Button>
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpanded(e => !e)}>
             {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
@@ -752,10 +1158,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
 
         {/* ── Canvas Tab ── */}
         <TabsContent value="canvas" className="flex-1 min-h-0 m-0">
-          <div className={cn(
-            "grid flex-1 min-h-0",
-            expanded ? "grid-cols-[1fr_360px] h-[calc(100%-0px)]" : "grid-cols-1",
-          )}>
+          <div className={cn("grid flex-1 min-h-0", expanded ? "grid-cols-[1fr_360px] h-[calc(100%-0px)]" : "grid-cols-1")}>
             {/* ReactFlow Canvas */}
             <div className={cn("relative", expanded ? "h-full" : "h-[640px]")}>
               <ReactFlow
@@ -766,12 +1169,13 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                 onConnect={onConnect}
                 onConnectEnd={onConnectEnd}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 fitView
                 fitViewOptions={{ padding: 0.25 }}
                 minZoom={0.3}
                 maxZoom={2}
                 className="!bg-background"
-                deleteKeyCode={null}
+                deleteKeyCode={["Backspace", "Delete"]}
                 proOptions={{ hideAttribution: true }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
@@ -780,20 +1184,13 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                 <Panel position="top-right">
                   <div className="flex flex-col gap-1.5">
                     <ReorganizeButton
-                      roles={roles}
-                      hierarchy={hierarchy}
-                      agentResults={agentResults}
-                      lastRun={lastRun}
-                      setNodes={setNodes}
+                      roles={roles} hierarchy={hierarchy} agentResults={agentResults}
+                      lastRun={lastRun} setNodes={setNodes} vacations={vacations}
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <Button variant="outline" size="sm"
                       className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm"
-                      onClick={() => { setHireParentRole(roles[0] || null); setHireParentDepth(0); setHireOpen(true); }}
-                    >
-                      <UserPlus className="h-3 w-3" />
-                      Contratar membro
+                      onClick={() => { setHireParentRole(roles[0] || null); setHireParentDepth(0); setHireOpen(true); }}>
+                      <UserPlus className="h-3 w-3" /> Contratar
                     </Button>
                   </div>
                 </Panel>
@@ -803,7 +1200,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                     className="!bg-card !border-border"
                     nodeColor={(n) => {
                       const d = n.data as unknown as AgentNodeData;
-                      const m: Record<string, string> = { success: "#22c55e", error: "#ef4444", running: "#3b82f6", waiting: "#f59e0b", idle: "#6b7280" };
+                      const m: Record<string, string> = { success: "#22c55e", error: "#ef4444", running: "#3b82f6", waiting: "#f59e0b", idle: "#6b7280", vacation: "#f97316" };
                       return m[d?.status] || "#6b7280";
                     }}
                   />
@@ -813,7 +1210,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                   <Panel position="top-center">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
                       <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
-                      <span className="text-[11px] font-semibold text-blue-400">Equipe em reunião — processando…</span>
+                      <span className="text-[11px] font-semibold text-blue-400">Equipe em reunião…</span>
                       <div className="flex gap-0.5 ml-1">
                         {[0, 150, 300].map(d => (
                           <div key={d} className="h-1 w-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
@@ -828,7 +1225,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm">
                       <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                       <span className="text-[11px] font-semibold text-emerald-400">
-                        Execução concluída — {successCount}/{totalAgents} agentes bem-sucedidos
+                        {successCount}/{totalAgents} agentes bem-sucedidos
                       </span>
                     </div>
                   </Panel>
@@ -836,25 +1233,26 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
               </ReactFlow>
 
               {/* Legend */}
-              <div className="absolute bottom-3 left-3 flex items-center gap-3 px-2.5 py-1.5 rounded-lg bg-card/90 border border-border backdrop-blur-sm">
+              <div className="absolute bottom-3 left-3 flex items-center gap-3 px-2.5 py-1.5 rounded-lg bg-card/90 border border-border backdrop-blur-sm text-[9px]">
                 {[
                   { label: "Standby", color: "bg-muted-foreground/40" },
                   { label: "Executando", color: "bg-blue-400" },
                   { label: "Concluído", color: "bg-emerald-500" },
+                  { label: "Férias", color: "bg-orange-400" },
                   { label: "Falhou", color: "bg-destructive" },
                 ].map(l => (
                   <div key={l.label} className="flex items-center gap-1">
                     <div className={cn("h-2 w-2 rounded-full", l.color)} />
-                    <span className="text-[9px] text-muted-foreground">{l.label}</span>
+                    <span className="text-muted-foreground">{l.label}</span>
                   </div>
                 ))}
-                <div className="border-l border-border pl-3 text-[9px] text-muted-foreground">
-                  💡 Arraste de um nó para contratar subordinado
+                <div className="border-l border-border pl-2 text-muted-foreground">
+                  💡 Clique no card para ver perfil · Arraste para contratar · Hover para ações
                 </div>
               </div>
             </div>
 
-            {/* Conversation feed — expanded only */}
+            {/* Conversation feed — expanded */}
             {expanded && (
               <div className="flex flex-col border-l border-border h-full">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/50 shrink-0">
@@ -867,9 +1265,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                     {messages.length === 0 && (
                       <div className="py-10 text-center">
                         <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-                        <p className="text-xs text-muted-foreground">
-                          {runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
                       </div>
                     )}
                     {runStatus === "running" && (
@@ -945,11 +1341,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         {/* ── Team Hub Tab ── */}
         <TabsContent value="hub" className="flex-1 min-h-0 m-0">
           <div className={cn("h-full", expanded ? "h-full" : "h-[640px]")}>
-            <TeamHubTab
-              deploymentId={deployment.id}
-              projectId={projectId}
-              deploymentName={deployment.name}
-            />
+            <TeamHubTab deploymentId={deployment.id} projectId={projectId} deploymentName={deployment.name} />
           </div>
         </TabsContent>
       </Tabs>
@@ -962,6 +1354,24 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         parentDepth={hireParentDepth}
         onHire={handleHireMember}
       />
+
+      {/* ── Employee Profile Dialog ── */}
+      {profileRole && (
+        <EmployeeProfileDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          role={profileRole}
+          agentResult={agentResults[profileRole.id]}
+          runs={depRuns}
+          hierarchy={hierarchy}
+          allRoles={roles}
+          onFire={handleFireMember}
+          onPromote={handlePromoteMember}
+          onDemote={handleDemoteMember}
+          onVacation={handleVacationToggle}
+          isOnVacation={vacations.has(profileRole.id)}
+        />
+      )}
     </div>
   );
 }
