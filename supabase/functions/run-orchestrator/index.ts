@@ -937,6 +937,99 @@ REGRAS CRÍTICAS:
       })
       .eq("id", deployment_id);
 
+    // ── Auto-populate Team Hub with agent outputs ──
+    try {
+      const hubEntries: any[] = [];
+
+      // 1. Each successful agent generates a "report" entry
+      for (const ar of agentResults.filter(r => r.status === "success")) {
+        hubEntries.push({
+          deployment_id,
+          project_id,
+          owner_id,
+          type: "report",
+          title: `${ar.emoji} Relatório: ${ar.role_title}`,
+          content: ar.result.slice(0, 3000),
+          notify_whatsapp: false,
+          status: "open",
+        });
+      }
+
+      // 2. Strategic plan → "strategic" entry
+      if (strategicPlan) {
+        const sp = strategicPlan as any;
+        const content = [
+          sp.week_theme ? `🎯 **Tema da Semana:** ${sp.week_theme}` : "",
+          sp.top_goals?.length
+            ? `\n**Metas Principais:**\n${sp.top_goals.map((g: string, i: number) => `${i + 1}. ${g}`).join("\n")}`
+            : "",
+          sp.risk_alert ? `\n⚠️ **Alerta de Risco:** ${sp.risk_alert}` : "",
+          sp.quick_wins?.length
+            ? `\n⚡ **Quick Wins:**\n${sp.quick_wins.map((w: string) => `• ${w}`).join("\n")}`
+            : "",
+          sp.kpis_to_watch?.length
+            ? `\n📊 **KPIs a Monitorar:**\n${sp.kpis_to_watch.map((k: any) => `• ${k.metric}: atual ${k.current} → meta ${k.target}`).join("\n")}`
+            : "",
+        ].filter(Boolean).join("\n");
+
+        hubEntries.push({
+          deployment_id,
+          project_id,
+          owner_id,
+          type: "strategic",
+          title: `📅 Planejamento Estratégico — ${new Date().toLocaleDateString("pt-BR")}`,
+          content,
+          notify_whatsapp: false,
+          status: "open",
+        });
+      }
+
+      // 3. Daily plan quick wins → "action_plan" entry
+      if (dailyPlan.length > 0) {
+        const urgentActions = dailyPlan.flatMap((day: any) =>
+          (day.actions || [])
+            .filter((a: any) => a.priority === "urgente" || a.priority === "alta")
+            .slice(0, 3)
+            .map((a: any) => `• [${day.day_name || day.date}] ${a.title}`)
+        ).slice(0, 10);
+
+        if (urgentActions.length > 0) {
+          hubEntries.push({
+            deployment_id,
+            project_id,
+            owner_id,
+            type: "action_plan",
+            title: `⚡ Ações Prioritárias — Próximos 5 dias`,
+            content: urgentActions.join("\n"),
+            notify_whatsapp: false,
+            status: "open",
+          });
+        }
+      }
+
+      // 4. CEO summary → "suggestion" entry if available
+      if (ceoResult) {
+        hubEntries.push({
+          deployment_id,
+          project_id,
+          owner_id,
+          type: "suggestion",
+          title: `💡 Análise Executiva do CEO — ${new Date().toLocaleDateString("pt-BR")}`,
+          content: ceoResult.slice(0, 2000),
+          notify_whatsapp: false,
+          status: "open",
+        });
+      }
+
+      if (hubEntries.length > 0) {
+        const { error: hubErr } = await supabase.from("team_hub_entries" as any).insert(hubEntries);
+        if (hubErr) console.warn("[run-orchestrator] Failed to insert team hub entries:", hubErr);
+        else console.log(`[run-orchestrator] Inserted ${hubEntries.length} Team Hub entries`);
+      }
+    } catch (hubErr) {
+      console.warn("[run-orchestrator] Team hub auto-populate error:", hubErr);
+    }
+
     // Create notification
     const successCount = agentResults.filter(r => r.status === "success").length;
     await supabase.from("notifications").insert({
