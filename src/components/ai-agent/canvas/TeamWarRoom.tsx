@@ -1377,8 +1377,9 @@ function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, v
 }
 
 /* ─── Layout builder ───────────────────────────────────────── */
-const H_GAP = 240; // wider horizontal gap to avoid overlap
-const V_GAP = 190; // taller vertical gap to avoid overlap
+const NODE_W = 160;  // actual rendered node width (px) — matches max-w-[140px] + ring padding
+const H_MARGIN = 40; // horizontal gap BETWEEN sibling nodes
+const V_GAP = 200;   // vertical gap between hierarchy levels
 
 /* ─── Position persistence helpers ─────────────────────────── */
 function posStorageKey(deploymentId: string) {
@@ -1396,14 +1397,20 @@ function savePositions(deploymentId: string, positions: Record<string, { x: numb
   } catch {}
 }
 
-/** Proper hierarchical tree layout — children always below their own parent, no crossings */
+/** Computes non-overlapping tree layout using Reingold-Tilford style algorithm.
+ *  - Each leaf occupies exactly (NODE_W + H_MARGIN) of horizontal space.
+ *  - Parents are centered over their children.
+ *  - No node ever overlaps another.
+ */
 function computeTreePositions(roles: any[], hierarchy: Record<string, string>): Map<string, { x: number; y: number }> {
+  const SLOT = NODE_W + H_MARGIN; // px per leaf slot
+
   // Build children map
   const childrenMap = new Map<string, string[]>();
   const rootId = roles.find(r => r.id === "ceo")?.id || roles[0]?.id;
 
   roles.forEach(r => {
-    if (r.id === rootId) return;
+    if (!rootId || r.id === rootId) return;
     const parentId = hierarchy[r.id] || rootId;
     if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
     childrenMap.get(parentId)!.push(r.id);
@@ -1411,36 +1418,52 @@ function computeTreePositions(roles: any[], hierarchy: Record<string, string>): 
 
   const positions = new Map<string, { x: number; y: number }>();
 
-  // Recursive subtree width (each leaf = 1 unit of H_GAP)
-  function subtreeWidth(nodeId: string): number {
+  // Count leaf descendants (a leaf counts as 1)
+  function leafCount(nodeId: string): number {
     const children = childrenMap.get(nodeId) || [];
-    if (children.length === 0) return H_GAP;
-    return children.reduce((sum, c) => sum + subtreeWidth(c), 0);
+    if (children.length === 0) return 1;
+    return children.reduce((sum, c) => sum + leafCount(c), 0);
   }
 
-  // Position node and its subtree; cx = center x of this subtree
-  function positionSubtree(nodeId: string, cx: number, y: number) {
-    positions.set(nodeId, { x: cx - 90, y }); // -90 to center the 180px-wide card
+  // Place subtree; leftEdge = leftmost x where we can place this subtree
+  // Returns the x-center of this node
+  function placeSubtree(nodeId: string, leftEdge: number, depth: number): number {
     const children = childrenMap.get(nodeId) || [];
-    if (children.length === 0) return;
+    const y = depth * V_GAP;
 
-    const totalW = children.reduce((sum, c) => sum + subtreeWidth(c), 0);
-    let offsetX = cx - totalW / 2;
-
-    children.forEach(childId => {
-      const cw = subtreeWidth(childId);
-      positionSubtree(childId, offsetX + cw / 2, y + V_GAP);
-      offsetX += cw;
-    });
-  }
-
-  if (rootId) positionSubtree(rootId, 0, 0);
-
-  // Any disconnected nodes get placed below
-  roles.forEach((r, i) => {
-    if (!positions.has(r.id)) {
-      positions.set(r.id, { x: i * H_GAP - (roles.length * H_GAP) / 2, y: 600 });
+    if (children.length === 0) {
+      // Leaf: place at center of its single slot
+      const cx = leftEdge + SLOT / 2;
+      positions.set(nodeId, { x: cx - NODE_W / 2, y });
+      return cx;
     }
+
+    // Place children left-to-right, accumulate their centers
+    let cursor = leftEdge;
+    const childCenters: number[] = [];
+    for (const childId of children) {
+      const lc = leafCount(childId);
+      const childSlotWidth = lc * SLOT;
+      const cx = placeSubtree(childId, cursor, depth + 1);
+      childCenters.push(cx);
+      cursor += childSlotWidth;
+    }
+
+    // Center parent over children
+    const parentCx = (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
+    positions.set(nodeId, { x: parentCx - NODE_W / 2, y });
+    return parentCx;
+  }
+
+  if (rootId) placeSubtree(rootId, 0, 0);
+
+  // Any disconnected nodes (not reachable from root) go in a row below
+  const disconnected = roles.filter(r => !positions.has(r.id));
+  disconnected.forEach((r, i) => {
+    const maxY = positions.size > 0
+      ? Math.max(...Array.from(positions.values()).map(p => p.y))
+      : 0;
+    positions.set(r.id, { x: i * SLOT, y: maxY + V_GAP });
   });
 
   return positions;
