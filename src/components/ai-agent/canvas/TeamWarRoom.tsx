@@ -341,31 +341,29 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => d.onClick?.(d.roleId)}
-      style={isRunning || isSpotlight ? {
-        background: isSpotlight
-          ? "linear-gradient(var(--agent-border-angle, 0deg), #2563eb, #3b82f6, #60a5fa, #2563eb)"
-          : "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6, #3b82f6)",
+      style={isRunning ? {
+        background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6, #3b82f6)",
         animation: "agent-border-spin 2s linear infinite",
         padding: "2px",
         borderRadius: "16px",
       } : undefined}
       className={cn(
         "relative cursor-pointer active:cursor-grabbing transition-all duration-300",
-        !isRunning && !isSpotlight && "p-[2px] rounded-2xl",
-        !isRunning && !isSpotlight && STATUS_RING[status] + " border-2 bg-card",
+        !isRunning && "p-[2px] rounded-2xl border-2",
+        !isRunning && (isSpotlight
+          ? "border-blue-400 shadow-[0_0_12px_2px_hsl(217_91%_60%/0.3)]"
+          : STATUS_RING[status] + " bg-card"),
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         status === "vacation" && "opacity-75",
         isSpotlight && "scale-110 z-10",
       )}
     >
-      {/* Animated glow for running/spotlight */}
-      {(isRunning || isSpotlight) && (
+      {/* Animated glow for running only */}
+      {isRunning && (
         <div
           className="absolute inset-0 opacity-40 blur-xl pointer-events-none"
           style={{
-            background: isSpotlight
-              ? "linear-gradient(var(--agent-border-angle, 0deg), #2563eb, #3b82f6, #60a5fa)"
-              : "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6)",
+            background: "linear-gradient(var(--agent-border-angle, 0deg), #3b82f6, #06b6d4, #8b5cf6)",
             animation: "agent-border-spin 2s linear infinite",
             borderRadius: "16px",
           }}
@@ -375,7 +373,6 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
       {/* Inner card */}
       <div className={cn(
         "relative flex flex-col items-center gap-2 px-3 py-3 rounded-[14px] bg-card min-w-[120px] max-w-[140px]",
-        isSpotlight && "bg-blue-950/60",
       )}>
         {/* Action buttons on hover */}
         {hovered && d.isEditable && (
@@ -1456,6 +1453,11 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   const pmReportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // CEO Command Chat state
+  const [ceoCmdInput, setCeoCmdInput] = useState("");
+  const [ceoCmdSending, setCeoCmdSending] = useState(false);
+  const [ceoCmdHistory, setCeoCmdHistory] = useState<{ cmd: string; response: string; ts: number }[]>([]);
+
   const roles: any[] = useMemo(() => (deployment.roles as any[]) || [], [deployment.roles]);
   const hierarchy: Record<string, string> = useMemo(() => (deployment.hierarchy as Record<string, string>) || {}, [deployment.hierarchy]);
 
@@ -1595,6 +1597,89 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     const p = hierarchy[id];
     return p ? getDepth2(p, d + 1) : d;
   }, [hierarchy]);
+
+  /* ─── CEO Command Chat ─── */
+  const CEO_COMMANDS: Record<string, { label: string; response: (roles: any[], lastRun: any) => string }> = {
+    "status report": {
+      label: "📊 Status Report",
+      response: (r, run) => {
+        const total = r.length;
+        const success = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "success").length : 0;
+        const lastRunTime = run ? new Date(run.started_at).toLocaleString("pt-BR") : "nunca";
+        return `📊 *Status Report — ${deployment.name}*\n\n` +
+          `👥 Equipe: ${total} agentes ativos\n` +
+          `✅ Última execução: ${success}/${total} agentes concluídos\n` +
+          `🕒 Última execução em: ${lastRunTime}\n` +
+          `📌 Status: ${run?.status === "completed" ? "Concluído ✅" : run?.status === "running" ? "Em execução 🔄" : "Aguardando ⏳"}\n\n` +
+          `_Report gerado automaticamente pelo War Room_`;
+      }
+    },
+    "resumo executivo": {
+      label: "📋 Resumo Executivo",
+      response: (r, run) => {
+        const summary = run?.summary || "Nenhuma execução registrada ainda.";
+        return `📋 *Resumo Executivo — ${deployment.name}*\n\n${String(summary).slice(0, 800)}\n\n_Gerado pelo War Room_`;
+      }
+    },
+    "lista equipe": {
+      label: "👥 Lista da Equipe",
+      response: (r) => {
+        const lines = r.map((role: any) => `${role.emoji} ${role.title} (${role.department})`);
+        return `👥 *Equipe — ${deployment.name}*\n\n${lines.join("\n")}\n\nTotal: ${r.length} membros`;
+      }
+    },
+    "alertas": {
+      label: "🚨 Alertas",
+      response: (r, run) => {
+        const errors = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "error") : [];
+        if (errors.length === 0) return `✅ *Sem alertas críticos* — ${deployment.name}\n\nTodos os agentes operando normalmente.`;
+        return `🚨 *Alertas — ${deployment.name}*\n\n${errors.map((e: any) => `❌ ${e.role_title}: ${String(e.result || "erro").slice(0, 100)}`).join("\n")}`;
+      }
+    },
+  };
+
+  const handleCeoCommand = useCallback(async (cmdRaw: string) => {
+    const cmd = cmdRaw.trim().toLowerCase();
+    if (!cmd) return;
+
+    const matched = Object.entries(CEO_COMMANDS).find(([key]) => cmd.includes(key));
+    const ceoRole = roles.find(r => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
+    const ceoWhatsapp = ceoRole?.whatsapp;
+
+    if (!matched) {
+      // Unknown command — show tip
+      const tip = `❓ Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.label}`).join("\n")}`;
+      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: tip, ts: Date.now() }]);
+      return;
+    }
+
+    setCeoCmdSending(true);
+    try {
+      const report = matched[1].response(roles, lastRun);
+      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
+
+      // Send via WhatsApp if CEO has number
+      if (ceoWhatsapp) {
+        const { error } = await supabase.functions.invoke("send-workflow-notification", {
+          body: {
+            workflow_name: `🧠 Comando CEO — ${matched[1].label}`,
+            report,
+            recipient_name: ceoRole?.title || "CEO",
+            direct_send: { phones: [ceoWhatsapp] },
+          },
+        });
+        if (error) throw error;
+        toast.success(`📲 Enviado via WhatsApp para ${ceoWhatsapp}`);
+      } else {
+        toast.info("Configure o WhatsApp do CEO no perfil para envio automático");
+      }
+    } catch (err: any) {
+      toast.error(`Erro ao processar comando: ${err.message}`);
+    } finally {
+      setCeoCmdSending(false);
+      setCeoCmdInput("");
+    }
+  }, [roles, lastRun, hierarchy, deployment.name]);
 
   /* ─── Member management ─── */
   const handleFireMember = useCallback(async (roleId: string) => {
@@ -1948,53 +2033,135 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
             {/* Conversation feed — expanded */}
             {expanded && (
               <div className="flex flex-col border-l border-border h-full">
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/50 shrink-0">
-                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">Chat da Equipe</p>
-                  {messages.length > 0 && <Badge variant="secondary" className="text-[8px]">{messages.length}</Badge>}
-                </div>
-                <ScrollArea className="flex-1">
-                  <div className="p-3 space-y-2.5">
-                    {messages.length === 0 && (
-                      <div className="py-10 text-center">
-                        <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-                        <p className="text-xs text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
-                      </div>
-                    )}
-                    {runStatus === "running" && (
-                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                        <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin shrink-0" />
-                        <div>
-                          <p className="text-[10px] font-semibold text-blue-400">Equipe em reunião…</p>
-                          <p className="text-[9px] text-muted-foreground">Análise em andamento</p>
-                        </div>
-                      </div>
-                    )}
-                    {messages.map(msg => (
-                      <div key={msg.id} className={cn(
-                        "rounded-xl border p-2.5 space-y-1.5",
-                        msg.type === "report" ? "bg-primary/5 border-primary/20" :
-                          msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
-                            "bg-card/60 border-border",
-                      )}>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm leading-none">{msg.fromEmoji}</span>
-                          <span className="text-[10px] font-bold">{msg.fromTitle}</span>
-                          {msg.toId && msg.toTitle && (
-                            <>
-                              <span className="text-[9px] text-muted-foreground">→</span>
-                              <span className="text-sm leading-none">{msg.toEmoji}</span>
-                              <span className="text-[10px] text-muted-foreground">{msg.toTitle}</span>
-                            </>
-                          )}
-                          {msg.type === "report" && <Badge variant="secondary" className="text-[7px] ml-auto">📝 CEO</Badge>}
-                          {msg.type === "error" && <XCircle className="h-3 w-3 text-destructive ml-auto" />}
-                        </div>
-                        <p className="text-[10px] text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-6">{msg.content}</p>
-                      </div>
-                    ))}
+                {/* Tabs: Team Chat + CEO Commands */}
+                <Tabs defaultValue="cmd" className="flex flex-col h-full">
+                  <div className="px-2 pt-2 shrink-0 border-b border-border bg-card/50">
+                    <TabsList className="h-6 gap-0.5 bg-transparent p-0">
+                      <TabsTrigger value="cmd" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                        <Brain className="h-2.5 w-2.5" /> Comandos CEO
+                      </TabsTrigger>
+                      <TabsTrigger value="chat" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                        <MessageSquare className="h-2.5 w-2.5" /> Chat Equipe
+                        {messages.length > 0 && <span className="ml-0.5 text-[7px] bg-primary/20 text-primary rounded-full px-1">{messages.length}</span>}
+                      </TabsTrigger>
+                    </TabsList>
                   </div>
-                </ScrollArea>
+
+                  {/* CEO Commands Tab */}
+                  <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
+                    {/* Command shortcuts */}
+                    <div className="px-3 pt-2.5 shrink-0">
+                      <p className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Atalhos rápidos</p>
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
+                          <button
+                            key={key}
+                            onClick={() => handleCeoCommand(key)}
+                            disabled={ceoCmdSending}
+                            className="text-[8px] px-2 py-0.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium"
+                          >
+                            {cmd.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* History */}
+                    <ScrollArea className="flex-1 px-3 py-2">
+                      {ceoCmdHistory.length === 0 && (
+                        <div className="py-8 text-center">
+                          <Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+                          <p className="text-[10px] text-muted-foreground">Digite um comando ou use os atalhos acima.</p>
+                          <p className="text-[9px] text-muted-foreground/60 mt-1">A resposta é enviada via WhatsApp automaticamente se o CEO tiver número configurado.</p>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        {ceoCmdHistory.map((item, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
+                                &gt; {item.cmd}
+                              </span>
+                              <span className="text-[7px] text-muted-foreground ml-auto">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                            <div className="rounded-lg border border-border bg-card/60 p-2">
+                              <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{item.response}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+
+                    {/* Input */}
+                    <div className="p-3 border-t border-border shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-mono text-muted-foreground/60">&gt;</span>
+                        <Input
+                          value={ceoCmdInput}
+                          onChange={e => setCeoCmdInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                          placeholder="status report, resumo executivo…"
+                          className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                          disabled={ceoCmdSending}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 w-7 p-0 shrink-0"
+                          onClick={() => handleCeoCommand(ceoCmdInput)}
+                          disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                        >
+                          {ceoCmdSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Team Chat Tab */}
+                  <TabsContent value="chat" className="flex-1 min-h-0 m-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-3 space-y-2.5">
+                        {messages.length === 0 && (
+                          <div className="py-10 text-center">
+                            <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+                            <p className="text-xs text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
+                          </div>
+                        )}
+                        {runStatus === "running" && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/20 bg-card/50">
+                            <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                            <div>
+                              <p className="text-[10px] font-semibold text-primary">Equipe em reunião…</p>
+                              <p className="text-[9px] text-muted-foreground">Análise em andamento</p>
+                            </div>
+                          </div>
+                        )}
+                        {messages.map(msg => (
+                          <div key={msg.id} className={cn(
+                            "rounded-xl border p-2.5 space-y-1.5",
+                            msg.type === "report" ? "bg-primary/5 border-primary/20" :
+                              msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
+                                "bg-card/60 border-border",
+                          )}>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm leading-none">{msg.fromEmoji}</span>
+                              <span className="text-[10px] font-bold">{msg.fromTitle}</span>
+                              {msg.toId && msg.toTitle && (
+                                <>
+                                  <span className="text-[9px] text-muted-foreground">→</span>
+                                  <span className="text-sm leading-none">{msg.toEmoji}</span>
+                                  <span className="text-[10px] text-muted-foreground">{msg.toTitle}</span>
+                                </>
+                              )}
+                              {msg.type === "report" && <Badge variant="secondary" className="text-[7px] ml-auto">📝 CEO</Badge>}
+                              {msg.type === "error" && <XCircle className="h-3 w-3 text-destructive ml-auto" />}
+                            </div>
+                            <p className="text-[10px] text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-6">{msg.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </div>
