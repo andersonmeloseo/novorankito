@@ -288,7 +288,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#080c18] text-slate-900 dark:text-white overflow-x-hidden font-sans">
 
       {/* ── NAV ─────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#080c18]/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#080c18]/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60" aria-label="Navegação principal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
@@ -311,7 +311,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           1. HERO — Centralizado, dor de perder posição
       ══════════════════════════════════════════════════════════════ */}
-      <section ref={heroRef} className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex flex-col justify-center">
+      <section ref={heroRef} className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex flex-col justify-center">
         <div className="absolute inset-0 pointer-events-none">
           <FloatingOrb className="absolute top-10 left-1/4 w-[700px] h-[700px] bg-violet-600/10 rounded-full blur-[150px]" />
           <FloatingOrb className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[130px]" />
@@ -337,7 +337,7 @@ export default function LandingPage() {
             no Google enquanto dorme
           </motion.h1>
 
-          {/* H2 */}
+          {/* Subtítulo */}
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="text-xl sm:text-2xl text-slate-600 dark:text-slate-400 leading-relaxed mb-4 max-w-3xl mx-auto">
             O Rankito monitora seu site, indexa suas páginas automaticamente via{" "}
@@ -407,7 +407,7 @@ export default function LandingPage() {
             ].map(s => (
               <div key={s.label} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center">
                 <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1"><Counter end={s.end} suffix={s.suffix} /></div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 leading-tight">{s.label}</div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight">{s.label}</p>
               </div>
             ))}
           </motion.div>
@@ -466,7 +466,7 @@ export default function LandingPage() {
                 className="flex items-start gap-4 bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5">
                 <span className="text-2xl shrink-0 mt-0.5">{p.emoji}</span>
                 <div>
-                  <div className="text-sm font-black text-white mb-1">{p.title}</div>
+                  <h3 className="text-sm font-black text-white mb-1">{p.title}</h3>
                   <p className="text-sm text-slate-400 leading-relaxed">{p.text}</p>
                 </div>
               </motion.div>
@@ -474,9 +474,9 @@ export default function LandingPage() {
           </div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mt-12">
-            <p className="text-2xl font-black text-white mb-2">
+            <h3 className="text-2xl font-black text-white mb-2">
               Tudo isso tem solução — e está em um único lugar.
-            </p>
+            </h3>
             <p className="text-slate-400 text-base mb-6">O Rankito centraliza, automatiza e entrega resultado direto no seu WhatsApp.</p>
             <ChevronDown className="w-8 h-8 text-violet-400 mx-auto animate-bounce" />
           </motion.div>
@@ -561,7 +561,7 @@ export default function LandingPage() {
                 <div className={`inline-flex w-10 h-10 rounded-xl bg-gradient-to-br ${c.color} items-center justify-center mb-4`}>
                   <c.icon className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="text-lg font-black text-white mb-2">{c.title}</h4>
+                <h3 className="text-lg font-black text-white mb-2">{c.title}</h3>
                 <p className="text-sm text-slate-400 leading-relaxed">{c.desc}</p>
               </motion.div>
             ))}
@@ -621,7 +621,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
                 <Zap className="w-3 h-3" /> Módulo 1 — Indexador Automático
               </div>
-              <h3 className="text-3xl font-black mb-4">Sua página publicada hoje aparece no Google amanhã</h3>
+              <h2 className="text-3xl font-black mb-4">Sua página publicada hoje aparece no Google amanhã</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
                 Sem o Rankito, o Google pode levar de 2 a 6 semanas para descobrir seu conteúdo. Com o Rankito, você usa a <strong className="text-slate-800 dark:text-slate-200">Google Indexing API oficial</strong> para enviar suas URLs diretamente — e elas aparecem nas buscas em até 24 horas.
               </p>
@@ -638,8 +638,8 @@ export default function LandingPage() {
                       <Icon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{text}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{detail}</div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{text}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>
                     </div>
                   </div>
                 ))}
@@ -659,7 +659,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
                 <Search className="w-3 h-3" /> Módulo 2 — SEO & Google Search Console
               </div>
-              <h3 className="text-3xl font-black mb-4">Todos os dados do Google. Em um dashboard. Com IA analisando.</h3>
+              <h2 className="text-3xl font-black mb-4">Todos os dados do Google. Em um dashboard. Com IA analisando.</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
                 Conecte o GSC e GA4 e veja tudo em um lugar só: queries, posições, CTR, dispositivos, países, histórico de keywords. E a IA destaca automaticamente <strong className="text-slate-800 dark:text-slate-200">onde está o dinheiro que você ainda não está pegando</strong>.
               </p>
@@ -677,8 +677,8 @@ export default function LandingPage() {
                       <Icon className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{text}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{detail}</div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{text}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>
                     </div>
                   </div>
                 ))}
@@ -692,7 +692,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-black px-3 py-1.5 rounded-full mb-4">
                 <Bot className="w-3 h-3" /> Módulo 3 — Agentes de IA + Orquestrador
               </div>
-              <h3 className="text-3xl font-black mb-4">IA que lê seus dados reais e age — não uma IA genérica</h3>
+              <h2 className="text-3xl font-black mb-4">IA que lê seus dados reais e age — não uma IA genérica</h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
                 Os agentes do Rankito têm acesso direto ao seu GSC e GA4. Eles não respondem com achismos — respondem com base nos <strong className="text-slate-800 dark:text-slate-200">seus dados, suas páginas, suas keywords</strong>. E o orquestrador executa as tarefas automaticamente no horário que você definir.
               </p>
@@ -709,8 +709,8 @@ export default function LandingPage() {
                       <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{text}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{detail}</div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{text}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>
                     </div>
                   </div>
                 ))}
@@ -723,7 +723,7 @@ export default function LandingPage() {
 
           {/* Mais módulos */}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
-            <h3 className="text-2xl font-black mb-2">E muito mais — tudo incluído no plano</h3>
+            <h2 className="text-2xl font-black mb-2">E muito mais — tudo incluído no plano</h2>
             <p className="text-slate-500 dark:text-slate-400">Sem integrações separadas. Sem custos extras. Tudo funcionando junto.</p>
           </motion.div>
 
@@ -777,12 +777,12 @@ export default function LandingPage() {
               <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -4 }}
                 className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
                 <div className={`inline-flex p-3 rounded-xl mb-4 ${b.color}`}><b.icon className="w-5 h-5" /></div>
-                <h4 className="text-base font-black mb-4 text-slate-900 dark:text-white">{b.title}</h4>
+                <h3 className="text-base font-black mb-4 text-slate-900 dark:text-white">{b.title}</h3>
                 <div className="space-y-2">
                   {b.items.map((item) => (
                     <div key={item} className="flex items-start gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 shrink-0 mt-0.5" />
-                      <span className="text-xs text-slate-600 dark:text-slate-300">{item}</span>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -998,7 +998,7 @@ export default function LandingPage() {
                 ))}
                 <div className="border-t border-slate-700 pt-3 mt-3 flex items-center justify-between">
                   <span className="font-black text-white">Tudo por apenas</span>
-                  <div className="text-2xl font-black text-violet-400">R$97<span className="text-sm text-slate-400">/mês</span></div>
+                  <p className="text-2xl font-black text-violet-400">R$97<span className="text-sm text-slate-400">/mês</span></p>
                 </div>
               </div>
             </motion.div>
