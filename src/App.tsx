@@ -69,6 +69,8 @@ const RRProjectMonetizationPage = lazy(() => import("@/pages/rank-rent/RRProject
 const SemanticGraphPage = lazy(() => import("@/pages/SemanticGraphPage"));
 const GettingStartedPage = lazy(() => import("@/pages/GettingStartedPage"));
 const ProjectDashboardPage = lazy(() => import("@/pages/ProjectDashboardPage"));
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -103,6 +105,7 @@ const App = () => {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/onboarding" element={<Onboarding />} />
