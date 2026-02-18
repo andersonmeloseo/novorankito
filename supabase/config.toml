@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.run-orchestrator]
 verify_jwt = false
+
+[functions.orchestrator-task-monitor]
+verify_jwt = false
