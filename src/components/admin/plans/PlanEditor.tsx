@@ -37,7 +37,7 @@ const LIMIT_FIELDS = [
   { key: "members_limit", label: "Membros", icon: Users, description: "Membros por conta", unit: "membros" },
   { key: "indexing_daily_limit", label: "Indexação / dia", icon: Send, description: "URLs enviadas p/ indexação diariamente", unit: "urls" },
   { key: "gsc_accounts_per_project", label: "Contas GSC / projeto", icon: Send, description: "Contas GSC de indexação por projeto (-1 = ilimitado)", unit: "contas" },
-  { key: "orchestrator_executions_limit", label: "Execuções Orquestrador", icon: Bot, description: "Execuções do orquestrador IA por mês (-1 = ilimitado)", unit: "exec/mês" },
+  { key: "orchestrator_executions_limit", label: "Execuções Orquestrador", icon: Bot, description: "Execuções do orquestrador IA por hora (-1 = ilimitado)", unit: "exec/hora" },
 ] as const;
 
 const FEATURE_TOGGLES = [
