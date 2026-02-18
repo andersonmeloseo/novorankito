@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2, Play, Pause, Trash2, CheckCircle2, XCircle,
   Loader2, ChevronDown, ChevronRight, Send, Plus, Clock,
-  AlertTriangle, MonitorPlay, Users, ListChecks, Map,
+  AlertTriangle, MonitorPlay, Users, ListChecks, Map, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ import { CeoOnboardingChat } from "./CeoOnboardingChat";
 import { TeamWarRoom } from "./TeamWarRoom";
 import { OrchestratorTaskBoard } from "./OrchestratorTaskBoard";
 import { StrategicPlanPanel } from "./StrategicPlanPanel";
+import { DailyPlanPanel } from "./DailyPlanPanel";
 
 interface OrchestratorDashboardProps {
   projectId?: string;
@@ -296,15 +297,18 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                 {isWarRoomOpen && (
                   <div className="mt-3 border-t border-border pt-3 space-y-3">
                     <Tabs defaultValue="warroom" className="w-full">
-                      <TabsList className="w-full h-8 text-xs grid grid-cols-3">
-                        <TabsTrigger value="warroom" className="gap-1.5 text-[11px]">
-                          <MonitorPlay className="h-3.5 w-3.5" /> War Room
+                      <TabsList className="w-full h-8 text-xs grid grid-cols-4">
+                        <TabsTrigger value="warroom" className="gap-1 text-[10px]">
+                          <MonitorPlay className="h-3 w-3" /> War Room
                         </TabsTrigger>
-                        <TabsTrigger value="tasks" className="gap-1.5 text-[11px]">
-                          <ListChecks className="h-3.5 w-3.5" /> Tarefas do Time
+                        <TabsTrigger value="daily" className="gap-1 text-[10px]">
+                          <CalendarDays className="h-3 w-3" /> Plano Diário
                         </TabsTrigger>
-                        <TabsTrigger value="plan" className="gap-1.5 text-[11px]">
-                          <Map className="h-3.5 w-3.5" /> Plano Estratégico
+                        <TabsTrigger value="tasks" className="gap-1 text-[10px]">
+                          <ListChecks className="h-3 w-3" /> Tarefas
+                        </TabsTrigger>
+                        <TabsTrigger value="plan" className="gap-1 text-[10px]">
+                          <Map className="h-3 w-3" /> Semanal
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="warroom" className="mt-3">
@@ -317,6 +321,9 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                           onRefresh={() => { refetchDeployments(); refetchRuns(); }}
                           projectId={projectId}
                         />
+                      </TabsContent>
+                      <TabsContent value="daily" className="mt-3">
+                        <DailyPlanPanel deploymentId={dep.id} projectId={projectId} />
                       </TabsContent>
                       <TabsContent value="tasks" className="mt-3">
                         <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />

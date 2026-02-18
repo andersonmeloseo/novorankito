@@ -42,6 +42,28 @@ interface OrchestratorTask {
   estimated_impact: string;
 }
 
+interface DailyAction {
+  time: string; // e.g. "09:00"
+  title: string;
+  description: string;
+  area: string; // seo | conteudo | links | ads | tecnico | analytics
+  priority: "urgente" | "alta" | "normal" | "baixa";
+  duration_min: number;
+  responsible: string;
+  success_metric: string;
+  status: "pending" | "in_progress" | "done" | "scheduled";
+  tools?: string[];
+}
+
+interface DailyPlanDay {
+  date: string; // ISO date
+  day_name: string; // "Segunda-feira"
+  theme: string;
+  actions: DailyAction[];
+  kpi_targets: { metric: string; target: string; area: string }[];
+  areas_covered: string[];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -73,17 +95,25 @@ serve(async (req) => {
 
     // Fetch project context data
     const today = new Date();
-    const [seoData, overviewData] = await Promise.all([
+    const todayStr = today.toISOString().split("T")[0];
+    
+    const [seoData, overviewData, gscData] = await Promise.all([
       supabase.from("seo_metrics")
         .select("query, url, clicks, impressions, position, ctr")
         .eq("project_id", project_id)
         .order("clicks", { ascending: false })
         .limit(50),
       supabase.rpc("get_project_overview", { p_project_id: project_id }),
+      supabase.from("seo_metrics")
+        .select("query, clicks, impressions, position")
+        .eq("project_id", project_id)
+        .eq("dimension_type", "query")
+        .order("impressions", { ascending: false })
+        .limit(30),
     ]);
 
     const projectContext = `
-## Dados do Projeto (contexto real)
+## Dados do Projeto (contexto real) — ${todayStr}
 ### Overview:
 ${JSON.stringify(overviewData.data || {}, null, 2)}
 
@@ -91,6 +121,13 @@ ${JSON.stringify(overviewData.data || {}, null, 2)}
 ${(seoData.data || []).slice(0, 20).map((r: any) => 
   `- ${r.query || r.url}: ${r.clicks} cliques, ${r.impressions} impressões, pos ${r.position?.toFixed(1)}`
 ).join("\n")}
+
+### Queries com Alto Volume e Baixo CTR (oportunidades):
+${(gscData.data || [])
+  .filter((r: any) => r.impressions > 100 && r.position < 20)
+  .slice(0, 10)
+  .map((r: any) => `- "${r.query}": ${r.impressions} impressões, pos ${r.position?.toFixed(1)}, ${r.clicks} cliques`)
+  .join("\n") || "Sem dados disponíveis"}
 `;
 
     // Create run record
@@ -148,7 +185,7 @@ ${(seoData.data || []).slice(0, 20).map((r: any) =>
 
         const systemPrompt = `${role.instructions}
 
-Você faz parte de uma equipe profissional de IA organizada como uma empresa real. Hoje é ${today.toLocaleDateString("pt-BR")} (${today.toISOString().split("T")[0]}).
+Você faz parte de uma equipe profissional de IA organizada como uma empresa real. Hoje é ${today.toLocaleDateString("pt-BR")} (${todayStr}).
 
 ## Sua Rotina (${role.routine?.frequency || "daily"})
 Tarefas: ${(role.routine?.tasks || []).join("; ") || "Análise geral e relatório de resultados"}
@@ -299,26 +336,30 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
       }
     }
 
-    // ── Generate Strategic Plan from CEO ──
+    // ── Generate Strategic Plan + 5-Day Daily Actions Plan ──
     const ceoResult = resultsByRole.get("ceo") || 
       agentResults.find(r => r.role_id === "ceo" || getDepth(r.role_id) === 0)?.result || "";
 
-    // Ask CEO to generate a 7-day strategic plan
+    const allReports = agentResults
+      .filter(r => r.status === "success")
+      .map(r => `### ${r.emoji} ${r.role_title}\n${r.result}`)
+      .join("\n\n---\n\n");
+
+    // Generate strategic plan + full daily actions (parallel)
     let strategicPlan = null;
-    if (ceoResult && aiApiKey) {
-      try {
-        const planResponse = await fetch(aiEndpoint, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${aiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: aiModel,
-            messages: [
-              {
-                role: "system",
-                content: `Você é o CEO de uma empresa digital. Com base nos relatórios da equipe, gere um planejamento estratégico da semana em JSON puro (sem markdown, sem explicações, apenas o JSON):
+    let dailyPlan: DailyPlanDay[] = [];
+
+    const [planRes, dailyRes] = await Promise.allSettled([
+      // Strategic weekly plan
+      aiApiKey ? fetch(aiEndpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: [
+            {
+              role: "system",
+              content: `Você é o CEO de uma empresa digital. Com base nos relatórios da equipe, gere um planejamento estratégico da semana em JSON puro (sem markdown, sem explicações, apenas o JSON):
 {
   "week_theme": "Tema principal da semana",
   "top_goals": ["meta 1", "meta 2", "meta 3"],
@@ -332,29 +373,100 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
   "kpis_to_watch": [
     {"metric": "nome da métrica", "target": "meta", "current": "valor atual se souber"}
   ],
-  "risk_alert": "Principal risco desta semana"
+  "risk_alert": "Principal risco desta semana",
+  "quick_wins": ["Ação rápida 1 (menos de 1h)", "Ação rápida 2", "Ação rápida 3"]
 }`
-              },
-              {
-                role: "user",
-                content: `Com base neste relatório do CEO e dos dados do projeto:\n\n${ceoResult}\n\nGere o planejamento estratégico da semana em JSON.`
-              }
-            ],
-            max_tokens: 1000,
-          }),
-        });
-        
-        if (planResponse.ok) {
-          const planData = await planResponse.json();
-          const planText = planData.choices?.[0]?.message?.content || "";
-          const jsonMatch = planText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            strategicPlan = JSON.parse(jsonMatch[0]);
-          }
-        }
-      } catch (planErr) {
-        console.warn("Failed to generate strategic plan:", planErr);
+            },
+            {
+              role: "user",
+              content: `Com base neste relatório do CEO e dos dados do projeto:\n\n${ceoResult}\n\nGere o planejamento estratégico da semana em JSON.`
+            }
+          ],
+          max_tokens: 1200,
+        }),
+      }) : Promise.reject("no key"),
+
+      // 5-day detailed daily plan
+      aiApiKey ? fetch(aiEndpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: [
+            {
+              role: "system",
+              content: `Você é um Chief of Staff gerando um plano de ações diárias detalhado para os próximos 5 dias úteis. Hoje é ${todayStr}.
+
+Com base nos relatórios de todos os agentes, gere um plano DIÁRIO por ÁREA (SEO, conteúdo, links, ads, técnico, analytics) com ações específicas agendadas para cada dia.
+
+Retorne SOMENTE JSON válido, sem markdown:
+[
+  {
+    "date": "YYYY-MM-DD",
+    "day_name": "Segunda-feira",
+    "theme": "Tema/foco principal do dia",
+    "areas_covered": ["seo", "conteudo"],
+    "kpi_targets": [
+      {"metric": "CTR médio", "target": ">3.5%", "area": "seo"}
+    ],
+    "actions": [
+      {
+        "time": "09:00",
+        "title": "Título acionável curto",
+        "description": "O que fazer exatamente, passo a passo",
+        "area": "seo",
+        "priority": "alta",
+        "duration_min": 45,
+        "responsible": "Especialista SEO",
+        "success_metric": "Como saber se foi feito com sucesso",
+        "status": "scheduled",
+        "tools": ["Google Search Console", "Semrush"]
       }
+    ]
+  }
+]
+
+REGRAS:
+- Gere exatamente 5 dias a partir de hoje (${todayStr})
+- Cada dia deve ter entre 3-6 ações distribuídas ao longo do dia
+- Priorize ações de ALTO IMPACTO nas primeiras horas (manhã)
+- Distribua as áreas equilibradamente ao longo da semana
+- Seja MUITO específico: cite queries reais dos dados, páginas reais, ações concretas
+- Inclua horários realistas (09:00 às 18:00)
+- Sempre inclua ao menos 1 ação de cada área principal (seo, conteudo, links)`
+            },
+            {
+              role: "user",
+              content: `Dados do projeto e relatórios dos agentes:\n\n${projectContext}\n\n---\n\n${allReports.slice(0, 6000)}\n\nGere o plano de ações diárias para os próximos 5 dias úteis em JSON puro.`
+            }
+          ],
+          max_tokens: 4000,
+        }),
+      }) : Promise.reject("no key"),
+    ]);
+
+    // Process strategic plan
+    if (planRes.status === "fulfilled" && planRes.value.ok) {
+      try {
+        const planData = await planRes.value.json();
+        const planText = planData.choices?.[0]?.message?.content || "";
+        const jsonMatch = planText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) strategicPlan = JSON.parse(jsonMatch[0]);
+      } catch (e) { console.warn("Failed to parse strategic plan:", e); }
+    }
+
+    // Process daily plan
+    if (dailyRes.status === "fulfilled" && dailyRes.value.ok) {
+      try {
+        const dailyData = await dailyRes.value.json();
+        const dailyText = dailyData.choices?.[0]?.message?.content || "";
+        const jsonMatch = dailyText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          dailyPlan = JSON.parse(jsonMatch[0]);
+          // Validate and clean the data
+          dailyPlan = dailyPlan.filter(d => d.date && d.actions?.length > 0);
+        }
+      } catch (e) { console.warn("Failed to parse daily plan:", e); }
     }
 
     // Count tasks created
@@ -363,7 +475,14 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
       .select("*", { count: "exact", head: true })
       .eq("run_id", runId);
 
-    // Complete the run
+    // Complete the run — store everything in delivery_status
+    const deliveryStatus = {
+      ...(strategicPlan ? { strategic_plan: strategicPlan } : {}),
+      ...(dailyPlan.length > 0 ? { daily_plan: dailyPlan } : {}),
+      generated_at: new Date().toISOString(),
+      tasks_created: tasksCreated || 0,
+    };
+
     await supabase
       .from("orchestrator_runs")
       .update({
@@ -371,7 +490,7 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
         completed_at: new Date().toISOString(),
         agent_results: agentResults,
         summary: ceoResult,
-        delivery_status: strategicPlan ? { strategic_plan: strategicPlan } : {},
+        delivery_status: deliveryStatus,
       })
       .eq("id", runId);
 
@@ -396,7 +515,7 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
       user_id: owner_id,
       project_id,
       title: "🏢 Orquestrador Concluído",
-      message: `${successCount}/${agentResults.length} agentes executados. ${tasksCreated || 0} tarefas criadas para o time.`,
+      message: `${successCount}/${agentResults.length} agentes executados. ${tasksCreated || 0} tarefas + plano de ${dailyPlan.length} dias gerado.`,
       type: "success",
       action_url: `/rankito-ai#canvas`,
     });
@@ -408,6 +527,7 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
       success_count: successCount,
       tasks_created: tasksCreated || 0,
       has_strategic_plan: !!strategicPlan,
+      daily_plan_days: dailyPlan.length,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
