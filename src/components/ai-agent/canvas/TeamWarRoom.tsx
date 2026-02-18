@@ -1132,6 +1132,8 @@ function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, 
     }
   }, [entries]);
 
+  if (!activeRole) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden border-blue-500/50 bg-background shadow-2xl shadow-blue-500/10">
