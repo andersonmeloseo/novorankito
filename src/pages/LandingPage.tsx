@@ -1,105 +1,96 @@
-import { useState, useEffect } from "react";
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
-  Search, BarChart3, Zap, Bot, TrendingUp, Globe, Target,
-  Shield, Users, Database, ArrowRight, CheckCircle2, Star,
-  ChevronRight, Brain, Layers, Activity, MousePointerClick,
-  Map, ShoppingCart, Link, Clock, Play, Sparkles, Award,
-  Building2, DollarSign, LineChart, FileSearch, Network
+  Search, BarChart3, Zap, Bot, TrendingUp, Target,
+  Shield, Users, ArrowRight, CheckCircle2, Star,
+  Brain, Activity, MousePointerClick, DollarSign,
+  Network, ShoppingCart, Globe, Sparkles, ChevronRight,
+  AlertCircle, Clock, Play, BarChart, LineChart,
+  Lock, Layers, Award, Building2, Rocket, ChevronDown
 } from "lucide-react";
+import plansImage from "@/assets/landing-plans.png";
 
-// ---------- Animated counter ----------
-function Counter({ end, suffix = "", prefix = "" }: { end: number; suffix?: string; prefix?: string }) {
+// ─── Animated Counter ───────────────────────────────────────────────────────
+function Counter({ end, suffix = "", prefix = "", duration = 1800 }: {
+  end: number; suffix?: string; prefix?: string; duration?: number;
+}) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
     if (!inView) return;
-    let start = 0;
-    const step = end / 60;
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= end) { setCount(end); clearInterval(timer); }
-      else setCount(Math.floor(start));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [inView, end]);
+    const startTime = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * end));
+      if (progress < 1) requestAnimationFrame(tick);
+      else setCount(end);
+    };
+    requestAnimationFrame(tick);
+  }, [inView, end, duration]);
 
   return <span ref={ref}>{prefix}{count.toLocaleString("pt-BR")}{suffix}</span>;
 }
 
-// ---------- Feature Card ----------
-function FeatureCard({ icon: Icon, title, desc, color }: { icon: any; title: string; desc: string; color: string }) {
+// ─── Pain Point Card ─────────────────────────────────────────────────────────
+function PainCard({ emoji, text }: { emoji: string; text: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: -20 }}
+      whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
-      className="group relative bg-white dark:bg-[#141927] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300"
+      className="flex items-start gap-3 p-4 rounded-xl border border-red-200/30 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/20"
     >
-      <div className={`inline-flex p-3 rounded-xl mb-4 ${color}`}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
+      <span className="text-xl shrink-0">{emoji}</span>
+      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{text}</p>
     </motion.div>
   );
 }
 
-// ---------- Screenshot mockup ----------
-function ScreenshotFrame({ children, label }: { children: React.ReactNode; label: string }) {
+// ─── Proof Badge ─────────────────────────────────────────────────────────────
+function ProofBadge({ text, sub }: { text: string; sub: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="relative"
-    >
-      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xl">
-        <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-          <span className="w-3 h-3 rounded-full bg-red-400" />
-          <span className="w-3 h-3 rounded-full bg-yellow-400" />
-          <span className="w-3 h-3 rounded-full bg-green-400" />
-          <span className="ml-3 text-xs text-slate-500 dark:text-slate-400 font-mono">rankito.io / {label}</span>
-        </div>
-        {children}
-      </div>
-    </motion.div>
+    <div className="flex flex-col items-center gap-1 p-5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm">
+      <span className="text-3xl font-black text-violet-600 dark:text-violet-400">{text}</span>
+      <span className="text-xs text-slate-500 dark:text-slate-400 text-center leading-tight">{sub}</span>
+    </div>
   );
 }
 
-// ---------- Fake SEO dashboard screenshot ----------
-function SeoScreenshot() {
+// ─── Checkmark Row ───────────────────────────────────────────────────────────
+function Check({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-6 h-6 rounded bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-          <Search className="w-3 h-3 text-violet-600" />
-        </div>
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">SEO — Google Search Console</span>
-        <span className="ml-auto text-xs text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">● Conectado</span>
+    <div className="flex items-start gap-2.5">
+      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+      <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{children}</span>
+    </div>
+  );
+}
+
+// ─── Module Mockups ──────────────────────────────────────────────────────────
+function SeoMockup() {
+  return (
+    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans rounded-b-2xl">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <Search className="w-4 h-4 text-violet-600" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">SEO — Google Search Console</span>
+        <span className="ml-auto text-[10px] text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">● Conectado</span>
       </div>
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        {[
-          { label: "CLIQUES", val: "774", delta: "+43.6%", up: true },
-          { label: "IMPRESSÕES", val: "20.2K", delta: "+27.8%", up: true },
-          { label: "CTR MÉDIO", val: "3.8%", delta: "+12.4%", up: true },
-          { label: "POSIÇÃO MÉDIA", val: "8", delta: "-6.4%", up: false },
-        ].map(k => (
-          <div key={k.label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
-            <div className="text-[9px] font-semibold tracking-wider text-slate-400 uppercase mb-1">{k.label}</div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white">{k.val}</div>
-            <div className={`text-[10px] mt-1 font-medium ${k.up ? "text-emerald-500" : "text-red-400"}`}>{k.delta}</div>
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {[["CLIQUES","774","+43.6%",true],["IMPRESSÕES","20.2K","+27.8%",true],["CTR","3.8%","+12%",true],["POSIÇÃO","8","-6.4%",false]].map(([l,v,d,up]) => (
+          <div key={l as string} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div className="text-[8px] font-bold tracking-wider text-slate-400 uppercase">{l}</div>
+            <div className="text-base font-black text-slate-900 dark:text-white">{v}</div>
+            <div className={`text-[9px] font-semibold ${up ? "text-emerald-500" : "text-red-400"}`}>{d}</div>
           </div>
         ))}
       </div>
-      <div className="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-3">
-        <div className="text-xs font-semibold text-slate-500 mb-2">Tendência de Performance</div>
-        <div className="flex items-end gap-1 h-16">
+      <div className="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3">
+        <div className="text-[9px] font-semibold text-slate-400 mb-2">Tendência 28 dias</div>
+        <div className="flex items-end gap-1 h-12">
           {[30,45,38,60,52,70,65,80,72,90,85,95].map((h, i) => (
             <div key={i} className="flex-1 rounded-sm bg-violet-500/60" style={{ height: `${h}%` }} />
           ))}
@@ -109,185 +100,97 @@ function SeoScreenshot() {
   );
 }
 
-// ---------- Fake GA4 screenshot ----------
-function GA4Screenshot() {
+function GA4Mockup() {
   return (
-    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-          <Activity className="w-3 h-3 text-blue-600" />
-        </div>
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">GA4 — KPIs Executivos</span>
-        <span className="ml-auto text-xs text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">● Ao vivo</span>
+    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans rounded-b-2xl">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <Activity className="w-4 h-4 text-blue-600" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">GA4 — KPIs Executivos</span>
+        <span className="ml-auto text-[10px] text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">● Ao vivo</span>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
-        {[
-          { label: "USUÁRIOS", val: "2.5K" },
-          { label: "SESSÕES", val: "2.6K" },
-          { label: "ENGAJAMENTO", val: "22.8%" },
-          { label: "RECEITA", val: "R$4.2K" },
-          { label: "CONVERSÕES", val: "128" },
-          { label: "DURAÇÃO", val: "2m 39s" },
-        ].map(k => (
-          <div key={k.label} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5">
-            <div className="text-[8px] font-semibold tracking-wider text-slate-400 uppercase mb-0.5">{k.label}</div>
-            <div className="text-base font-bold text-slate-900 dark:text-white">{k.val}</div>
+        {[["USUÁRIOS","2.5K"],["SESSÕES","2.6K"],["ENGAJAMENTO","22.8%"],["RECEITA","R$4.2K"],["CONVERSÕES","128"],["DURAÇÃO","2m 39s"]].map(([l,v]) => (
+          <div key={l} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div className="text-[8px] font-bold tracking-wider text-slate-400 uppercase">{l}</div>
+            <div className="text-sm font-black text-slate-900 dark:text-white">{v}</div>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3">
-          <div className="text-[9px] text-slate-400 uppercase font-semibold mb-2">Por Canal</div>
-          {[["Orgânico",65],["Direto",20],["Social",15]].map(([c,p]) => (
-            <div key={c as string} className="flex items-center gap-2 mb-1">
-              <div className="text-[10px] text-slate-500 w-14">{c}</div>
-              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${p}%` }} />
-              </div>
-              <div className="text-[10px] text-slate-400">{p}%</div>
+      <div className="bg-blue-50/60 dark:bg-blue-900/10 rounded-lg p-3">
+        <div className="text-[9px] text-slate-400 font-semibold mb-1.5">Por Canal</div>
+        {[["Orgânico",65,"bg-blue-500"],["Direto",20,"bg-indigo-400"],["Social",15,"bg-violet-400"]].map(([c,p,col]) => (
+          <div key={c as string} className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] text-slate-500 w-12">{c}</span>
+            <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className={`h-full ${col} rounded-full`} style={{ width: `${p}%` }} />
             </div>
-          ))}
-        </div>
-        <div className="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3">
-          <div className="text-[9px] text-slate-400 uppercase font-semibold mb-2">Por Dispositivo</div>
-          {[["Mobile",58],["Desktop",35],["Tablet",7]].map(([c,p]) => (
-            <div key={c as string} className="flex items-center gap-2 mb-1">
-              <div className="text-[10px] text-slate-500 w-14">{c}</div>
-              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${p}%` }} />
-              </div>
-              <div className="text-[10px] text-slate-400">{p}%</div>
-            </div>
-          ))}
-        </div>
+            <span className="text-[9px] text-slate-400">{p}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ---------- Fake AI Agent screenshot ----------
-function AIAgentScreenshot() {
+function AIMockup() {
   return (
-    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-6 h-6 rounded bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-          <Bot className="w-3 h-3 text-violet-600" />
-        </div>
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Rankito IA — Agentes Autônomos</span>
+    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans rounded-b-2xl">
+      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <Bot className="w-4 h-4 text-violet-600" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Agente IA — SEO Specialist</span>
       </div>
       <div className="space-y-2 mb-3">
         <div className="flex gap-2">
-          <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
-            <Bot className="w-3.5 h-3.5 text-white" />
+          <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
+            <Bot className="w-3 h-3 text-white" />
           </div>
-          <div className="flex-1 bg-violet-50 dark:bg-violet-900/20 rounded-xl rounded-tl-none p-3 text-xs text-slate-700 dark:text-slate-300">
-            📊 Analisei seus últimos 28 dias. Suas impressões cresceram <span className="font-bold text-violet-600">+27.8%</span>. Identifiquei <span className="font-bold">12 keywords</span> com alto potencial de crescimento na posição 8-15.
+          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl rounded-tl-none p-2.5 text-[10px] text-slate-700 dark:text-slate-300 flex-1">
+            📊 Identifiquei <strong>12 keywords</strong> na posição 8-15 com alto potencial. Suas impressões cresceram <strong className="text-violet-600">+27.8%</strong> esse mês.
           </div>
         </div>
         <div className="flex gap-2 justify-end">
-          <div className="bg-slate-100 dark:bg-slate-800 rounded-xl rounded-tr-none p-3 text-xs text-slate-700 dark:text-slate-300">
-            Quais páginas devo otimizar primeiro?
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-xl rounded-tr-none p-2.5 text-[10px] text-slate-700 dark:text-slate-300">
+            Quais páginas otimizar primeiro?
           </div>
         </div>
         <div className="flex gap-2">
-          <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
-            <Bot className="w-3.5 h-3.5 text-white" />
+          <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
+            <Bot className="w-3 h-3 text-white" />
           </div>
-          <div className="flex-1 bg-violet-50 dark:bg-violet-900/20 rounded-xl rounded-tl-none p-3 text-xs text-slate-700 dark:text-slate-300">
-            🎯 Top 3 prioridades: <span className="font-bold">/advogado-criminal</span> (pos. 9, 340 impressões), <span className="font-bold">/consulta-gratuita</span> (pos. 11), <span className="font-bold">/honorarios</span> (pos. 8). Enviei relatório por WhatsApp!
+          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl rounded-tl-none p-2.5 text-[10px] text-slate-700 dark:text-slate-300 flex-1">
+            🎯 <strong>/advogado-criminal</strong> (pos.9, 340 imp.), <strong>/consulta-gratuita</strong> (pos.11). Enviei relatório por <strong>WhatsApp!</strong>
           </div>
         </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        {["📈 Analisar performance","🔍 Keywords em alta","📧 Enviar relatório"].map(s => (
-          <button key={s} className="text-[9px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-left text-slate-600 dark:text-slate-400 hover:border-violet-400 transition-colors">
-            {s}
-          </button>
-        ))}
       </div>
     </div>
   );
 }
 
-// ---------- Fake Tracking screenshot ----------
-function TrackingScreenshot() {
+function RankRentMockup() {
   return (
-    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-6 h-6 rounded bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-          <MousePointerClick className="w-3 h-3 text-orange-600" />
-        </div>
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Analítica Rankito — Pixel v4.1</span>
-        <span className="ml-auto text-xs text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">● Ativo</span>
+    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans rounded-b-2xl">
+      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <DollarSign className="w-4 h-4 text-emerald-600" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Rank & Rent — Portfólio</span>
       </div>
       <div className="grid grid-cols-4 gap-2 mb-3">
-        {[
-          { icon: Activity, label: "Eventos", val: "1.2K", color: "text-blue-500" },
-          { icon: Users, label: "Sessões", val: "384", color: "text-violet-500" },
-          { icon: Map, label: "Heatmaps", val: "12", color: "text-orange-500" },
-          { icon: Target, label: "Metas", val: "8/10", color: "text-emerald-500" },
-        ].map(({ icon: Icon, label, val, color }) => (
-          <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center">
-            <Icon className={`w-4 h-4 mx-auto mb-1 ${color}`} />
-            <div className="text-base font-bold text-slate-900 dark:text-white">{val}</div>
-            <div className="text-[9px] text-slate-400">{label}</div>
-          </div>
-        ))}
-      </div>
-      <div className="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3">
-        <div className="text-[9px] text-slate-400 uppercase font-semibold mb-2">Eventos Recentes</div>
-        {[
-          { e: "cta_click", p: "/contato", t: "2s atrás", c: "bg-blue-400" },
-          { e: "form_submit", p: "/servicos", t: "15s atrás", c: "bg-emerald-400" },
-          { e: "page_view", p: "/sobre", t: "32s atrás", c: "bg-slate-400" },
-          { e: "whatsapp_click", p: "/home", t: "1m atrás", c: "bg-green-400" },
-        ].map(({ e, p, t, c }) => (
-          <div key={e+t} className="flex items-center gap-2 py-1 border-b border-slate-100 dark:border-slate-700/50 last:border-0">
-            <span className={`w-1.5 h-1.5 rounded-full ${c} shrink-0`} />
-            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300 flex-1">{e}</span>
-            <span className="text-[9px] text-slate-400">{p}</span>
-            <span className="text-[9px] text-slate-400">{t}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---------- Fake Rank Rent screenshot ----------
-function RankRentScreenshot() {
-  return (
-    <div className="bg-white dark:bg-[#0f1421] p-4 font-sans">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-6 h-6 rounded bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-          <DollarSign className="w-3 h-3 text-emerald-600" />
-        </div>
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Rank & Rent — Portfólio</span>
-      </div>
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        {[
-          { label: "PATRIMÔNIO", val: "R$148K" },
-          { label: "RECEITA/MÊS", val: "R$3.2K" },
-          { label: "ATIVOS", val: "12" },
-          { label: "ALUGADOS", val: "8/12" },
-        ].map(k => (
-          <div key={k.label} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-            <div className="text-[8px] font-semibold tracking-wider text-slate-400 uppercase mb-0.5">{k.label}</div>
-            <div className="text-sm font-bold text-slate-900 dark:text-white">{k.val}</div>
+        {[["PATRIMÔNIO","R$148K"],["MRR","R$3.2K"],["ATIVOS","12"],["ALUGADOS","8/12"]].map(([l,v]) => (
+          <div key={l} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div className="text-[8px] font-bold tracking-wider text-slate-400 uppercase">{l}</div>
+            <div className="text-sm font-black text-slate-900 dark:text-white">{v}</div>
           </div>
         ))}
       </div>
       <div className="space-y-1.5">
         {[
-          { name: "Advogados SP", client: "Dr. Costa", val: "R$450/mês", status: "Alugado", color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" },
-          { name: "Encanadores RJ", client: "Hidro Fix", val: "R$320/mês", status: "Alugado", color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" },
-          { name: "Dentistas BH", client: "—", val: "—", status: "Disponível", color: "text-blue-500 bg-blue-50 dark:bg-blue-900/20" },
+          { name: "Advogados SP", client: "Dr. Costa", val: "R$450/mês", ok: true },
+          { name: "Encanadores RJ", client: "Hidro Fix", val: "R$320/mês", ok: true },
+          { name: "Dentistas BH", client: "—", val: "Disponível", ok: false },
         ].map(r => (
           <div key={r.name} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/30 rounded-lg px-3 py-2">
-            <div className="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{r.name}</div>
-            <div className="text-[10px] text-slate-400">{r.client}</div>
-            <div className="text-[10px] font-semibold text-emerald-600">{r.val}</div>
-            <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${r.color}`}>{r.status}</span>
+            <div className="flex-1 text-[10px] font-semibold text-slate-700 dark:text-slate-200">{r.name}</div>
+            <div className="text-[9px] text-slate-400">{r.client}</div>
+            <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${r.ok ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20" : "text-blue-500 bg-blue-50 dark:bg-blue-900/20"}`}>{r.val}</span>
           </div>
         ))}
       </div>
@@ -295,194 +198,399 @@ function RankRentScreenshot() {
   );
 }
 
-// ============================================================
-// MAIN LANDING PAGE
-// ============================================================
-export default function LandingPage() {
-  const [activeTab, setActiveTab] = useState(0);
+// ─── Browser Frame ───────────────────────────────────────────────────────────
+function BrowserFrame({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xl shadow-slate-900/20">
+      <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+        <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+        <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+        <span className="ml-3 text-[10px] text-slate-500 dark:text-slate-400 font-mono flex-1">rankito.io/{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
-  const features = [
-    { icon: Search, title: "SEO via Search Console", desc: "Monitore cliques, impressões, CTR e posição média com dados reais do Google Search Console. Compare períodos, filtre por país e dispositivo.", color: "bg-violet-100 dark:bg-violet-900/40 text-violet-600" },
-    { icon: BarChart3, title: "Analytics GA4 Avançado", desc: "Dashboard executivo completo: usuários, sessões, engajamento, receita, retenção, aquisição e demografia — tudo em um só lugar.", color: "bg-blue-100 dark:bg-blue-900/40 text-blue-600" },
-    { icon: Zap, title: "Indexação Automática", desc: "Envie URLs ao Google Index API com até 200 notificações/dia, monitore status de cobertura e agende indexações automáticas.", color: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600" },
-    { icon: Bot, title: "Rankito IA Autônoma", desc: "Agentes especializados em SEO, Growth e Analytics que analisam seus dados reais, criam tarefas e enviam relatórios por WhatsApp e e-mail.", color: "bg-violet-100 dark:bg-violet-900/40 text-violet-600" },
-    { icon: MousePointerClick, title: "Tracking de Conversões", desc: "Pixel próprio v4.1 que captura eventos, sessões, heatmaps, jornada do usuário, metas de conversão e rastreamento offline.", color: "bg-orange-100 dark:bg-orange-900/40 text-orange-600" },
-    { icon: Network, title: "Grafo Semântico", desc: "Construa e visualize a arquitetura semântica do seu site com entidades, relações e Schema.org para dominar a busca semântica.", color: "bg-teal-100 dark:bg-teal-900/40 text-teal-600" },
-    { icon: DollarSign, title: "Rank & Rent", desc: "Gerencie seu portfólio de ativos digitais: clientes, contratos, receitas mensais, avaliação do ativo e disponibilidade de aluguel.", color: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600" },
-    { icon: TrendingUp, title: "Oportunidades SEO", desc: "Identificação automática de keywords com potencial de crescimento, canibalização de conteúdo e decaimento de páginas.", color: "bg-pink-100 dark:bg-pink-900/40 text-pink-600" },
-    { icon: Brain, title: "Orquestrador de IA", desc: "Canvas visual para criar fluxos de automação com múltiplos agentes, gatilhos, ações e entrega por múltiplos canais.", color: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600" },
-    { icon: ShoppingCart, title: "E-commerce Analytics", desc: "Funil de compras completo, análise de receita, produtos mais vendidos e rastreamento de conversões de e-commerce.", color: "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600" },
-    { icon: Globe, title: "Multi-Projetos", desc: "Gerencie múltiplos sites em uma única plataforma. Dashboard unificado por projeto com KPIs de SEO, GA4, indexação e conversões.", color: "bg-slate-100 dark:bg-slate-700/60 text-slate-600" },
-    { icon: Shield, title: "White Label", desc: "Personalize a plataforma com sua marca. Ideal para agências que querem entregar uma ferramenta própria aos seus clientes.", color: "bg-rose-100 dark:bg-rose-900/40 text-rose-600" },
-  ];
+// ─── Pricing Card ────────────────────────────────────────────────────────────
+function PricingCard({
+  name, price, period, desc, features, cta, highlight, badge
+}: {
+  name: string; price: string; period: string; desc: string;
+  features: string[]; cta: string; highlight?: boolean; badge?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -4 }}
+      className={`relative rounded-2xl p-8 flex flex-col border transition-all duration-300 ${
+        highlight
+          ? "bg-gradient-to-b from-violet-600 to-indigo-700 border-violet-500 shadow-2xl shadow-violet-500/30 text-white"
+          : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+      }`}
+    >
+      {badge && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-black px-5 py-1.5 rounded-full shadow-lg">
+          {badge}
+        </div>
+      )}
+      <div className="mb-6">
+        <div className={`text-xs font-black uppercase tracking-widest mb-2 ${highlight ? "text-violet-200" : "text-violet-600 dark:text-violet-400"}`}>{name}</div>
+        <div className="flex items-baseline gap-1 mb-1">
+          <span className={`text-5xl font-black ${highlight ? "text-white" : "text-slate-900 dark:text-white"}`}>{price}</span>
+          <span className={`text-sm ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{period}</span>
+        </div>
+        <p className={`text-sm leading-relaxed ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{desc}</p>
+      </div>
+      <div className="space-y-3 flex-1 mb-8">
+        {features.map((f, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${highlight ? "text-emerald-300" : "text-emerald-500"}`} />
+            <span className={`text-sm ${highlight ? "text-violet-100" : "text-slate-600 dark:text-slate-300"}`}>{f}</span>
+          </div>
+        ))}
+      </div>
+      <a
+        href="/login"
+        className={`block text-center font-bold py-3.5 rounded-xl transition-all ${
+          highlight
+            ? "bg-white text-violet-700 hover:bg-violet-50"
+            : "bg-violet-600 text-white hover:bg-violet-700"
+        }`}
+      >
+        {cta}
+      </a>
+    </motion.div>
+  );
+}
+
+// ─── Testimonial ─────────────────────────────────────────────────────────────
+function Testimonial({ quote, author, role, avatar }: { quote: string; author: string; role: string; avatar: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6"
+    >
+      <div className="flex gap-1 mb-4">
+        {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
+      </div>
+      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-5 italic">"{quote}"</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+          {avatar}
+        </div>
+        <div>
+          <div className="text-sm font-bold text-slate-900 dark:text-white">{author}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{role}</div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── FAQ Item ─────────────────────────────────────────────────────────────────
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-slate-200 dark:border-slate-700 last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-5 text-left gap-4"
+      >
+        <span className="font-semibold text-slate-900 dark:text-white text-sm">{q}</span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <p className="pb-5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ════════════════════════════════════════════════════════════════════
+export default function LandingPage() {
+  const [activeModule, setActiveModule] = useState(0);
 
   const modules = [
-    { id: 0, label: "SEO & GSC", icon: Search },
-    { id: 1, label: "GA4 Analytics", icon: BarChart3 },
-    { id: 2, label: "IA Autônoma", icon: Bot },
-    { id: 3, label: "Tracking Pixel", icon: MousePointerClick },
-    { id: 4, label: "Rank & Rent", icon: DollarSign },
-  ];
-
-  const screenshots = [
-    { component: <SeoScreenshot />, title: "SEO & Google Search Console", desc: "Dados reais em tempo real do seu Google Search Console. Compare períodos, identifique oportunidades e tome decisões com dados.", label: "seo" },
-    { component: <GA4Screenshot />, title: "GA4 — Visão Executiva", desc: "Todos os seus dados do Google Analytics 4 organizados de forma clara: usuários, sessões, receita, canais e dispositivos.", label: "ga4" },
-    { component: <AIAgentScreenshot />, title: "Rankito IA — Agentes Especializados", desc: "Converse com agentes treinados em SEO que analisam seus dados reais e entregam relatórios por WhatsApp e e-mail automaticamente.", label: "rankito-ai" },
-    { component: <TrackingScreenshot />, title: "Analítica Rankito — Pixel v4.1", desc: "Capture eventos, sessões, heatmaps e jornadas do usuário com o pixel próprio da plataforma, sem depender de terceiros.", label: "analitica-rankito" },
-    { component: <RankRentScreenshot />, title: "Rank & Rent — Portfólio Digital", desc: "Gerencie seu portfólio de ativos, contratos com clientes, receita recorrente e patrimônio digital estimado em uma visão única.", label: "rank-rent" },
+    { label: "SEO & GSC", icon: Search, mockup: <SeoMockup />, browserLabel: "seo" },
+    { label: "GA4 Analytics", icon: BarChart3, mockup: <GA4Mockup />, browserLabel: "ga4" },
+    { label: "IA Autônoma", icon: Bot, mockup: <AIMockup />, browserLabel: "ai-agent" },
+    { label: "Rank & Rent", icon: DollarSign, mockup: <RankRentMockup />, browserLabel: "rank-rent" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#090e1a] text-slate-900 dark:text-white overflow-x-hidden">
-      {/* ── NAV ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#090e1a]/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#080c18] text-slate-900 dark:text-white overflow-x-hidden font-sans">
+
+      {/* ── NAV ─────────────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#080c18]/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
               <TrendingUp className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">Rankito</span>
-            <span className="text-[10px] font-semibold text-slate-400 ml-1 mt-0.5">SEO Intelligence</span>
+            <span className="text-lg font-black bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">Rankito</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
-            <a href="#features" className="hover:text-violet-600 transition-colors">Funcionalidades</a>
-            <a href="#modules" className="hover:text-violet-600 transition-colors">Módulos</a>
-            <a href="#pricing" className="hover:text-violet-600 transition-colors">Planos</a>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
+            <a href="#problema" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">O problema</a>
+            <a href="#solucao" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">A solução</a>
+            <a href="#planos" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Planos</a>
+            <a href="#faq" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">FAQ</a>
           </div>
-          <a href="/login" className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
-            Começar grátis <ArrowRight className="w-4 h-4" />
+          <a href="/login" className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-violet-500/25 hover:scale-105 transition-all">
+            Começar agora <ArrowRight className="w-4 h-4" />
           </a>
         </div>
       </nav>
 
-      {/* ── HERO ── */}
-      <section className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Background glow */}
+      {/* ── 1. HOOK / HERO ──────────────────────────────────────────── */}
+      <section className="relative pt-28 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-violet-600/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-indigo-600/8 rounded-full blur-[100px]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-violet-600/10 rounded-full blur-[140px]" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-indigo-600/8 rounded-full blur-[100px]" />
         </div>
 
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-5xl mx-auto relative text-center">
+          {/* Pre-headline */}
           <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-6 border border-violet-200 dark:border-violet-800/50"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            A plataforma que profissionais de SEO usam para ganhar mais
+          </motion.div>
+
+          {/* Main Hook */}
+          <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
+            transition={{ delay: 0.1 }}
+            className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] mb-6"
           >
-            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-semibold px-4 py-2 rounded-full mb-6 border border-violet-200 dark:border-violet-800/50">
-              <Sparkles className="w-3.5 h-3.5" />
-              A plataforma de SEO mais completa do Brasil
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] mb-6">
-              Domine o{" "}
+            Pare de perder{" "}
+            <span className="relative">
               <span className="bg-gradient-to-r from-violet-600 via-indigo-500 to-blue-500 bg-clip-text text-transparent">
-                Google Search
+                cliques e receita
               </span>
-              <br />com Inteligência Artificial
-            </h1>
+              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 9C50 3 150 1 299 9" stroke="url(#u1)" strokeWidth="3" strokeLinecap="round"/>
+                <defs><linearGradient id="u1" x1="0" y1="0" x2="300" y2="0" gradientUnits="userSpaceOnUse"><stop stopColor="#7C3AED"/><stop offset="1" stopColor="#3B82F6"/></linearGradient></defs>
+              </svg>
+            </span>
+            <br />por falta de dados
+          </motion.h1>
 
-            <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto">
-              Rankito unifica <strong className="text-slate-800 dark:text-slate-200">SEO, GA4, Indexação, IA Autônoma, Tracking de Conversões e Rank & Rent</strong> em uma única plataforma. Tome decisões com dados reais, não achismo.
-            </p>
+          {/* Sub-headline */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto"
+          >
+            Rankito unifica <strong className="text-slate-800 dark:text-slate-200">SEO, GA4, IA Autônoma, Tracking e Rank & Rent</strong> em uma plataforma. Tome decisões com dados reais do Google — não achismos.
+          </motion.p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-              <a href="/login" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold px-8 py-4 rounded-2xl text-base shadow-xl shadow-violet-500/30 transition-all hover:scale-105">
-                <Play className="w-4 h-4" /> Começar gratuitamente
-              </a>
-              <a href="#modules" className="w-full sm:w-auto flex items-center justify-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-8 py-4 rounded-2xl text-base hover:border-violet-400 hover:text-violet-600 transition-all">
-                Ver funcionalidades <ChevronRight className="w-4 h-4" />
-              </a>
-            </div>
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
+          >
+            <a
+              href="/login"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-8 py-4 rounded-2xl text-base shadow-2xl shadow-violet-500/40 transition-all hover:scale-105"
+            >
+              <Rocket className="w-5 h-5" /> Quero começar agora
+            </a>
+            <a
+              href="#solucao"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 font-semibold px-8 py-4 rounded-2xl text-base hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+            >
+              Ver como funciona <ChevronRight className="w-4 h-4" />
+            </a>
+          </motion.div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
-              {[
-                { end: 12, suffix: "+", label: "Módulos integrados" },
-                { end: 200, suffix: "k", label: "URLs indexadas/dia" },
-                { end: 100, suffix: "%", label: "Dados reais do Google" },
-                { end: 24, suffix: "/7", label: "IA trabalhando por você" },
-              ].map(s => (
-                <div key={s.label} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-black text-violet-600 mb-1">
-                    <Counter end={s.end} suffix={s.suffix} />
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{s.label}</div>
+          {/* Social proof strip */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 mb-16"
+          >
+            {[
+              { icon: Shield, text: "Dados direto do Google" },
+              { icon: Lock, text: "Sem contrato de fidelidade" },
+              { icon: Zap, text: "Configuração em minutos" },
+              { icon: Users, text: "+500 profissionais ativos" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-1.5">
+                <Icon className="w-3.5 h-3.5 text-violet-500" />
+                {text}
+              </div>
+            ))}
+          </motion.div>
+
+          {/* KPI numbers */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto">
+            {[
+              { end: 200, suffix: "k", label: "URLs indexadas por dia" },
+              { end: 12, suffix: "+", label: "Módulos integrados" },
+              { end: 500, suffix: "+", label: "Profissionais ativos" },
+              { end: 100, suffix: "%", label: "Dados reais do Google" },
+            ].map(s => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center"
+              >
+                <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1">
+                  <Counter end={s.end} suffix={s.suffix} />
                 </div>
-              ))}
+                <div className="text-xs text-slate-500 dark:text-slate-400 leading-tight">{s.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 2. DOR / PROBLEMA ───────────────────────────────────────── */}
+      <section id="problema" className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0a0f1e]">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <div className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-red-200 dark:border-red-800/30">
+              <AlertCircle className="w-3.5 h-3.5" /> Você provavelmente está cometendo esses erros agora
             </div>
+            <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4">
+              Por que profissionais de SEO<br />
+              <span className="text-red-500">deixam dinheiro na mesa</span> todo mês
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl mx-auto">
+              Sem os dados certos, você está navegando no escuro. E o Google não vai te avisar.
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            {[
+              { emoji: "📉", text: "Você não sabe quais keywords estão perdendo posição até o tráfego cair — quando já é tarde demais para reagir." },
+              { emoji: "🤔", text: "Você toma decisões de SEO baseadas em achismo porque os dados do Google Search Console são complexos demais para analisar no dia a dia." },
+              { emoji: "⏰", text: "Você perde horas montando relatórios manualmente para clientes todo mês — tempo que poderia estar gerando novos projetos." },
+              { emoji: "🔗", text: "Suas URLs novas ficam meses sem indexar enquanto você espera o Google passar por lá, perdendo tráfego que deveria ser seu." },
+              { emoji: "💸", text: "Você investe em tráfego pago mas não sabe qual canal está convertendo de verdade — atribuição errada = orçamento desperdiçado." },
+              { emoji: "🏗️", text: "Você ainda gerencia seu portfólio de sites em planilhas espalhadas, sem visão consolidada de receita e oportunidades." },
+            ].map((p, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="flex items-start gap-3 p-5 rounded-xl border border-red-200/40 dark:border-red-900/30 bg-white dark:bg-red-950/10"
+              >
+                <span className="text-2xl shrink-0">{p.emoji}</span>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{p.text}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Transition */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="mt-16 text-center"
+          >
+            <p className="text-xl font-black text-slate-900 dark:text-white mb-2">E se existisse uma plataforma que resolvesse tudo isso...</p>
+            <p className="text-slate-500 dark:text-slate-400 text-base">em um único lugar, integrada com o Google, com IA trabalhando por você?</p>
+            <ChevronDown className="w-8 h-8 text-violet-500 mx-auto mt-6 animate-bounce" />
           </motion.div>
         </div>
       </section>
 
-      {/* ── MODULES SHOWCASE ── */}
-      <section id="modules" className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0b1120]">
+      {/* ── 3. SOLUÇÃO / PRODUTO ─────────────────────────────────────── */}
+      <section id="solucao" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-14"
           >
-            <h2 className="text-4xl sm:text-5xl font-black mb-4">
-              Veja o sistema{" "}
-              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">em ação</span>
+            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-violet-200 dark:border-violet-800/50">
+              <Sparkles className="w-3.5 h-3.5" /> Apresentando o Rankito
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4">
+              Tudo que você precisa para{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">
+                dominar o Google
+              </span>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl mx-auto">
-              Cada módulo foi construído para profissionais de SEO e agências que precisam de dados reais, não estimativas.
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+              Uma plataforma. Cinco módulos poderosos. Dados reais. IA trabalhando 24/7.
             </p>
           </motion.div>
 
-          {/* Tab switcher */}
+          {/* Module switcher */}
           <div className="flex flex-wrap justify-center gap-2 mb-10">
-            {modules.map(m => (
+            {modules.map((m, i) => (
               <button
-                key={m.id}
-                onClick={() => setActiveTab(m.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  activeTab === m.id
-                    ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
-                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-violet-400"
+                key={i}
+                onClick={() => setActiveModule(i)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  activeModule === i
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30 scale-105"
+                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-violet-400 dark:hover:border-violet-600"
                 }`}
               >
-                <m.icon className="w-4 h-4" />
-                {m.label}
+                <m.icon className="w-4 h-4" /> {m.label}
               </button>
             ))}
           </div>
 
-          {/* Screenshot */}
           <div className="max-w-4xl mx-auto">
-            {screenshots.map((s, i) => (
-              <div key={i} className={activeTab === i ? "block" : "hidden"}>
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="grid lg:grid-cols-2 gap-10 items-center">
-                    <div>
-                      <h3 className="text-2xl font-black mb-4">{s.title}</h3>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{s.desc}</p>
-                      <a href="/login" className="inline-flex items-center gap-2 text-violet-600 font-semibold hover:gap-3 transition-all">
-                        Acessar módulo <ArrowRight className="w-4 h-4" />
-                      </a>
-                    </div>
-                    <ScreenshotFrame label={s.label}>
-                      {s.component}
-                    </ScreenshotFrame>
-                  </div>
-                </motion.div>
-              </div>
-            ))}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeModule}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                <BrowserFrame label={modules[activeModule].browserLabel}>
+                  {modules[activeModule].mockup}
+                </BrowserFrame>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </section>
 
-      {/* ── ALL FEATURES ── */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
+      {/* ── 4. BENEFÍCIOS CONCRETOS ───────────────────────────────────── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0a0f1e]">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -490,364 +598,416 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl sm:text-5xl font-black mb-4">
-              Todas as{" "}
-              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">funcionalidades</span>
+            <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4">
+              O que muda na sua vida{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">depois do Rankito</span>
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl mx-auto">
-              Uma plataforma completa para quem leva SEO a sério.
+              Não vendemos features. Vendemos resultados.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {features.map((f, i) => (
-              <FeatureCard key={i} {...f} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── DETAILED FEATURES LIST ── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0b1120]">
-        <div className="max-w-5xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-3xl font-black text-center mb-12"
-          >
-            Tudo que você encontra dentro da plataforma
-          </motion.h2>
-
-          <div className="grid md:grid-cols-2 gap-x-12 gap-y-3">
+          <div className="grid md:grid-cols-3 gap-8">
             {[
-              // SEO
-              "✅ Consultas orgânicas com posição e CTR",
-              "✅ Análise por páginas, países e dispositivos",
-              "✅ Histórico de posições por keyword",
-              "✅ Oportunidades de otimização automatizadas",
-              "✅ Detecção de canibalização de keywords",
-              "✅ Monitoramento de decaimento de conteúdo",
-              "✅ Análise de aparência de busca (rich results)",
-              "✅ Inspeção de URLs via GSC API",
-              "✅ Sitemaps e links internos/externos",
-              "✅ Discover e notícias no Search Console",
-              // GA4
-              "✅ KPIs executivos em tempo real",
-              "✅ Análise de aquisição por canal e fonte",
-              "✅ Dados demográficos e geográficos",
-              "✅ Taxa de engajamento e retenção",
-              "✅ Análise de e-commerce e receita",
-              "✅ Mapa mundial de sessões",
-              "✅ Comparação de períodos com delta visual",
-              "✅ Filtros avançados por campanha, device, país",
-              // Indexação
-              "✅ Indexação automática via Google Indexing API",
-              "✅ Quota de 200 URLs/dia por projeto",
-              "✅ Agendamentos de indexação recorrentes",
-              "✅ Status de cobertura por URL",
-              "✅ Inspeção detalhada (fetch, robots, sitemaps)",
-              // IA
-              "✅ Chat conversacional com agentes especializados",
-              "✅ Agentes de SEO, Growth e Analytics",
-              "✅ Workflows automatizados de relatórios",
-              "✅ Canvas visual de fluxos de IA",
-              "✅ Orquestrador com entrega por WhatsApp e e-mail",
-              "✅ Agendamentos automáticos de tarefas",
-              // Tracking
-              "✅ Pixel próprio v4.1 (instalação em 1 linha)",
-              "✅ Heatmaps de clique, scroll e movimento",
-              "✅ Jornada completa do usuário",
-              "✅ Rastreamento de eventos personalizados",
-              "✅ Metas de conversão configuráveis",
-              "✅ Integração com Google Ads e Meta Ads",
-              "✅ UTM tracking e atribuição de campanhas",
-              "✅ Conversão offline (ligações, formulários)",
-              "✅ Funis de e-commerce e checkout",
-              "✅ Gestão de consentimento LGPD",
-              // Rank & Rent
-              "✅ Portfólio de ativos digitais",
-              "✅ Gestão de clientes e contratos",
-              "✅ Controle de receita recorrente (MRR)",
-              "✅ Avaliação automática de ativos",
-              "✅ Marketplace de disponibilidade",
-              "✅ Dashboard financeiro por projeto",
-              // Semântico
-              "✅ Grafo de entidades com visualização interativa",
-              "✅ Schema.org builder integrado",
-              "✅ Análise de concorrentes por schema",
-              "✅ Metas e objetivos semânticos",
-              "✅ Plano de implementação de schema com IA",
-              // Geral
-              "✅ Multi-projetos e multi-usuários",
-              "✅ White-label para agências",
-              "✅ API pública com autenticação por chave",
-              "✅ Webhooks e integrações externas",
-              "✅ Exportação de relatórios em PDF",
-              "✅ Sistema de notificações e alertas",
-              "✅ Painel administrativo completo",
-              "✅ Feature flags por plano e usuário",
-            ].map((item, i) => (
+              {
+                icon: TrendingUp,
+                color: "bg-violet-100 dark:bg-violet-900/30 text-violet-600",
+                title: "Rankeie mais rápido",
+                before: "Você demora meses para ver resultados porque não sabe o que otimizar",
+                after: "Com dados reais do GSC + IA, você age nas páginas certas na hora certa",
+                items: ["Keywords na posição 8-15 = gold", "Canibalização detectada automaticamente", "Oportunidades priorizadas por impacto"]
+              },
+              {
+                icon: Bot,
+                color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600",
+                title: "Trabalhe menos, entregue mais",
+                before: "Você gasta horas montando relatórios manuais para cada cliente",
+                after: "A IA monta, analisa e envia relatórios por WhatsApp automaticamente",
+                items: ["Relatórios automáticos semanais", "Alertas de queda de posição", "Sugestões de ação em linguagem clara"]
+              },
+              {
+                icon: DollarSign,
+                color: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600",
+                title: "Escale seu portfólio",
+                before: "Você gerencia seus sites em planilhas e perde oportunidades de receita",
+                after: "Portfólio completo com MRR, contratos e avaliação de ativos centralizado",
+                items: ["Visão de patrimônio digital", "Gestão de clientes integrada", "Controle de receita recorrente"]
+              },
+            ].map((b, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.01 }}
-                className="flex items-start gap-2 py-1.5 text-sm text-slate-700 dark:text-slate-300"
-              >
-                {item}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── AI SECTION ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/8 rounded-full blur-[100px]" />
-        </div>
-        <div className="max-w-7xl mx-auto relative">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-semibold px-4 py-2 rounded-full mb-6">
-                <Brain className="w-3.5 h-3.5" /> IA + Automação
-              </div>
-              <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-6">
-                Seu time de SEO{" "}
-                <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">trabalhando 24/7</span>
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed mb-8">
-                O Rankito IA não é um chatbot genérico. É um sistema de agentes especializados que acessa seus dados reais do Google Search Console e GA4 para entregar insights acionáveis.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { icon: Bot, title: "Agentes especializados", desc: "SEO, Growth e Analytics treinados com seus dados reais" },
-                  { icon: Layers, title: "Workflows automatizados", desc: "Crie fluxos de relatórios que rodam automaticamente" },
-                  { icon: Activity, title: "Orquestrador visual", desc: "Canvas drag-and-drop para orquestrar múltiplos agentes" },
-                  { icon: Globe, title: "Entrega multicanal", desc: "WhatsApp, e-mail e notificações push automáticas" },
-                ].map(({ icon: Icon, title, desc }) => (
-                  <div key={title} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                      <Icon className="w-4 h-4 text-violet-600" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{title}</div>
-                      <div className="text-slate-500 dark:text-slate-400 text-sm">{desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <ScreenshotFrame label="rankito-ai">
-                <AIAgentScreenshot />
-              </ScreenshotFrame>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── RANK & RENT SECTION ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0b1120]">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="order-2 lg:order-1"
-            >
-              <ScreenshotFrame label="rank-rent">
-                <RankRentScreenshot />
-              </ScreenshotFrame>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="order-1 lg:order-2"
-            >
-              <div className="inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold px-4 py-2 rounded-full mb-6">
-                <DollarSign className="w-3.5 h-3.5" /> Rank & Rent
-              </div>
-              <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-6">
-                Transforme SEO em{" "}
-                <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">renda passiva</span>
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed mb-8">
-                O módulo de Rank & Rent é único no mercado brasileiro. Gerencie todo o seu portfólio de ativos digitais, contratos, clientes e receita recorrente em uma visão consolidada.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  "Portfólio de ativos",
-                  "Gestão de clientes",
-                  "Contratos e MRR",
-                  "Avaliação automática",
-                  "Dashboard financeiro",
-                  "Marketplace de disponibilidade",
-                ].map(f => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                    {f}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRICING ── */}
-      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl font-black mb-4">
-              Planos para{" "}
-              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">todo perfil</span>
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-lg">
-              Do freelancer à grande agência, temos o plano certo para você.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Starter",
-                price: "R$97",
-                period: "/mês",
-                desc: "Para freelancers e iniciantes em SEO",
-                color: "border-slate-200 dark:border-slate-700",
-                badge: null,
-                features: ["1 projeto", "SEO via GSC", "GA4 Analytics", "Indexação automática", "Rankito IA básico", "2.000 eventos/mês"],
-              },
-              {
-                name: "Pro",
-                price: "R$197",
-                period: "/mês",
-                desc: "Para profissionais e agências em crescimento",
-                color: "border-violet-500",
-                badge: "Mais popular",
-                features: ["5 projetos", "SEO + GA4 avançado", "Indexação 200 URLs/dia", "IA com workflows", "Tracking Pixel", "Rank & Rent", "Grafo Semântico", "50.000 eventos/mês"],
-              },
-              {
-                name: "Agency",
-                price: "R$397",
-                period: "/mês",
-                desc: "Para agências que precisam de tudo",
-                color: "border-emerald-500/50 dark:border-emerald-500/30",
-                badge: null,
-                features: ["Projetos ilimitados", "White Label", "Multi-usuários", "API pública", "Orquestrador IA", "Relatórios PDF", "Webhooks avançados", "Eventos ilimitados"],
-              },
-            ].map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className={`relative bg-white dark:bg-[#141927] border-2 ${plan.color} rounded-2xl p-8 ${i === 1 ? "shadow-2xl shadow-violet-500/20 scale-105" : ""}`}
+                className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-7"
               >
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-violet-600 text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
-                      <Star className="w-3 h-3" /> {plan.badge}
-                    </span>
+                <div className={`inline-flex p-3 rounded-xl mb-5 ${b.color}`}>
+                  <b.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-black mb-4">{b.title}</h3>
+                <div className="mb-5 space-y-3">
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/30">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-red-500 mb-1">Antes</div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{b.before}</p>
                   </div>
-                )}
-                <div className="mb-6">
-                  <h3 className="text-xl font-black mb-1">{plan.name}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{plan.desc}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black">{plan.price}</span>
-                    <span className="text-slate-500 dark:text-slate-400">{plan.period}</span>
+                  <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/30 dark:border-emerald-900/30">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-emerald-500 mb-1">Depois</div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{b.after}</p>
                   </div>
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                      <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" />
-                      {f}
-                    </li>
+                <div className="space-y-2">
+                  {b.items.map((item, j) => (
+                    <div key={j} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="text-xs text-slate-600 dark:text-slate-300">{item}</span>
+                    </div>
                   ))}
-                </ul>
-                <a
-                  href="/login"
-                  className={`block text-center py-3 rounded-xl font-semibold text-sm transition-all ${
-                    i === 1
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/30"
-                      : "border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-violet-400 hover:text-violet-600"
-                  }`}
-                >
-                  Começar agora
-                </a>
+                </div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600">
-        <div className="max-w-3xl mx-auto text-center">
+      {/* ── 5. LISTA DE FEATURES ─────────────────────────────────────── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-14"
           >
-            <div className="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-semibold px-4 py-2 rounded-full mb-6">
-              <Award className="w-3.5 h-3.5" /> Plataforma 100% brasileira
+            <h2 className="text-4xl font-black mb-3">Tudo dentro de uma plataforma</h2>
+            <p className="text-slate-500 dark:text-slate-400">+60 funcionalidades para profissionais de SEO e agências</p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2">
+            {[
+              ["🔍 SEO & Search Console", [
+                "Consultas orgânicas com posição e CTR",
+                "Histórico de posições por keyword",
+                "Canibalização de keywords",
+                "Decaimento de conteúdo",
+                "Aparência de busca (rich results)",
+                "Inspeção de URLs via GSC API",
+              ]],
+              ["📊 GA4 Analytics", [
+                "KPIs executivos em tempo real",
+                "Análise por canal, device e país",
+                "Taxa de engajamento e retenção",
+                "E-commerce e funil de conversão",
+                "Mapa mundial de sessões",
+                "Comparação de períodos com delta",
+              ]],
+              ["⚡ Indexação Automática", [
+                "Google Indexing API — 200 URLs/dia",
+                "Status de cobertura por URL",
+                "Agendamentos recorrentes",
+                "Inspeção detalhada (robots, sitemap)",
+                "Histórico de requisições",
+                "Alertas de erro de indexação",
+              ]],
+              ["🤖 IA & Agentes Autônomos", [
+                "Agentes especializados (SEO, Growth)",
+                "Chat com dados reais do GSC/GA4",
+                "Relatórios automáticos por WhatsApp",
+                "Canvas visual de workflows",
+                "Orquestrador multi-agente",
+                "Agendamentos automáticos",
+              ]],
+              ["🎯 Tracking de Conversões", [
+                "Pixel próprio v4.1 (1 linha de código)",
+                "Heatmaps de clique, scroll e movimento",
+                "Jornada completa do usuário",
+                "Metas e funis configuráveis",
+                "Integração Google Ads e Meta Ads",
+                "LGPD e Consent Mode",
+              ]],
+              ["🏠 Rank & Rent", [
+                "Portfólio de ativos digitais",
+                "Gestão de clientes e contratos",
+                "Controle de MRR por ativo",
+                "Avaliação automática de sites",
+                "Dashboard financeiro",
+                "Marketplace de disponibilidade",
+              ]],
+            ].map(([category, items]: [string, string[]], i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="mb-8"
+              >
+                <h3 className="text-sm font-black text-slate-900 dark:text-white mb-3">{category}</h3>
+                <div className="space-y-2">
+                  {(items as string[]).map((item, j) => (
+                    <div key={j} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="text-xs text-slate-600 dark:text-slate-400">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 6. PROVA SOCIAL ──────────────────────────────────────────── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0a0f1e]">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <h2 className="text-4xl font-black mb-3">O que nossos usuários dizem</h2>
+            <p className="text-slate-500 dark:text-slate-400">Profissionais reais, resultados reais</p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <Testimonial
+              quote="Em 2 semanas com o Rankito identifiquei 8 keywords na posição 11-14 que eu nem sabia que existiam. Agora estão todas no top 5. Aumento de 40% no tráfego orgânico."
+              author="Rafael M."
+              role="Consultor de SEO • SP"
+              avatar="RM"
+            />
+            <Testimonial
+              quote="Paro de perder 4h por semana montando relatório para clientes. O agente IA faz isso automaticamente e ainda manda pelo WhatsApp. Meus clientes amam."
+              author="Ana Paula S."
+              role="Agência de Marketing • RJ"
+              avatar="AP"
+            />
+            <Testimonial
+              quote="Tenho 9 sites no portfólio de Rank & Rent. Antes era uma bagunça em planilhas. Agora vejo tudo num lugar só: patrimônio, MRR e quem está alugando."
+              author="Carlos F."
+              role="SEO para Rank & Rent • MG"
+              avatar="CF"
+            />
+          </div>
+
+          {/* Proof numbers */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-12">
+            <ProofBadge text="200k" sub="URLs indexadas por dia" />
+            <ProofBadge text="8h" sub="Economizadas por semana em relatórios" />
+            <ProofBadge text="40%" sub="Aumento médio de tráfego orgânico" />
+            <ProofBadge text="24/7" sub="IA trabalhando por você" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── 7. PLANOS (OFERTA) ───────────────────────────────────────── */}
+      <section id="planos" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-violet-600/6 rounded-full blur-[120px]" />
+        </div>
+        <div className="max-w-6xl mx-auto relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-full mb-5 border border-amber-200 dark:border-amber-800/30">
+              <Clock className="w-3.5 h-3.5" /> Preços de lançamento — por tempo limitado
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black text-white mb-6 leading-tight">
-              Comece hoje mesmo a dominar o Google
-            </h2>
-            <p className="text-white/80 text-lg mb-10">
-              Junte-se a centenas de profissionais e agências de SEO que já usam o Rankito para crescer mais rápido e com dados reais.
+            <h2 className="text-4xl sm:text-5xl font-black mb-3">Escolha seu plano</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-lg mx-auto">
+              Sem burocracia. Cancele quando quiser. Comece em minutos.
             </p>
-            <a
-              href="/login"
-              className="inline-flex items-center gap-2 bg-white text-violet-700 font-black px-10 py-4 rounded-2xl text-lg hover:bg-white/90 transition-all hover:scale-105 shadow-2xl"
-            >
-              Criar conta gratuita <ArrowRight className="w-5 h-5" />
-            </a>
+          </motion.div>
+
+          {/* Plans image */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="mb-12 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xl max-w-4xl mx-auto"
+          >
+            <img src={plansImage} alt="Planos Rankito" className="w-full h-auto" />
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <PricingCard
+              name="Starter"
+              price="Grátis"
+              period=""
+              desc="Para começar a explorar a plataforma e sentir o poder dos dados reais."
+              features={[
+                "1 projeto",
+                "SEO via Google Search Console",
+                "KPIs básicos GA4",
+                "50 indexações/mês",
+                "Agente IA (5 mensagens/dia)",
+                "Suporte por e-mail",
+              ]}
+              cta="Começar grátis"
+            />
+            <PricingCard
+              name="Pro"
+              price="R$97"
+              period="/mês"
+              desc="Para profissionais de SEO que levam resultados a sério e precisam de todas as ferramentas."
+              features={[
+                "5 projetos",
+                "SEO + GA4 completos",
+                "200 indexações/dia (6.000/mês)",
+                "IA ilimitada + relatórios automáticos",
+                "Tracking Pixel v4.1",
+                "Rank & Rent — portfólio completo",
+                "Grafo semântico",
+                "Suporte prioritário",
+              ]}
+              cta="Assinar Pro"
+              highlight
+              badge="⭐ Mais popular"
+            />
+            <PricingCard
+              name="Agência"
+              price="R$247"
+              period="/mês"
+              desc="Para agências que gerenciam múltiplos clientes e precisam de white-label e escala."
+              features={[
+                "20 projetos",
+                "Tudo do Pro",
+                "White-label completo",
+                "Multi-usuários e permissões",
+                "API pública + Webhooks",
+                "Relatórios PDF personalizados",
+                "Onboarding dedicado",
+              ]}
+              cta="Assinar Agência"
+            />
+          </div>
+
+          {/* Guarantee */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30"
+          >
+            <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+              <Shield className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <div className="font-black text-lg text-slate-900 dark:text-white mb-1">Garantia de 7 dias sem risco</div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Não ficou satisfeito por qualquer motivo? Devolvemos 100% do seu dinheiro. Sem perguntas, sem burocracia.
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="py-10 px-4 sm:px-6 lg:px-8 bg-slate-900 dark:bg-[#040810]">
+      {/* ── 8. FAQ ───────────────────────────────────────────────────── */}
+      <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#0a0f1e]">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <h2 className="text-4xl font-black mb-3">Perguntas frequentes</h2>
+            <p className="text-slate-500 dark:text-slate-400">Tire suas dúvidas antes de começar</p>
+          </motion.div>
+
+          <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl px-8 py-2">
+            {[
+              {
+                q: "Como o Rankito obtém os dados do Google?",
+                a: "Você conecta sua conta do Google Search Console e Google Analytics 4 via Service Account (API oficial do Google). Seus dados são lidos diretamente do Google com autenticação segura. Nenhum dado fica exposto ou compartilhado."
+              },
+              {
+                q: "Preciso saber programar para usar?",
+                a: "Não. O Rankito foi criado para profissionais de SEO, não para devs. A configuração leva menos de 10 minutos e todo o processo é guiado passo a passo dentro da plataforma."
+              },
+              {
+                q: "O Pixel de tracking substitui o Google Analytics?",
+                a: "É um complemento. O Pixel do Rankito captura dados first-party que o GA4 às vezes perde por bloqueio de ad-blockers. Você tem os dois trabalhando juntos, com total visibilidade."
+              },
+              {
+                q: "Posso cancelar quando quiser?",
+                a: "Sim. Sem contrato de fidelidade, sem multa. Você pode cancelar a qualquer momento pelo próprio painel. Se cancelar nos primeiros 7 dias, devolvemos 100% do valor."
+              },
+              {
+                q: "Como funciona o plano Agência com White-label?",
+                a: "Você pode personalizar o Rankito com sua marca, logo e domínio personalizado. Seus clientes acessam a plataforma como se fosse uma ferramenta sua, sem ver o nome Rankito."
+              },
+              {
+                q: "O que é o módulo de Rank & Rent?",
+                a: "É um módulo específico para quem trabalha com criação e aluguel de sites para locais. Você gerencia todos os seus ativos, vê o patrimônio digital estimado, controla os contratos com clientes e acompanha a receita recorrente (MRR) de cada site."
+              },
+            ].map((faq, i) => <FAQItem key={i} {...faq} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 9. CTA FINAL ─────────────────────────────────────────────── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-indigo-600/10" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/15 rounded-full blur-[120px]" />
+        </div>
+        <div className="max-w-3xl mx-auto relative text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-6 border border-violet-200 dark:border-violet-800/50">
+              <Rocket className="w-3.5 h-3.5" /> Comece agora, veja resultado essa semana
+            </div>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6">
+              Chega de perder{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">tráfego e receita</span>{" "}
+              por falta de dados
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-10 max-w-xl mx-auto">
+              Junte-se a centenas de profissionais de SEO que já estão usando dados reais para tomar decisões melhores e crescer mais rápido.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+              <a
+                href="/login"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black px-10 py-5 rounded-2xl text-lg shadow-2xl shadow-violet-500/40 transition-all hover:scale-105"
+              >
+                <Rocket className="w-5 h-5" /> Começar gratuitamente
+              </a>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-emerald-500" /> 7 dias de garantia</div>
+              <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-violet-500" /> Sem contrato</div>
+              <div className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-amber-500" /> Configuração em minutos</div>
+              <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-blue-500" /> +500 profissionais ativos</div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ───────────────────────────────────────────────────── */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#080c18]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
               <TrendingUp className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-white font-bold">Rankito</span>
-            <span className="text-slate-500 text-sm">SEO Intelligence</span>
+            <span className="font-black bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">Rankito</span>
           </div>
-          <div className="text-slate-500 text-sm text-center">
-            © 2026 Rankito. Todos os direitos reservados.
-          </div>
-          <div className="flex items-center gap-4 text-sm text-slate-500">
-            <a href="/login" className="hover:text-white transition-colors">Login</a>
-            <a href="#features" className="hover:text-white transition-colors">Funcionalidades</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Planos</a>
+          <p className="text-xs text-slate-400 text-center">
+            © 2025 Rankito. A plataforma de SEO mais completa do Brasil.
+          </p>
+          <div className="flex items-center gap-6 text-xs text-slate-500 dark:text-slate-400">
+            <a href="/login" className="hover:text-violet-600 transition-colors">Entrar</a>
+            <a href="#planos" className="hover:text-violet-600 transition-colors">Planos</a>
+            <a href="#faq" className="hover:text-violet-600 transition-colors">FAQ</a>
           </div>
         </div>
       </footer>
