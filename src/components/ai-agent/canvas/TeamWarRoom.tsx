@@ -51,11 +51,16 @@ const ROLE_CATALOG: Array<{ title: string; emoji: string; department: string; ca
   { title: "CFO / Dir. Financeiro", emoji: "💼", department: "Financeiro", category: "C-Suite", skills: ["Finanças", "Budget", "ROI"], instructions: "Você é o CFO. Analise KPIs financeiros, controle custos, monitore receita e reporte saúde financeira ao CEO." },
   { title: "CMO / Dir. Marketing", emoji: "📢", department: "Marketing", category: "C-Suite", skills: ["Marketing", "Branding", "Aquisição"], instructions: "Você é o CMO. Lidere estratégia de marketing, campanhas de aquisição, branding e reporte ao CEO." },
   { title: "CTO / Dir. Tecnologia", emoji: "💻", department: "Tecnologia", category: "C-Suite", skills: ["Tech Stack", "Arquitetura", "Performance"], instructions: "Você é o CTO. Supervisione a infraestrutura técnica, performance, segurança e evolução tecnológica." },
-  // Comercial / Vendas
-  { title: "Head Comercial", emoji: "🤝", department: "Comercial", category: "Comercial", skills: ["Vendas", "Negociação", "Pipeline"], instructions: "Você é o Head Comercial. Gerencie pipeline de vendas, analise oportunidades de negócio e reporte ao CEO." },
-  { title: "Gerente de Vendas", emoji: "📈", department: "Comercial", category: "Comercial", skills: ["CRM", "Prospecção", "Closing"], instructions: "Você é o Gerente de Vendas. Analise pipeline, gerencie oportunidades e reporte métricas de vendas." },
-  { title: "Representante Comercial", emoji: "📞", department: "Comercial", category: "Comercial", skills: ["Prospecção", "Follow-up", "Proposta"], instructions: "Você é o Representante Comercial. Execute prospecção, prepare propostas e acompanhe negociações." },
-  { title: "Analista de CRM", emoji: "🗃️", department: "Comercial", category: "Comercial", skills: ["CRM", "Dados", "Automação"], instructions: "Você é o Analista de CRM. Mantenha base de dados de clientes, segmente e analise oportunidades." },
+  // Comercial / Vendas — estrutura completa
+  { title: "Head Comercial", emoji: "🤝", department: "Comercial", category: "Comercial", skills: ["Vendas", "Negociação", "Pipeline"], instructions: "Você é o Head Comercial. Gerencie pipeline de vendas, lidere os times de SDR, BDR e Closers, analise oportunidades e reporte ao CEO com métricas de receita." },
+  { title: "Gerente de Vendas", emoji: "📈", department: "Comercial", category: "Comercial", skills: ["CRM", "Coaching", "Forecast"], instructions: "Você é o Gerente de Vendas. Supervisione SDRs, BDRs e Closers, faça forecast de receita, identifique gargalos no funil e reporte ao Head Comercial." },
+  { title: "SDR (Sales Dev. Rep.)", emoji: "📞", department: "Comercial", category: "Comercial", skills: ["Prospecção", "Cold Call", "Qualificação"], instructions: "Você é o SDR (Sales Development Representative). Sua missão é prospectar leads inbound, qualificar usando critérios BANT/SPIN, agendar reuniões e passar oportunidades qualificadas ao Closer. Registre todas as interações no CRM." },
+  { title: "BDR (Business Dev. Rep.)", emoji: "🎯", department: "Comercial", category: "Comercial", skills: ["Outbound", "Cold Email", "LinkedIn"], instructions: "Você é o BDR (Business Development Representative). Sua missão é prospecção outbound: pesquisar ICP (perfil de cliente ideal), criar cadências de cold email/LinkedIn, fazer cold calls e gerar oportunidades novas. Trabalhe em conjunto com o SDR e reporte ao Gerente." },
+  { title: "Closer / Account Executive", emoji: "🏆", department: "Comercial", category: "Comercial", skills: ["Negociação", "Demo", "Fechamento"], instructions: "Você é o Closer (Account Executive). Receba oportunidades qualificadas pelos SDRs/BDRs, conduza demos e apresentações consultivas, negocie condições, supere objeções e feche contratos. Reporte taxa de conversão e ticket médio ao Gerente." },
+  { title: "Account Manager", emoji: "💼", department: "Comercial", category: "Comercial", skills: ["Upsell", "Carteira", "Relacionamento"], instructions: "Você é o Account Manager. Gerencie a carteira de clientes existentes, identifique oportunidades de upsell e cross-sell, garanta renovações e aumente o LTV (lifetime value). Trabalhe próximo ao CS." },
+  { title: "Inside Sales", emoji: "💻", department: "Comercial", category: "Comercial", skills: ["Vendas remotas", "CRM", "Pipeline"], instructions: "Você é o Inside Sales. Gerencie todo o ciclo de vendas de forma remota: prospecção, qualificação, demo e fechamento. Mantenha CRM atualizado e reporte KPIs de vendas diários." },
+  { title: "Analista de CRM", emoji: "🗃️", department: "Comercial", category: "Comercial", skills: ["CRM", "Dados", "Automação"], instructions: "Você é o Analista de CRM. Mantenha a higiene do CRM, crie relatórios de funil, automatize sequências e dê suporte analítico a todo o time comercial." },
+  { title: "RevOps (Revenue Ops.)", emoji: "⚙️", department: "Comercial", category: "Comercial", skills: ["Processos", "Integrações", "Analytics"], instructions: "Você é o RevOps (Revenue Operations). Alinhe marketing, vendas e CS em torno de dados e processos unificados. Configure integrações entre CRM, automação e analytics. Elimine gargalos no funil." },
   // Marketing
   { title: "Head de Marketing", emoji: "🎯", department: "Marketing", category: "Marketing", skills: ["Estratégia", "Brand", "Campanhas"], instructions: "Você é o Head de Marketing. Coordene todas as estratégias de marketing, branding e aquisição." },
   { title: "Gerente de Marketing", emoji: "📣", department: "Marketing", category: "Marketing", skills: ["Planejamento", "Campanhas", "ROI"], instructions: "Você é o Gerente de Marketing. Planeje e execute campanhas, analise resultados e otimize investimentos." },
@@ -355,20 +360,37 @@ interface EmployeeProfileDialogProps {
   onPromote: (id: string) => void;
   onDemote: (id: string) => void;
   onVacation: (id: string) => void;
+  onEdit: (id: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string }>) => Promise<void>;
   isOnVacation?: boolean;
 }
 
 function EmployeeProfileDialog({
   open, onOpenChange, role, agentResult, runs, hierarchy, allRoles,
-  onFire, onPromote, onDemote, onVacation, isOnVacation,
+  onFire, onPromote, onDemote, onVacation, onEdit, isOnVacation,
 }: EmployeeProfileDialogProps) {
+  const [editTitle, setEditTitle] = useState("");
+  const [editEmoji, setEditEmoji] = useState("");
+  const [editDept, setEditDept] = useState("");
+  const [editInstructions, setEditInstructions] = useState("");
+  const [editMemory, setEditMemory] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (role && open) {
+      setEditTitle(role.title || "");
+      setEditEmoji(role.emoji || "🤖");
+      setEditDept(role.department || "");
+      setEditInstructions(role.instructions || "");
+      setEditMemory(role.memory || "");
+    }
+  }, [role, open]);
+
   if (!role) return null;
 
   const parentId = hierarchy[role.id];
   const parentRole = parentId ? allRoles.find((r: any) => r.id === parentId) : null;
   const directReports = allRoles.filter((r: any) => hierarchy[r.id] === role.id);
 
-  // Build history from all runs
   const history = runs
     .map(run => {
       const ar = ((run.agent_results as any[]) || []).find((r: any) => r.role_id === role.id);
@@ -383,6 +405,22 @@ function EmployeeProfileDialog({
 
   const catalogRole = ROLE_CATALOG.find(c => c.title === role.title);
   const skills: string[] = catalogRole?.skills || role.skills || [];
+
+  const handleSaveEdit = async () => {
+    setSaving(true);
+    try {
+      await onEdit(role.id, {
+        title: editTitle,
+        emoji: editEmoji,
+        department: editDept,
+        instructions: editInstructions,
+        memory: editMemory,
+      });
+      toast.success("Agente atualizado com sucesso!");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -407,42 +445,26 @@ function EmployeeProfileDialog({
                 </p>
               )}
             </div>
-            {/* Action buttons */}
             <div className="flex flex-col gap-1.5 shrink-0">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-[10px] gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-                onClick={() => { onPromote(role.id); onOpenChange(false); }}
-              >
+              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                onClick={() => { onPromote(role.id); onOpenChange(false); }}>
                 <TrendingUp className="h-3 w-3" /> Promover
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-[10px] gap-1.5 text-blue-400 border-blue-400/30 hover:bg-blue-400/10"
-                onClick={() => { onDemote(role.id); onOpenChange(false); }}
-              >
+              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1.5 text-blue-400 border-blue-400/30 hover:bg-blue-400/10"
+                onClick={() => { onDemote(role.id); onOpenChange(false); }}>
                 <TrendingDown className="h-3 w-3" /> Regredir
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
+              <Button size="sm" variant="outline"
                 className={cn("h-7 text-[10px] gap-1.5", isOnVacation
                   ? "text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
                   : "text-orange-400 border-orange-400/30 hover:bg-orange-400/10"
                 )}
-                onClick={() => { onVacation(role.id); onOpenChange(false); }}
-              >
+                onClick={() => { onVacation(role.id); onOpenChange(false); }}>
                 <PalmtreeIcon className="h-3 w-3" />
                 {isOnVacation ? "Retornar" : "Férias"}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-[10px] gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={() => { onFire(role.id); onOpenChange(false); }}
-              >
+              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => { onFire(role.id); onOpenChange(false); }}>
                 <Trash2 className="h-3 w-3" /> Demitir
               </Button>
             </div>
@@ -452,15 +474,15 @@ function EmployeeProfileDialog({
         <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col">
           <TabsList className="h-8 bg-muted/30 shrink-0">
             <TabsTrigger value="profile" className="text-[11px]">👤 Perfil</TabsTrigger>
+            <TabsTrigger value="edit" className="text-[11px]">✏️ Editar</TabsTrigger>
+            <TabsTrigger value="memory" className="text-[11px]">🧠 Memória</TabsTrigger>
             <TabsTrigger value="history" className="text-[11px]">📋 Histórico</TabsTrigger>
             <TabsTrigger value="team" className="text-[11px]">👥 Equipe</TabsTrigger>
-            <TabsTrigger value="instructions" className="text-[11px]">⚙️ Instruções</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1">
             {/* Profile Tab */}
             <TabsContent value="profile" className="p-4 space-y-4 mt-0">
-              {/* Performance Stats */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg border border-border bg-card/50 p-3 text-center">
                   <p className="text-2xl font-bold text-primary">{history.length}</p>
@@ -477,8 +499,6 @@ function EmployeeProfileDialog({
                   <p className="text-[10px] text-muted-foreground">Subordinados</p>
                 </div>
               </div>
-
-              {/* Skills */}
               {skills.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -494,8 +514,6 @@ function EmployeeProfileDialog({
                   </div>
                 </div>
               )}
-
-              {/* Last result */}
               {agentResult?.result && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -512,8 +530,6 @@ function EmployeeProfileDialog({
                   </div>
                 </div>
               )}
-
-              {/* Department */}
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Departamento:</span> {role.department}
@@ -528,30 +544,110 @@ function EmployeeProfileDialog({
               </div>
             </TabsContent>
 
+            {/* Edit Tab */}
+            <TabsContent value="edit" className="p-4 space-y-4 mt-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Briefcase className="h-3 w-3" /> Editar Agente
+              </p>
+              <div className="flex gap-2">
+                <div className="w-16 shrink-0">
+                  <label className="text-[10px] text-muted-foreground block mb-1">Emoji</label>
+                  <Input value={editEmoji} onChange={e => setEditEmoji(e.target.value)} className="text-center text-lg h-9" placeholder="🤖" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-muted-foreground block mb-1">Cargo / Título</label>
+                  <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Ex: SDR, Closer, Analista…" className="h-9 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">Departamento</label>
+                <Input value={editDept} onChange={e => setEditDept(e.target.value)} placeholder="Ex: Comercial, Marketing, SEO…" className="h-9 text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">Instruções do Agente</label>
+                <p className="text-[9px] text-muted-foreground/60 mb-1.5">Define o papel, objetivos e como o agente deve agir em cada execução.</p>
+                <Textarea
+                  value={editInstructions}
+                  onChange={e => setEditInstructions(e.target.value)}
+                  placeholder="Você é o SDR da equipe. Sua missão é prospectar leads, qualificar pelo critério BANT e passar para o Closer…"
+                  className="text-xs min-h-[120px] resize-none"
+                />
+              </div>
+              <Button onClick={handleSaveEdit} disabled={saving} className="w-full h-9 gap-2">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Award className="h-3.5 w-3.5" />}
+                Salvar Alterações
+              </Button>
+            </TabsContent>
+
+            {/* Memory Tab */}
+            <TabsContent value="memory" className="p-4 space-y-4 mt-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Brain className="h-3 w-3 text-primary" /> Memória &amp; Contexto Evolutivo
+                  </p>
+                  <p className="text-[9px] text-muted-foreground/70 mt-0.5">
+                    Este contexto é injetado nas próximas execuções do agente, permitindo que ele evolua com o tempo.
+                  </p>
+                </div>
+                {history.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[10px] gap-1.5 shrink-0"
+                    onClick={() => {
+                      const accumulated = history
+                        .filter((h: any) => h?.ar.status === "success")
+                        .map((h: any) => `[${new Date(h.run.started_at).toLocaleDateString("pt-BR")}] ${String(h.ar.result || "").slice(0, 200)}`)
+                        .join("\n\n");
+                      setEditMemory(prev => prev ? `${prev}\n\n--- Importado ---\n${accumulated}` : accumulated);
+                      toast.success("Histórico importado para memória");
+                    }}
+                  >
+                    <History className="h-2.5 w-2.5" /> Importar do histórico
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                value={editMemory}
+                onChange={e => setEditMemory(e.target.value)}
+                placeholder="Ex: Em 15/02 identificamos que o ICP são empresas SaaS B2B com 50-200 funcionários. Os melhores horários para cold call são 10h e 16h. Taxa de resposta por email: 12%…"
+                className="text-xs min-h-[180px] resize-none"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[9px] text-muted-foreground">{editMemory.length} caracteres de contexto</p>
+                <Button onClick={handleSaveEdit} disabled={saving} size="sm" className="h-8 gap-2 text-xs">
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3" />}
+                  Salvar Memória
+                </Button>
+              </div>
+              {role.memory && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-[10px] font-semibold text-primary mb-1.5 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Memória ativa</p>
+                  <p className="text-[10px] text-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-4">{String(role.memory).slice(0, 300)}{String(role.memory).length > 300 && "…"}</p>
+                </div>
+              )}
+            </TabsContent>
+
             {/* History Tab */}
             <TabsContent value="history" className="p-4 space-y-3 mt-0">
               {history.length === 0 ? (
                 <div className="py-10 text-center">
                   <History className="h-10 w-10 mx-auto mb-3 text-muted-foreground/20" />
                   <p className="text-sm text-muted-foreground">Nenhuma execução registrada ainda.</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Execute a equipe para ver o histórico.</p>
                 </div>
               ) : (
                 history.map((h: any, i) => (
                   <div key={i} className={cn(
                     "rounded-lg border p-3 space-y-1.5",
-                    h.ar.status === "success"
-                      ? "border-emerald-500/20 bg-emerald-500/5"
-                      : "border-destructive/20 bg-destructive/5"
+                    h.ar.status === "success" ? "border-emerald-500/20 bg-emerald-500/5" : "border-destructive/20 bg-destructive/5"
                   )}>
                     <div className="flex items-center gap-2">
                       {h.ar.status === "success"
                         ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                         : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                       }
-                      <span className="text-[10px] font-semibold">
-                        {new Date(h.run.started_at).toLocaleString("pt-BR")}
-                      </span>
+                      <span className="text-[10px] font-semibold">{new Date(h.run.started_at).toLocaleString("pt-BR")}</span>
                       {h.run.completed_at && (
                         <span className="text-[9px] text-muted-foreground ml-auto flex items-center gap-1">
                           <Clock className="h-2.5 w-2.5" />
@@ -600,16 +696,6 @@ function EmployeeProfileDialog({
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-6">Nenhum subordinado direto.</p>
               )}
-            </TabsContent>
-
-            {/* Instructions Tab */}
-            <TabsContent value="instructions" className="p-4 mt-0">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Instruções do Agente</p>
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/80">
-                  {role.instructions || "Sem instruções configuradas."}
-                </p>
-              </div>
             </TabsContent>
           </ScrollArea>
         </Tabs>
@@ -1062,6 +1148,13 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     onRefresh?.();
   }, [hierarchy, roles, deployment.id, onRefresh]);
 
+  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string }>) => {
+    const updatedRoles = roles.map(r => r.id === roleId ? { ...r, ...patch } : r);
+    const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any }).eq("id", deployment.id);
+    if (error) { toast.error(error.message); throw error; }
+    onRefresh?.();
+  }, [roles, deployment.id, onRefresh]);
+
   /* ── Build nodes/edges ── */
   const { rfNodes: initialNodes, rfEdges: initialEdges } = useMemo(
     () => buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge),
@@ -1377,6 +1470,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
           onPromote={handlePromoteMember}
           onDemote={handleDemoteMember}
           onVacation={handleVacationToggle}
+          onEdit={handleEditMember}
           isOnVacation={vacations.has(profileRole.id)}
         />
       )}
