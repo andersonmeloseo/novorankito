@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, Building2, Users, CheckCircle2, X } from "lucide-react";
+import { Send, Loader2, CheckCircle2, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PROFESSIONAL_ROLES, DEFAULT_HIERARCHY, type ProfessionalRole } from "./OrchestratorTemplates";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,132 +22,32 @@ interface ChatMessage {
   id: string;
   role: "ceo" | "user";
   content: string;
-  options?: { label: string; value: string }[];
-  type?: "text" | "options" | "team-preview";
   teamPreview?: ProfessionalRole[];
+  teamName?: string;
+  isStreaming?: boolean;
 }
-
-type OnboardingStep = "welcome" | "mission" | "goals" | "niche" | "hours" | "team-size" | "suggest" | "confirm" | "deploying" | "done";
 
 const CEO_AVATAR = "👔";
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ceo-onboarding-chat`;
 
-const NICHE_OPTIONS = [
-  { label: "E-commerce", value: "ecommerce" },
-  { label: "SaaS / Tecnologia", value: "saas" },
-  { label: "Serviços Locais", value: "local" },
-  { label: "Blog / Mídia", value: "media" },
-  { label: "Agência / Freelancer", value: "agency" },
-  { label: "Outro", value: "other" },
-];
-
-const TEAM_SIZE_OPTIONS = [
-  { label: "⚡ Enxuto (3-4 profissionais)", value: "minimal" },
-  { label: "🎯 Focado (5-7 profissionais)", value: "focused" },
-  { label: "🏢 Completo (8-12 profissionais)", value: "full" },
-];
-
-function suggestTeam(answers: Record<string, string>): ProfessionalRole[] {
-  const size = answers.teamSize || "focused";
-  const niche = answers.niche || "other";
-
-  // Always include CEO and PM
-  const core = ["ceo", "project_manager"];
-  
-  if (size === "minimal") {
-    // CEO, PM, SEO Manager, Analytics
-    return PROFESSIONAL_ROLES.filter(r => [...core, "seo_manager", "analytics_manager"].includes(r.id));
-  }
-
-  if (size === "focused") {
-    const ids = [...core, "seo_manager", "seo_analyst", "analytics_manager", "content_strategist"];
-    if (niche === "ecommerce") ids.push("ads_manager");
-    if (niche === "agency") ids.push("cs_analyst");
-    if (niche === "local") ids.push("dev_tech");
-    if (niche === "media") ids.push("social_media");
-    if (niche === "saas") ids.push("ads_manager");
-    return PROFESSIONAL_ROLES.filter(r => ids.includes(r.id));
-  }
-
-  // Full team
-  return PROFESSIONAL_ROLES;
-}
+type AiMsg = { role: "user" | "assistant"; content: string };
 
 export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }: CeoOnboardingChatProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [aiMessages, setAiMessages] = useState<AiMsg[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [step, setStep] = useState<OnboardingStep>("welcome");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [streaming, setStreaming] = useState(false);
   const [deploying, setDeploying] = useState(false);
+  const [done, setDone] = useState(false);
   const [suggestedTeam, setSuggestedTeam] = useState<ProfessionalRole[]>([]);
+  const [teamName, setTeamName] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
   const suggestedTeamRef = useRef<ProfessionalRole[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Keep ref in sync for use inside closures
   useEffect(() => { suggestedTeamRef.current = suggestedTeam; }, [suggestedTeam]);
-
-  const handleRemoveMember = useCallback((roleId: string) => {
-    if (roleId === "ceo") {
-      toast.error("O CEO não pode ser removido da equipe.");
-      return;
-    }
-    setSuggestedTeam(prev => {
-      const updated = prev.filter(r => r.id !== roleId);
-      // Also update the last team-preview message
-      setMessages(msgs => msgs.map(m => 
-        m.teamPreview ? { ...m, teamPreview: updated } : m
-      ));
-      return updated;
-    });
-    toast.success("Membro removido da equipe.");
-  }, []);
-
-  const addCeoMessage = useCallback((content: string, options?: ChatMessage["options"], teamPreview?: ProfessionalRole[]) => {
-    const msg: ChatMessage = {
-      id: `ceo-${Date.now()}-${Math.random()}`,
-      role: "ceo",
-      content,
-      options,
-      type: options ? "options" : teamPreview ? "team-preview" : "text",
-      teamPreview,
-    };
-    setMessages(prev => [...prev, msg]);
-  }, []);
-
-  const addUserMessage = useCallback((content: string) => {
-    setMessages(prev => [...prev, {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content,
-    }]);
-  }, []);
-
-  // Initialize conversation
-  useEffect(() => {
-    if (!open || initialized.current) return;
-    initialized.current = true;
-    
-    setTimeout(() => {
-      addCeoMessage("Olá! 👋 Sou o CEO da sua equipe de IA. Vou te ajudar a montar a equipe perfeita para o seu projeto.");
-      setTimeout(() => {
-        addCeoMessage("Para começar, me conte: **qual é a missão principal do seu projeto?** O que você quer alcançar com SEO e marketing digital?");
-        setStep("mission");
-      }, 800);
-    }, 400);
-  }, [open, addCeoMessage]);
-
-  // Reset on close
-  useEffect(() => {
-    if (!open) {
-      setMessages([]);
-      setStep("welcome");
-      setAnswers({});
-      setSuggestedTeam([]);
-      setDeploying(false);
-      initialized.current = false;
-    }
-  }, [open]);
 
   // Auto scroll
   useEffect(() => {
@@ -156,106 +56,256 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
     }
   }, [messages]);
 
-  const processAnswer = useCallback((answer: string, currentStep: OnboardingStep) => {
-    addUserMessage(answer);
-
-    switch (currentStep) {
-      case "mission":
-        setAnswers(prev => ({ ...prev, mission: answer }));
-        setTimeout(() => {
-          addCeoMessage("Excelente missão! 🎯 Agora me diga: **quais são suas 2-3 metas principais?** (ex: aumentar tráfego orgânico, melhorar conversões, ranking top 3)");
-          setStep("goals");
-        }, 600);
-        break;
-
-      case "goals":
-        setAnswers(prev => ({ ...prev, goals: answer }));
-        setTimeout(() => {
-          addCeoMessage("Entendi suas metas. Em que **nicho/segmento** seu projeto atua?", NICHE_OPTIONS);
-          setStep("niche");
-        }, 600);
-        break;
-
-      case "niche":
-        setAnswers(prev => ({ ...prev, niche: answer }));
-        setTimeout(() => {
-          addCeoMessage("Quantas **horas semanais** você pretende dedicar ao projeto? Isso me ajuda a calibrar a frequência das rotinas da equipe.");
-          setStep("hours");
-        }, 600);
-        break;
-
-      case "hours":
-        setAnswers(prev => ({ ...prev, hours: answer }));
-        setTimeout(() => {
-          addCeoMessage("Qual o **tamanho da equipe** que você prefere?", TEAM_SIZE_OPTIONS);
-          setStep("team-size");
-        }, 600);
-        break;
-
-      case "team-size": {
-        const newAnswers = { ...answers, teamSize: answer, hours: answers.hours || "10" };
-        setAnswers(newAnswers);
-        setTimeout(() => {
-          const team = suggestTeam(newAnswers);
-          setSuggestedTeam(team);
-          addCeoMessage(
-            `Perfeito! Com base no seu perfil, montei a equipe ideal com **${team.length} profissionais**. Cada um tem sua rotina definida e vai trabalhar autonomamente:`,
-            undefined,
-            team
-          );
-          setTimeout(() => {
-            addCeoMessage("Essa equipe está boa? Posso **implantar agora** ou quer ajustar algo?", [
-              { label: "✅ Implantar agora!", value: "deploy" },
-              { label: "🔄 Quero mais profissionais", value: "more" },
-              { label: "➖ Quero menos profissionais", value: "less" },
-            ]);
-            setStep("confirm");
-          }, 1000);
-        }, 800);
-        break;
-      }
-
-      case "confirm":
-        if (answer === "deploy") {
-          handleDeployRef.current();
-        } else if (answer === "more") {
-          const biggerTeam = suggestTeam({ ...answers, teamSize: "full" });
-          setSuggestedTeam(biggerTeam);
-          addCeoMessage(`Ampliei para a equipe completa com **${biggerTeam.length} profissionais**:`, undefined, biggerTeam);
-          setTimeout(() => {
-            addCeoMessage("Agora sim? Posso implantar?", [
-              { label: "✅ Implantar agora!", value: "deploy" },
-              { label: "➖ É demais, reduza", value: "less" },
-            ]);
-          }, 800);
-        } else if (answer === "less") {
-          const smallerTeam = suggestTeam({ ...answers, teamSize: "minimal" });
-          setSuggestedTeam(smallerTeam);
-          addCeoMessage(`Reduzi para uma equipe enxuta com **${smallerTeam.length} profissionais**:`, undefined, smallerTeam);
-          setTimeout(() => {
-            addCeoMessage("Essa equipe funciona?", [
-              { label: "✅ Implantar agora!", value: "deploy" },
-              { label: "🔄 Quero mais", value: "more" },
-            ]);
-          }, 800);
-        }
-        break;
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      abortRef.current?.abort();
+      setMessages([]);
+      setAiMessages([]);
+      setInputValue("");
+      setStreaming(false);
+      setDeploying(false);
+      setDone(false);
+      setSuggestedTeam([]);
+      setTeamName("");
+      initialized.current = false;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, addCeoMessage, addUserMessage, projectId, user]);
+  }, [open]);
 
-  const handleDeployRef = useRef<() => void>(() => {});
-  
-  handleDeployRef.current = async () => {
-    if (!projectId || !user || suggestedTeamRef.current.length === 0) {
-      toast.error("Nenhuma equipe para implantar. Tente novamente.");
+  // Initialize with AI greeting
+  useEffect(() => {
+    if (!open || initialized.current) return;
+    initialized.current = true;
+    streamAiResponse([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleRemoveMember = useCallback((roleId: string) => {
+    if (roleId === "ceo") {
+      toast.error("O CEO não pode ser removido da equipe.");
       return;
     }
+    setSuggestedTeam(prev => {
+      const updated = prev.filter(r => r.id !== roleId);
+      setMessages(msgs => msgs.map(m =>
+        m.teamPreview ? { ...m, teamPreview: updated } : m
+      ));
+      return updated;
+    });
+    toast.success("Membro removido da equipe.");
+  }, []);
+
+  const streamAiResponse = async (conversationHistory: AiMsg[]) => {
+    setStreaming(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // Add placeholder streaming message
+    const streamMsgId = `ceo-${Date.now()}`;
+    setMessages(prev => [...prev, {
+      id: streamMsgId,
+      role: "ceo",
+      content: "",
+      isStreaming: true,
+    }]);
+
+    let fullContent = "";
+    let toolCallJson = "";
+    let isToolCall = false;
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: conversationHistory }),
+        signal: controller.signal,
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(errData.error || `Erro ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+
+      while (true) {
+        const { done: readerDone, value } = await reader.read();
+        if (readerDone) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta;
+
+            // Handle tool calls
+            if (delta?.tool_calls) {
+              isToolCall = true;
+              for (const tc of delta.tool_calls) {
+                if (tc.function?.arguments) {
+                  toolCallJson += tc.function.arguments;
+                }
+              }
+              continue;
+            }
+
+            // Handle text content
+            const content = delta?.content as string | undefined;
+            if (content) {
+              fullContent += content;
+              setMessages(prev => prev.map(m =>
+                m.id === streamMsgId ? { ...m, content: fullContent } : m
+              ));
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Flush remaining buffer
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (raw.startsWith(":") || raw.trim() === "") continue;
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta?.tool_calls) {
+              isToolCall = true;
+              for (const tc of delta.tool_calls) {
+                if (tc.function?.arguments) toolCallJson += tc.function.arguments;
+              }
+            }
+            const content = delta?.content as string | undefined;
+            if (content) {
+              fullContent += content;
+              setMessages(prev => prev.map(m =>
+                m.id === streamMsgId ? { ...m, content: fullContent } : m
+              ));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Process tool call (team suggestion)
+      if (isToolCall && toolCallJson) {
+        try {
+          const toolData = JSON.parse(toolCallJson);
+          const teamIds: string[] = toolData.team_ids || [];
+          const explanation: string = toolData.explanation || "";
+          const suggestedName: string = toolData.team_name || "Minha Equipe de IA";
+
+          const team = PROFESSIONAL_ROLES.filter(r => teamIds.includes(r.id));
+          // Always ensure CEO is included
+          if (!team.find(r => r.id === "ceo")) {
+            team.unshift(PROFESSIONAL_ROLES.find(r => r.id === "ceo")!);
+          }
+
+          setSuggestedTeam(team);
+          setTeamName(suggestedName);
+
+          // Update the streaming message with explanation + team preview
+          setMessages(prev => prev.map(m =>
+            m.id === streamMsgId
+              ? { ...m, content: explanation, isStreaming: false, teamPreview: team, teamName: suggestedName }
+              : m
+          ));
+
+          // Update AI conversation with tool result
+          const newAiMsgs: AiMsg[] = [
+            ...conversationHistory,
+            { role: "assistant", content: explanation },
+          ];
+          setAiMessages(newAiMsgs);
+
+        } catch (parseErr) {
+          console.error("Error parsing tool call:", parseErr);
+          // Fallback: show whatever text we got
+          setMessages(prev => prev.map(m =>
+            m.id === streamMsgId ? { ...m, content: fullContent || "Vou montar sua equipe...", isStreaming: false } : m
+          ));
+        }
+      } else {
+        // Regular text response - finalize
+        setMessages(prev => prev.map(m =>
+          m.id === streamMsgId ? { ...m, isStreaming: false } : m
+        ));
+
+        const newAiMsgs: AiMsg[] = [
+          ...conversationHistory,
+          { role: "assistant", content: fullContent },
+        ];
+        setAiMessages(newAiMsgs);
+      }
+
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.error("Stream error:", err);
+      setMessages(prev => prev.map(m =>
+        m.id === streamMsgId
+          ? { ...m, content: `❌ ${err.message || "Erro ao conectar com IA. Tente novamente."}`, isStreaming: false }
+          : m
+      ));
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || streaming || deploying || done) return;
+    const text = inputValue.trim();
+    setInputValue("");
+
+    // Add user message
+    setMessages(prev => [...prev, {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: text,
+    }]);
+
+    const newHistory: AiMsg[] = [...aiMessages, { role: "user", content: text }];
+    setAiMessages(newHistory);
+
+    await streamAiResponse(newHistory);
+  };
+
+  const handleDeploy = async () => {
     const currentTeam = suggestedTeamRef.current;
-    setStep("deploying");
+    if (!projectId || !user || currentTeam.length === 0) {
+      toast.error("Nenhuma equipe para implantar.");
+      return;
+    }
     setDeploying(true);
 
-    addCeoMessage("🚀 Implantando a equipe... Cada profissional está recebendo suas instruções e se preparando para a primeira rotina.");
+    setMessages(prev => [...prev, {
+      id: `ceo-deploy-${Date.now()}`,
+      role: "ceo",
+      content: "🚀 Implantando a equipe... Cada profissional está recebendo suas instruções e se preparando para a primeira rotina.",
+    }]);
 
     try {
       const activeHierarchy: Record<string, string> = {};
@@ -274,16 +324,14 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
         routine: r.routine,
       }));
 
-      const teamName = answers.mission
-        ? `Equipe: ${answers.mission.slice(0, 40)}`
-        : "Minha Equipe de IA";
+      const finalName = teamName || "Minha Equipe de IA";
 
       const { data: deployment, error } = await supabase
         .from("orchestrator_deployments")
         .insert({
           project_id: projectId,
           owner_id: user.id,
-          name: teamName,
+          name: finalName,
           roles: rolesPayload as any,
           hierarchy: activeHierarchy as any,
           delivery_channels: ["notification"] as any,
@@ -305,9 +353,13 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
         },
       }).catch(console.error);
 
-      setStep("done");
-      addCeoMessage(`✅ Equipe **"${teamName}"** implantada com sucesso! A primeira execução já está em andamento. Você pode acompanhar os resultados no painel do orquestrador.`);
-      
+      setDone(true);
+      setMessages(prev => [...prev, {
+        id: `ceo-done-${Date.now()}`,
+        role: "ceo",
+        content: `✅ Equipe **"${finalName}"** implantada com sucesso! A primeira execução já está em andamento. Você pode acompanhar os resultados no painel do orquestrador.`,
+      }]);
+
       setTimeout(() => {
         toast.success("🏢 Equipe implantada! Primeira execução iniciada.");
         onDeployed?.();
@@ -316,26 +368,11 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
 
     } catch (err: any) {
       setDeploying(false);
-      setStep("confirm");
-      addCeoMessage(`❌ Erro ao implantar: ${err.message}. Tente novamente.`, [
-        { label: "🔄 Tentar novamente", value: "deploy" },
-      ]);
+      toast.error(`Erro ao implantar: ${err.message}`);
     }
   };
 
-  const handleSend = () => {
-    if (!inputValue.trim() || deploying) return;
-    processAnswer(inputValue.trim(), step);
-    setInputValue("");
-  };
-
-  const handleOptionClick = (value: string) => {
-    if (deploying) return;
-    const option = messages
-      .flatMap(m => m.options || [])
-      .find(o => o.value === value);
-    processAnswer(value, step);
-  };
+  const hasTeamSuggestion = suggestedTeam.length > 0 && !done && !deploying;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -348,12 +385,15 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
           <div className="flex-1">
             <h3 className="text-sm font-bold flex items-center gap-2">
               CEO — Montando sua Equipe
-              <Badge variant="secondary" className="text-[9px]">Chat Guiado</Badge>
+              <Badge variant="secondary" className="text-[9px] gap-1">
+                <Sparkles className="h-2.5 w-2.5" /> IA
+              </Badge>
             </h3>
-            <p className="text-[10px] text-muted-foreground">Responda as perguntas para montar a equipe ideal</p>
+            <p className="text-[10px] text-muted-foreground">Converse naturalmente — a IA vai guiar você</p>
           </div>
-          {step === "deploying" && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-          {step === "done" && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+          {streaming && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+          {deploying && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+          {done && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
         </div>
 
         {/* Chat area */}
@@ -376,47 +416,41 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
                       ? "bg-card border border-border rounded-tl-md"
                       : "bg-primary text-primary-foreground rounded-tr-md"
                   )}>
-                    <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                    {msg.content ? (
+                      <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                    ) : msg.isStreaming ? (
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Pensando...
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Team preview */}
                   {msg.teamPreview && msg.teamPreview.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {msg.teamPreview.map(role => (
-                        <div key={role.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card/50 text-xs group relative">
-                          <span className="text-base">{role.emoji}</span>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold truncate">{role.title}</p>
-                            <p className="text-[10px] text-muted-foreground">{role.department}</p>
+                    <div className="space-y-2">
+                      {msg.teamName && (
+                        <p className="text-xs font-semibold text-primary px-1">🏢 {msg.teamName}</p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {msg.teamPreview.map(role => (
+                          <div key={role.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card/50 text-xs group relative">
+                            <span className="text-base">{role.emoji}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold truncate">{role.title}</p>
+                              <p className="text-[10px] text-muted-foreground">{role.department}</p>
+                            </div>
+                            {role.id !== "ceo" && !deploying && !done && (
+                              <button
+                                onClick={() => handleRemoveMember(role.id)}
+                                className="h-5 w-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/10 hover:bg-destructive/20 text-destructive shrink-0"
+                                title="Remover membro"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
-                          {role.id !== "ceo" && step !== "deploying" && step !== "done" && (
-                            <button
-                              onClick={() => handleRemoveMember(role.id)}
-                              className="h-5 w-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/10 hover:bg-destructive/20 text-destructive shrink-0"
-                              title="Remover membro"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Option buttons */}
-                  {msg.options && msg.options.length > 0 && step !== "deploying" && step !== "done" && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {msg.options.map(opt => (
-                        <Button
-                          key={opt.value}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8"
-                          onClick={() => handleOptionClick(opt.value)}
-                        >
-                          {opt.label}
-                        </Button>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -425,28 +459,43 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
           </div>
         </ScrollArea>
 
+        {/* Deploy bar */}
+        {hasTeamSuggestion && (
+          <div className="px-4 py-3 border-t border-border bg-primary/5 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              <strong>{suggestedTeam.length}</strong> profissionais selecionados. Pronto para implantar?
+            </p>
+            <Button
+              size="sm"
+              onClick={handleDeploy}
+              disabled={deploying}
+              className="gap-1.5 text-xs shrink-0"
+            >
+              {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              Implantar Equipe
+            </Button>
+          </div>
+        )}
+
         {/* Input area */}
         <div className="px-4 py-3 border-t border-border bg-card">
           <div className="flex gap-2">
             <Input
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSend()}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
               placeholder={
-                step === "deploying" || step === "done"
-                  ? "Aguarde..."
-                  : step === "mission" ? "Descreva a missão do seu projeto..."
-                  : step === "goals" ? "Liste suas metas principais..."
-                  : step === "hours" ? "Ex: 10 horas por semana"
-                  : "Digite sua resposta..."
+                done ? "Equipe implantada! ✅"
+                  : streaming ? "A IA está respondendo..."
+                  : "Converse com o CEO sobre seu projeto..."
               }
-              disabled={deploying || step === "done"}
+              disabled={streaming || deploying || done}
               className="text-sm"
             />
             <Button
               size="sm"
               onClick={handleSend}
-              disabled={!inputValue.trim() || deploying || step === "done"}
+              disabled={!inputValue.trim() || streaming || deploying || done}
               className="shrink-0"
             >
               <Send className="h-4 w-4" />
