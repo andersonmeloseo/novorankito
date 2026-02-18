@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ReactFlow,
   Background,
@@ -1483,6 +1484,24 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     return map;
   }, [lastRun]);
 
+  /* ─── Real tasks from orchestrator_tasks table ─── */
+  const { data: realTasks = [] } = useQuery({
+    queryKey: ["orchestrator-tasks-warroom", deployment.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orchestrator_tasks")
+        .select("id, title, status, category, priority, due_date, assigned_role")
+        .eq("deployment_id", deployment.id)
+        .order("created_at", { ascending: false });
+      return (data || []) as Array<{
+        id: string; title: string; status: string; category: string;
+        priority: string; due_date: string | null; assigned_role: string | null;
+      }>;
+    },
+    enabled: !!deployment.id,
+    refetchInterval: 30000,
+  });
+
   const getDepth = useCallback((id: string, d = 0): number => {
     if (id === "ceo" || d > 8) return d;
     const p = hierarchy[id];
@@ -1618,91 +1637,120 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
   }, [hierarchy]);
 
   /* ─── CEO Command Chat ─── */
-  const CEO_COMMANDS: Record<string, { label: string; icon: string; description: string; response: (roles: any[], lastRun: any) => string }> = {
+  // Real task stats derived from the live orchestrator_tasks query
+  const taskStats = useMemo(() => {
+    const pending    = realTasks.filter(t => t.status === "pending");
+    const inProgress = realTasks.filter(t => t.status === "in_progress");
+    const done       = realTasks.filter(t => t.status === "done");
+    const urgent     = realTasks.filter(t => t.priority === "urgente" && t.status !== "done");
+    const alta       = realTasks.filter(t => t.priority === "alta" && t.status !== "done");
+    const overdue    = realTasks.filter(t => t.due_date && t.status !== "done" && new Date(t.due_date + "T23:59:59") < new Date());
+    const pct = realTasks.length > 0 ? Math.round((done.length / realTasks.length) * 100) : 0;
+    return { pending, inProgress, done, urgent, alta, overdue, pct, total: realTasks.length };
+  }, [realTasks]);
+
+  const CEO_COMMANDS: Record<string, { label: string; icon: string; description: string; response: () => string }> = useMemo(() => ({
     "status report": {
       label: "Status do Projeto",
       icon: "📊",
-      description: "Visão geral do andamento",
-      response: (r, run) => {
-        const total = r.length;
-        const success = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "success").length : 0;
-        const errors = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "error").length : 0;
-        const lastRunTime = run ? new Date(run.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
-        const runStatusLabel = run?.status === "completed" ? "Concluído" : run?.status === "running" ? "Em execução" : "Aguardando";
-        const pct = total > 0 ? Math.round((success / total) * 100) : 0;
+      description: "Andamento real das tarefas",
+      response: () => {
+        const { pending, inProgress, done, urgent, overdue, pct, total } = taskStats;
+        const lastRunTime = lastRun
+          ? new Date(lastRun.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+          : "—";
+        if (total === 0) {
+          return (
+            `STATUS DO PROJETO — ${deployment.name}\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `Nenhuma tarefa gerada ainda.\n` +
+            `Execute a equipe para gerar tarefas automaticamente.\n\n` +
+            `📅 Última execução: ${lastRunTime}\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+          );
+        }
         return (
           `STATUS DO PROJETO — ${deployment.name}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `📅 Última execução: ${lastRunTime}\n` +
-          `📌 Status: ${runStatusLabel}\n` +
-          `✅ Concluídos com sucesso: ${success}/${total} (${pct}%)\n` +
-          (errors > 0 ? `⚠️ Com falhas: ${errors}\n` : ``) +
-          `👥 Integrantes da equipe: ${total}\n` +
+          `📌 Total de tarefas: ${total}\n` +
+          `✅ Concluídas: ${done.length} (${pct}%)\n` +
+          `🔄 Em progresso: ${inProgress.length}\n` +
+          `⏳ Pendentes: ${pending.length}\n` +
+          (urgent.length > 0 ? `🔴 Urgentes abertas: ${urgent.length}\n` : ``) +
+          (overdue.length > 0 ? `⚠️ Atrasadas: ${overdue.length}\n` : ``) +
+          `\n📅 Última execução: ${lastRunTime}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
         );
-      }
+      },
     },
-    "resumo executivo": {
-      label: "Resumo Executivo",
-      icon: "📋",
-      description: "Síntese do último relatório",
-      response: (_r, run) => {
-        if (!run?.summary || run.summary.includes("AI error")) {
-          return `RESUMO EXECUTIVO — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma execução registrada. Execute a equipe para gerar o resumo.`;
+    "em progresso": {
+      label: "Em Progresso",
+      icon: "🔄",
+      description: "Tarefas sendo executadas agora",
+      response: () => {
+        const { inProgress } = taskStats;
+        if (inProgress.length === 0) {
+          return `EM PROGRESSO — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma tarefa em andamento no momento.`;
         }
+        const lines = inProgress.slice(0, 10).map(t =>
+          `🔄 [${(t.category || "geral").toUpperCase()}] ${t.title}${t.assigned_role ? ` — ${t.assigned_role}` : ""}`
+        );
         return (
-          `RESUMO EXECUTIVO — ${deployment.name}\n` +
+          `EM PROGRESSO — ${deployment.name}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `${String(run.summary).slice(0, 900)}\n` +
+          lines.join("\n") +
+          (inProgress.length > 10 ? `\n...e mais ${inProgress.length - 10} tarefas` : ``) + `\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
         );
-      }
+      },
     },
-    "tarefas pendentes": {
-      label: "Tarefas Pendentes",
+    "pendentes": {
+      label: "Pendentes",
       icon: "📌",
-      description: "O que está pendente de ação",
-      response: (r, run) => {
-        const pending = run
-          ? ((run.agent_results as any[]) || [])
-              .filter((a: any) => a.status === "waiting" || a.status === "pending")
-          : [];
-        const inProgress = run
-          ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "running")
-          : [];
-        if (pending.length === 0 && inProgress.length === 0) {
-          return `TAREFAS PENDENTES — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma tarefa pendente. ${run ? "Todas as entregas foram concluídas." : "Execute a equipe para gerar tarefas."}`;
+      description: "Tarefas aguardando início",
+      response: () => {
+        const { pending, urgent, alta } = taskStats;
+        if (pending.length === 0) {
+          return `PENDENTES — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhuma tarefa pendente. Tudo em andamento ou concluído.`;
         }
-        const lines = [
-          ...inProgress.map((a: any) => `🔄 Em execução: ${a.role_title}`),
-          ...pending.map((a: any) => `⏳ Aguardando: ${a.role_title}`),
-        ];
+        const urgentLines = urgent.filter(t => t.status === "pending").slice(0, 4).map(t => `🔴 ${t.title}`);
+        const altaLines   = alta.filter(t => t.status === "pending").slice(0, 4).map(t => `🟠 ${t.title}`);
+        const normLines   = pending.filter(t => t.priority !== "urgente" && t.priority !== "alta").slice(0, 5).map(t => `⏳ ${t.title}`);
         return (
-          `TAREFAS PENDENTES — ${deployment.name}\n` +
+          `PENDENTES — ${deployment.name}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `${lines.join("\n")}\n` +
+          `Total pendente: ${pending.length} tarefas\n\n` +
+          [...urgentLines, ...altaLines, ...normLines].join("\n") + `\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
         );
-      }
+      },
     },
     "alertas": {
-      label: "Alertas e Falhas",
+      label: "Alertas",
       icon: "🚨",
-      description: "Itens que precisam de atenção",
-      response: (_r, run) => {
-        const errors = run ? ((run.agent_results as any[]) || []).filter((a: any) => a.status === "error") : [];
-        if (errors.length === 0) {
-          return `ALERTAS — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhum alerta crítico. Todos os agentes operando dentro do esperado.`;
+      description: "Urgentes e tarefas atrasadas",
+      response: () => {
+        const { urgent, overdue } = taskStats;
+        if (urgent.length === 0 && overdue.length === 0) {
+          return `ALERTAS — ${deployment.name}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNenhum alerta crítico. Projeto dentro do prazo.`;
         }
+        const urgentLines = urgent.map(t => `🔴 URGENTE: ${t.title}${t.assigned_role ? ` (${t.assigned_role})` : ""}`);
+        const overdueLines = overdue
+          .filter(t => !urgent.find(u => u.id === t.id))
+          .map(t => {
+            const days = Math.ceil((Date.now() - new Date(t.due_date! + "T23:59:59").getTime()) / 86400000);
+            return `⚠️ ATRASADA ${days}d: ${t.title}`;
+          });
         return (
           `ALERTAS — ${deployment.name}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `${errors.map((e: any) => `❌ ${e.role_title}:\n   ${String(e.result || "Erro não especificado").slice(0, 120)}`).join("\n\n")}\n` +
+          [...urgentLines, ...overdueLines].join("\n") + `\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
         );
-      }
+      },
     },
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [taskStats, lastRun, deployment.name]);
 
   const handleCeoCommand = useCallback(async (cmdRaw: string) => {
     const cmd = cmdRaw.trim().toLowerCase();
@@ -1710,7 +1758,6 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
 
     const matched = Object.entries(CEO_COMMANDS).find(([key]) => cmd.includes(key));
     const ceoRole = roles.find((r: any) => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
-    // Use the personal name if set on the card, otherwise fallback to role title
     const ceoDisplayName = ceoRole?.name || ceoRole?.title || "CEO";
     const ceoWhatsapp = ceoRole?.whatsapp;
 
@@ -1722,10 +1769,9 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
 
     setCeoCmdSending(true);
     try {
-      const report = matched[1].response(roles, lastRun);
+      const report = matched[1].response();
       setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
 
-      // Send via WhatsApp if CEO has number
       if (ceoWhatsapp) {
         const { error } = await supabase.functions.invoke("send-workflow-notification", {
           body: {
@@ -1746,7 +1792,47 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
       setCeoCmdSending(false);
       setCeoCmdInput("");
     }
-  }, [roles, lastRun, hierarchy, deployment.name]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [CEO_COMMANDS, roles, hierarchy, deployment.name]);
+    const cmd = cmdRaw.trim().toLowerCase();
+    if (!cmd) return;
+
+    const matched = Object.entries(CEO_COMMANDS).find(([key]) => cmd.includes(key));
+    const ceoRole = roles.find((r: any) => r.id === "ceo" || !hierarchy[r.id]) || roles[0];
+    const ceoDisplayName = ceoRole?.name || ceoRole?.title || "CEO";
+    const ceoWhatsapp = ceoRole?.whatsapp;
+
+    if (!matched) {
+      const tip = `Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.icon} ${c.label}`).join("\n")}`;
+      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: tip, ts: Date.now() }]);
+      return;
+    }
+
+    setCeoCmdSending(true);
+    try {
+      const report = matched[1].response();
+      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
+
+      if (ceoWhatsapp) {
+        const { error } = await supabase.functions.invoke("send-workflow-notification", {
+          body: {
+            workflow_name: `${matched[1].icon} ${matched[1].label} — ${deployment.name}`,
+            report,
+            recipient_name: ceoDisplayName,
+            direct_send: { phones: [ceoWhatsapp] },
+          },
+        });
+        if (error) throw error;
+        toast.success(`📲 Enviado para ${ceoDisplayName} via WhatsApp`);
+      } else {
+        toast.info("Configure o WhatsApp do CEO no perfil para envio automático");
+      }
+    } catch (err: any) {
+      toast.error(`Erro ao processar comando: ${err.message}`);
+    } finally {
+      setCeoCmdSending(false);
+      setCeoCmdInput("");
+    }
 
   /* ─── Member management ─── */
   const handleFireMember = useCallback(async (roleId: string) => {
