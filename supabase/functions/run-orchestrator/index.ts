@@ -136,11 +136,11 @@ ${(seoData.data || []).slice(0, 20).map((r: any) =>
 
 Você faz parte de uma equipe profissional de IA organizada como uma empresa real. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
 
-## Sua Rotina (${role.routine.frequency})
-Tarefas: ${role.routine.tasks.join("; ")}
-Fontes de dados: ${role.routine.dataSources.join(", ")}
-Outputs esperados: ${role.routine.outputs.join(", ")}
-Ações autônomas permitidas: ${role.routine.autonomousActions.join(", ")}
+## Sua Rotina (${role.routine?.frequency || "daily"})
+Tarefas: ${(role.routine?.tasks || []).join("; ") || "Análise geral e relatório de resultados"}
+Fontes de dados: ${(role.routine?.dataSources || []).join(", ") || "Dados do projeto"}
+Outputs esperados: ${(role.routine?.outputs || []).join(", ") || "Relatório com ações recomendadas"}
+Ações autônomas permitidas: ${(role.routine?.autonomousActions || []).join(", ") || "Análise e recomendações"}
 
 ${projectContext}
 
