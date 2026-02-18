@@ -335,6 +335,23 @@ ${ga4Context}
       return d.choices?.[0]?.message?.content || "";
     };
 
+    // ── Build rich data context snippets (used in all agents) ──
+    const allSeoRows = (seoData.data || []);
+    const topQueries = allSeoRows.filter((r: any) => r.query && r.clicks > 0).slice(0, 15)
+      .map((r: any) => `"${r.query}": ${r.clicks} cliques, ${r.impressions} imp, pos ${r.position?.toFixed(1)}, CTR ${((r.ctr || 0) * 100).toFixed(1)}%`);
+    const topUrls = allSeoRows.filter((r: any) => r.url && r.clicks > 0).slice(0, 10)
+      .map((r: any) => `${r.url}: ${r.clicks} cliques, ${r.impressions} imp, pos ${r.position?.toFixed(1) || "?"}`);
+    const quickWinOps = (gscData.data || [])
+      .filter((r: any) => r.impressions > 200 && r.position > 3 && r.position <= 15)
+      .slice(0, 8)
+      .map((r: any) => `"${r.query}": pos ${r.position?.toFixed(1)}, ${r.impressions} imp, apenas ${r.clicks} cliques — potencial de +${Math.round((0.05 - (r.clicks / (r.impressions || 1))) * r.impressions)} cliques/mês melhorando CTR`);
+    const lowCtrHighPos = (gscData.data || [])
+      .filter((r: any) => r.position <= 3 && (r.clicks / (r.impressions || 1)) < 0.05 && r.impressions > 50)
+      .slice(0, 5)
+      .map((r: any) => `"${r.query}": TOP ${r.position?.toFixed(0)} mas CTR só ${((r.clicks / (r.impressions || 1)) * 100).toFixed(1)}% — urgente melhorar snippet`);
+
+    const hasRealSeoData = topQueries.length > 0;
+
     // ── ROUND 1: Execute each agent top-down (cascade) ──
     for (const role of sortedRoles) {
       const startedAt = new Date().toISOString();
@@ -348,7 +365,7 @@ ${ga4Context}
           .filter(r => r.id !== role.id && hierarchyMap[r.id] === (superiorId || ""))
           .map(r => {
             const peerResult = resultsByRole.get(r.id);
-            return peerResult ? `\n### Relatório de ${r.emoji} ${r.title}:\n${peerResult}` : "";
+            return peerResult ? `\n### Relatório de ${r.emoji} ${r.title}:\n${peerResult.slice(0, 600)}` : "";
           })
           .filter(Boolean)
           .join("\n");
@@ -358,79 +375,154 @@ ${ga4Context}
         nextWeek.setDate(nextWeek.getDate() + 7);
         const dueDateStr = nextWeek.toISOString().split("T")[0];
 
-        // Compute useful data summaries for more precise prompts
-        const seoRows = (seoData.data || []).slice(0, 20);
-        const topQueries = seoRows.filter((r: any) => r.query).slice(0, 10)
-          .map((r: any) => `"${r.query}": ${r.clicks} cliques, pos ${r.position?.toFixed(1)}, CTR ${((r.ctr || 0) * 100).toFixed(1)}%`);
-        const topUrls = seoRows.filter((r: any) => r.url && !r.query).slice(0, 5)
-          .map((r: any) => `${r.url}: ${r.clicks} cliques, ${r.impressions} impressões`);
-        const opportunities = (gscData.data || [])
-          .filter((r: any) => r.impressions > 100 && r.position < 20 && r.position > 3)
-          .slice(0, 5)
-          .map((r: any) => `"${r.query}": pos ${r.position?.toFixed(1)}, ${r.impressions} imp, apenas ${r.clicks} cliques`);
+        // ── Build specialist-specific additional context ──
+        const roleTitleLower = role.title.toLowerCase();
+        const isSeoSpecialist = roleTitleLower.includes("seo") || roleTitleLower.includes("orgânico") || roleTitleLower.includes("busca");
+        const isContentSpec = roleTitleLower.includes("content") || roleTitleLower.includes("conteúdo") || roleTitleLower.includes("redator") || roleTitleLower.includes("editorial");
+        const isLinksSpec = roleTitleLower.includes("link") || roleTitleLower.includes("autoridade") || roleTitleLower.includes("backlink");
+        const isAdsSpec = roleTitleLower.includes("ads") || roleTitleLower.includes("mídia") || roleTitleLower.includes("paid") || roleTitleLower.includes("pago") || roleTitleLower.includes("tráfego pago");
+        const isTechSpec = roleTitleLower.includes("técn") || roleTitleLower.includes("tech") || roleTitleLower.includes("desenvolv") || roleTitleLower.includes("core web");
+        const isAnalyticsSpec = roleTitleLower.includes("analytic") || roleTitleLower.includes("dados") || roleTitleLower.includes("data") || roleTitleLower.includes("métricas");
+        const isCroSpec = roleTitleLower.includes("cro") || roleTitleLower.includes("convers") || roleTitleLower.includes("ux");
+
+        let specialistDataSection = "";
+        if (isSeoSpecialist) {
+          specialistDataSection = `
+## 🔍 DADOS SEO ESPECÍFICOS PARA SUA ANÁLISE:
+### Queries orgânicas com maior volume (GSC — últimos 28 dias):
+${topQueries.length > 0 ? topQueries.join("\n") : "⚠️ Sem dados de GSC conectados ainda"}
+
+### Quick Wins — Posição 4-15 com alto volume (MEG OPORTUNIDADE de 1ª página):
+${quickWinOps.length > 0 ? quickWinOps.join("\n") : "Sem oportunidades quick-win identificadas"}
+
+### Alertas de CTR Baixo (TOP 3 mas perdendo cliques):
+${lowCtrHighPos.length > 0 ? lowCtrHighPos.join("\n") : "Nenhum alerta de CTR"}
+
+### Top URLs por tráfego orgânico:
+${topUrls.length > 0 ? topUrls.join("\n") : "Sem dados de URL"}`;
+        } else if (isContentSpec) {
+          specialistDataSection = `
+## ✍️ DADOS DE CONTEÚDO PARA SUA ANÁLISE:
+### Páginas com mais tráfego orgânico (oportunidades de expansão de conteúdo):
+${topUrls.length > 0 ? topUrls.join("\n") : "Sem dados de URL ainda"}
+
+### Queries sem conteúdo específico (gap de conteúdo identificado):
+${quickWinOps.slice(0, 6).map((q: string) => `→ ${q}`).join("\n") || "Sem gaps identificados"}
+
+### Queries com alta impressão mas sem clique (meta/título fraco):
+${lowCtrHighPos.join("\n") || "Nenhum alerta"}`;
+        } else if (isLinksSpec) {
+          specialistDataSection = `
+## 🔗 DADOS DE AUTORIDADE PARA SUA ANÁLISE:
+### Páginas com maior potencial para link building (mais tráfego, mais autoridade):
+${topUrls.slice(0, 8).join("\n") || "Sem dados de URL"}
+
+### Keywords que precisam de boost de autoridade (posição 5-15):
+${quickWinOps.slice(0, 6).join("\n") || "Sem dados"}`;
+        } else if (isAdsSpec) {
+          specialistDataSection = `
+## 📣 DADOS DE ADS/MÍDIA PAGA PARA SUA ANÁLISE:
+${ga4Context.slice(0, 1500)}
+### Canais orgânicos (para complementar com paid):
+${topQueries.slice(0, 8).join("\n") || "Sem dados"}`;
+        } else if (isTechSpec) {
+          specialistDataSection = `
+## 🔧 DADOS TÉCNICOS PARA SUA ANÁLISE:
+### URLs com problemas potenciais de indexação ou performance (baixo CTR / posição ruim):
+${allSeoRows.filter((r: any) => r.url && r.position > 20).slice(0, 8).map((r: any) => `${r.url}: pos ${r.position?.toFixed(1)} — possível problema técnico`).join("\n") || "Sem dados"}
+
+### Queries com impressão alta mas sem clique (pode ser problema de snippet/structured data):
+${lowCtrHighPos.join("\n") || "Nenhum alerta"}`;
+        } else if (isAnalyticsSpec) {
+          specialistDataSection = `
+## 📊 DADOS ANALYTICS PARA SUA ANÁLISE:
+${ga4Context}`;
+        } else if (isCroSpec) {
+          specialistDataSection = `
+## 🎯 DADOS CRO/CONVERSÃO PARA SUA ANÁLISE:
+${ga4Context.slice(0, 1500)}
+### Páginas com alto tráfego (candidatas a testes de CRO):
+${topUrls.slice(0, 8).join("\n") || "Sem dados de URL"}`;
+        } else {
+          // CEO and managers get full context
+          specialistDataSection = `
+## 📊 DADOS GERAIS DO PROJETO:
+### Top Queries GSC:
+${topQueries.slice(0, 8).join("\n") || "Sem dados de queries"}
+
+### Top URLs:
+${topUrls.slice(0, 5).join("\n") || "Sem dados de URL"}
+
+### Quick Wins Identificados:
+${quickWinOps.slice(0, 5).join("\n") || "Sem oportunidades quick-win"}
+
+${ga4Context.slice(0, 1200)}`;
+        }
 
         const systemPrompt = `${role.instructions}
 
-Você é ${role.emoji} ${role.title}, especialista atuando em uma equipe profissional de IA para o projeto real abaixo. Hoje é ${today.toLocaleDateString("pt-BR")} (${todayStr}).
+Você é ${role.emoji} ${role.title} — especialista sênior atuando em uma equipe profissional de IA para o projeto real descrito abaixo.
+Hoje é ${today.toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} (${todayStr}).
 
-## Dados REAIS do Projeto (use estes para embasar suas recomendações):
+${specialistDataSection}
 
-### Top queries orgânicas (GSC):
-${topQueries.length > 0 ? topQueries.join("\n") : "Sem dados de queries ainda"}
+## Sua Especialidade e Rotina (frequência: ${role.routine?.frequency || "diária"}):
+Responsabilidades: ${(role.routine?.tasks || []).join("; ") || "Análise e relatório da sua área"}
+Fontes de dados: ${(role.routine?.dataSources || []).join(", ") || "Dados do projeto"}
+Entregáveis esperados: ${(role.routine?.outputs || []).join(", ") || "Relatório + Tarefas"}
+${(role.routine?.autonomousActions || []).length > 0 ? `Ações autônomas: ${role.routine.autonomousActions.join("; ")}` : ""}
 
-### Top URLs por cliques:
-${topUrls.length > 0 ? topUrls.join("\n") : "Sem dados de URLs ainda"}
+${superiorResult && superiorRole ? `## 📋 DIRETRIZES ESTRATÉGICAS DO SUPERIOR (${superiorRole.emoji} ${superiorRole.title}):
+${superiorResult.slice(0, 1000)}
 
-### Oportunidades de CTR (posição 4-20 com alto volume):
-${opportunities.length > 0 ? opportunities.join("\n") : "Sem oportunidades identificadas nos dados"}
+⚠️ Sua análise DEVE estar alinhada com as prioridades acima. Especifique como sua área contribui para cada objetivo do superior.` : ""}
 
-${ga4Context}
+${peerResults ? `## 👥 CONTEXTO DOS COLEGAS DE EQUIPE:\n${peerResults.slice(0, 1500)}` : ""}
 
-## Sua Rotina (${role.routine?.frequency || "diária"})
-Foco: ${(role.routine?.tasks || []).slice(0, 3).join("; ") || "Análise e relatório da sua área"}
-Fontes: ${(role.routine?.dataSources || []).join(", ") || "Dados do projeto"}
+## ⚠️ REGRAS ABSOLUTAS:
+${hasRealSeoData ? `- SEMPRE cite dados reais do projeto: queries com números exatos, CTRs, posições, páginas específicas
+- NUNCA use exemplos genéricos como "keyword X" ou "página Y" — use os dados reais fornecidos acima` : `- Os dados do projeto ainda não foram sincronizados. Baseie-se no contexto do domínio e nas melhores práticas
+- Seja específico sobre COMO implementar cada ação, mesmo sem dados históricos`}
+- Cada tarefa deve ter ação CONCRETA com responsável, ferramentas e métrica de sucesso
+- Tarefas devem ser implementáveis pelo time humano nos próximos 7 dias
+- Prazo máximo das tarefas: ${dueDateStr}
 
-${superiorResult && superiorRole ? `## Diretrizes do Superior (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult.slice(0, 800)}\n\nAtue de acordo com as prioridades acima.` : ""}
+## 📝 FORMATO DE SAÍDA OBRIGATÓRIO (siga exatamente):
+Escreva seu relatório profissional abaixo (máximo 600 palavras, cite dados reais):
 
-${peerResults ? `## Relatórios de Colegas:\n${peerResults.slice(0, 1500)}` : ""}
-
-## REGRAS:
-- Cite dados REAIS: queries específicas, CTRs, posições, páginas concretas do projeto
-- Cada tarefa deve ter ação específica (ex: "Otimizar meta title da página /sobre para incluir keyword X")
-- Prazo máximo: ${dueDateStr}
-- Formato de saída obrigatório com separador abaixo
-
-## FORMATO DE SAÍDA OBRIGATÓRIO:
-SEÇÃO 1: Relatório narrativo (máximo 500 palavras) — cite dados reais
-Escreva aqui seu relatório profissional.
+[Relatório narrativo aqui]
 
 ---TASKS_JSON---
-SEÇÃO 2: JSON com 3 a 5 tarefas MUITO específicas e acionáveis:
 [
   {
-    "title": "Título curto e acionável (cite a query/página/métrica real)",
-    "description": "O que fazer exatamente, passo a passo, com dados reais do projeto",
+    "title": "Ação específica com dado real (ex: Otimizar title da /produto para keyword 'X' que tem CTR de 1.2%)",
+    "description": "Passo a passo detalhado: 1) O que fazer 2) Como fazer 3) Onde implementar 4) Resultado esperado",
     "category": "seo|conteudo|links|ads|tecnico|estrategia|analytics",
     "priority": "urgente|alta|normal|baixa",
     "assigned_role": "${role.title}",
     "assigned_role_emoji": "${role.emoji}",
     "due_date": "${dueDateStr}",
-    "success_metric": "Métrica mensurável para saber se a tarefa foi concluída com sucesso",
-    "estimated_impact": "Ex: +2 posições em 'keyword X', +20% CTR na página /sobre"
+    "success_metric": "Métrica objetiva e mensurável (ex: CTR sobe para >5% na query X em 14 dias)",
+    "estimated_impact": "Impacto esperado com dados (ex: +180 cliques/mês baseado nas 3.600 impressões atuais)"
   }
 ]`;
 
         const userPrompt = isCeo
-          ? `Como CEO, analise todos os dados do projeto e:
-1) Defina visão estratégica para esta semana
-2) Liste top 3 prioridades com métricas esperadas
-3) Dê instruções específicas para cada membro da equipe
-4) Gere tarefas de nível estratégico para o time executar
+          ? `Como CEO desta equipe digital, com os dados REAIS do projeto acima, entregue:
 
-Lembre: seu relatório será repassado para gerentes que distribuirão as tarefas.`
-          : `Execute sua rotina ${role.routine?.frequency || "diária"}. Analise os dados, siga as instruções do superior, e gere:
-1) Relatório detalhado da sua área com achados e oportunidades
-2) Lista de tarefas específicas e acionáveis para o time humano implementar`;
+1. **DIAGNÓSTICO EXECUTIVO** (100 palavras): Situação atual do projeto em 3 métricas-chave com números reais
+2. **TOP 3 PRIORIDADES DA SEMANA** com impacto esperado e prazo
+3. **DIRETRIZES POR ÁREA** (SEO, Conteúdo, Links, Ads, Técnico, Analytics) — instruções específicas para cada especialista
+4. **TAREFAS ESTRATÉGICAS** (JSON): 3-5 tarefas de alto nível que a equipe deve executar esta semana
+
+Lembre: seu relatório será a bússola estratégica para todos os agentes. Seja preciso, baseado em dados e acionável.`
+          : `Execute sua análise especializada de ${role.title} com os dados REAIS do projeto acima. Entregue:
+
+1. **ANÁLISE DA SUA ÁREA** (200-400 palavras): cite números reais, identifique problemas e oportunidades específicos
+2. **TOP ACHADOS** (máx 5 bullets): insights mais importantes com dados concretos
+3. **PLANO DE AÇÃO** (JSON): 3-5 tarefas MUITO específicas que o time humano pode implementar AGORA
+
+⚠️ Importante: suas tarefas devem ser tão específicas que qualquer pessoa da equipe consiga executar sem precisar de briefing adicional.`;
 
         const fullOutput = await callAI(systemPrompt, userPrompt, 3000);
 
@@ -565,21 +657,55 @@ Seja direto, colaborativo e focado em resultados. Máximo 300 palavras.`,
       .eq("id", runId);
 
     // ── Generate Strategic Plan + 5-Day Daily Actions Plan ──
-    const ceoResult = resultsByRole.get("ceo") || 
-      agentResults.find(r => r.role_id === "ceo" || getDepth(r.role_id) === 0)?.result || "";
+    const ceoRoleId = sortedRoles.find(r => getDepth(r.id) === 0)?.id || "ceo";
+    const ceoResult = resultsByRole.get(ceoRoleId) || 
+      agentResults.find(r => r.role_id === ceoRoleId || getDepth(r.role_id) === 0)?.result || "";
 
     const allReports = agentResults
       .filter(r => r.status === "success")
-      .map(r => `### ${r.emoji} ${r.role_title}\n${r.result}`)
+      .map(r => `### ${r.emoji} ${r.role_title}\n${r.result.slice(0, 1500)}`)
       .join("\n\n---\n\n");
+
+    // Compute next 5 business days
+    const getNextBusinessDays = (from: Date, count: number): string[] => {
+      const days: string[] = [];
+      const d = new Date(from);
+      while (days.length < count) {
+        d.setDate(d.getDate() + 1);
+        const dayOfWeek = d.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          days.push(d.toISOString().split("T")[0]);
+        }
+      }
+      return days;
+    };
+    const next5Days = getNextBusinessDays(today, 5);
+    const dayNames: Record<number, string> = {
+      1: "Segunda-feira", 2: "Terça-feira", 3: "Quarta-feira", 4: "Quinta-feira", 5: "Sexta-feira"
+    };
+
+    // Build a focused data snapshot for the daily plan
+    const dailyPlanDataContext = `
+## DADOS REAIS DO PROJETO:
+### Dias a gerar: ${next5Days.map(d => `${d} (${dayNames[new Date(d + "T12:00:00").getDay()] || d})`).join(", ")}
+### Top Queries GSC:
+${topQueries.slice(0, 12).join("\n") || "Dados ainda não sincronizados"}
+### Quick Wins (pos 4-15, alto volume):
+${quickWinOps.slice(0, 8).join("\n") || "Sem quick wins"}
+### Alertas de CTR baixo:
+${lowCtrHighPos.join("\n") || "Nenhum"}
+### Top URLs:
+${topUrls.slice(0, 8).join("\n") || "Sem dados"}
+${ga4Context.slice(0, 800)}
+`;
 
     // Generate strategic plan + full daily actions (parallel)
     let strategicPlan = null;
     let dailyPlan: DailyPlanDay[] = [];
 
     const [planRes, dailyRes] = await Promise.allSettled([
-      // Strategic weekly plan
-      aiApiKey ? fetch(aiEndpoint, {
+      // Strategic weekly plan — with real data
+      fetch(aiEndpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -587,35 +713,43 @@ Seja direto, colaborativo e focado em resultados. Máximo 300 palavras.`,
           messages: [
             {
               role: "system",
-              content: `Você é o CEO de uma empresa digital. Com base nos relatórios da equipe, gere um planejamento estratégico da semana em JSON puro (sem markdown, sem explicações, apenas o JSON):
+              content: `Você é o CEO de uma empresa digital. Com base nos dados REAIS do projeto e relatórios da equipe, gere um planejamento estratégico em JSON PURO (APENAS JSON, sem markdown, sem texto antes/depois):
 {
-  "week_theme": "Tema principal da semana",
-  "top_goals": ["meta 1", "meta 2", "meta 3"],
+  "week_theme": "Tema concreto baseado nos dados (ex: Recuperação de CTR em 12 queries na posição 4-8)",
+  "top_goals": [
+    "Meta 1 com número real (ex: Subir CTR médio das queries pos 4-6 de 2.1% para >4%)",
+    "Meta 2 com dado concreto e prazo",
+    "Meta 3 mensurável com baseline dos dados"
+  ],
   "daily_focus": {
-    "segunda": "Foco do dia",
-    "terca": "Foco do dia",
+    "segunda": "Foco concreto com ação específica baseada nos dados",
+    "terca": "Foco do dia com dado real",
     "quarta": "Foco do dia",
     "quinta": "Foco do dia",
-    "sexta": "Foco do dia"
+    "sexta": "Fechamento semanal e planejamento próxima semana"
   },
   "kpis_to_watch": [
-    {"metric": "nome da métrica", "target": "meta", "current": "valor atual se souber"}
+    {"metric": "Nome da métrica real do projeto", "target": "Meta concreta", "current": "Valor atual dos dados"}
   ],
-  "risk_alert": "Principal risco desta semana",
-  "quick_wins": ["Ação rápida 1 (menos de 1h)", "Ação rápida 2", "Ação rápida 3"]
+  "risk_alert": "Principal risco identificado nos dados esta semana com evidência",
+  "quick_wins": [
+    "Ação rápida CONCRETA (<1h) com dado real (ex: Atualizar meta title de /pagina com 3.200 impressões e CTR 1.1%)",
+    "Ação rápida 2 baseada nos dados",
+    "Ação rápida 3"
+  ]
 }`
             },
             {
               role: "user",
-              content: `Com base neste relatório do CEO e dos dados do projeto:\n\n${ceoResult}\n\nGere o planejamento estratégico da semana em JSON.`
+              content: `${dailyPlanDataContext}\n\nRelatório do CEO:\n${ceoResult.slice(0, 1500)}\n\nGere o planejamento estratégico JSON agora.`
             }
           ],
-          max_tokens: 1200,
+          max_tokens: 1500,
         }),
-      }) : Promise.reject("no key"),
+      }),
 
-      // 5-day detailed daily plan
-      aiApiKey ? fetch(aiEndpoint, {
+      // 5-day detailed daily plan — HIPER-SPECIFIC with real data
+      fetch(aiEndpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -623,78 +757,104 @@ Seja direto, colaborativo e focado em resultados. Máximo 300 palavras.`,
           messages: [
             {
               role: "system",
-              content: `Você é um Chief of Staff gerando um plano de ações diárias detalhado para os próximos 5 dias úteis. Hoje é ${todayStr}.
+              content: `Você é um Chief of Staff experiente. Gere um plano de ações diárias HIPER-ESPECÍFICO para exatamente estes 5 dias: ${next5Days.map((d, i) => `${d} (${dayNames[new Date(d + "T12:00:00").getDay()] || "Dia " + (i + 1)})`).join(", ")}.
 
-Com base nos relatórios de todos os agentes, gere um plano DIÁRIO por ÁREA (SEO, conteúdo, links, ads, técnico, analytics) com ações específicas agendadas para cada dia.
-
-Retorne SOMENTE JSON válido, sem markdown:
+RETORNE APENAS UM ARRAY JSON VÁLIDO (sem markdown, sem texto, apenas JSON começando com [ e terminando com ]):
 [
   {
-    "date": "YYYY-MM-DD",
-    "day_name": "Segunda-feira",
-    "theme": "Tema/foco principal do dia",
+    "date": "${next5Days[0] || "YYYY-MM-DD"}",
+    "day_name": "${dayNames[new Date((next5Days[0] || "2025-01-01") + "T12:00:00").getDay()] || "Segunda-feira"}",
+    "theme": "Tema focado com dado real (ex: Otimização de CTR — 12 queries na pos 4-8 com baixa taxa de clique)",
     "areas_covered": ["seo", "conteudo"],
     "kpi_targets": [
-      {"metric": "CTR médio", "target": ">3.5%", "area": "seo"}
+      {"metric": "CTR das queries pos 4-8", "target": ">4%", "area": "seo"}
     ],
     "actions": [
       {
         "time": "09:00",
-        "title": "Título acionável curto",
-        "description": "O que fazer exatamente, passo a passo",
+        "title": "Título ACIONÁVEL e específico (ex: Reescrever meta title de /produto — 2.800 imp e CTR 1.1%)",
+        "description": "1) Acesse o GSC e filtre esta URL 2) Identifique a keyword principal com mais impressões 3) Reescreva o title incluindo keyword + benefício único 4) Atualize no CMS e submeta URL para inspeção",
         "area": "seo",
-        "priority": "alta",
-        "duration_min": 45,
+        "priority": "urgente",
+        "duration_min": 30,
         "responsible": "Especialista SEO",
-        "success_metric": "Como saber se foi feito com sucesso",
+        "success_metric": "CTR desta página sobe de 1.1% para >3% em 14 dias",
         "status": "scheduled",
-        "tools": ["Google Search Console", "Semrush"]
+        "tools": ["Google Search Console", "CMS do site", "URL Inspection Tool"]
       }
     ]
   }
 ]
 
-REGRAS:
-- Gere exatamente 5 dias a partir de hoje (${todayStr})
-- Cada dia deve ter entre 3-6 ações distribuídas ao longo do dia
-- Priorize ações de ALTO IMPACTO nas primeiras horas (manhã)
-- Distribua as áreas equilibradamente ao longo da semana
-- Seja MUITO específico: cite queries reais dos dados, páginas reais, ações concretas
-- Inclua horários realistas (09:00 às 18:00)
-- Sempre inclua ao menos 1 ação de cada área principal (seo, conteudo, links)`
+REGRAS CRÍTICAS:
+1. Use EXATAMENTE estes dates em ordem: ${next5Days.join(", ")}
+2. Cada dia deve ter EXATAMENTE entre 4 e 6 ações (nunca menos de 4)
+3. Cite dados reais do projeto: queries com CTR/posições, URLs, métricas GA4
+4. Horários entre 09:00 e 18:00, distribuídos ao longo do dia
+5. Distribuição semanal: SEO pesado na segunda/quarta, Conteúdo na terça/quinta, Links+Técnico na quarta/sexta
+6. Cada descrição DEVE ter passo a passo numerado (mínimo 4 passos)
+7. NUNCA use "keyword X", "página Y" — use dados reais ou nomes descritivos do contexto
+8. Inclua as ferramentas específicas para cada ação`
             },
             {
               role: "user",
-              content: `Dados do projeto e relatórios dos agentes:\n\n${projectContext}\n\n---\n\n${allReports.slice(0, 6000)}\n\nGere o plano de ações diárias para os próximos 5 dias úteis em JSON puro.`
+              content: `${dailyPlanDataContext}\n\n## Relatórios dos Agentes:\n${allReports.slice(0, 5000)}\n\nGere agora o array JSON do plano diário. Apenas o JSON, nada mais.`
             }
           ],
-          max_tokens: 4000,
+          max_tokens: 6000,
         }),
-      }) : Promise.reject("no key"),
+      }),
     ]);
 
     // Process strategic plan
-    if (planRes.status === "fulfilled" && planRes.value.ok) {
+    if (planRes.status === "fulfilled" && (planRes.value as Response).ok) {
       try {
-        const planData = await planRes.value.json();
+        const planData = await (planRes.value as Response).json();
         const planText = planData.choices?.[0]?.message?.content || "";
         const jsonMatch = planText.match(/\{[\s\S]*\}/);
         if (jsonMatch) strategicPlan = JSON.parse(jsonMatch[0]);
-      } catch (e) { console.warn("Failed to parse strategic plan:", e); }
+      } catch (e) { console.warn("[run-orchestrator] Failed to parse strategic plan:", e); }
+    } else {
+      console.warn("[run-orchestrator] Strategic plan request failed:", (planRes as PromiseRejectedResult)?.reason || "unknown");
     }
 
-    // Process daily plan
-    if (dailyRes.status === "fulfilled" && dailyRes.value.ok) {
+    // Process daily plan — with robust multi-strategy parsing
+    if (dailyRes.status === "fulfilled" && (dailyRes.value as Response).ok) {
       try {
-        const dailyData = await dailyRes.value.json();
+        const dailyData = await (dailyRes.value as Response).json();
         const dailyText = dailyData.choices?.[0]?.message?.content || "";
-        const jsonMatch = dailyText.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          dailyPlan = JSON.parse(jsonMatch[0]);
-          // Validate and clean the data
-          dailyPlan = dailyPlan.filter(d => d.date && d.actions?.length > 0);
+        console.log(`[run-orchestrator] Daily plan raw response length: ${dailyText.length} chars`);
+
+        // Strategy 1: direct parse or extract array
+        let parsedArr: any[] | null = null;
+        const arrMatch = dailyText.match(/\[[\s\S]*\]/);
+        if (arrMatch) {
+          try { parsedArr = JSON.parse(arrMatch[0]); } catch (_e1) { /* try next */ }
         }
-      } catch (e) { console.warn("Failed to parse daily plan:", e); }
+        // Strategy 2: try whole text
+        if (!parsedArr) {
+          try { parsedArr = JSON.parse(dailyText.trim()); } catch (_e2) { /* fail gracefully */ }
+        }
+
+        if (Array.isArray(parsedArr)) {
+          dailyPlan = parsedArr.filter((d: any) => d.date && Array.isArray(d.actions) && d.actions.length > 0);
+          // If dates are wrong but we have actions, accept it
+          if (dailyPlan.length === 0 && parsedArr.length > 0) {
+            dailyPlan = parsedArr.filter((d: any) => Array.isArray(d.actions) && d.actions.length > 0);
+            // Assign correct dates
+            dailyPlan = dailyPlan.slice(0, 5).map((d: any, i: number) => ({
+              ...d,
+              date: next5Days[i] || d.date,
+              day_name: dayNames[new Date((next5Days[i] || d.date) + "T12:00:00").getDay()] || d.day_name,
+            }));
+          }
+          console.log(`[run-orchestrator] Daily plan: ${dailyPlan.length} days, ${dailyPlan.reduce((s: number, d: any) => s + (d.actions?.length || 0), 0)} actions`);
+        } else {
+          console.warn("[run-orchestrator] Daily plan: no valid JSON array found");
+        }
+      } catch (e) { console.warn("[run-orchestrator] Daily plan parse error:", e); }
+    } else {
+      console.warn("[run-orchestrator] Daily plan request failed:", (dailyRes as PromiseRejectedResult)?.reason || "unknown");
     }
 
     // ── Convert daily plan actions → real orchestrator_tasks with date+time ──
