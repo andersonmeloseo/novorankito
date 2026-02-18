@@ -677,7 +677,7 @@ function EmployeeProfileDialog({
             <TabsTrigger value="notifications" className="text-[11px]">🔔 Notificações</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             {/* Profile Tab */}
             <TabsContent value="profile" className="p-4 space-y-4 mt-0">
               <div className="grid grid-cols-3 gap-3">
