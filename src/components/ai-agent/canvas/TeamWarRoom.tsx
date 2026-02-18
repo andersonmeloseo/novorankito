@@ -891,8 +891,58 @@ function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, v
 }
 
 /* ─── Layout builder ───────────────────────────────────────── */
-const H_GAP = 200;
+const H_GAP = 210;
 const V_GAP = 170;
+
+/** Proper hierarchical tree layout — children always below their own parent, no crossings */
+function computeTreePositions(roles: any[], hierarchy: Record<string, string>): Map<string, { x: number; y: number }> {
+  // Build children map
+  const childrenMap = new Map<string, string[]>();
+  const rootId = roles.find(r => r.id === "ceo")?.id || roles[0]?.id;
+
+  roles.forEach(r => {
+    if (r.id === rootId) return;
+    const parentId = hierarchy[r.id] || rootId;
+    if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
+    childrenMap.get(parentId)!.push(r.id);
+  });
+
+  const positions = new Map<string, { x: number; y: number }>();
+
+  // Recursive subtree width (each leaf = 1 unit of H_GAP)
+  function subtreeWidth(nodeId: string): number {
+    const children = childrenMap.get(nodeId) || [];
+    if (children.length === 0) return H_GAP;
+    return children.reduce((sum, c) => sum + subtreeWidth(c), 0);
+  }
+
+  // Position node and its subtree; cx = center x of this subtree
+  function positionSubtree(nodeId: string, cx: number, y: number) {
+    positions.set(nodeId, { x: cx - 90, y }); // -90 to center the 180px-wide card
+    const children = childrenMap.get(nodeId) || [];
+    if (children.length === 0) return;
+
+    const totalW = children.reduce((sum, c) => sum + subtreeWidth(c), 0);
+    let offsetX = cx - totalW / 2;
+
+    children.forEach(childId => {
+      const cw = subtreeWidth(childId);
+      positionSubtree(childId, offsetX + cw / 2, y + V_GAP);
+      offsetX += cw;
+    });
+  }
+
+  if (rootId) positionSubtree(rootId, 0, 0);
+
+  // Any disconnected nodes get placed below
+  roles.forEach((r, i) => {
+    if (!positions.has(r.id)) {
+      positions.set(r.id, { x: i * H_GAP - (roles.length * H_GAP) / 2, y: 600 });
+    }
+  });
+
+  return positions;
+}
 
 function buildNodesAndEdges(
   roles: any[],
@@ -913,25 +963,7 @@ function buildNodesAndEdges(
     return p ? getDepth(p, d + 1) : d;
   };
 
-  const depthMap = new Map<number, any[]>();
-  roles.forEach(r => {
-    const d = getDepth(r.id);
-    if (!depthMap.has(d)) depthMap.set(d, []);
-    depthMap.get(d)!.push(r);
-  });
-
-  const nodePositions = new Map<string, { x: number; y: number }>();
-  Array.from(depthMap.entries())
-    .sort(([a], [b]) => a - b)
-    .forEach(([depth, dRoles]) => {
-      const totalW = dRoles.length * H_GAP;
-      dRoles.forEach((r, i) => {
-        nodePositions.set(r.id, {
-          x: i * H_GAP - totalW / 2 + H_GAP / 2,
-          y: depth * V_GAP,
-        });
-      });
-    });
+  const nodePositions = computeTreePositions(roles, hierarchy);
 
   const getStatus = (roleId: string): AgentNodeData["status"] => {
     if (vacations.has(roleId)) return "vacation";
