@@ -1761,18 +1761,45 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     const ceoDisplayName = ceoRole?.name || ceoRole?.title || "CEO";
     const ceoWhatsapp = ceoRole?.whatsapp;
 
-    if (!matched) {
-      const tip = `Comando não reconhecido: "${cmdRaw}"\n\nComandos disponíveis:\n${Object.values(CEO_COMMANDS).map(c => `• ${c.icon} ${c.label}`).join("\n")}`;
-      setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: tip, ts: Date.now() }]);
-      return;
-    }
-
     setCeoCmdSending(true);
     try {
-      const report = matched[1].response();
+      let report: string;
+
+      if (matched) {
+        // Predefined command shortcut — use local data
+        report = matched[1].response();
+      } else {
+        // Free text — call AI with full project context
+        const { pending, inProgress, done, urgent, overdue, pct, total } = taskStats;
+        const teamList = roles.map((r: any) => `${r.emoji} ${r.title}${r.name ? ` (${r.name})` : ""}`).join(", ");
+        const systemPrompt = [
+          `Você é o assistente executivo da equipe "${deployment.name}".`,
+          `Responda de forma direta, objetiva e profissional. Não faça perguntas ao final — encerre sempre com uma recomendação clara.`,
+          ``,
+          `CONTEXTO DO PROJETO:`,
+          `• Equipe: ${teamList}`,
+          `• Total de tarefas: ${total} | Concluídas: ${done.length} (${pct}%) | Em progresso: ${inProgress.length} | Pendentes: ${pending.length}`,
+          urgent.length > 0 ? `• Urgentes abertas: ${urgent.map(t => t.title).slice(0, 3).join(", ")}` : `• Sem urgências abertas`,
+          overdue.length > 0 ? `• Atrasadas: ${overdue.map(t => t.title).slice(0, 3).join(", ")}` : `• Sem atrasos`,
+          lastRun ? `• Última execução: ${new Date(lastRun.started_at).toLocaleString("pt-BR")}` : `• Sem execuções registradas`,
+        ].filter(Boolean).join("\n");
+
+        const { data, error } = await supabase.functions.invoke("ai-chat", {
+          body: {
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: cmdRaw },
+            ],
+            project_id: projectId || deployment.project_id,
+          },
+        });
+        if (error) throw error;
+        report = data?.content || data?.message || "Sem resposta da IA.";
+      }
+
       setCeoCmdHistory(prev => [...prev, { cmd: cmdRaw, response: report, ts: Date.now() }]);
 
-      if (ceoWhatsapp) {
+      if (ceoWhatsapp && matched) {
         const { error } = await supabase.functions.invoke("send-workflow-notification", {
           body: {
             workflow_name: `${matched[1].icon} ${matched[1].label} — ${deployment.name}`,
@@ -1783,17 +1810,15 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         });
         if (error) throw error;
         toast.success(`📲 Enviado para ${ceoDisplayName} via WhatsApp`);
-      } else {
-        toast.info("Configure o WhatsApp do CEO no perfil para envio automático");
       }
     } catch (err: any) {
-      toast.error(`Erro ao processar comando: ${err.message}`);
+      toast.error(`Erro ao processar: ${err.message}`);
     } finally {
       setCeoCmdSending(false);
       setCeoCmdInput("");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [CEO_COMMANDS, roles, hierarchy, deployment.name]);
+  }, [CEO_COMMANDS, roles, hierarchy, deployment.name, taskStats, lastRun, projectId]);
 
   /* ─── Member management ─── */
   const handleFireMember = useCallback(async (roleId: string) => {
@@ -2217,7 +2242,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
                           value={ceoCmdInput}
                           onChange={e => setCeoCmdInput(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                          placeholder="status report, alertas, tarefas pendentes…"
+                          placeholder="Pergunte qualquer coisa sobre o projeto…"
                           className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
                           disabled={ceoCmdSending}
                         />
