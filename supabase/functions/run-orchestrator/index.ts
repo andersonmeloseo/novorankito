@@ -358,50 +358,65 @@ ${ga4Context}
         nextWeek.setDate(nextWeek.getDate() + 7);
         const dueDateStr = nextWeek.toISOString().split("T")[0];
 
+        // Compute useful data summaries for more precise prompts
+        const seoRows = (seoData.data || []).slice(0, 20);
+        const topQueries = seoRows.filter((r: any) => r.query).slice(0, 10)
+          .map((r: any) => `"${r.query}": ${r.clicks} cliques, pos ${r.position?.toFixed(1)}, CTR ${((r.ctr || 0) * 100).toFixed(1)}%`);
+        const topUrls = seoRows.filter((r: any) => r.url && !r.query).slice(0, 5)
+          .map((r: any) => `${r.url}: ${r.clicks} cliques, ${r.impressions} impressões`);
+        const opportunities = (gscData.data || [])
+          .filter((r: any) => r.impressions > 100 && r.position < 20 && r.position > 3)
+          .slice(0, 5)
+          .map((r: any) => `"${r.query}": pos ${r.position?.toFixed(1)}, ${r.impressions} imp, apenas ${r.clicks} cliques`);
+
         const systemPrompt = `${role.instructions}
 
-Você faz parte de uma equipe profissional de IA organizada como uma empresa real. Hoje é ${today.toLocaleDateString("pt-BR")} (${todayStr}).
+Você é ${role.emoji} ${role.title}, especialista atuando em uma equipe profissional de IA para o projeto real abaixo. Hoje é ${today.toLocaleDateString("pt-BR")} (${todayStr}).
 
-## Sua Rotina (${role.routine?.frequency || "daily"})
-Tarefas: ${(role.routine?.tasks || []).join("; ") || "Análise geral e relatório de resultados"}
-Fontes de dados: ${(role.routine?.dataSources || []).join(", ") || "Dados do projeto"}
-Outputs esperados: ${(role.routine?.outputs || []).join(", ") || "Relatório com ações recomendadas"}
-Ações autônomas permitidas: ${(role.routine?.autonomousActions || []).join(", ") || "Análise e recomendações"}
+## Dados REAIS do Projeto (use estes para embasar suas recomendações):
 
-${projectContext}
+### Top queries orgânicas (GSC):
+${topQueries.length > 0 ? topQueries.join("\n") : "Sem dados de queries ainda"}
 
-${superiorResult && superiorRole ? `## Instruções do seu Superior (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult}\n\nVocê deve executar sua parte com base nas diretrizes acima.` : ""}
+### Top URLs por cliques:
+${topUrls.length > 0 ? topUrls.join("\n") : "Sem dados de URLs ainda"}
 
-${peerResults ? `## Relatórios de Colegas (mesmo nível hierárquico):\n${peerResults}` : ""}
+### Oportunidades de CTR (posição 4-20 com alto volume):
+${opportunities.length > 0 ? opportunities.join("\n") : "Sem oportunidades identificadas nos dados"}
 
-IMPORTANTE:
-- Analise os dados REAIS do projeto fornecidos acima
-- Se você tem um superior, siga as diretrizes e prioridades definidas por ele
-- Gere seu relatório detalhando o que PRECISA SER FEITO
-- Liste ações específicas com responsáveis, prazos e métricas
-- Comunique-se como um profissional real: objetivo, claro e acionável
-- Seja conciso mas completo (máximo 600 palavras para o relatório)
+${ga4Context}
+
+## Sua Rotina (${role.routine?.frequency || "diária"})
+Foco: ${(role.routine?.tasks || []).slice(0, 3).join("; ") || "Análise e relatório da sua área"}
+Fontes: ${(role.routine?.dataSources || []).join(", ") || "Dados do projeto"}
+
+${superiorResult && superiorRole ? `## Diretrizes do Superior (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult.slice(0, 800)}\n\nAtue de acordo com as prioridades acima.` : ""}
+
+${peerResults ? `## Relatórios de Colegas:\n${peerResults.slice(0, 1500)}` : ""}
+
+## REGRAS:
+- Cite dados REAIS: queries específicas, CTRs, posições, páginas concretas do projeto
+- Cada tarefa deve ter ação específica (ex: "Otimizar meta title da página /sobre para incluir keyword X")
+- Prazo máximo: ${dueDateStr}
+- Formato de saída obrigatório com separador abaixo
 
 ## FORMATO DE SAÍDA OBRIGATÓRIO:
-Seu output deve conter DUAS seções separadas por "---TASKS_JSON---":
-
-SEÇÃO 1: Relatório narrativo (máximo 600 palavras)
+SEÇÃO 1: Relatório narrativo (máximo 500 palavras) — cite dados reais
 Escreva aqui seu relatório profissional.
 
 ---TASKS_JSON---
-SEÇÃO 2: JSON com tarefas acionáveis para o time humano
-Gere de 3 a 6 tarefas específicas e acionáveis baseadas na sua análise:
+SEÇÃO 2: JSON com 3 a 5 tarefas MUITO específicas e acionáveis:
 [
   {
-    "title": "Título curto e acionável da tarefa",
-    "description": "Descrição detalhada do que precisa ser feito e como fazer",
+    "title": "Título curto e acionável (cite a query/página/métrica real)",
+    "description": "O que fazer exatamente, passo a passo, com dados reais do projeto",
     "category": "seo|conteudo|links|ads|tecnico|estrategia|analytics",
     "priority": "urgente|alta|normal|baixa",
     "assigned_role": "${role.title}",
     "assigned_role_emoji": "${role.emoji}",
     "due_date": "${dueDateStr}",
-    "success_metric": "Como medir o sucesso desta tarefa",
-    "estimated_impact": "Impacto estimado ex: +15% CTR, -30% erros de indexação"
+    "success_metric": "Métrica mensurável para saber se a tarefa foi concluída com sucesso",
+    "estimated_impact": "Ex: +2 posições em 'keyword X', +20% CTR na página /sobre"
   }
 ]`;
 
