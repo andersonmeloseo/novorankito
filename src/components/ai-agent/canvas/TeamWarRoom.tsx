@@ -37,7 +37,7 @@ import {
   FileText, Star, Briefcase, Award, Clock, PalmtreeIcon, History,
   ChevronDown, ChevronRight, Trash2, Plus, Brain, Target, BarChart3,
   Hammer, Palette, ShoppingCart, Megaphone, HeartHandshake, Code2,
-  DollarSign, Scale, Lightbulb,
+  DollarSign, Scale, Lightbulb, Smartphone, CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -360,20 +360,23 @@ interface EmployeeProfileDialogProps {
   onPromote: (id: string) => void;
   onDemote: (id: string) => void;
   onVacation: (id: string) => void;
-  onEdit: (id: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string }>) => Promise<void>;
+  onEdit: (id: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => Promise<void>;
   isOnVacation?: boolean;
+  lastRunSummary?: string;
 }
 
 function EmployeeProfileDialog({
   open, onOpenChange, role, agentResult, runs, hierarchy, allRoles,
-  onFire, onPromote, onDemote, onVacation, onEdit, isOnVacation,
+  onFire, onPromote, onDemote, onVacation, onEdit, isOnVacation, lastRunSummary,
 }: EmployeeProfileDialogProps) {
   const [editTitle, setEditTitle] = useState("");
   const [editEmoji, setEditEmoji] = useState("");
   const [editDept, setEditDept] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
   const [editMemory, setEditMemory] = useState("");
+  const [editWhatsapp, setEditWhatsapp] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
 
   useEffect(() => {
     if (role && open) {
@@ -382,6 +385,7 @@ function EmployeeProfileDialog({
       setEditDept(role.department || "");
       setEditInstructions(role.instructions || "");
       setEditMemory(role.memory || "");
+      setEditWhatsapp(role.whatsapp || "");
     }
   }, [role, open]);
 
@@ -406,6 +410,8 @@ function EmployeeProfileDialog({
   const catalogRole = ROLE_CATALOG.find(c => c.title === role.title);
   const skills: string[] = catalogRole?.skills || (Array.isArray(role.skills) ? role.skills : []);
 
+  const isCeo = !hierarchy[role.id];
+
   const handleSaveEdit = async () => {
     setSaving(true);
     try {
@@ -415,10 +421,36 @@ function EmployeeProfileDialog({
         department: editDept,
         instructions: editInstructions,
         memory: editMemory,
+        whatsapp: editWhatsapp,
       });
       toast.success("Agente atualizado com sucesso!");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendWhatsAppNow = async () => {
+    if (!editWhatsapp) { toast.error("Configure o número WhatsApp primeiro e salve."); return; }
+    if (!lastRunSummary) { toast.error("Nenhum relatório disponível. Execute a equipe primeiro."); return; }
+    setSendingWa(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase.functions.invoke("send-workflow-notification", {
+        body: {
+          workflow_name: `${role.emoji} ${role.title} — Relatório Executivo`,
+          report: lastRunSummary,
+          recipient_name: editTitle,
+          direct_send: {
+            phones: [editWhatsapp],
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success(`✅ Relatório enviado para ${editWhatsapp} via WhatsApp!`);
+    } catch (err: any) {
+      toast.error(`Erro ao enviar: ${err.message}`);
+    } finally {
+      setSendingWa(false);
     }
   };
 
@@ -530,6 +562,28 @@ function EmployeeProfileDialog({
                   </div>
                 </div>
               )}
+              {/* WhatsApp configurado — card no perfil */}
+              {role.whatsapp && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-center gap-3">
+                  <Smartphone className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-emerald-400">WhatsApp configurado</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{role.whatsapp}</p>
+                  </div>
+                  {lastRunSummary && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1.5 shrink-0 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                      onClick={handleSendWhatsAppNow}
+                      disabled={sendingWa}
+                    >
+                      {sendingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Enviar relatório
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Departamento:</span> {role.department}
@@ -563,6 +617,50 @@ function EmployeeProfileDialog({
                 <label className="text-[10px] text-muted-foreground block mb-1">Departamento</label>
                 <Input value={editDept} onChange={e => setEditDept(e.target.value)} placeholder="Ex: Comercial, Marketing, SEO…" className="h-9 text-sm" />
               </div>
+
+              {/* WhatsApp section — destaque para CEO */}
+              <div className={cn("rounded-xl border p-3 space-y-2", isCeo ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-muted/20")}>
+                <div className="flex items-center gap-2">
+                  <Smartphone className={cn("h-3.5 w-3.5 shrink-0", isCeo ? "text-emerald-400" : "text-muted-foreground")} />
+                  <div>
+                    <label className={cn("text-[10px] font-semibold block", isCeo ? "text-emerald-400" : "text-foreground")}>
+                      {isCeo ? "📲 WhatsApp do CEO — Receber reports" : "WhatsApp (opcional)"}
+                    </label>
+                    {isCeo && (
+                      <p className="text-[9px] text-muted-foreground/70">
+                        Configure aqui para receber automaticamente o relatório executivo após cada execução da equipe.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={editWhatsapp}
+                    onChange={e => setEditWhatsapp(e.target.value)}
+                    placeholder="+5511999999999"
+                    className="h-8 text-sm flex-1"
+                  />
+                  {lastRunSummary && editWhatsapp && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-[10px] gap-1.5 shrink-0 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                      onClick={handleSendWhatsAppNow}
+                      disabled={sendingWa}
+                    >
+                      {sendingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Enviar agora
+                    </Button>
+                  )}
+                </div>
+                {editWhatsapp && (
+                  <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                    <CheckCheck className="h-3 w-3 text-emerald-400" />
+                    Número configurado — será notificado após cada execução
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-[10px] text-muted-foreground block mb-1">Instruções do Agente</label>
                 <p className="text-[9px] text-muted-foreground/60 mb-1.5">Define o papel, objetivos e como o agente deve agir em cada execução.</p>
@@ -1191,7 +1289,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     onRefresh?.();
   }, [hierarchy, roles, deployment.id, onRefresh]);
 
-  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string }>) => {
+  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => {
     const updatedRoles = roles.map(r => r.id === roleId ? { ...r, ...patch } : r);
     const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any }).eq("id", deployment.id);
     if (error) { toast.error(error.message); throw error; }
@@ -1515,6 +1613,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
           onVacation={handleVacationToggle}
           onEdit={handleEditMember}
           isOnVacation={vacations.has(profileRole.id)}
+          lastRunSummary={lastRun?.summary || undefined}
         />
       )}
     </div>
