@@ -2358,151 +2358,171 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                   </div>
 
                   {/* CEO Commands Tab */}
-                  <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
-                    {/* Command shortcuts */}
-                    <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
-                      <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
-                          <button
-                            key={key}
-                            onClick={() => handleCeoCommand(key)}
-                            disabled={ceoCmdSending}
-                            className="flex items-start gap-1.5 text-left px-2.5 py-2 rounded-lg border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
-                          >
-                            <span className="text-sm leading-none mt-0.5 shrink-0">{cmd.icon}</span>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">{cmd.label}</p>
-                              <p className="text-[7px] text-muted-foreground leading-tight mt-0.5">{cmd.description}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                   <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
+                     {/* Command shortcuts */}
+                     <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
+                       <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
+                       <div className="grid grid-cols-2 gap-2">
+                         {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
+                           <button
+                             key={key}
+                             onClick={() => handleCeoCommand(key)}
+                             disabled={ceoCmdSending}
+                             className="flex items-start gap-2 text-left px-3 py-2.5 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
+                           >
+                             <span className="text-base leading-none mt-0.5 shrink-0">{cmd.icon}</span>
+                             <div className="min-w-0">
+                               <p className="text-[10px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">{cmd.label}</p>
+                               <p className="text-[8px] text-muted-foreground leading-tight mt-0.5">{cmd.description}</p>
+                             </div>
+                           </button>
+                         ))}
+                       </div>
+                     </div>
 
-                    {/* History */}
-                    <ScrollArea className="flex-1 px-3 py-2">
-                      {ceoCmdHistory.length === 0 && (
-                        <div className="py-10 text-center">
-                          <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-                          <p className="text-[10px] text-muted-foreground font-medium">Nenhum relatório gerado ainda</p>
-                          <p className="text-[9px] text-muted-foreground/60 mt-1">Use os atalhos acima para consultar dados do projeto.</p>
-                        </div>
-                      )}
-                      <div className="space-y-3">
-                        {ceoCmdHistory.map((item, i) => (
-                          <div key={i} className="space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <div className="h-px flex-1 bg-border/50" />
-                              <span className="text-[7px] text-muted-foreground/60">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-                              <div className="h-px flex-1 bg-border/50" />
-                            </div>
-                            {/* User command bubble */}
-                            <div className="flex justify-end">
-                              <div className="rounded-xl bg-primary/15 border border-primary/20 px-2.5 py-1.5 max-w-[85%]">
-                                <p className="text-[9px] font-semibold text-primary">{item.cmd}</p>
-                              </div>
-                            </div>
-                            {/* Orchestration steps if present */}
-                            {item.steps && item.steps.length > 0 && (
-                              <div className="space-y-1 pl-1 border-l-2 border-dashed border-border/40 ml-1">
-                                {item.steps.map((step, si) => (
-                                  <div key={si} className="flex items-start gap-1.5 py-1">
-                                    <span className="text-[11px] shrink-0">{step.agentEmoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1 mb-0.5">
-                                        <span className="text-[7px] font-semibold text-muted-foreground truncate">{step.agentTitle}</span>
-                                        <span className="text-[6px] text-muted-foreground/50 shrink-0">· {step.phase}</span>
-                                      </div>
-                                      <p className="text-[8px] text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">{step.content}</p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {/* Final CEO report */}
-                            <div className="rounded-xl border border-border bg-card/80 p-2.5">
-                              {item.steps && item.steps.length > 0 && (
-                                <div className="flex items-center gap-1 mb-1.5 pb-1 border-b border-border/40">
-                                  <span className="text-[7px] font-bold text-primary">📋 Relatório Final ao CEO</span>
-                                </div>
-                              )}
-                              <p className="text-[9px] text-foreground/85 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                     {/* History */}
+                     <ScrollArea className="flex-1 px-3 py-2">
+                       {ceoCmdHistory.length === 0 && (
+                         <div className="py-10 text-center">
+                           <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+                           <p className="text-[10px] text-muted-foreground font-medium">Nenhum relatório gerado ainda</p>
+                           <p className="text-[9px] text-muted-foreground/60 mt-1">Use os atalhos acima para consultar dados do projeto.</p>
+                         </div>
+                       )}
+                       <div className="space-y-3">
+                         {ceoCmdHistory.map((item, i) => (
+                           <div key={i} className="space-y-1.5">
+                             <div className="flex items-center gap-1.5">
+                               <div className="h-px flex-1 bg-border/50" />
+                               <span className="text-[7px] text-muted-foreground/60">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                               <div className="h-px flex-1 bg-border/50" />
+                             </div>
+                             {/* User command bubble */}
+                             <div className="flex justify-end">
+                               <div className="rounded-xl bg-primary/15 border border-primary/20 px-2.5 py-1.5 max-w-[85%]">
+                                 <p className="text-[9px] font-semibold text-primary">{item.cmd}</p>
+                               </div>
+                             </div>
+                             {/* Orchestration steps if present */}
+                             {item.steps && item.steps.length > 0 && (
+                               <div className="space-y-1 pl-1 border-l-2 border-dashed border-border/40 ml-1">
+                                 {item.steps.map((step, si) => (
+                                   <div key={si} className="flex items-start gap-1.5 py-1">
+                                     <span className="text-[11px] shrink-0">{step.agentEmoji}</span>
+                                     <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-1 mb-0.5">
+                                         <span className="text-[7px] font-semibold text-muted-foreground truncate">{step.agentTitle}</span>
+                                         <span className="text-[6px] text-muted-foreground/50 shrink-0">· {step.phase}</span>
+                                       </div>
+                                       <p className="text-[8px] text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">{step.content}</p>
+                                     </div>
+                                   </div>
+                                 ))}
+                               </div>
+                             )}
+                             {/* Final CEO report */}
+                             <div className="rounded-xl border border-border bg-card/80 p-2.5">
+                               {item.steps && item.steps.length > 0 && (
+                                 <div className="flex items-center gap-1 mb-1.5 pb-1 border-b border-border/40">
+                                   <span className="text-[7px] font-bold text-primary">📋 Relatório Final ao CEO</span>
+                                 </div>
+                               )}
+                               <p className="text-[9px] text-foreground/85 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     </ScrollArea>
 
-                    {/* Input */}
-                    <div className="p-3 border-t border-border shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
-                        <Input
-                          value={ceoCmdInput}
-                          onChange={e => setCeoCmdInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                          placeholder="Pergunte qualquer coisa sobre o projeto…"
-                          className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          disabled={ceoCmdSending}
-                        />
-                        <Button
-                          size="sm"
-                          className="h-7 w-7 p-0 shrink-0"
-                          onClick={() => handleCeoCommand(ceoCmdInput)}
-                          disabled={ceoCmdSending || !ceoCmdInput.trim()}
-                        >
-                          {ceoCmdSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </TabsContent>
+                     {/* Input */}
+                     <div className="p-3 border-t border-border shrink-0">
+                       <div className="flex items-center gap-1.5">
+                         <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
+                         <Input
+                           value={ceoCmdInput}
+                           onChange={e => setCeoCmdInput(e.target.value)}
+                           onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                           placeholder="Pergunte qualquer coisa sobre o projeto…"
+                           className="h-8 text-[11px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                           disabled={ceoCmdSending}
+                         />
+                         <Button
+                           size="sm"
+                           className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
+                           onClick={() => handleCeoCommand(ceoCmdInput)}
+                           disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                         >
+                           {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                           {!ceoCmdSending && <span>Enviar</span>}
+                         </Button>
+                       </div>
+                     </div>
+                   </TabsContent>
 
-                  {/* Team Chat Tab */}
-                  <TabsContent value="chat" className="flex-1 min-h-0 m-0">
-                    <ScrollArea className="h-full">
-                      <div className="p-3 space-y-2.5">
-                        {messages.length === 0 && (
-                          <div className="py-10 text-center">
-                            <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-                            <p className="text-xs text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
-                          </div>
-                        )}
-                        {runStatus === "running" && (
-                          <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/20 bg-card/50">
-                            <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
-                            <div>
-                              <p className="text-[10px] font-semibold text-primary">Equipe em reunião…</p>
-                              <p className="text-[9px] text-muted-foreground">Análise em andamento</p>
-                            </div>
-                          </div>
-                        )}
-                        {messages.map(msg => (
-                          <div key={msg.id} className={cn(
-                            "rounded-xl border p-2.5 space-y-1.5",
-                            msg.type === "report" ? "bg-primary/5 border-primary/20" :
-                              msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
-                                "bg-card/60 border-border",
-                          )}>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm leading-none">{msg.fromEmoji}</span>
-                              <span className="text-[10px] font-bold">{msg.fromTitle}</span>
-                              {msg.toId && msg.toTitle && (
-                                <>
-                                  <span className="text-[9px] text-muted-foreground">→</span>
-                                  <span className="text-sm leading-none">{msg.toEmoji}</span>
-                                  <span className="text-[10px] text-muted-foreground">{msg.toTitle}</span>
-                                </>
-                              )}
-                              {msg.type === "report" && <Badge variant="secondary" className="text-[7px] ml-auto">📝 CEO</Badge>}
-                              {msg.type === "error" && <XCircle className="h-3 w-3 text-destructive ml-auto" />}
-                            </div>
-                            <p className="text-[10px] text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-6">{msg.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
+                   {/* Team Chat Tab */}
+                   <TabsContent value="chat" className="flex-1 min-h-0 m-0 flex flex-col">
+                     {/* Chat header */}
+                     <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/10 shrink-0">
+                       <div className="flex items-center gap-1.5">
+                         <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                         <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Conversa da Equipe</span>
+                         {messages.length > 0 && <span className="text-[8px] bg-primary/20 text-primary rounded-full px-1.5 py-0.5">{messages.length} msgs</span>}
+                       </div>
+                       {messages.length > 0 && (
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           className="h-6 text-[9px] gap-1 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                           onClick={() => setCeoCmdHistory([])}
+                         >
+                           <Trash2 className="h-3 w-3" /> Limpar histórico
+                         </Button>
+                       )}
+                     </div>
+                     <ScrollArea className="flex-1">
+                       <div className="p-3 space-y-2.5">
+                         {messages.length === 0 && (
+                           <div className="py-10 text-center">
+                             <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+                             <p className="text-xs text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
+                           </div>
+                         )}
+                         {runStatus === "running" && (
+                           <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/20 bg-card/50">
+                             <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                             <div>
+                               <p className="text-[10px] font-semibold text-primary">Equipe em reunião…</p>
+                               <p className="text-[9px] text-muted-foreground">Análise em andamento</p>
+                             </div>
+                           </div>
+                         )}
+                         {messages.map((msg, msgIdx) => (
+                           <div key={msg.id} className={cn(
+                             "rounded-xl border p-2.5 space-y-1.5",
+                             msg.type === "report" ? "bg-primary/5 border-primary/20" :
+                               msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
+                                 "bg-card/60 border-border",
+                           )}>
+                             <div className="flex items-center gap-1.5 flex-wrap">
+                               <span className="text-sm leading-none">{msg.fromEmoji}</span>
+                               <span className="text-[10px] font-bold">{msg.fromTitle}</span>
+                               {msg.toId && msg.toTitle && (
+                                 <>
+                                   <span className="text-[9px] text-muted-foreground">→</span>
+                                   <span className="text-sm leading-none">{msg.toEmoji}</span>
+                                   <span className="text-[10px] text-muted-foreground">{msg.toTitle}</span>
+                                 </>
+                               )}
+                               <span className="text-[7px] text-muted-foreground/40 ml-auto">#{msgIdx + 1}</span>
+                               {msg.type === "report" && <Badge variant="secondary" className="text-[7px]">📝 CEO</Badge>}
+                               {msg.type === "error" && <XCircle className="h-3 w-3 text-destructive" />}
+                             </div>
+                             <p className="text-[10px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                           </div>
+                         ))}
+                       </div>
+                     </ScrollArea>
+                   </TabsContent>
                 </Tabs>
               </div>
             )}
@@ -2512,97 +2532,122 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
           {!expanded && (
             <div className="border-t border-border bg-card/40">
               <Tabs defaultValue="chat" className="flex flex-col">
-                <div className="px-3 pt-2 border-b border-border/60 shrink-0">
-                  <TabsList className="h-6 gap-0.5 bg-transparent p-0">
-                    <TabsTrigger value="chat" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                      <MessageSquare className="h-2.5 w-2.5" /> Chat Equipe
-                      {messages.length > 0 && <span className="ml-0.5 text-[7px] bg-primary/20 text-primary rounded-full px-1">{messages.length}</span>}
-                    </TabsTrigger>
-                    <TabsTrigger value="cmd" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                      <Brain className="h-2.5 w-2.5" /> Comandos CEO
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
+                 <div className="px-3 pt-2 border-b border-border/60 shrink-0">
+                   <TabsList className="h-7 gap-0.5 bg-transparent p-0">
+                     <TabsTrigger value="chat" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                       <MessageSquare className="h-3 w-3" /> Chat Equipe
+                       {messages.length > 0 && <span className="ml-0.5 text-[8px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                     </TabsTrigger>
+                     <TabsTrigger value="cmd" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                       <Brain className="h-3 w-3" /> Comandos CEO
+                     </TabsTrigger>
+                   </TabsList>
+                 </div>
 
-                {/* Chat Tab */}
-                <TabsContent value="chat" className="m-0">
-                  <ScrollArea className="max-h-52">
-                    <div className="p-2.5 space-y-1.5">
-                      {messages.length === 0 && (
-                        <div className="py-6 text-center">
-                          <MessageSquare className="h-6 w-6 mx-auto mb-2 text-muted-foreground/20" />
-                          <p className="text-[10px] text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
-                        </div>
-                      )}
-                      {messages.slice(-5).map(msg => (
-                        <div key={msg.id} className={cn(
-                          "flex gap-2 items-start rounded-lg border px-2.5 py-1.5",
-                          msg.type === "report" ? "bg-primary/5 border-primary/20" :
-                            msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
-                              "bg-card/50 border-border/60",
-                        )}>
-                          <span className="text-base leading-none mt-0.5 shrink-0">{msg.fromEmoji}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <span className="text-[9px] font-bold">{msg.fromTitle}</span>
-                              {msg.toTitle && <span className="text-[9px] text-muted-foreground">→ {msg.toEmoji} {msg.toTitle}</span>}
-                            </div>
-                            <p className="text-[9px] text-foreground/70 line-clamp-2 leading-relaxed">{msg.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
+                 {/* Chat Tab */}
+                 <TabsContent value="chat" className="m-0 flex flex-col">
+                   {/* Chat header with clear */}
+                   <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 bg-muted/5 shrink-0">
+                     <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Conversa da equipe</span>
+                     {messages.length > 0 && (
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         className="h-5 text-[8px] gap-1 px-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                         onClick={() => setCeoCmdHistory([])}
+                       >
+                         <Trash2 className="h-2.5 w-2.5" /> Limpar
+                       </Button>
+                     )}
+                   </div>
+                   <ScrollArea className="max-h-64">
+                     <div className="p-2.5 space-y-2">
+                       {messages.length === 0 && (
+                         <div className="py-8 text-center">
+                           <MessageSquare className="h-7 w-7 mx-auto mb-2 text-muted-foreground/20" />
+                           <p className="text-[10px] text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
+                         </div>
+                       )}
+                       {messages.map((msg, msgIdx) => (
+                         <div key={msg.id} className={cn(
+                           "rounded-xl border p-2.5 space-y-1.5",
+                           msg.type === "report" ? "bg-primary/5 border-primary/20" :
+                             msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
+                               "bg-card/60 border-border",
+                         )}>
+                           <div className="flex items-center gap-1.5 flex-wrap">
+                             <span className="text-sm leading-none">{msg.fromEmoji}</span>
+                             <span className="text-[10px] font-bold">{msg.fromTitle}</span>
+                             {msg.toTitle && (
+                               <>
+                                 <span className="text-[9px] text-muted-foreground">→</span>
+                                 <span className="text-sm leading-none">{msg.toEmoji}</span>
+                                 <span className="text-[10px] text-muted-foreground">{msg.toTitle}</span>
+                               </>
+                             )}
+                             <span className="text-[7px] text-muted-foreground/40 ml-auto">#{msgIdx + 1}</span>
+                             {msg.type === "report" && <Badge variant="secondary" className="text-[7px]">📝 CEO</Badge>}
+                             {msg.type === "error" && <XCircle className="h-3 w-3 text-destructive" />}
+                           </div>
+                           <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                         </div>
+                       ))}
+                     </div>
+                   </ScrollArea>
+                 </TabsContent>
 
-                {/* CEO Commands Tab */}
-                <TabsContent value="cmd" className="m-0 flex flex-col">
-                  <div className="px-3 pt-2.5 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Relatórios do Projeto</p>
-                    <div className="grid grid-cols-2 gap-1">
-                      {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
-                        <button
-                          key={key}
-                          onClick={() => handleCeoCommand(key)}
-                          disabled={ceoCmdSending}
-                          className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
-                        >
-                          <span className="text-xs leading-none shrink-0">{cmd.icon}</span>
-                          <p className="text-[8px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight truncate">{cmd.label}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <ScrollArea className="max-h-40 px-3 py-2">
-                    {ceoCmdHistory.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground text-center py-4">Selecione um relatório acima para consultar dados do projeto.</p>
-                    )}
-                    <div className="space-y-2">
-                      {ceoCmdHistory.slice(-3).map((item, i) => (
-                        <div key={i} className="rounded-xl border border-border bg-card/80 p-2">
-                          <p className="text-[9px] text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  <div className="p-2.5 border-t border-border shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
-                      <Input
-                        value={ceoCmdInput}
-                        onChange={e => setCeoCmdInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                        placeholder="status report, alertas, tarefas pendentes…"
-                        className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
-                        disabled={ceoCmdSending}
-                      />
-                      <Button
-                        size="sm"
-                        className="h-7 w-7 p-0 shrink-0"
-                        onClick={() => handleCeoCommand(ceoCmdInput)}
-                        disabled={ceoCmdSending || !ceoCmdInput.trim()}
-                      >
-                        {ceoCmdSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                 {/* CEO Commands Tab */}
+                 <TabsContent value="cmd" className="m-0 flex flex-col">
+                   <div className="px-3 pt-2.5 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
+                     <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
+                     <div className="grid grid-cols-2 gap-1.5">
+                       {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
+                         <button
+                           key={key}
+                           onClick={() => handleCeoCommand(key)}
+                           disabled={ceoCmdSending}
+                           className="flex items-start gap-2 text-left px-2.5 py-2.5 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
+                         >
+                           <span className="text-base leading-none mt-0.5 shrink-0">{cmd.icon}</span>
+                           <div className="min-w-0">
+                             <p className="text-[10px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">{cmd.label}</p>
+                             <p className="text-[8px] text-muted-foreground leading-tight mt-0.5 line-clamp-1">{cmd.description}</p>
+                           </div>
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+                   <ScrollArea className="max-h-48 px-3 py-2">
+                     {ceoCmdHistory.length === 0 && (
+                       <p className="text-[10px] text-muted-foreground text-center py-4">Selecione um relatório acima para consultar dados do projeto.</p>
+                     )}
+                     <div className="space-y-2">
+                       {ceoCmdHistory.slice(-3).map((item, i) => (
+                         <div key={i} className="rounded-xl border border-border bg-card/80 p-2">
+                           <p className="text-[9px] text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
+                         </div>
+                       ))}
+                     </div>
+                   </ScrollArea>
+                   <div className="p-2.5 border-t border-border shrink-0">
+                     <div className="flex items-center gap-1.5">
+                       <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
+                       <Input
+                         value={ceoCmdInput}
+                         onChange={e => setCeoCmdInput(e.target.value)}
+                         onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                         placeholder="Pergunte qualquer coisa sobre o projeto…"
+                         className="h-8 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                         disabled={ceoCmdSending}
+                       />
+                       <Button
+                         size="sm"
+                         className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
+                         onClick={() => handleCeoCommand(ceoCmdInput)}
+                         disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                       >
+                         {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                         {!ceoCmdSending && <span>Enviar</span>}
                       </Button>
                     </div>
                   </div>
