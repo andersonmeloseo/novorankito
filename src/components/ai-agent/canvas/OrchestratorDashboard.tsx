@@ -335,13 +335,19 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                         />
                       </TabsContent>
                       <TabsContent value="daily" className="mt-3">
-                        <DailyPlanPanel deploymentId={dep.id} projectId={projectId} />
+                        <ScrollArea className="max-h-[70vh] pr-1">
+                          <DailyPlanPanel deploymentId={dep.id} projectId={projectId} />
+                        </ScrollArea>
                       </TabsContent>
                       <TabsContent value="tasks" className="mt-3">
-                        <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />
+                        <ScrollArea className="max-h-[70vh] pr-1">
+                          <OrchestratorTaskBoard deploymentId={dep.id} projectId={projectId} />
+                        </ScrollArea>
                       </TabsContent>
                       <TabsContent value="plan" className="mt-3">
-                        <StrategicPlanPanel deploymentId={dep.id} projectId={projectId} />
+                        <ScrollArea className="max-h-[70vh] pr-1">
+                          <StrategicPlanPanel deploymentId={dep.id} projectId={projectId} />
+                        </ScrollArea>
                       </TabsContent>
                     </Tabs>
                   </div>

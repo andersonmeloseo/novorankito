@@ -524,7 +524,7 @@ Lembre: seu relatório será a bússola estratégica para todos os agentes. Seja
 
 ⚠️ Importante: suas tarefas devem ser tão específicas que qualquer pessoa da equipe consiga executar sem precisar de briefing adicional.`;
 
-        const fullOutput = await callAI(systemPrompt, userPrompt, 3000);
+        const fullOutput = await callAI(systemPrompt, userPrompt, 2000);
 
         // Split report from tasks JSON
         const parts = fullOutput.split("---TASKS_JSON---");
@@ -597,64 +597,53 @@ Lembre: seu relatório será a bússola estratégica para todos os agentes. Seja
       }
     }
 
-    // ── ROUND 2: Squad refinement — agents cross-challenge each other's strategy ──
-    // Each agent with peers reviews their peers' reports and proposes refinements
+    // ── ROUND 2: Squad refinement — run only if < 4 agents total (to avoid timeout) ──
     const refinementsByRole = new Map<string, string>();
-    const peerGroupsDone = new Set<string>(); // track processed peer groups
-
-    for (const role of sortedRoles) {
-      const superiorId = hierarchyMap[role.id] || "";
-      const groupKey = superiorId || "__root__";
-      if (peerGroupsDone.has(groupKey)) continue;
-      
-      const peers = sortedRoles.filter(r => (hierarchyMap[r.id] || "") === superiorId);
-      if (peers.length < 2) { peerGroupsDone.add(groupKey); continue; }
-      
-      peerGroupsDone.add(groupKey);
-
-      // Each peer reviews and challenges the others
-      await Promise.all(peers.map(async (reviewer) => {
-        const reviewerReport = resultsByRole.get(reviewer.id);
-        if (!reviewerReport) return;
-        
-        const othersReports = peers
-          .filter(p => p.id !== reviewer.id && resultsByRole.get(p.id))
-          .map(p => `### ${p.emoji} ${p.title}:\n${resultsByRole.get(p.id)}`)
-          .join("\n\n---\n\n");
-        
-        if (!othersReports) return;
-
-        try {
-          const refinement = await callAI(
-            `Você é ${reviewer.emoji} ${reviewer.title}, parte de um squad de especialistas. Após ler os relatórios dos seus colegas, sua tarefa é:
-1. Identificar pontos onde a estratégia pode ser melhorada ou está em conflito com sua área
-2. Propor refinamentos específicos que integrem as perspectivas do squad
-3. Validar ou questionar prioridades dos colegas com base nos dados
-Seja direto, colaborativo e focado em resultados. Máximo 300 palavras.`,
-            `Seu relatório inicial:\n${reviewerReport.slice(0, 1000)}\n\nRelatórios dos colegas do squad:\n${othersReports.slice(0, 3000)}\n\nApós ler tudo, qual seu refinamento e contribuição para afinar a estratégia do grupo?`,
-            800
-          );
-          refinementsByRole.set(reviewer.id, refinement);
-        } catch (e) {
-          console.warn(`[run-orchestrator] Refinement failed for ${reviewer.id}:`, e);
-        }
-      }));
-    }
-
-    // Merge refinements into agent results for visibility
-    for (const result of agentResults) {
-      const refinement = refinementsByRole.get(result.role_id);
-      if (refinement) {
-        result.result = `${result.result}\n\n---\n\n💬 **Refinamento do Squad:**\n${refinement}`;
-        resultsByRole.set(result.role_id, result.result);
+    if (sortedRoles.length <= 3) {
+      const peerGroupsDone = new Set<string>();
+      for (const role of sortedRoles) {
+        const superiorId = hierarchyMap[role.id] || "";
+        const groupKey = superiorId || "__root__";
+        if (peerGroupsDone.has(groupKey)) continue;
+        const peers = sortedRoles.filter(r => (hierarchyMap[r.id] || "") === superiorId);
+        if (peers.length < 2) { peerGroupsDone.add(groupKey); continue; }
+        peerGroupsDone.add(groupKey);
+        await Promise.all(peers.map(async (reviewer) => {
+          const reviewerReport = resultsByRole.get(reviewer.id);
+          if (!reviewerReport) return;
+          const othersReports = peers
+            .filter(p => p.id !== reviewer.id && resultsByRole.get(p.id))
+            .map(p => `### ${p.emoji} ${p.title}:\n${(resultsByRole.get(p.id) || "").slice(0, 600)}`)
+            .join("\n\n---\n\n");
+          if (!othersReports) return;
+          try {
+            const refinement = await callAI(
+              `Você é ${reviewer.emoji} ${reviewer.title}. Leia os relatórios dos colegas e proponha 2-3 refinamentos específicos. Máximo 200 palavras.`,
+              `Seu relatório:\n${reviewerReport.slice(0, 600)}\n\nColegas:\n${othersReports.slice(0, 1500)}\n\nRefinamentos:`,
+              500
+            );
+            refinementsByRole.set(reviewer.id, refinement);
+          } catch (e) {
+            console.warn(`[run-orchestrator] Refinement failed for ${reviewer.id}:`, e);
+          }
+        }));
       }
-    }
 
-    // Update DB with refined results
-    await supabase
-      .from("orchestrator_runs")
-      .update({ agent_results: agentResults })
-      .eq("id", runId);
+      // Merge refinements into agent results for visibility
+      for (const result of agentResults) {
+        const refinement = refinementsByRole.get(result.role_id);
+        if (refinement) {
+          result.result = `${result.result}\n\n---\n\n💬 **Refinamento do Squad:**\n${refinement}`;
+          resultsByRole.set(result.role_id, result.result);
+        }
+      }
+
+      // Update DB with refined results
+      await supabase
+        .from("orchestrator_runs")
+        .update({ agent_results: agentResults })
+        .eq("id", runId);
+    }
 
     // ── Generate Strategic Plan + 5-Day Daily Actions Plan ──
     const ceoRoleId = sortedRoles.find(r => getDepth(r.id) === 0)?.id || "ceo";
