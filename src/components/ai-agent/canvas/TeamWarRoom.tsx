@@ -1132,89 +1132,105 @@ function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, 
     }
   }, [entries]);
 
-  if (!activeRole) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[75vh] flex flex-col p-0 overflow-hidden border-blue-500/30 bg-background">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden border-blue-500/50 bg-background shadow-2xl shadow-blue-500/10">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-blue-500/5 shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-blue-600/10 shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <span className="text-2xl">{activeRole.emoji}</span>
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-blue-400 border border-background animate-pulse" />
+              <span className="text-3xl">{activeRole.emoji}</span>
+              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-blue-400 border-2 border-background animate-pulse" />
             </div>
             {targetRole && (
               <>
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <div className="h-px w-6 bg-blue-400/40" />
-                  <MessageSquare className="h-3 w-3 text-blue-400" />
-                  <div className="h-px w-6 bg-blue-400/40" />
+                  <div className="h-px w-8 bg-blue-400/50" />
+                  <MessageSquare className="h-4 w-4 text-blue-400" />
+                  <div className="h-px w-8 bg-blue-400/50" />
                 </div>
-                <span className="text-2xl">{targetRole.emoji}</span>
+                <span className="text-3xl">{targetRole.emoji}</span>
               </>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold truncate">
+            <p className="text-sm font-bold">
               {activeRole.title}
               {targetRole && <span className="text-blue-400 font-normal"> → {targetRole.title}</span>}
             </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-              <p className="text-[9px] text-blue-400 font-semibold">{isWorking ? "em atividade agora" : "standby"}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+              <p className="text-[10px] text-blue-400 font-semibold">{isWorking ? "🔴 em atividade ao vivo" : "standby"}</p>
+              <span className="text-[10px] text-muted-foreground">· todas as conversas e ações da equipe</span>
             </div>
           </div>
-          <button onClick={() => onOpenChange(false)} className="h-6 w-6 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors shrink-0">
-            <X className="h-3 w-3" />
+          <button onClick={() => onOpenChange(false)} className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors shrink-0">
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Messages */}
         <ScrollArea className="flex-1">
-          <div ref={scrollRef as any} className="p-4 space-y-3">
+          <div ref={scrollRef as any} className="p-5 space-y-3">
             {entries.length === 0 && (
-              <div className="py-8 text-center">
-                <Loader2 className="h-8 w-8 mx-auto mb-2 text-blue-400/30 animate-spin" />
-                <p className="text-xs text-muted-foreground">Iniciando atividade…</p>
+              <div className="py-12 text-center">
+                <Loader2 className="h-10 w-10 mx-auto mb-3 text-blue-400/40 animate-spin" />
+                <p className="text-sm text-muted-foreground font-medium">Aguardando atividade da equipe…</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">As conversas e ações aparecerão aqui em tempo real</p>
               </div>
             )}
             {entries.map((entry, i) => (
               <div
                 key={i}
                 className={cn(
-                  "flex gap-2.5 animate-fade-in",
+                  "flex gap-3 animate-fade-in",
                   entry.type === "report" ? "flex-row-reverse" : "flex-row",
                 )}
               >
-                <div className="text-xl shrink-0 mt-0.5">{entry.fromEmoji}</div>
+                <div className="text-2xl shrink-0 mt-0.5">{entry.fromEmoji}</div>
                 <div className={cn(
-                  "flex-1 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed",
+                  "flex-1 rounded-xl px-4 py-3 text-[12px] leading-relaxed",
                   entry.type === "report"
-                    ? "bg-primary/10 border border-primary/20 text-right"
+                    ? "bg-primary/10 border border-primary/30 text-right"
                     : entry.type === "question"
-                    ? "bg-blue-500/10 border border-blue-500/20"
+                    ? "bg-blue-500/10 border border-blue-500/30"
                     : "bg-muted/40 border border-border",
                 )}>
-                  <p className="font-bold text-[9px] text-muted-foreground mb-1">{entry.fromTitle}{entry.toTitle && ` → ${entry.toTitle}`}</p>
-                  <p className="text-foreground/90">{entry.text}</p>
+                  <p className="font-bold text-[10px] text-muted-foreground mb-1.5">
+                    {entry.fromTitle}{entry.toTitle && ` → ${entry.toTitle}`}
+                    {entry.type === "report" && <span className="ml-2 text-primary">📝 relatório</span>}
+                    {entry.type === "question" && <span className="ml-2 text-blue-400">💬 comunicação</span>}
+                  </p>
+                  <p className="text-foreground/90 whitespace-pre-wrap">{entry.text}</p>
                 </div>
               </div>
             ))}
             {isWorking && (
-              <div className="flex gap-2.5">
-                <div className="text-xl shrink-0">{activeRole.emoji}</div>
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5">
-                  <div className="flex gap-1 items-center h-4">
+              <div className="flex gap-3">
+                <div className="text-2xl shrink-0">{activeRole.emoji}</div>
+                <div className="bg-blue-600/10 border border-blue-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
+                  <div className="flex gap-1 items-center">
                     {[0, 150, 300].map(d => (
-                      <div key={d} className="h-2 w-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                      <div key={d} className="h-2.5 w-2.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
                     ))}
                   </div>
+                  <span className="text-[11px] text-blue-400 font-medium">processando…</span>
                 </div>
               </div>
             )}
           </div>
         </ScrollArea>
+
+        {/* Footer status */}
+        <div className="px-5 py-2.5 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">{entries.length} mensagens · atualizando em tempo real</span>
+          {isWorking && (
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
+              <span className="text-[10px] text-blue-400 font-semibold">ao vivo</span>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -2273,40 +2289,44 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                 )}
 
                 {runStatus === "running" && (
-                  <Panel position="top-center">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
-                      <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
-                      <span className="text-[11px] font-semibold text-blue-400">Equipe em execução…</span>
-                      <div className="flex gap-0.5 ml-1">
-                        {[0, 150, 300].map(d => (
-                          <div key={d} className="h-1 w-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                        ))}
-                      </div>
-                    </div>
-                  </Panel>
-                )}
+                   <Panel position="top-center">
+                     <button
+                       onClick={() => setLiveConvoOpen(true)}
+                       className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-600 border border-blue-400 shadow-lg shadow-blue-500/30 hover:bg-blue-500 transition-all cursor-pointer"
+                     >
+                       <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                       <span className="text-[12px] font-bold text-white">Equipe em execução — ver atividade ao vivo</span>
+                       <div className="flex gap-0.5 ml-1">
+                         {[0, 150, 300].map(d => (
+                           <div key={d} className="h-1.5 w-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                         ))}
+                       </div>
+                       <MessageSquare className="h-3.5 w-3.5 text-white" />
+                     </button>
+                   </Panel>
+                 )}
 
-                {/* Live activity spotlight indicator */}
-                {spotlightRole && !isRunning && (
-                  <Panel position="top-center">
-                    <button
-                      onClick={() => setLiveConvoOpen(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm hover:bg-blue-500/30 transition-colors cursor-pointer"
-                    >
-                      <span className="text-sm">{spotlightRole.emoji}</span>
-                      <div className="flex gap-0.5">
-                        {[0, 150, 300].map(d => (
-                          <div key={d} className="h-1 w-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                        ))}
-                      </div>
-                      <span className="text-[11px] font-semibold text-blue-400">{spotlightRole.title} em atividade</span>
-                      {spotlightTargetRole && (
-                        <span className="text-[10px] text-blue-300/70">→ {spotlightTargetRole.emoji} {spotlightTargetRole.title}</span>
-                      )}
-                      <MessageSquare className="h-3 w-3 text-blue-400 ml-1" />
-                    </button>
-                  </Panel>
-                )}
+                 {/* Live activity spotlight indicator */}
+                 {spotlightRole && !isRunning && (
+                   <Panel position="top-center">
+                     <button
+                       onClick={() => setLiveConvoOpen(true)}
+                       className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-600 border border-blue-400 shadow-lg shadow-blue-500/30 hover:bg-blue-500 transition-all cursor-pointer"
+                     >
+                       <span className="text-base">{spotlightRole.emoji}</span>
+                       <div className="flex gap-0.5">
+                         {[0, 150, 300].map(d => (
+                           <div key={d} className="h-1.5 w-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                         ))}
+                       </div>
+                       <span className="text-[12px] font-bold text-white">{spotlightRole.title} em atividade</span>
+                       {spotlightTargetRole && (
+                         <span className="text-[11px] text-blue-100">→ {spotlightTargetRole.emoji} {spotlightTargetRole.title}</span>
+                       )}
+                       <MessageSquare className="h-3.5 w-3.5 text-white ml-1" />
+                     </button>
+                   </Panel>
+                 )}
 
                 {runStatus === "completed" && (
                   <Panel position="top-center">
@@ -2574,7 +2594,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                        </Button>
                      )}
                    </div>
-                   <ScrollArea className="max-h-64">
+                   <ScrollArea className="max-h-96">
                      <div className="p-2.5 space-y-2">
                        {messages.length === 0 && (
                          <div className="py-8 text-center">
@@ -2631,7 +2651,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                        ))}
                      </div>
                    </div>
-                   <ScrollArea className="max-h-48 px-3 py-2">
+                   <ScrollArea className="max-h-72 px-3 py-2">
                      {ceoCmdHistory.length === 0 && (
                        <p className="text-[10px] text-muted-foreground text-center py-4">Selecione um relatório acima para consultar dados do projeto.</p>
                      )}
@@ -2709,14 +2729,14 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
       )}
 
       {/* ── Live Convo Dialog ── */}
-      <LiveConvoDialog
-        open={liveConvoOpen}
-        onOpenChange={setLiveConvoOpen}
-        activeRole={spotlightRole}
-        targetRole={spotlightTargetRole}
-        entries={liveConvoEntries}
-        isWorking={liveConvoTyping || !!spotlightRoleId}
-      />
+       <LiveConvoDialog
+         open={liveConvoOpen}
+         onOpenChange={setLiveConvoOpen}
+         activeRole={spotlightRole || (isRunning ? { emoji: "🏢", title: deployment.name } : null)}
+         targetRole={spotlightTargetRole}
+         entries={liveConvoEntries}
+         isWorking={liveConvoTyping || !!spotlightRoleId || isRunning}
+       />
     </div>
   );
 }
