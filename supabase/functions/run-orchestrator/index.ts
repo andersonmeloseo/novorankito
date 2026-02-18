@@ -316,7 +316,26 @@ ${ga4Context}
     const agentResults: AgentResult[] = [];
     const resultsByRole = new Map<string, string>();
 
-    // ── Execute each agent in hierarchy order ──
+    // Helper: call AI and return text
+    const callAI = async (systemPrompt: string, userPrompt: string, maxTokens = 3000): Promise<string> => {
+      const resp = await fetch(aiEndpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: maxTokens,
+        }),
+      });
+      if (!resp.ok) throw new Error(`AI error ${resp.status}: ${await resp.text()}`);
+      const d = await resp.json();
+      return d.choices?.[0]?.message?.content || "";
+    };
+
+    // ── ROUND 1: Execute each agent top-down (cascade) ──
     for (const role of sortedRoles) {
       const startedAt = new Date().toISOString();
       
@@ -398,29 +417,7 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
 1) Relatório detalhado da sua área com achados e oportunidades
 2) Lista de tarefas específicas e acionáveis para o time humano implementar`;
 
-        const aiResponse = await fetch(aiEndpoint, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${aiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: aiModel,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            max_tokens: 3000,
-          }),
-        });
-
-        if (!aiResponse.ok) {
-          const errText = await aiResponse.text();
-          throw new Error(`AI error ${aiResponse.status}: ${errText}`);
-        }
-
-        const aiData = await aiResponse.json();
-        const fullOutput = aiData.choices?.[0]?.message?.content || "Sem resposta";
+        const fullOutput = await callAI(systemPrompt, userPrompt, 3000);
 
         // Split report from tasks JSON
         const parts = fullOutput.split("---TASKS_JSON---");
@@ -454,6 +451,7 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
                     success_metric: t.success_metric || null,
                     estimated_impact: t.estimated_impact || null,
                     status: "pending",
+                    metadata: { source: "agent_round1" },
                   }))
                 );
               }
@@ -491,6 +489,65 @@ Lembre: seu relatório será repassado para gerentes que distribuirão as tarefa
         });
       }
     }
+
+    // ── ROUND 2: Squad refinement — agents cross-challenge each other's strategy ──
+    // Each agent with peers reviews their peers' reports and proposes refinements
+    const refinementsByRole = new Map<string, string>();
+    const peerGroupsDone = new Set<string>(); // track processed peer groups
+
+    for (const role of sortedRoles) {
+      const superiorId = hierarchyMap[role.id] || "";
+      const groupKey = superiorId || "__root__";
+      if (peerGroupsDone.has(groupKey)) continue;
+      
+      const peers = sortedRoles.filter(r => (hierarchyMap[r.id] || "") === superiorId);
+      if (peers.length < 2) { peerGroupsDone.add(groupKey); continue; }
+      
+      peerGroupsDone.add(groupKey);
+
+      // Each peer reviews and challenges the others
+      await Promise.all(peers.map(async (reviewer) => {
+        const reviewerReport = resultsByRole.get(reviewer.id);
+        if (!reviewerReport) return;
+        
+        const othersReports = peers
+          .filter(p => p.id !== reviewer.id && resultsByRole.get(p.id))
+          .map(p => `### ${p.emoji} ${p.title}:\n${resultsByRole.get(p.id)}`)
+          .join("\n\n---\n\n");
+        
+        if (!othersReports) return;
+
+        try {
+          const refinement = await callAI(
+            `Você é ${reviewer.emoji} ${reviewer.title}, parte de um squad de especialistas. Após ler os relatórios dos seus colegas, sua tarefa é:
+1. Identificar pontos onde a estratégia pode ser melhorada ou está em conflito com sua área
+2. Propor refinamentos específicos que integrem as perspectivas do squad
+3. Validar ou questionar prioridades dos colegas com base nos dados
+Seja direto, colaborativo e focado em resultados. Máximo 300 palavras.`,
+            `Seu relatório inicial:\n${reviewerReport.slice(0, 1000)}\n\nRelatórios dos colegas do squad:\n${othersReports.slice(0, 3000)}\n\nApós ler tudo, qual seu refinamento e contribuição para afinar a estratégia do grupo?`,
+            800
+          );
+          refinementsByRole.set(reviewer.id, refinement);
+        } catch (e) {
+          console.warn(`[run-orchestrator] Refinement failed for ${reviewer.id}:`, e);
+        }
+      }));
+    }
+
+    // Merge refinements into agent results for visibility
+    for (const result of agentResults) {
+      const refinement = refinementsByRole.get(result.role_id);
+      if (refinement) {
+        result.result = `${result.result}\n\n---\n\n💬 **Refinamento do Squad:**\n${refinement}`;
+        resultsByRole.set(result.role_id, result.result);
+      }
+    }
+
+    // Update DB with refined results
+    await supabase
+      .from("orchestrator_runs")
+      .update({ agent_results: agentResults })
+      .eq("id", runId);
 
     // ── Generate Strategic Plan + 5-Day Daily Actions Plan ──
     const ceoResult = resultsByRole.get("ceo") || 
@@ -625,7 +682,56 @@ REGRAS:
       } catch (e) { console.warn("Failed to parse daily plan:", e); }
     }
 
-    // Count tasks created
+    // ── Convert daily plan actions → real orchestrator_tasks with date+time ──
+    // This makes daily actions trackable by the GP just like agent tasks
+    let dailyTasksCreated = 0;
+    if (dailyPlan.length > 0) {
+      const dailyTasksToInsert = [];
+      for (const day of dailyPlan) {
+        for (const action of (day.actions || [])) {
+          // Map area to category
+          const categoryMap: Record<string, string> = {
+            seo: "seo", conteudo: "conteudo", links: "links",
+            ads: "ads", tecnico: "tecnico", analytics: "analytics", estrategia: "estrategia",
+          };
+          const category = categoryMap[action.area] || "geral";
+
+          dailyTasksToInsert.push({
+            deployment_id,
+            run_id: runId,
+            project_id,
+            owner_id,
+            title: action.title,
+            description: action.description || "",
+            category,
+            priority: action.priority || "normal",
+            assigned_role: action.responsible || "Equipe",
+            assigned_role_emoji: category === "seo" ? "🔍" : category === "conteudo" ? "✍️" : category === "links" ? "🔗" : category === "ads" ? "📣" : category === "tecnico" ? "🔧" : category === "analytics" ? "📊" : "🎯",
+            due_date: day.date, // ISO date YYYY-MM-DD
+            success_metric: action.success_metric || null,
+            estimated_impact: null,
+            status: "pending",
+            metadata: {
+              source: "daily_plan",
+              day_name: day.day_name,
+              day_theme: day.theme,
+              scheduled_time: action.time || null,
+              duration_min: action.duration_min || null,
+              tools: action.tools || [],
+              area: action.area,
+            },
+          });
+        }
+      }
+
+      if (dailyTasksToInsert.length > 0) {
+        const { error: dtErr } = await supabase.from("orchestrator_tasks").insert(dailyTasksToInsert);
+        if (!dtErr) dailyTasksCreated = dailyTasksToInsert.length;
+        else console.warn("[run-orchestrator] Failed to insert daily tasks:", dtErr);
+      }
+    }
+
+    // Count all tasks created in this run
     const { count: tasksCreated } = await supabase
       .from("orchestrator_tasks")
       .select("*", { count: "exact", head: true })
@@ -637,6 +743,8 @@ REGRAS:
       ...(dailyPlan.length > 0 ? { daily_plan: dailyPlan } : {}),
       generated_at: new Date().toISOString(),
       tasks_created: tasksCreated || 0,
+      daily_tasks_created: dailyTasksCreated,
+      squad_refinement_done: refinementsByRole.size > 0,
     };
 
     await supabase
@@ -671,7 +779,7 @@ REGRAS:
       user_id: owner_id,
       project_id,
       title: "🏢 Orquestrador Concluído",
-      message: `${successCount}/${agentResults.length} agentes executados. ${tasksCreated || 0} tarefas + plano de ${dailyPlan.length} dias gerado.`,
+      message: `${successCount}/${agentResults.length} agentes executados. ${tasksCreated || 0} tarefas criadas (${dailyTasksCreated} do plano diário). Refinamento do squad: ${refinementsByRole.size > 0 ? "✅" : "—"}`,
       type: "success",
       action_url: `/rankito-ai#canvas`,
     });
@@ -720,6 +828,8 @@ REGRAS:
       results_count: agentResults.length,
       success_count: successCount,
       tasks_created: tasksCreated || 0,
+      daily_tasks_created: dailyTasksCreated,
+      squad_refinements: refinementsByRole.size,
       has_strategic_plan: !!strategicPlan,
       daily_plan_days: dailyPlan.length,
     }), {

@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CheckCircle2, Circle, Clock, Zap, AlertTriangle,
   TrendingUp, Target, ArrowRight, RefreshCw, Filter,
   ChevronDown, ChevronUp, Kanban, ListChecks, Loader2,
+  CalendarDays, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,15 @@ interface Task {
   success_metric: string | null;
   estimated_impact: string | null;
   created_at: string;
+  metadata?: {
+    source?: string;
+    scheduled_time?: string;
+    day_name?: string;
+    day_theme?: string;
+    duration_min?: number;
+    tools?: string[];
+    area?: string;
+  };
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -63,13 +72,17 @@ function TaskCard({ task, onStatusChange }: { task: Task; onStatusChange: (id: s
   const nextStatus = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : null;
   const prevStatus = task.status === "done" ? "in_progress" : task.status === "in_progress" ? "pending" : null;
 
-  const isOverdue = task.due_date && task.status !== "done" && new Date(task.due_date) < new Date();
+  const isOverdue = task.due_date && task.status !== "done" && new Date(task.due_date + "T23:59:59") < new Date();
+  const isDailyPlan = task.metadata?.source === "daily_plan";
+  const scheduledTime = task.metadata?.scheduled_time;
+  const dayName = task.metadata?.day_name;
 
   return (
     <div className={cn(
       "rounded-lg border bg-card/60 backdrop-blur-sm p-3 space-y-2 transition-all hover:shadow-md hover:-translate-y-0.5",
       task.status === "done" && "opacity-60",
       isOverdue && "border-red-500/30",
+      isDailyPlan && "border-l-2 border-l-primary/50",
     )}>
       {/* Header */}
       <div className="flex items-start gap-2">
@@ -86,6 +99,18 @@ function TaskCard({ task, onStatusChange }: { task: Task; onStatusChange: (id: s
           )}
         </button>
         <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-0.5">
+            {isDailyPlan && (
+              <span className="text-[8px] font-bold text-primary/70 bg-primary/10 border border-primary/20 px-1 py-0.5 rounded flex items-center gap-0.5">
+                <CalendarDays className="h-2 w-2" /> Plano Diário
+              </span>
+            )}
+            {scheduledTime && (
+              <span className="text-[8px] font-mono font-bold text-muted-foreground bg-muted/40 px-1 py-0.5 rounded">
+                {scheduledTime}
+              </span>
+            )}
+          </div>
           <p className={cn("text-xs font-semibold leading-tight", task.status === "done" && "line-through text-muted-foreground")}>
             {task.title}
           </p>
@@ -106,11 +131,14 @@ function TaskCard({ task, onStatusChange }: { task: Task; onStatusChange: (id: s
         </button>
       </div>
 
-      {/* Due date */}
+      {/* Due date + day name */}
       {task.due_date && (
         <div className={cn("flex items-center gap-1 text-[10px]", isOverdue ? "text-red-400" : "text-muted-foreground")}>
           <Clock className="h-3 w-3" />
-          {isOverdue ? "⚠️ " : ""}Prazo: {new Date(task.due_date).toLocaleDateString("pt-BR")}
+          {isOverdue ? "⚠️ " : ""}
+          {dayName ? `${dayName}, ` : ""}
+          {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+          {scheduledTime && ` às ${scheduledTime}`}
         </div>
       )}
 
@@ -133,6 +161,17 @@ function TaskCard({ task, onStatusChange }: { task: Task; onStatusChange: (id: s
               <Target className="h-3 w-3 text-primary mt-0.5 shrink-0" />
               <p className="text-[10px] text-muted-foreground">{task.success_metric}</p>
             </div>
+          )}
+          {task.metadata?.tools && task.metadata.tools.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className="text-[9px] text-muted-foreground">Ferramentas:</span>
+              {task.metadata.tools.map((t, i) => (
+                <span key={i} className="text-[9px] bg-muted/40 border border-border px-1.5 py-0.5 rounded text-muted-foreground">{t}</span>
+              ))}
+            </div>
+          )}
+          {task.metadata?.day_theme && (
+            <p className="text-[10px] text-primary/70">🎯 Tema do dia: {task.metadata.day_theme}</p>
           )}
         </div>
       )}
@@ -175,6 +214,7 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<"all" | "agent" | "daily">("all");
 
   const { data: tasks = [], isLoading, refetch } = useQuery({
     queryKey: ["orchestrator-tasks", deploymentId],
@@ -183,6 +223,7 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
         .from("orchestrator_tasks")
         .select("*")
         .eq("deployment_id", deploymentId)
+        .order("due_date", { ascending: true })
         .order("created_at", { ascending: false });
       return (data || []) as Task[];
     },
@@ -212,6 +253,8 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
   const filtered = tasks.filter(t => {
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+    if (filterSource === "agent" && (t.metadata as any)?.source === "daily_plan") return false;
+    if (filterSource === "daily" && (t.metadata as any)?.source !== "daily_plan") return false;
     return true;
   });
 
@@ -219,6 +262,8 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
   const inProgressCount = filtered.filter(t => t.status === "in_progress").length;
   const doneCount = filtered.filter(t => t.status === "done").length;
   const urgentCount = filtered.filter(t => t.priority === "urgente" && t.status !== "done").length;
+  const dailyCount = tasks.filter(t => (t.metadata as any)?.source === "daily_plan").length;
+  const agentCount = tasks.filter(t => (t.metadata as any)?.source !== "daily_plan").length;
 
   const usedCategories = [...new Set(tasks.map(t => t.category))];
 
@@ -248,18 +293,37 @@ export function OrchestratorTaskBoard({ deploymentId, projectId }: OrchestratorT
           <p className="text-lg font-bold">{tasks.length}</p>
           <p className="text-[10px] text-muted-foreground">Total</p>
         </div>
-        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2.5 text-center">
+        <div className="rounded-lg p-2.5 text-center border bg-orange-500/10 border-orange-500/20">
           <p className="text-lg font-bold text-orange-400">{pendingCount}</p>
           <p className="text-[10px] text-muted-foreground">Pendentes</p>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 text-center">
+        <div className="rounded-lg p-2.5 text-center border bg-blue-500/10 border-blue-500/20">
           <p className="text-lg font-bold text-blue-400">{inProgressCount}</p>
           <p className="text-[10px] text-muted-foreground">Em Progresso</p>
         </div>
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+        <div className="rounded-lg p-2.5 text-center border bg-emerald-500/10 border-emerald-500/20">
           <p className="text-lg font-bold text-emerald-400">{doneCount}</p>
           <p className="text-[10px] text-muted-foreground">Concluídas</p>
         </div>
+      </div>
+
+      {/* Source filter chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[9px] text-muted-foreground font-medium">Fonte:</span>
+        {(["all", "agent", "daily"] as const).map(src => (
+          <button
+            key={src}
+            onClick={() => setFilterSource(src)}
+            className={cn(
+              "text-[9px] font-semibold px-2 py-0.5 rounded-full border transition-all",
+              filterSource === src
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/20 border-border text-muted-foreground hover:border-primary/40"
+            )}
+          >
+            {src === "all" ? `🔀 Todas (${tasks.length})` : src === "agent" ? `🤖 Agentes (${agentCount})` : `📅 Plano Diário (${dailyCount})`}
+          </button>
+        ))}
       </div>
 
       {/* Urgent alert */}
