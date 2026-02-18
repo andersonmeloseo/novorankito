@@ -118,6 +118,7 @@ const ROLE_SUGGESTIONS_BY_DEPTH: Record<number, string[]> = {
 /* ─── Types ────────────────────────────────────────────────── */
 interface AgentNodeData {
   roleId: string;
+  name?: string; // specialist personal name, shown above title
   title: string;
   emoji: string;
   department: string;
@@ -449,6 +450,9 @@ const AgentNode = memo(({ data, selected }: NodeProps) => {
 
         {/* Name & Status */}
         <div className="text-center space-y-0.5">
+          {d.name && (
+            <p className="text-[9px] font-semibold text-primary leading-tight truncate max-w-[130px]">{d.name}</p>
+          )}
           <p className="text-[10px] font-bold leading-tight line-clamp-2">{d.title}</p>
           <p className="text-[8px] text-muted-foreground">{d.department}</p>
           <p className={cn(
@@ -490,7 +494,7 @@ interface EmployeeProfileDialogProps {
   onPromote: (id: string) => void;
   onDemote: (id: string) => void;
   onVacation: (id: string) => void;
-  onEdit: (id: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => Promise<void>;
+  onEdit: (id: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => Promise<void>;
   isOnVacation?: boolean;
   lastRunSummary?: string;
 }
@@ -500,6 +504,7 @@ function EmployeeProfileDialog({
   onFire, onPromote, onDemote, onVacation, onEdit, isOnVacation, lastRunSummary,
 }: EmployeeProfileDialogProps) {
   const [editTitle, setEditTitle] = useState("");
+  const [editName, setEditName] = useState("");
   const [editEmoji, setEditEmoji] = useState("");
   const [editDept, setEditDept] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
@@ -511,6 +516,7 @@ function EmployeeProfileDialog({
   useEffect(() => {
     if (role && open) {
       setEditTitle(role.title || "");
+      setEditName(role.name || "");
       setEditEmoji(role.emoji || "🤖");
       setEditDept(role.department || "");
       setEditInstructions(role.instructions || "");
@@ -546,6 +552,7 @@ function EmployeeProfileDialog({
     setSaving(true);
     try {
       await onEdit(role.id, {
+        name: editName,
         title: editTitle,
         emoji: editEmoji,
         department: editDept,
@@ -739,9 +746,13 @@ function EmployeeProfileDialog({
                   <Input value={editEmoji} onChange={e => setEditEmoji(e.target.value)} className="text-center text-lg h-9" placeholder="🤖" />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] text-muted-foreground block mb-1">Cargo / Título</label>
-                  <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Ex: SDR, Closer, Analista…" className="h-9 text-sm" />
+                  <label className="text-[10px] text-muted-foreground block mb-1">Nome do Especialista</label>
+                  <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Ex: João Silva, Maria Costa…" className="h-9 text-sm" />
                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">Cargo / Título</label>
+                <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Ex: SDR, Closer, Analista…" className="h-9 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground block mb-1">Departamento</label>
@@ -1318,6 +1329,7 @@ function buildNodesAndEdges(
       position: nodePositions.get(r.id) || { x: 0, y: 0 },
       data: {
         roleId: r.id,
+        name: r.name || undefined,
         title: r.title,
         emoji: r.emoji,
         department: r.department || "",
@@ -1775,7 +1787,7 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
     onRefresh?.();
   }, [hierarchy, roles, deployment.id, onRefresh]);
 
-  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => {
+  const handleEditMember = useCallback(async (roleId: string, patch: Partial<{ name: string; title: string; emoji: string; department: string; instructions: string; memory: string; whatsapp: string }>) => {
     const updatedRoles = roles.map(r => r.id === roleId ? { ...r, ...patch } : r);
     const { error } = await supabase.from("orchestrator_deployments").update({ roles: updatedRoles as any }).eq("id", deployment.id);
     if (error) { toast.error(error.message); throw error; }
@@ -2166,34 +2178,108 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
             )}
           </div>
 
-          {/* Collapsed: mini feed */}
-          {!expanded && messages.length > 0 && (
+          {/* Collapsed: full chat + CEO command tabs */}
+          {!expanded && (
             <div className="border-t border-border bg-card/40">
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60">
-                <MessageSquare className="h-3 w-3 text-muted-foreground" />
-                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Últimas mensagens</p>
-              </div>
-              <ScrollArea className="max-h-44">
-                <div className="p-2.5 space-y-1.5">
-                  {messages.slice(-5).map(msg => (
-                    <div key={msg.id} className={cn(
-                      "flex gap-2 items-start rounded-lg border px-2.5 py-1.5",
-                      msg.type === "report" ? "bg-primary/5 border-primary/20" :
-                        msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
-                          "bg-card/50 border-border/60",
-                    )}>
-                      <span className="text-base leading-none mt-0.5 shrink-0">{msg.fromEmoji}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <span className="text-[9px] font-bold">{msg.fromTitle}</span>
-                          {msg.toTitle && <span className="text-[9px] text-muted-foreground">→ {msg.toEmoji} {msg.toTitle}</span>}
-                        </div>
-                        <p className="text-[9px] text-foreground/70 line-clamp-2 leading-relaxed">{msg.content}</p>
-                      </div>
-                    </div>
-                  ))}
+              <Tabs defaultValue="chat" className="flex flex-col">
+                <div className="px-3 pt-2 border-b border-border/60 shrink-0">
+                  <TabsList className="h-6 gap-0.5 bg-transparent p-0">
+                    <TabsTrigger value="chat" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                      <MessageSquare className="h-2.5 w-2.5" /> Chat Equipe
+                      {messages.length > 0 && <span className="ml-0.5 text-[7px] bg-primary/20 text-primary rounded-full px-1">{messages.length}</span>}
+                    </TabsTrigger>
+                    <TabsTrigger value="cmd" className="h-5 text-[9px] px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
+                      <Brain className="h-2.5 w-2.5" /> Comandos CEO
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-              </ScrollArea>
+
+                {/* Chat Tab */}
+                <TabsContent value="chat" className="m-0">
+                  <ScrollArea className="max-h-52">
+                    <div className="p-2.5 space-y-1.5">
+                      {messages.length === 0 && (
+                        <div className="py-6 text-center">
+                          <MessageSquare className="h-6 w-6 mx-auto mb-2 text-muted-foreground/20" />
+                          <p className="text-[10px] text-muted-foreground">{runStatus === "running" ? "Processando…" : "Execute a equipe para ver os agentes em ação."}</p>
+                        </div>
+                      )}
+                      {messages.slice(-5).map(msg => (
+                        <div key={msg.id} className={cn(
+                          "flex gap-2 items-start rounded-lg border px-2.5 py-1.5",
+                          msg.type === "report" ? "bg-primary/5 border-primary/20" :
+                            msg.type === "error" ? "bg-destructive/5 border-destructive/20" :
+                              "bg-card/50 border-border/60",
+                        )}>
+                          <span className="text-base leading-none mt-0.5 shrink-0">{msg.fromEmoji}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <span className="text-[9px] font-bold">{msg.fromTitle}</span>
+                              {msg.toTitle && <span className="text-[9px] text-muted-foreground">→ {msg.toEmoji} {msg.toTitle}</span>}
+                            </div>
+                            <p className="text-[9px] text-foreground/70 line-clamp-2 leading-relaxed">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* CEO Commands Tab */}
+                <TabsContent value="cmd" className="m-0 flex flex-col">
+                  <div className="px-3 pt-2 shrink-0">
+                    <p className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Atalhos rápidos</p>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleCeoCommand(key)}
+                          disabled={ceoCmdSending}
+                          className="text-[8px] px-2 py-0.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium"
+                        >
+                          {cmd.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <ScrollArea className="max-h-40 px-3 py-2">
+                    {ceoCmdHistory.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground text-center py-4">Digite um comando ou use os atalhos acima.</p>
+                    )}
+                    <div className="space-y-2">
+                      {ceoCmdHistory.map((item, i) => (
+                        <div key={i} className="space-y-1">
+                          <span className="text-[8px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">&gt; {item.cmd}</span>
+                          <div className="rounded-lg border border-border bg-card/60 p-2">
+                            <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{item.response}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  <div className="p-3 border-t border-border shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-mono text-muted-foreground/60">&gt;</span>
+                      <Input
+                        value={ceoCmdInput}
+                        onChange={e => setCeoCmdInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                        placeholder="status report, resumo executivo…"
+                        className="h-7 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        disabled={ceoCmdSending}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-7 w-7 p-0 shrink-0"
+                        onClick={() => handleCeoCommand(ceoCmdInput)}
+                        disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                      >
+                        {ceoCmdSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </TabsContent>
