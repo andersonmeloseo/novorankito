@@ -1,86 +1,101 @@
 
-# Dropdown de Seleção de Projeto na Sidebar
+# Sistema de Análise de SEO On-Page com DataForSEO
 
-## Problema Atual
-O botão "Projeto Ativo" na sidebar faz `navigate("/projects")` — uma navegação de página inteira. O usuário quer que ele abra um **dropdown** direto na sidebar, listando os projetos disponíveis para troca rápida e com a opção de criar um novo.
+## O que é possível fazer
 
-## Solução
+A API On-Page da DataForSEO permite analisar qualquer domínio ou URL e identificar mais de 60 problemas técnicos de SEO. Ela funciona de forma assíncrona: você envia um domínio para crawl, e depois recupera os resultados.
 
-Transformar o botão simples em um componente com dropdown usando o `DropdownMenu` do Radix UI (já instalado no projeto).
+## O que será construído
 
-### Comportamento do Dropdown
-- **Trigger**: clica no botão "Projeto Ativo" → abre dropdown
-- **Lista de projetos**: mostra todos os projetos do usuário com um indicador visual do projeto ativo
-- **Seleção**: clicar num projeto seta `rankito_current_project` no localStorage e navega para `/overview`
-- **Ver todos**: link para `/projects`
-- **Novo Projeto**: navega para `/onboarding?new=1`
+Uma nova aba "On-Page" dentro do módulo de SEO existente (`/seo#onpage`), com:
 
-### Aparência
+### Dashboard de Auditoria
+- Score de saúde do site (0-100) com breakdown por categorias
+- Cards de KPI: páginas rastreadas, erros críticos, avisos, URLs aprovadas
+- Botão para iniciar nova auditoria do domínio do projeto
+
+### Aba de Páginas
+- Tabela de todas as páginas rastreadas com status de cada check:
+  - Meta title/description (ausente, duplicado, tamanho)
+  - H1/H2 (ausente, duplicado)
+  - Imagens sem alt
+  - Links quebrados
+  - Tempo de carregamento
+  - Status HTTP
+
+### Aba de Recursos
+- Lista de recursos com problemas (imagens, scripts, CSS)
+- Identificação de recursos pesados ou quebrados
+
+### Aba de Links Internos
+- Mapa de links internos e externos do site
+- Identificação de redirect chains
+
+### Aba de Conteúdo Duplicado
+- Detecção de páginas com title/description duplicados
+- Análise de similaridade de conteúdo
+
+## Arquitetura Técnica
+
+### Banco de dados (novas tabelas)
 
 ```text
-┌─────────────────────────────────┐
-│ ● Meu Site Principal     ▼      │  ← trigger (estado atual)
-└─────────────────────────────────┘
-         ↓ ao clicar
-┌─────────────────────────────────┐
-│  ✓  Meu Site Principal          │  ← ativo (check mark)
-│     Site Secundário             │
-│     Agência XYZ                 │
-│  ─────────────────────────────  │
-│     Ver todos os projetos →     │
-│  +  Novo Projeto                │
-└─────────────────────────────────┘
+onpage_audits
+  id, project_id, task_id (dataforseo), domain, status,
+  crawl_progress, pages_crawled, pages_total,
+  summary (jsonb), started_at, completed_at
+
+onpage_pages
+  id, audit_id, project_id, url, status_code,
+  checks (jsonb), meta_title, meta_description,
+  h1, page_score, load_time, created_at
 ```
 
-### Detalhes Técnicos
+### Credenciais
+A DataForSEO usa autenticação Basic Auth (login + senha). Precisará:
+- `DATAFORSEO_LOGIN` — email do login DataForSEO
+- `DATAFORSEO_PASSWORD` — senha da conta
 
-**Arquivo**: `src/components/layout/AppSidebar.tsx`
+### Edge Functions (backend)
 
-1. **Imports adicionados**:
-   - `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` de `@/components/ui/dropdown-menu`
-   - `Check` de `lucide-react`
+1. **`dataforseo-onpage-start`** — Inicia o crawl de um domínio:
+   - Recebe `project_id`, busca o domínio do projeto
+   - Faz POST para `https://api.dataforseo.com/v3/on_page/task_post`
+   - Salva o `task_id` retornado na tabela `onpage_audits`
 
-2. **Substituição do botão simples** (linhas 259-269) por:
-   ```tsx
-   <DropdownMenu>
-     <DropdownMenuTrigger asChild>
-       <button className="...mesmo estilo atual...">
-         <div className="flex items-center gap-2 min-w-0">
-           <div className="h-2 w-2 rounded-full bg-success ..." />
-           <span className="truncate">{activeProject.name}</span>
-         </div>
-         <ChevronDown className="h-3 w-3 ..." />
-       </button>
-     </DropdownMenuTrigger>
-     <DropdownMenuContent side="bottom" align="start" className="w-56 z-50">
-       {projects.map(p => (
-         <DropdownMenuItem key={p.id} onClick={() => switchProject(p.id)}>
-           <Check className={cn("h-3.5 w-3.5 mr-2", p.id !== activeProject?.id && "invisible")} />
-           <span className="truncate">{p.name}</span>
-         </DropdownMenuItem>
-       ))}
-       <DropdownMenuSeparator />
-       <DropdownMenuItem onClick={() => navigate("/projects")}>
-         <FolderOpen className="h-3.5 w-3.5 mr-2" /> Ver todos os projetos
-       </DropdownMenuItem>
-       <DropdownMenuItem onClick={() => navigate("/onboarding?new=1")}>
-         <Plus className="h-3.5 w-3.5 mr-2" /> Novo Projeto
-       </DropdownMenuItem>
-     </DropdownMenuContent>
-   </DropdownMenu>
-   ```
+2. **`dataforseo-onpage-poll`** — Verifica status e coleta resultados:
+   - Chama o endpoint `/summary` com o `task_id`
+   - Quando crawl completo, busca os `/pages` e salva em `onpage_pages`
+   - Atualiza o status da auditoria
 
-3. **Função `switchProject`** adicionada dentro do componente `AppSidebar`:
-   ```ts
-   const switchProject = (id: string) => {
-     localStorage.setItem("rankito_current_project", id);
-     navigate("/overview");
-     window.location.reload(); // força o re-carregamento do projeto ativo
-   };
-   ```
-   > Ou melhor: disparar um evento customizado que o contexto já escuta — sem reload. A ser verificado com o padrão existente no projeto.
+3. **`dataforseo-onpage-pages`** — Busca páginas paginadas de uma auditoria
 
-## Escopo
-- Apenas `src/components/layout/AppSidebar.tsx` precisa ser editado
-- Nenhuma migração de banco de dados necessária
-- Nenhuma nova dependência necessária
+### Frontend
+
+- **Novo componente**: `src/components/seo/OnPageAuditTab.tsx`
+- **Nova aba** adicionada ao `SeoPage.tsx` com hash `#onpage`
+- **Polling automático**: quando auditoria está em andamento, consulta o status a cada 10 segundos
+- Usa os mesmos padrões visuais do projeto (cards, tables, badges de status)
+
+## Fluxo de uso
+
+```text
+Usuário clica "Iniciar Auditoria"
+    → Edge Function inicia task no DataForSEO
+    → Status: "em andamento" com barra de progresso
+    → Polling a cada 10s verifica o progresso
+    → Quando 100%: resultados exibidos em tabelas
+    → Próxima auditoria fica salva no histórico
+```
+
+## Pré-requisitos para o usuário
+
+O usuário precisa ter uma conta na DataForSEO (tem plano gratuito de teste via Sandbox). As credenciais serão armazenadas de forma segura como secrets do backend.
+
+## Escopo dos arquivos
+
+- Nova migração SQL (2 tabelas + RLS)
+- 3 novas Edge Functions
+- 1 novo componente React (`OnPageAuditTab.tsx`)
+- Modificação em `SeoPage.tsx` (adicionar aba)
+- `supabase/config.toml` (registrar novas funções)
