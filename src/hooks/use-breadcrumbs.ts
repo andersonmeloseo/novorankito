@@ -64,6 +64,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "announcements": "Comunicados",
   "plans": "Planos",
   "dashboard": "Dashboard",
+  "academy": "Academy",
 };
 
 // Hash segment labels (e.g. /seo#queries → "Consultas")

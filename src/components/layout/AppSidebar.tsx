@@ -131,6 +131,10 @@ const accountNav = [
   { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
 ];
 
+const academyNav = [
+  { title: "Academy", url: "/academy", icon: Sparkles },
+];
+
 function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean }) {
   const { pathname, hash } = useLocation();
   const navigate = useNavigate();
@@ -493,6 +497,21 @@ export function AppSidebar() {
             </div>
           </div>
         )}
+
+        <div className="mx-4 my-1">
+          <div className="h-px bg-sidebar-border/50" />
+        </div>
+
+        {/* Academy */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {academyNav.map((item) => (
+                <NavItem key={item.url} item={item} end />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         <div className="mx-4 my-1">
           <div className="h-px bg-sidebar-border/50" />
