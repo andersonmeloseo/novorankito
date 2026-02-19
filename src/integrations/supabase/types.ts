@@ -1194,6 +1194,143 @@ export type Database = {
         }
         Relationships: []
       }
+      onpage_audits: {
+        Row: {
+          completed_at: string | null
+          crawl_progress: number
+          created_at: string
+          domain: string
+          id: string
+          owner_id: string
+          pages_crawled: number
+          pages_total: number
+          project_id: string
+          started_at: string
+          status: string
+          summary: Json | null
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          crawl_progress?: number
+          created_at?: string
+          domain: string
+          id?: string
+          owner_id: string
+          pages_crawled?: number
+          pages_total?: number
+          project_id: string
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          crawl_progress?: number
+          created_at?: string
+          domain?: string
+          id?: string
+          owner_id?: string
+          pages_crawled?: number
+          pages_total?: number
+          project_id?: string
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onpage_audits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onpage_pages: {
+        Row: {
+          audit_id: string
+          checks: Json | null
+          created_at: string
+          external_links_count: number | null
+          h1: string | null
+          id: string
+          images_count: number | null
+          images_without_alt: number | null
+          internal_links_count: number | null
+          load_time: number | null
+          meta_description: string | null
+          meta_title: string | null
+          owner_id: string
+          page_score: number | null
+          project_id: string
+          size: number | null
+          status_code: number | null
+          url: string
+        }
+        Insert: {
+          audit_id: string
+          checks?: Json | null
+          created_at?: string
+          external_links_count?: number | null
+          h1?: string | null
+          id?: string
+          images_count?: number | null
+          images_without_alt?: number | null
+          internal_links_count?: number | null
+          load_time?: number | null
+          meta_description?: string | null
+          meta_title?: string | null
+          owner_id: string
+          page_score?: number | null
+          project_id: string
+          size?: number | null
+          status_code?: number | null
+          url: string
+        }
+        Update: {
+          audit_id?: string
+          checks?: Json | null
+          created_at?: string
+          external_links_count?: number | null
+          h1?: string | null
+          id?: string
+          images_count?: number | null
+          images_without_alt?: number | null
+          internal_links_count?: number | null
+          load_time?: number | null
+          meta_description?: string | null
+          meta_title?: string | null
+          owner_id?: string
+          page_score?: number | null
+          project_id?: string
+          size?: number | null
+          status_code?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onpage_pages_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "onpage_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onpage_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orchestrator_deployments: {
         Row: {
           created_at: string
