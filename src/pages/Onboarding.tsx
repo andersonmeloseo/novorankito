@@ -350,7 +350,7 @@ export default function Onboarding() {
           <div className="text-xs text-muted-foreground">Etapa {step + 1} de {STEPS.length}</div>
           <Button size="sm" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {step === STEPS.length - 1 ? "Concluir" : "Continuar"} <ArrowRight className="h-3.5 w-3.5" />
+            {step === 0 ? "Criar Projeto" : step === STEPS.length - 1 ? "Concluir" : "Continuar"} <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </footer>
@@ -358,15 +358,23 @@ export default function Onboarding() {
   );
 }
 
-/* ─── Step 1: Create Project ─── */
+/* ─── Step 1: Create Project — Mini Funnel ─── */
+const SUB_STEPS = [
+  { id: "identity", emoji: "🌐", question: "Qual é o seu site?", hint: "Nome e endereço do domínio" },
+  { id: "type", emoji: "🏗️", question: "Que tipo de site é esse?", hint: "Escolha a categoria que melhor descreve" },
+  { id: "location", emoji: "📍", question: "Onde seu público está?", hint: "País e cidade principal do seu site" },
+];
+
 function StepCreateProject({ project, setProject }: {
   project: { name: string; domain: string; type: string; country: string; city: string; timezone: string; isRankRent: boolean; rrPrice: string; rrDeadline: string; rrClient: string };
   setProject: React.Dispatch<React.SetStateAction<typeof project>>;
 }) {
+  const [subStep, setSubStep] = useState(0);
   const [countryOpen, setCountryOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [citySearch, setCitySearch] = useState("");
+  const [domainFocused, setDomainFocused] = useState(false);
 
   const selectedCountry = COUNTRIES_DATA.find((c) => c.code === project.country);
 
@@ -395,150 +403,281 @@ function StepCreateProject({ project, setProject }: {
     setCitySearch("");
   };
 
+  // Auto-clean domain as user types
+  const handleDomainChange = (raw: string) => {
+    const cleaned = raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+    setProject((p) => ({ ...p, domain: cleaned }));
+  };
+
+  // Sub-step advance validation
+  const subCanAdvance =
+    subStep === 0 ? project.name.trim() !== "" && project.domain.trim() !== "" :
+    subStep === 1 ? project.type !== "" :
+    project.country !== "";
+
+  const handleSubNext = () => {
+    if (subStep < SUB_STEPS.length - 1) setSubStep((s) => s + 1);
+  };
+
+  const currentSub = SUB_STEPS[subStep];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">Crie seu projeto</h2>
-        <p className="text-sm text-muted-foreground mt-1">Informe os dados do site que deseja monitorar e otimizar.</p>
+    <div className="space-y-0">
+      {/* Sub-step dots indicator */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {SUB_STEPS.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => i < subStep && setSubStep(i)}
+            className={cn(
+              "transition-all duration-300 rounded-full",
+              i === subStep ? "w-8 h-2 bg-primary" :
+              i < subStep ? "w-2 h-2 bg-primary/60 cursor-pointer hover:bg-primary" :
+              "w-2 h-2 bg-muted"
+            )}
+          />
+        ))}
       </div>
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="name" className="text-xs font-medium">Nome do projeto</Label>
-          <Input id="name" placeholder="Meu Site" value={project.name} onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="domain" className="text-xs font-medium">Domínio</Label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input id="domain" placeholder="exemplo.com.br" className="pl-9" value={project.domain} onChange={(e) => setProject((p) => ({ ...p, domain: e.target.value }))} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Tipo de site</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {SITE_TYPES.map((t) => (
-              <button key={t.value} onClick={() => setProject((p) => ({ ...p, type: t.value }))}
-                className={cn("flex flex-col items-center gap-1 rounded-lg border p-3 text-xs font-medium transition-all",
-                  project.type === t.value ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" : "border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-                )}>
-                <span className="text-base">{t.icon}</span><span>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Country autocomplete */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium flex items-center gap-1"><MapPin className="h-3 w-3" /> País</Label>
-            <Popover open={countryOpen} onOpenChange={setCountryOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={countryOpen} className="w-full justify-between text-xs font-normal h-10">
-                  {selectedCountry ? selectedCountry.name : "Digite o país..."}
-                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Buscar país..." value={countrySearch} onValueChange={setCountrySearch} className="text-xs" />
-                  <CommandList>
-                    <CommandEmpty className="text-xs p-2">Nenhum país encontrado.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredCountries.map((c) => (
-                        <CommandItem key={c.code} value={c.name} onSelect={() => handleCountrySelect(c.code)} className="text-xs">
-                          <Check className={cn("mr-2 h-3 w-3", project.country === c.code ? "opacity-100" : "opacity-0")} />
-                          {c.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={subStep}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="space-y-6"
+        >
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="text-4xl mb-2">{currentSub.emoji}</div>
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">{currentSub.question}</h2>
+            <p className="text-sm text-muted-foreground">{currentSub.hint}</p>
           </div>
 
-          {/* City autocomplete */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium flex items-center gap-1"><Building2 className="h-3 w-3" /> Cidade</Label>
-            <Popover open={cityOpen} onOpenChange={setCityOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={cityOpen} disabled={!selectedCountry} className="w-full justify-between text-xs font-normal h-10">
-                  {project.city || "Digite a cidade..."}
-                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Buscar cidade..." value={citySearch} onValueChange={setCitySearch} className="text-xs" />
-                  <CommandList>
-                    <CommandEmpty className="text-xs p-2">Nenhuma cidade encontrada.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredCities.map((t) => (
-                        <CommandItem key={t.city} value={t.city} onSelect={() => handleCitySelect(t.city, t.tz)} className="text-xs">
-                          <Check className={cn("mr-2 h-3 w-3", project.city === t.city ? "opacity-100" : "opacity-0")} />
-                          {t.city}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Auto timezone */}
-        {project.timezone && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex items-center gap-2 p-2.5 rounded-lg bg-success/10 border border-success/20">
-            <Clock className="h-3.5 w-3.5 text-success" />
-            <span className="text-xs text-success font-medium">
-              Fuso horário detectado: {project.timezone} ({getTimezoneLabel(project.timezone)})
-            </span>
-          </motion.div>
-        )}
-
-        {/* Rank & Rent toggle */}
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-primary" />
-              <div>
-                <span className="text-xs font-medium text-foreground">Este projeto é Rank & Rent?</span>
-                <p className="text-[10px] text-muted-foreground">Ative para configurar monetização por locação</p>
+          {/* Sub-step 0: Identity */}
+          {subStep === 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nome do Projeto</Label>
+                <Input
+                  id="name"
+                  placeholder="Ex: Loja do João, Blog Finanças..."
+                  value={project.name}
+                  onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))}
+                  className="h-12 text-base"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && project.name.trim() && document.getElementById("domain")?.focus()}
+                />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="domain" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Domínio do Site</Label>
+                <div className="relative">
+                  <div className={cn(
+                    "absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-colors",
+                    domainFocused ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    🌐
+                  </div>
+                  <Input
+                    id="domain"
+                    placeholder="exemplo.com.br"
+                    className="h-12 text-base pl-9"
+                    value={project.domain}
+                    onChange={(e) => handleDomainChange(e.target.value)}
+                    onFocus={() => setDomainFocused(true)}
+                    onBlur={() => setDomainFocused(false)}
+                    onKeyDown={(e) => e.key === "Enter" && subCanAdvance && handleSubNext()}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Cole a URL completa — o https:// será removido automaticamente.</p>
+              </div>
+
+              {/* Rank & Rent toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  <div>
+                    <span className="text-xs font-medium text-foreground">Projeto Rank & Rent?</span>
+                    <p className="text-[10px] text-muted-foreground">Monetize por locação deste site</p>
+                  </div>
+                </div>
+                <Switch checked={project.isRankRent} onCheckedChange={(v) => setProject((p) => ({ ...p, isRankRent: v }))} />
+              </div>
+
+              {project.isRankRent && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 p-3 rounded-xl border border-primary/20 bg-primary/5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Preço mensal (R$)</Label>
+                      <Input placeholder="2.500" type="number" className="h-9 text-sm" value={project.rrPrice} onChange={(e) => setProject((p) => ({ ...p, rrPrice: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Prazo do contrato</Label>
+                      <Select value={project.rrDeadline} onValueChange={(v) => setProject((p) => ({ ...p, rrDeadline: v }))}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="3">3 meses</SelectItem>
+                          <SelectItem value="6">6 meses</SelectItem>
+                          <SelectItem value="12">12 meses</SelectItem>
+                          <SelectItem value="24">24 meses</SelectItem>
+                          <SelectItem value="indefinido">Indefinido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Nome do cliente (opcional)</Label>
+                    <Input placeholder="Nome da empresa cliente" className="h-9 text-sm" value={project.rrClient} onChange={(e) => setProject((p) => ({ ...p, rrClient: e.target.value }))} />
+                  </div>
+                </motion.div>
+              )}
             </div>
-            <Switch checked={project.isRankRent} onCheckedChange={(v) => setProject((p) => ({ ...p, isRankRent: v }))} />
-          </div>
-
-          {project.isRankRent && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 pt-2 border-t border-border">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Preço mensal (R$)</Label>
-                  <Input placeholder="2.500" type="number" className="h-8 text-xs" value={project.rrPrice} onChange={(e) => setProject((p) => ({ ...p, rrPrice: e.target.value }))} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Prazo do contrato</Label>
-                  <Select value={project.rrDeadline} onValueChange={(v) => setProject((p) => ({ ...p, rrDeadline: v }))}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 meses</SelectItem>
-                      <SelectItem value="6">6 meses</SelectItem>
-                      <SelectItem value="12">12 meses</SelectItem>
-                      <SelectItem value="24">24 meses</SelectItem>
-                      <SelectItem value="indefinido">Indefinido</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] text-muted-foreground">Nome do cliente (opcional)</Label>
-                <Input placeholder="Nome da empresa cliente" className="h-8 text-xs" value={project.rrClient} onChange={(e) => setProject((p) => ({ ...p, rrClient: e.target.value }))} />
-              </div>
-            </motion.div>
           )}
-        </Card>
-      </div>
+
+          {/* Sub-step 1: Type */}
+          {subStep === 1 && (
+            <div className="grid grid-cols-2 gap-3">
+              {SITE_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => {
+                    setProject((p) => ({ ...p, type: t.value }));
+                    // Auto-advance after short delay
+                    setTimeout(() => setSubStep(2), 250);
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-150",
+                    project.type === t.value
+                      ? "border-primary bg-primary/8 ring-2 ring-primary/30"
+                      : "border-border hover:border-primary/40 hover:bg-muted/30"
+                  )}
+                >
+                  <span className="text-2xl">{t.icon}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-foreground block">{t.label}</span>
+                  </div>
+                  {project.type === t.value && (
+                    <CheckCircle2 className="h-4 w-4 text-primary ml-auto shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Sub-step 2: Location */}
+          {subStep === 2 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> País
+                </Label>
+                <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={countryOpen} className="w-full justify-between h-12 text-sm font-normal">
+                      {selectedCountry ? (
+                        <span className="flex items-center gap-2">{selectedCountry.name}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Selecione o país...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar país..." value={countrySearch} onValueChange={setCountrySearch} className="text-sm" />
+                      <CommandList>
+                        <CommandEmpty className="text-xs p-3">Nenhum país encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredCountries.map((c) => (
+                            <CommandItem key={c.code} value={c.name} onSelect={() => handleCountrySelect(c.code)} className="text-sm">
+                              <Check className={cn("mr-2 h-4 w-4", project.country === c.code ? "opacity-100" : "opacity-0")} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {selectedCountry && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5" /> Cidade principal
+                  </Label>
+                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={cityOpen} className="w-full justify-between h-12 text-sm font-normal">
+                        {project.city ? (
+                          <span>{project.city}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Selecione a cidade...</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar cidade..." value={citySearch} onValueChange={setCitySearch} className="text-sm" />
+                        <CommandList>
+                          <CommandEmpty className="text-xs p-3">Nenhuma cidade encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredCities.map((t) => (
+                              <CommandItem key={t.city} value={t.city} onSelect={() => handleCitySelect(t.city, t.tz)} className="text-sm">
+                                <Check className={cn("mr-2 h-4 w-4", project.city === t.city ? "opacity-100" : "opacity-0")} />
+                                {t.city}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </motion.div>
+              )}
+
+              {project.timezone && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex items-center gap-2 p-3 rounded-xl bg-success/10 border border-success/20">
+                  <Clock className="h-4 w-4 text-success shrink-0" />
+                  <span className="text-sm text-success font-medium">
+                    Fuso horário: {project.timezone}
+                  </span>
+                </motion.div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Sub-step navigation — only shown for sub-steps 0 and 2 (type auto-advances) */}
+      {subStep !== 1 && (
+        <div className="pt-6 flex items-center justify-between">
+          {subStep > 0 ? (
+            <button onClick={() => setSubStep((s) => s - 1)} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+            </button>
+          ) : <div />}
+          {subStep < SUB_STEPS.length - 1 ? (
+            <Button
+              size="sm"
+              onClick={handleSubNext}
+              disabled={!subCanAdvance}
+              className="gap-1.5 px-5"
+            >
+              Próximo <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
+        </div>
+      )}
+      {subStep === 1 && subCanAdvance && (
+        <div className="pt-6 flex justify-start">
+          <button onClick={() => setSubStep((s) => s - 1)} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
