@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,8 @@ export default function Onboarding() {
     name: "", domain: "", type: "", country: "", city: "", timezone: "",
     isRankRent: false, rrPrice: "", rrDeadline: "", rrClient: "",
   });
+  // Prevent restore from re-running when user clicks "Add another project"
+  const hasRestoredRef = useRef(false);
 
   const canAdvance =
     step === 0
@@ -119,8 +121,10 @@ export default function Onboarding() {
   };
 
   // Restore progress on mount — find last project with incomplete onboarding
+  // Only runs ONCE to avoid overwriting state when user adds a new project
   useEffect(() => {
-    if (!user) return;
+    if (!user || hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
     const restore = async () => {
       const { data } = await supabase
         .from("projects")
