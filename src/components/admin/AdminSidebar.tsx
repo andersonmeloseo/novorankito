@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Building2, CreditCard, FolderOpen,
   Plug, ShieldCheck, ScrollText, Settings, Bell, Flag,
-  ArrowLeft, Search, ChevronDown, Plus, Activity,
-  Megaphone, FlaskConical, BarChart3, Key, Crown
+  ArrowLeft, Search, ChevronDown, Activity,
+  Megaphone, BarChart3, Key, Crown, GraduationCap
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,13 @@ const adminSections = [
     ],
   },
   {
+    label: "Conteúdo",
+    items: [
+      { title: "Academy", url: "/admin/academy", icon: GraduationCap },
+      { title: "Anúncios", url: "/admin/announcements", icon: Megaphone },
+    ],
+  },
+  {
     label: "Sistema",
     items: [
       { title: "APIs & Chaves", url: "/admin/apis", icon: Key },
@@ -45,7 +52,6 @@ const adminSections = [
       { title: "Configurações Globais", url: "/admin/settings", icon: Settings },
       { title: "Notificações", url: "/admin/notifications", icon: Bell },
       { title: "Feature Flags", url: "/admin/flags", icon: Flag },
-      { title: "Anúncios", url: "/admin/announcements", icon: Megaphone },
     ],
   },
 ];

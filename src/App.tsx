@@ -71,6 +71,8 @@ const GettingStartedPage = lazy(() => import("@/pages/GettingStartedPage"));
 const ProjectDashboardPage = lazy(() => import("@/pages/ProjectDashboardPage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const AccountPage = lazy(() => import("@/pages/AccountPage"));
+const AcademyPage = lazy(() => import("@/pages/AcademyPage"));
+const AdminAcademyPage = lazy(() => import("@/pages/admin/AdminAcademyPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +139,7 @@ const App = () => {
                   <Route path="/account/users" element={<UsersPage />} />
                   <Route path="/account/billing" element={<BillingPage />} />
                   <Route path="/account/profile" element={<AccountPage />} />
+                  <Route path="/academy" element={<AcademyPage />} />
                   {/* Rank & Rent */}
                   <Route path="/rank-rent" element={<RROverviewPage />} />
                   <Route path="/rank-rent/clients" element={<RRClientsPage />} />
@@ -168,6 +171,7 @@ const App = () => {
                   <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                   <Route path="/admin/flags" element={<AdminFlagsPage />} />
                   <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+                  <Route path="/admin/academy" element={<AdminAcademyPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
