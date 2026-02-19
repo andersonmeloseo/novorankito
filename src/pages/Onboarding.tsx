@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,8 @@ interface CreatedProject {
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isNewProject = searchParams.get("new") === "1";
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -121,9 +123,9 @@ export default function Onboarding() {
   };
 
   // Restore progress on mount — find last project with incomplete onboarding
-  // Only runs ONCE to avoid overwriting state when user adds a new project
+  // Skip restore when user explicitly requested a NEW project (?new=1)
   useEffect(() => {
-    if (!user || hasRestoredRef.current) return;
+    if (!user || hasRestoredRef.current || isNewProject) return;
     hasRestoredRef.current = true;
     const restore = async () => {
       const { data } = await supabase
@@ -146,7 +148,7 @@ export default function Onboarding() {
       }
     };
     restore();
-  }, [user]);
+  }, [user, isNewProject]);
 
   const handleNext = () => {
     if (step === 0) { saveProject(); return; }
@@ -170,10 +172,8 @@ export default function Onboarding() {
   };
 
   const handleAddAnotherProject = () => {
-    setShowSummary(false);
-    setProjectId(null);
-    setProject({ name: "", domain: "", type: "", country: "", city: "", timezone: "", isRankRent: false, rrPrice: "", rrDeadline: "", rrClient: "" });
-    setStep(0);
+    // Navigate with ?new=1 so the restore effect is skipped on remount
+    navigate("/onboarding?new=1");
   };
 
   const handleFinishOnboarding = () => {

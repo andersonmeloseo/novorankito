@@ -269,7 +269,7 @@ export function AppSidebar() {
             </button>
           ) : (
             <button
-              onClick={() => navigate("/onboarding")}
+              onClick={() => navigate("/onboarding?new=1")}
               className="flex items-center justify-center gap-1.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-medium border border-dashed border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-primary/50 transition-all duration-200"
             >
               <Plus className="h-3.5 w-3.5" />
