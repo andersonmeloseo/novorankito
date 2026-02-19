@@ -70,6 +70,7 @@ const SemanticGraphPage = lazy(() => import("@/pages/SemanticGraphPage"));
 const GettingStartedPage = lazy(() => import("@/pages/GettingStartedPage"));
 const ProjectDashboardPage = lazy(() => import("@/pages/ProjectDashboardPage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const AccountPage = lazy(() => import("@/pages/AccountPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +136,7 @@ const App = () => {
                   <Route path="/project-settings" element={<ProjectSettingsPage />} />
                   <Route path="/account/users" element={<UsersPage />} />
                   <Route path="/account/billing" element={<BillingPage />} />
+                  <Route path="/account/profile" element={<AccountPage />} />
                   {/* Rank & Rent */}
                   <Route path="/rank-rent" element={<RROverviewPage />} />
                   <Route path="/rank-rent/clients" element={<RRClientsPage />} />
