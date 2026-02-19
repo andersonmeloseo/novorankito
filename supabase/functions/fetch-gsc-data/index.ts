@@ -122,7 +122,9 @@ serve(async (req) => {
       .from("gsc_connections")
       .select("*")
       .eq("project_id", project_id)
-      .single();
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
     if (connErr || !conn) {
       return new Response(JSON.stringify({ error: "Nenhuma conexão GSC encontrada para este projeto." }), {
