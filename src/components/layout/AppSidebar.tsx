@@ -4,7 +4,7 @@ import {
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus, Network,
   History, CalendarClock, Wifi, Map, Monitor, Sparkles, TrendingDown,
-  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key,
+  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key, User,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -126,6 +126,7 @@ const semanticNav = [
 ];
 
 const accountNav = [
+  { title: "Minha Conta", url: "/account/profile", icon: User },
   { title: "Usuários & Permissões", url: "/account/users", icon: Users },
   { title: "Billing & Planos", url: "/account/billing", icon: CreditCard },
 ];
@@ -551,7 +552,10 @@ export function AppSidebar() {
           </div>
         )}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={() => navigate("/account/profile")}
+            className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left"
+          >
             <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0 shadow-glow ring-1 ring-white/10">
               {displayName[0]?.toUpperCase()}
             </div>
@@ -559,7 +563,7 @@ export function AppSidebar() {
               <div className="font-semibold text-sidebar-primary-foreground truncate leading-tight">{displayName}</div>
               <div className="text-sidebar-foreground/40 truncate text-[11px]">{user?.email}</div>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-0.5 shrink-0">
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10" onClick={signOut} title="Sair">
