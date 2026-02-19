@@ -146,7 +146,7 @@ export default function ProjectsList() {
             <h2 className="text-xl font-semibold text-foreground tracking-tight">Todos os Projetos</h2>
             <p className="text-sm text-muted-foreground mt-1">Selecione um projeto para visualizar métricas detalhadas.</p>
           </div>
-          <Button size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => navigate("/onboarding")}>
+          <Button size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => navigate("/onboarding?new=1")}>
             <Plus className="h-3.5 w-3.5" /> Novo Projeto
           </Button>
         </div>
@@ -160,7 +160,7 @@ export default function ProjectsList() {
             <Globe className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
             <h3 className="text-sm font-medium text-foreground mb-1">Nenhum projeto encontrado</h3>
             <p className="text-xs text-muted-foreground mb-4">Crie seu primeiro projeto para começar.</p>
-            <Button size="sm" className="text-xs gap-1.5" onClick={() => navigate("/onboarding")}>
+            <Button size="sm" className="text-xs gap-1.5" onClick={() => navigate("/onboarding?new=1")}>
               <Plus className="h-3.5 w-3.5" /> Criar Projeto
             </Button>
           </Card>
