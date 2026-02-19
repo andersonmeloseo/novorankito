@@ -137,7 +137,8 @@ export default function Onboarding() {
           country: data.country || "", city: data.city || "", timezone: data.timezone || "",
           isRankRent: data.monetization_status === "rank_rent", rrPrice: "", rrDeadline: "", rrClient: "",
         });
-        setStep(data.onboarding_step || 1); // at least skip step 0 since project exists
+        // Clamp to valid range: skip step 0 (project exists), cap at last step
+        setStep(Math.min(Math.max(data.onboarding_step || 1, 1), STEPS.length - 1));
       }
     };
     restore();
