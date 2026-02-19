@@ -13,7 +13,7 @@ import {
   User, Mail, Lock, Bell, Shield, CreditCard, LogOut, Camera,
   Smartphone, Globe, Laptop, Monitor, Loader2, Save, Eye, EyeOff,
   CheckCircle2, AlertTriangle, Key, Trash2, Download, Copy,
-  Clock, MapPin, ChevronRight
+  Clock, MapPin, ChevronRight, BookOpen, Search
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
+import { GA4TutorialModal } from "@/components/onboarding/GA4TutorialModal";
 
 const TABS = [
   { id: "profile", label: "Perfil", icon: User },
@@ -134,6 +136,8 @@ function ProfileTab() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showGscTutorial, setShowGscTutorial] = useState(false);
+  const [showGa4Tutorial, setShowGa4Tutorial] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
@@ -306,6 +310,47 @@ function ProfileTab() {
           <InfoRow label="Provedor" value={user?.app_metadata?.provider || "email"} />
         </div>
       </Card>
+
+      {/* Integrations & Tutorials */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Search className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Integrações & Tutoriais</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Search className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground">Google Search Console</p>
+                <p className="text-[10px] text-muted-foreground">Aprenda a criar e conectar sua conta de serviço do GSC</p>
+              </div>
+            </div>
+            <Button size="sm" className="text-xs h-7 gap-1 shrink-0" onClick={() => setShowGscTutorial(true)}>
+              <BookOpen className="h-3 w-3" /> Ver tutorial
+            </Button>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Globe className="h-4 w-4 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground">Google Analytics 4</p>
+                <p className="text-[10px] text-muted-foreground">Aprenda a criar e conectar sua conta de serviço do GA4</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1 shrink-0" onClick={() => setShowGa4Tutorial(true)}>
+              <BookOpen className="h-3 w-3" /> Ver tutorial
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <GSCTutorialModal open={showGscTutorial} onOpenChange={setShowGscTutorial} />
+      <GA4TutorialModal open={showGa4Tutorial} onOpenChange={setShowGa4Tutorial} />
 
       {/* Danger zone */}
       <Card className="p-6 border-destructive/30">
