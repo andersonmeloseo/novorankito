@@ -4,8 +4,15 @@ import {
   Shield, ChevronDown, LogOut, Coins, Building2, FileSignature,
   Layers, DollarSign, Store, TrendingUp, Plus, Network,
   History, CalendarClock, Wifi, Map, Monitor, Sparkles, TrendingDown,
-  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key, User,
+  Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key, User, Check,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -225,6 +232,11 @@ export function AppSidebar() {
   const storedId = localStorage.getItem("rankito_current_project");
   const activeProject = projects.find(p => p.id === storedId) || projects[0];
 
+  const switchProject = (id: string) => {
+    localStorage.setItem("rankito_current_project", id);
+    window.location.href = "/overview";
+  };
+
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="p-4 pb-3 border-b border-sidebar-border">
@@ -256,17 +268,35 @@ export function AppSidebar() {
           <span className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold">
             Projeto Ativo
           </span>
-          {activeProject ? (
-            <button
-              onClick={() => navigate("/projects")}
-              className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-medium bg-sidebar-muted/80 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group border border-sidebar-border/50"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_8px_hsl(155_70%_42%/0.6)] animate-pulse" />
-                <span className="truncate">{activeProject.name}</span>
-              </div>
-              <ChevronDown className="h-3 w-3 text-sidebar-foreground/40 shrink-0 group-hover:text-sidebar-accent-foreground transition-all group-hover:translate-y-0.5" />
-            </button>
+        {activeProject ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-medium bg-sidebar-muted/80 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group border border-sidebar-border/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_8px_hsl(155_70%_42%/0.6)] animate-pulse" />
+                    <span className="truncate">{activeProject.name}</span>
+                  </div>
+                  <ChevronDown className="h-3 w-3 text-sidebar-foreground/40 shrink-0 group-hover:text-sidebar-accent-foreground transition-all group-hover:translate-y-0.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="start" className="w-56 z-[200] bg-popover border border-border shadow-lg">
+                {projects.map(p => (
+                  <DropdownMenuItem key={p.id} onClick={() => switchProject(p.id)} className="cursor-pointer">
+                    <Check className={cn("h-3.5 w-3.5 mr-2 shrink-0", p.id !== activeProject?.id && "invisible")} />
+                    <span className="truncate">{p.name}</span>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
+                  <FolderOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                  <span>Ver todos os projetos</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding?new=1")} className="cursor-pointer">
+                  <Plus className="h-3.5 w-3.5 mr-2 shrink-0" />
+                  <span>Novo Projeto</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <button
               onClick={() => navigate("/onboarding?new=1")}
