@@ -194,15 +194,13 @@ serve(async (req) => {
 
       const type = request_type || "URL_UPDATED";
       const ownerId = conn.owner_id;
-      const maxPerBatch = 200 * totalConnections; // total limit across all accounts
-      const batch = urls.slice(0, Math.min(urls.length, maxPerBatch));
 
       // Get access tokens for all connections
-      const connTokens: { conn: any; token: string }[] = [];
+      const connTokens: { conn: any; token: string; quotaExceeded: boolean; usedToday: number }[] = [];
       for (const c of allConns!) {
         try {
           const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
-          connTokens.push({ conn: c, token });
+          connTokens.push({ conn: c, token, quotaExceeded: false, usedToday: 0 });
         } catch (e) {
           console.error(`Failed to get token for ${c.client_email}:`, e);
         }
@@ -214,12 +212,27 @@ serve(async (req) => {
         });
       }
 
+      // Cap batch by active connections × 200 per connection
+      const maxPerBatch = 200 * connTokens.length;
+      const batch = urls.slice(0, Math.min(urls.length, maxPerBatch));
+
       const results: { url: string; status: string; response_code?: number; response_message?: string; fail_reason?: string; account?: string }[] = [];
 
       for (let i = 0; i < batch.length; i++) {
         const url = batch[i];
-        // Round-robin: distribute URLs across connections
-        const ct = connTokens[i % connTokens.length];
+
+        // Pick an active (non-quota-exceeded) connection via round-robin
+        // Filter to connections that haven't hit their 200/day limit
+        const activeConns = connTokens.filter(ct => !ct.quotaExceeded && ct.usedToday < 200);
+        if (activeConns.length === 0) {
+          // All connections exhausted — mark remaining URLs as quota_exceeded
+          results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: "All connections quota exceeded", account: "all" });
+          continue;
+        }
+
+        // Round-robin across active connections only
+        const ct = activeConns[i % activeConns.length];
+
         try {
           const res = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
             method: "POST",
@@ -230,14 +243,39 @@ serve(async (req) => {
           const body = await res.json();
 
           if (res.ok) {
+            ct.usedToday++;
             results.push({ url, status: "success", response_code: res.status, response_message: body.urlNotificationMetadata?.latestUpdate?.type || type, account: ct.conn.client_email });
           } else if (res.status === 429) {
-            results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: "Quota exceeded for " + ct.conn.client_email, account: ct.conn.client_email });
+            // Mark this connection as quota exhausted so it gets excluded from next picks
+            ct.quotaExceeded = true;
+            console.warn(`Quota exceeded for ${ct.conn.client_email}, removing from pool. Pool now has ${connTokens.filter(c => !c.quotaExceeded).length} active connections.`);
+            // Retry this same URL with another connection (decrement i to re-process)
+            const retryConns = connTokens.filter(c => !c.quotaExceeded && c.usedToday < 200);
+            if (retryConns.length > 0) {
+              const retryCt = retryConns[0];
+              const retryRes = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${retryCt.token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ url, type }),
+              });
+              const retryBody = await retryRes.json();
+              if (retryRes.ok) {
+                retryCt.usedToday++;
+                results.push({ url, status: "success", response_code: retryRes.status, response_message: retryBody.urlNotificationMetadata?.latestUpdate?.type || type, account: retryCt.conn.client_email });
+              } else if (retryRes.status === 429) {
+                retryCt.quotaExceeded = true;
+                results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: `Quota exceeded for all connections tried`, account: ct.conn.client_email });
+              } else {
+                results.push({ url, status: "failed", response_code: retryRes.status, fail_reason: retryBody.error?.message || `HTTP ${retryRes.status}`, account: retryCt.conn.client_email });
+              }
+            } else {
+              results.push({ url, status: "quota_exceeded", response_code: 429, fail_reason: "All connections quota exceeded", account: ct.conn.client_email });
+            }
           } else {
             results.push({ url, status: "failed", response_code: res.status, fail_reason: body.error?.message || `HTTP ${res.status}`, account: ct.conn.client_email });
           }
 
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         } catch (e) {
           results.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown error", account: ct.conn.client_email });
         }
@@ -260,12 +298,14 @@ serve(async (req) => {
       const { error: insertErr } = await supabase.from("indexing_requests").insert(rows);
       if (insertErr) throw insertErr;
 
+      const activeAtEnd = connTokens.filter(ct => !ct.quotaExceeded).length;
       return new Response(JSON.stringify({
         submitted: results.filter(r => r.status === "success").length,
         failed: results.filter(r => r.status === "failed").length,
         quota_exceeded: results.filter(r => r.status === "quota_exceeded").length,
         total: results.length,
         connections_used: connTokens.length,
+        connections_active: activeAtEnd,
         results,
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
