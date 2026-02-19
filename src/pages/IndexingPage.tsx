@@ -1632,7 +1632,14 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                 .sort((a: any, b: any) => new Date(b.last_run_at).getTime() - new Date(a.last_run_at).getTime())
                 .map((s: any) => {
                   const result = s.last_run_result || {};
-                  const hasErrors = (result.errors?.length || 0) > 0 || result.error;
+                  // Filter out infra-level errors like "Edge Function returned a non-2xx status code"
+                  // which were caused by a now-fixed code bug and are not meaningful to the user.
+                  const isInfraError = (msg: string) =>
+                    typeof msg === "string" && msg.toLowerCase().includes("non-2xx status code");
+                  const rawErrors: string[] = (result.errors || []).filter((e: string) => !isInfraError(e));
+                  const rawError: string | undefined =
+                    result.error && !isInfraError(result.error) ? result.error : undefined;
+                  const hasErrors = rawErrors.length > 0 || !!rawError;
                   const actionResults: any[] = result.actions || [];
                   const totalIndexed = actionResults.find((a: any) => a.type === "indexing")?.result?.submitted ?? null;
                   const totalInspected = actionResults.find((a: any) => a.type === "inspection")?.result?.inspected ?? null;
@@ -1675,11 +1682,11 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                           )}
                         </div>
                       </div>
-                      {/* Error details */}
-                      {(result.errors?.length > 0 || result.error) && (
+                      {/* Error details — only show real errors, not infra noise */}
+                      {(rawErrors.length > 0 || rawError) && (
                         <div className="mt-2 p-2 rounded bg-destructive/10 text-[10px] text-destructive font-mono">
-                          {result.error && <div>⚠ {result.error}</div>}
-                          {result.errors?.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
+                          {rawError && <div>⚠ {rawError}</div>}
+                          {rawErrors.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
                         </div>
                       )}
                     </div>
