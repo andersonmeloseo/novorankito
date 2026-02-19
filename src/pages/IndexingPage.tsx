@@ -1517,8 +1517,8 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Agendamentos Criados</h3>
+            <CalendarClock className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Agendamentos Configurados</h3>
             <Badge variant="secondary" className="text-[10px]">{allSchedules.length}</Badge>
           </div>
         </div>
@@ -1570,43 +1570,15 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                         {s.schedule_type === "cron" ? (s.cron_time || "—") : (s.scheduled_at ? format(new Date(s.scheduled_at), "dd/MM/yyyy HH:mm") : "—")}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                        {s.last_run_at ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-default">{formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR })}</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <div className="space-y-1">
-                                <div className="text-[10px] font-medium">{format(new Date(s.last_run_at), "dd/MM/yyyy HH:mm:ss")}</div>
-                                {s.last_run_result?.errors?.length > 0 && (
-                                  <div className="text-[10px] text-destructive">
-                                    {s.last_run_result.errors.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
-                                  </div>
-                                )}
-                                {s.last_run_result?.actions?.length > 0 && (
-                                  <div className="text-[10px] text-success">
-                                    {s.last_run_result.actions.map((a: any, i: number) => (
-                                      <div key={i}>✓ {a.type}: {a.result?.submitted ?? a.result?.inspected ?? 0} URLs</div>
-                                    ))}
-                                  </div>
-                                )}
-                                {s.last_run_result?.error && (
-                                  <div className="text-[10px] text-destructive">⚠ {s.last_run_result.error}</div>
-                                )}
-                                {!s.last_run_result?.errors?.length && !s.last_run_result?.actions?.length && !s.last_run_result?.error && (
-                                  <div className="text-[10px]">Sem detalhes</div>
-                                )}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : "Nunca"}
+                        {s.last_run_at
+                          ? formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR })
+                          : <span className="text-muted-foreground/50">Nunca executado</span>}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">
                         {format(new Date(s.created_at), "dd/MM/yyyy HH:mm")}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-end gap-1">
-                          {/* Toggle active */}
                           {s.status !== "completed" && s.status !== "failed" && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -1617,7 +1589,6 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                               <TooltipContent>{s.enabled ? "Desativar" : "Ativar"}</TooltipContent>
                             </Tooltip>
                           )}
-                          {/* Edit */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(s)}>
@@ -1626,7 +1597,6 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                             </TooltipTrigger>
                             <TooltipContent>Editar</TooltipContent>
                           </Tooltip>
-                          {/* Delete */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDeleteSchedule(s.id)} disabled={deletingId === s.id}>
@@ -1645,6 +1615,80 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
           </div>
         )}
       </Card>
+
+      {/* ── Execution History ── */}
+      {(() => {
+        const executedSchedules = allSchedules.filter((s: any) => s.last_run_at);
+        if (executedSchedules.length === 0) return null;
+        return (
+          <Card className="p-5 lg:col-span-2">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Histórico de Execuções</h3>
+              <Badge variant="secondary" className="text-[10px]">{executedSchedules.length}</Badge>
+            </div>
+            <div className="space-y-3">
+              {executedSchedules
+                .sort((a: any, b: any) => new Date(b.last_run_at).getTime() - new Date(a.last_run_at).getTime())
+                .map((s: any) => {
+                  const result = s.last_run_result || {};
+                  const hasErrors = (result.errors?.length || 0) > 0 || result.error;
+                  const actionResults: any[] = result.actions || [];
+                  const totalIndexed = actionResults.find((a: any) => a.type === "indexing")?.result?.submitted ?? null;
+                  const totalInspected = actionResults.find((a: any) => a.type === "inspection")?.result?.inspected ?? null;
+
+                  return (
+                    <div key={s.id} className={`p-3 rounded-lg border ${hasErrors ? "border-destructive/30 bg-destructive/5" : "border-success/20 bg-success/5"}`}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          {hasErrors
+                            ? <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                            : <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />}
+                          <div>
+                            <div className="text-xs font-medium text-foreground">
+                              {s.schedule_type === "cron" ? "Cron Automático" : "Agendamento Manual"}
+                              {" — "}
+                              {(s.actions || []).map((a: string) => a === "indexing" ? "Indexação" : "Inspeção").join(" + ")}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {format(new Date(s.last_run_at), "dd/MM/yyyy 'às' HH:mm:ss")}
+                              {" · "}
+                              {formatDistanceToNow(new Date(s.last_run_at), { addSuffix: true, locale: ptBR })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {totalIndexed !== null && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                              <Send className="h-2.5 w-2.5" /> {totalIndexed} indexada(s)
+                            </span>
+                          )}
+                          {totalInspected !== null && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                              <ScanSearch className="h-2.5 w-2.5" /> {totalInspected} inspecionada(s)
+                            </span>
+                          )}
+                          {hasErrors && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/20">
+                              <AlertTriangle className="h-2.5 w-2.5" /> Erro
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Error details */}
+                      {(result.errors?.length > 0 || result.error) && (
+                        <div className="mt-2 p-2 rounded bg-destructive/10 text-[10px] text-destructive font-mono">
+                          {result.error && <div>⚠ {result.error}</div>}
+                          {result.errors?.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* ── Edit Dialog ── */}
       <Dialog open={!!editingSchedule} onOpenChange={(open) => { if (!open) setEditingSchedule(null); }}>
