@@ -16,9 +16,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useInventory, useIndexingRequests, useSubmitUrls, useRetryRequest, useInspectUrls,
+  useInventory, useIndexingRequests, useSubmitUrls, useRetryRequest, useInspectUrls, useRebalanceQuota,
   type InventoryUrl, type IndexingRequest,
 } from "@/hooks/use-indexing";
+
 import { IndexingDashboard } from "@/components/indexing/IndexingDashboard";
 import { ScheduleDialog, type ManualSchedule, type CronConfig } from "@/components/indexing/ScheduleDialog";
 import {
@@ -128,6 +129,8 @@ export default function IndexingPage() {
   const submitMutation = useSubmitUrls(projectId);
   const retryMutation = useRetryRequest(projectId);
   const inspectMutation = useInspectUrls(projectId);
+  const rebalanceMutation = useRebalanceQuota(projectId);
+
 
   const inventory = inventoryData?.inventory || [];
   const stats = inventoryData?.stats || { totalUrls: 0, indexed: 0, notIndexed: 0, unknown: 0, sentToday: 0, dailyLimit: 200 };
@@ -374,7 +377,7 @@ export default function IndexingPage() {
 
         {/* Quota Banner — visible across all tabs */}
         <Card className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Zap className="h-4 w-4 text-primary" />
@@ -384,17 +387,45 @@ export default function IndexingPage() {
                 <div className="text-lg font-bold text-foreground tabular-nums">{stats.sentToday} / {stats.dailyLimit}</div>
               </div>
             </div>
-            <div className="w-40">
-              <Progress value={Math.min(100, Math.round((stats.sentToday / stats.dailyLimit) * 100))} className="h-2.5" />
-              <div className="text-[9px] text-muted-foreground text-right mt-1">
-                {Math.max(0, stats.dailyLimit - stats.sentToday)} restantes hoje
+            <div className="flex items-center gap-4">
+              <div className="w-40">
+                <Progress value={Math.min(100, Math.round((stats.sentToday / stats.dailyLimit) * 100))} className="h-2.5" />
+                <div className="text-[9px] text-muted-foreground text-right mt-1">
+                  {Math.max(0, stats.dailyLimit - stats.sentToday)} restantes hoje
+                </div>
               </div>
+              {/* Rebalance button — shown when quota_exceeded URLs exist */}
+              {inventory.some(u => u.last_request_status === "quota_exceeded") && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-warning/40 text-warning hover:bg-warning/10 text-xs h-8"
+                      onClick={() => rebalanceMutation.mutate()}
+                      disabled={rebalanceMutation.isPending}
+                    >
+                      {rebalanceMutation.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RefreshCw className="h-3.5 w-3.5" />}
+                      Reequilibrar Quotas
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-warning/20 text-warning border-0 ml-0.5">
+                        {inventory.filter(u => u.last_request_status === "quota_exceeded").length}
+                      </Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    Reenviar todas as URLs com quota excedida, distribuindo automaticamente entre todas as contas GSC disponíveis.
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground mt-2">
             O Google permite ~200 notificações de indexação por dia por propriedade. Este contador reseta à meia-noite (UTC).
           </p>
         </Card>
+
 
         {/* Main Content — tab switching via sidebar */}
         <Tabs value={activeTab} onValueChange={handleTabChange}>

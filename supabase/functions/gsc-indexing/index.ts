@@ -642,7 +642,166 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action. Use: inventory, list, submit, submit_auto, retry, inspect, inspect_auto" }), {
+    // ─── Action: "rebalance" — retry all quota_exceeded URLs redistributing across active connections ───
+    if (action === "rebalance") {
+      // Get all URLs with quota_exceeded status (their LATEST request is quota_exceeded)
+      const { data: quotaRows, error: qErr } = await supabase
+        .from("indexing_requests")
+        .select("url, request_type, submitted_at")
+        .eq("project_id", project_id)
+        .eq("status", "quota_exceeded")
+        .order("submitted_at", { ascending: false });
+
+      if (qErr) throw qErr;
+      if (!quotaRows || quotaRows.length === 0) {
+        return new Response(JSON.stringify({ rebalanced: 0, message: "Nenhuma URL com quota excedida encontrada" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Deduplicate: keep only URLs whose LATEST request is still quota_exceeded
+      // (Some might have been re-submitted successfully since)
+      const { data: latestReqs } = await supabase
+        .from("indexing_requests")
+        .select("url, status, submitted_at")
+        .eq("project_id", project_id)
+        .order("submitted_at", { ascending: false });
+
+      const latestMap = new Map<string, string>();
+      for (const r of (latestReqs || [])) {
+        if (!latestMap.has(r.url)) latestMap.set(r.url, r.status);
+      }
+
+      // Only URLs still quota_exceeded in their latest request
+      const urlsToRetry = [...new Set(quotaRows.map((r: any) => r.url))].filter(
+        u => latestMap.get(u) === "quota_exceeded"
+      );
+
+      if (urlsToRetry.length === 0) {
+        return new Response(JSON.stringify({ rebalanced: 0, message: "Todas as URLs já foram reprocessadas com sucesso" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get access tokens for all connections
+      const rebalTokens: { conn: any; token: string; quotaExceeded: boolean; usedToday: number }[] = [];
+      for (const c of allConns!) {
+        try {
+          const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
+          rebalTokens.push({ conn: c, token, quotaExceeded: false, usedToday: 0 });
+        } catch (e) {
+          console.error(`Rebalance: failed to get token for ${c.client_email}:`, e);
+        }
+      }
+
+      if (rebalTokens.length === 0) {
+        return new Response(JSON.stringify({ error: "Failed to authenticate with any GSC connection" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const rebalResults: { url: string; status: string; account?: string; fail_reason?: string }[] = [];
+      const type = "URL_UPDATED";
+
+      for (let i = 0; i < urlsToRetry.length; i++) {
+        const url = urlsToRetry[i];
+
+        const activeConns = rebalTokens.filter(ct => !ct.quotaExceeded && ct.usedToday < 200);
+        if (activeConns.length === 0) {
+          rebalResults.push({ url, status: "quota_exceeded", fail_reason: "All connections quota exceeded" });
+          continue;
+        }
+
+        const ct = activeConns[i % activeConns.length];
+
+        try {
+          const res = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${ct.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ url, type }),
+          });
+
+          const body = await res.json();
+
+          if (res.ok) {
+            ct.usedToday++;
+            rebalResults.push({ url, status: "success", account: ct.conn.client_email });
+            // Update the DB record to success
+            await supabase
+              .from("indexing_requests")
+              .update({
+                status: "success",
+                response_code: res.status,
+                response_message: body.urlNotificationMetadata?.latestUpdate?.type || type,
+                fail_reason: null,
+                completed_at: new Date().toISOString(),
+                submitted_at: new Date().toISOString(),
+              })
+              .eq("project_id", project_id)
+              .eq("url", url)
+              .eq("status", "quota_exceeded");
+          } else if (res.status === 429) {
+            ct.quotaExceeded = true;
+            // Try next available connection immediately
+            const retryConns = rebalTokens.filter(c => !c.quotaExceeded && c.usedToday < 200);
+            if (retryConns.length > 0) {
+              const retryCt = retryConns[0];
+              const retryRes = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${retryCt.token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ url, type }),
+              });
+              const retryBody = await retryRes.json();
+              if (retryRes.ok) {
+                retryCt.usedToday++;
+                rebalResults.push({ url, status: "success", account: retryCt.conn.client_email });
+                await supabase
+                  .from("indexing_requests")
+                  .update({
+                    status: "success",
+                    response_code: retryRes.status,
+                    response_message: retryBody.urlNotificationMetadata?.latestUpdate?.type || type,
+                    fail_reason: null,
+                    completed_at: new Date().toISOString(),
+                    submitted_at: new Date().toISOString(),
+                  })
+                  .eq("project_id", project_id)
+                  .eq("url", url)
+                  .eq("status", "quota_exceeded");
+              } else {
+                if (retryRes.status === 429) retryCt.quotaExceeded = true;
+                rebalResults.push({ url, status: retryRes.status === 429 ? "quota_exceeded" : "failed", account: retryCt.conn.client_email });
+              }
+            } else {
+              rebalResults.push({ url, status: "quota_exceeded", fail_reason: "All connections quota exceeded" });
+            }
+          } else {
+            rebalResults.push({ url, status: "failed", fail_reason: body.error?.message || `HTTP ${res.status}`, account: ct.conn.client_email });
+          }
+
+          await new Promise(r => setTimeout(r, 100));
+        } catch (e) {
+          rebalResults.push({ url, status: "failed", fail_reason: e instanceof Error ? e.message : "Unknown error" });
+        }
+      }
+
+      const succeeded = rebalResults.filter(r => r.status === "success").length;
+      const stillQuota = rebalResults.filter(r => r.status === "quota_exceeded").length;
+      const failed = rebalResults.filter(r => r.status === "failed").length;
+
+      return new Response(JSON.stringify({
+        rebalanced: succeeded,
+        still_quota_exceeded: stillQuota,
+        failed,
+        total_attempted: urlsToRetry.length,
+        connections_used: rebalTokens.length,
+        results: rebalResults,
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Invalid action. Use: inventory, list, submit, submit_auto, retry, inspect, inspect_auto, rebalance" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {

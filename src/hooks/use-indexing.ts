@@ -186,3 +186,35 @@ export function useInspectUrls(projectId: string | undefined) {
     onError: (err: Error) => toast.error(err.message),
   });
 }
+
+export function useRebalanceQuota(projectId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("gsc-indexing", {
+        body: { project_id: projectId, action: "rebalance" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["indexing-inventory", projectId] });
+      qc.invalidateQueries({ queryKey: ["indexing-requests", projectId] });
+      if (data.rebalanced > 0) {
+        toast.success(`${data.rebalanced} URL(s) reenviada(s) com sucesso`, {
+          description: data.still_quota_exceeded > 0
+            ? `${data.still_quota_exceeded} URL(s) ainda com quota excedida — todas as contas esgotadas.`
+            : "Todas as URLs foram redistribuídas entre as contas disponíveis.",
+        });
+      } else if (data.still_quota_exceeded > 0) {
+        toast.error(`Quota esgotada em todas as ${data.connections_used} conta(s)`, {
+          description: `${data.still_quota_exceeded} URL(s) não puderam ser reenviadas. Aguarde o reset da quota (meia-noite UTC).`,
+        });
+      } else {
+        toast.info(data.message || "Nenhuma URL para reequilibrar");
+      }
+    },
+    onError: (err: Error) => toast.error(`Erro ao reequilibrar: ${err.message}`),
+  });
+}
