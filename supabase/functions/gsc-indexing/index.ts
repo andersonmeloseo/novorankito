@@ -80,8 +80,10 @@ serve(async (req) => {
       // Get index_coverage for this project (recursive)
       const coverage = await fetchAll("index_coverage", "url, verdict, coverage_state, indexing_state, last_crawl_time, crawled_as, page_fetch_state, robotstxt_state, inspected_at", { project_id });
 
-      // Get latest indexing request per URL (recursive)
+      // Get latest indexing request per URL — order DESC so most recent is processed LAST (overwrites older ones)
       const indexingReqs = await fetchAll("indexing_requests", "url, status, submitted_at, request_type", { project_id }, "submitted_at");
+      // NOTE: fetchAll orders ascending by default, so the LAST item in the array is the most recent.
+      // reqMap.set() overwrites previous entries, so the final value is always the most recent request.
 
       // Get last 28 days of SEO metrics per URL (clicks + impressions)
       const date28dAgo = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
@@ -154,12 +156,12 @@ serve(async (req) => {
       const notIndexed = inventory.filter((u: any) => u.verdict && u.verdict !== "PASS").length;
       const unknown = inventory.filter((u: any) => !u.verdict).length;
 
-      // sentToday: count unique URLs whose LATEST request today was successful (deduped by URL)
+      // sentToday: count unique URLs where the LATEST request today resulted in success OR quota_exceeded
+      // (quota_exceeded means the Google API DID receive the request but hit the limit — it counts against quota)
       const todayStr = new Date().toISOString().slice(0, 10);
-      // reqMap already holds the latest request per URL (most recent wins due to ascending sort + overwrite)
-      // Count URLs where the latest request was submitted today AND succeeded (not quota_exceeded or failed)
+      // reqMap holds the most recent request per URL (ascending sort = last write wins = most recent)
       const sentToday = Array.from(reqMap.values()).filter(
-        (r: any) => r.submitted_at?.slice(0, 10) === todayStr && r.status === "success"
+        (r: any) => r.submitted_at?.slice(0, 10) === todayStr && (r.status === "success" || r.status === "quota_exceeded")
       ).length;
 
       return new Response(JSON.stringify({
@@ -195,12 +197,37 @@ serve(async (req) => {
       const type = request_type || "URL_UPDATED";
       const ownerId = conn.owner_id;
 
+      // Pre-load today's usage per account from the DB
+      const todayForSubmit = new Date().toISOString().slice(0, 10);
+      const { data: todaySuccessRows } = await supabase
+        .from("indexing_requests")
+        .select("url, status, submitted_at")
+        .eq("project_id", project_id)
+        .gte("submitted_at", todayForSubmit + "T00:00:00Z")
+        .eq("status", "success");
+
+      const successTodayTotal = (todaySuccessRows || []).length;
+      const totalLimit = 200 * (allConns?.length || 1);
+      const remainingForSubmit = Math.max(0, totalLimit - successTodayTotal);
+
+      if (remainingForSubmit === 0) {
+        return new Response(JSON.stringify({
+          submitted: 0, failed: 0, quota_exceeded: urls.length, total: urls.length,
+          connections_used: allConns?.length || 0, connections_active: 0,
+          results: urls.map(u => ({ url: u, status: "quota_exceeded", response_code: 429, fail_reason: `Quota diária esgotada: ${successTodayTotal}/${totalLimit} envios usados hoje` })),
+          message: `Quota diária esgotada. ${successTodayTotal}/${totalLimit} envios usados hoje. Aguarde o reset à meia-noite UTC.`,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Get access tokens for all connections
       const connTokens: { conn: any; token: string; quotaExceeded: boolean; usedToday: number }[] = [];
       for (const c of allConns!) {
         try {
           const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
-          connTokens.push({ conn: c, token, quotaExceeded: false, usedToday: 0 });
+          // Estimate per-account usage as even split — actual enforcement is by 429 responses
+          connTokens.push({ conn: c, token, quotaExceeded: false, usedToday: Math.floor(successTodayTotal / (allConns!.length)) });
         } catch (e) {
           console.error(`Failed to get token for ${c.client_email}:`, e);
         }
@@ -212,9 +239,10 @@ serve(async (req) => {
         });
       }
 
-      // Cap batch by active connections × 200 per connection
-      const maxPerBatch = 200 * connTokens.length;
+      // Cap batch by remaining quota
+      const maxPerBatch = remainingForSubmit;
       const batch = urls.slice(0, Math.min(urls.length, maxPerBatch));
+
 
       const results: { url: string; status: string; response_code?: number; response_message?: string; fail_reason?: string; account?: string }[] = [];
 
@@ -683,12 +711,40 @@ serve(async (req) => {
         });
       }
 
+      // Get actual usage today per connection from DB to avoid hitting limits
+      const todayForRebal = new Date().toISOString().slice(0, 10);
+      const { data: todayReqs } = await supabase
+        .from("indexing_requests")
+        .select("url, status, submitted_at")
+        .eq("project_id", project_id)
+        .gte("submitted_at", todayForRebal + "T00:00:00Z");
+
+      // Count successful submissions today (these consume quota)
+      const successTodayCount = (todayReqs || []).filter((r: any) => r.status === "success").length;
+      // Total quota available = 200 * connections, minus what's already been sent successfully
+      const totalDailyLimit = 200 * (allConns?.length || 1);
+      const remainingQuota = Math.max(0, totalDailyLimit - successTodayCount);
+
+      if (remainingQuota === 0) {
+        return new Response(JSON.stringify({
+          rebalanced: 0,
+          still_quota_exceeded: urlsToRetry.length,
+          failed: 0,
+          total_attempted: 0,
+          connections_used: allConns?.length || 0,
+          message: `Quota diária esgotada: ${successTodayCount}/${totalDailyLimit} envios usados hoje. Aguarde o reset à meia-noite (UTC).`,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Get access tokens for all connections
       const rebalTokens: { conn: any; token: string; quotaExceeded: boolean; usedToday: number }[] = [];
       for (const c of allConns!) {
         try {
           const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
-          rebalTokens.push({ conn: c, token, quotaExceeded: false, usedToday: 0 });
+          // Distribute already-used quota evenly across accounts as a starting estimate
+          rebalTokens.push({ conn: c, token, quotaExceeded: false, usedToday: Math.floor(successTodayCount / (allConns!.length)) });
         } catch (e) {
           console.error(`Rebalance: failed to get token for ${c.client_email}:`, e);
         }
@@ -700,11 +756,14 @@ serve(async (req) => {
         });
       }
 
+      // Only attempt up to remaining quota
+      const urlsToRebalance = urlsToRetry.slice(0, remainingQuota);
+
       const rebalResults: { url: string; status: string; account?: string; fail_reason?: string }[] = [];
       const type = "URL_UPDATED";
 
-      for (let i = 0; i < urlsToRetry.length; i++) {
-        const url = urlsToRetry[i];
+      for (let i = 0; i < urlsToRebalance.length; i++) {
+        const url = urlsToRebalance[i];
 
         const activeConns = rebalTokens.filter(ct => !ct.quotaExceeded && ct.usedToday < 200);
         if (activeConns.length === 0) {
@@ -726,20 +785,19 @@ serve(async (req) => {
           if (res.ok) {
             ct.usedToday++;
             rebalResults.push({ url, status: "success", account: ct.conn.client_email });
-            // Update the DB record to success
-            await supabase
-              .from("indexing_requests")
-              .update({
-                status: "success",
-                response_code: res.status,
-                response_message: body.urlNotificationMetadata?.latestUpdate?.type || type,
-                fail_reason: null,
-                completed_at: new Date().toISOString(),
-                submitted_at: new Date().toISOString(),
-              })
-              .eq("project_id", project_id)
-              .eq("url", url)
-              .eq("status", "quota_exceeded");
+            // Insert a new success record — keeps history clean and reqMap will show the latest as success
+            await supabase.from("indexing_requests").insert({
+              project_id,
+              owner_id: ct.conn.owner_id,
+              url,
+              request_type: type,
+              status: "success",
+              response_code: res.status,
+              response_message: body.urlNotificationMetadata?.latestUpdate?.type || type,
+              fail_reason: null,
+              completed_at: new Date().toISOString(),
+              submitted_at: new Date().toISOString(),
+            });
           } else if (res.status === 429) {
             ct.quotaExceeded = true;
             // Try next available connection immediately
@@ -755,19 +813,18 @@ serve(async (req) => {
               if (retryRes.ok) {
                 retryCt.usedToday++;
                 rebalResults.push({ url, status: "success", account: retryCt.conn.client_email });
-                await supabase
-                  .from("indexing_requests")
-                  .update({
-                    status: "success",
-                    response_code: retryRes.status,
-                    response_message: retryBody.urlNotificationMetadata?.latestUpdate?.type || type,
-                    fail_reason: null,
-                    completed_at: new Date().toISOString(),
-                    submitted_at: new Date().toISOString(),
-                  })
-                  .eq("project_id", project_id)
-                  .eq("url", url)
-                  .eq("status", "quota_exceeded");
+                await supabase.from("indexing_requests").insert({
+                  project_id,
+                  owner_id: retryCt.conn.owner_id,
+                  url,
+                  request_type: type,
+                  status: "success",
+                  response_code: retryRes.status,
+                  response_message: retryBody.urlNotificationMetadata?.latestUpdate?.type || type,
+                  fail_reason: null,
+                  completed_at: new Date().toISOString(),
+                  submitted_at: new Date().toISOString(),
+                });
               } else {
                 if (retryRes.status === 429) retryCt.quotaExceeded = true;
                 rebalResults.push({ url, status: retryRes.status === 429 ? "quota_exceeded" : "failed", account: retryCt.conn.client_email });
@@ -785,16 +842,20 @@ serve(async (req) => {
         }
       }
 
+      // URLs not attempted because quota was already exhausted
+      const notAttempted = urlsToRetry.slice(remainingQuota);
+
       const succeeded = rebalResults.filter(r => r.status === "success").length;
-      const stillQuota = rebalResults.filter(r => r.status === "quota_exceeded").length;
+      const stillQuota = rebalResults.filter(r => r.status === "quota_exceeded").length + notAttempted.length;
       const failed = rebalResults.filter(r => r.status === "failed").length;
 
       return new Response(JSON.stringify({
         rebalanced: succeeded,
         still_quota_exceeded: stillQuota,
         failed,
-        total_attempted: urlsToRetry.length,
+        total_attempted: urlsToRebalance.length,
         connections_used: rebalTokens.length,
+        remaining_quota: remainingQuota,
         results: rebalResults,
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
