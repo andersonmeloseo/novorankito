@@ -27,8 +27,9 @@ import {
   ArrowUpFromLine, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, ExternalLink, Eye, Shield, ShieldOff,
   ShieldCheck, HelpCircle, ChevronRight, ChevronLeft, ChevronDown, Layers, History, Package, ScanSearch,
   AlertCircle, Ban, Info, Map, FileText, LayoutDashboard, CalendarClock, Wifi, WifiOff, Upload,
-  Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus, XCircle
+  Pencil, Trash2, TestTube, RefreshCw, Loader2, Settings2, Plus, XCircle, BookOpen
 } from "lucide-react";
+import { GSCTutorialModal } from "@/components/onboarding/GSCTutorialModal";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1783,6 +1784,7 @@ function AccountsTabContent({ projectId, user, connections, isLoading }: {
 }) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [connectionName, setConnectionName] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -2004,10 +2006,16 @@ function AccountsTabContent({ projectId, user, connections, isLoading }: {
           )}
         </Card>
       ) : (
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
-          <Plus className="h-3 w-3" /> Adicionar Conta GSC
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowTutorial(true)}>
+            <BookOpen className="h-3 w-3" /> Tutorial GSC
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
+            <Plus className="h-3 w-3" /> Adicionar Conta GSC
+          </Button>
+        </div>
       )}
+      <GSCTutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
     </div>
   );
 }
