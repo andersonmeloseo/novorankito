@@ -842,22 +842,30 @@ export default function IndexingPage() {
                           size="sm"
                           variant="default"
                           className="gap-1.5 text-xs"
-                          onClick={() => {
-                            const urlsToSubmit = inventory
-                              .filter(u => u.verdict !== "PASS" && u.last_request_status !== "success")
-                              .map(u => u.url);
-                            if (urlsToSubmit.length === 0) {
-                              toast.warning("Todas as URLs já estão indexadas ou enviadas com sucesso");
-                              return;
+                          onClick={async () => {
+                            const selectedPaths = Array.from(selectedSmUrls);
+                            toast.info(`Enviando ${selectedPaths.length} sitemap(s) para indexação...`);
+                            try {
+                              const { data, error } = await supabase.functions.invoke("gsc-sitemaps", {
+                                body: { project_id: projectId, action: "submit", sitemaps: selectedPaths },
+                              });
+                              if (error) throw error;
+                              if (data?.error) throw new Error(data.error);
+                              toast.success(`${selectedPaths.length} sitemap(s) enviado(s) com sucesso`, {
+                                description: selectedPaths.length <= 3
+                                  ? selectedPaths.join(", ")
+                                  : `${selectedPaths.slice(0, 2).join(", ")} e mais ${selectedPaths.length - 2}`,
+                              });
+                              setSelectedSmUrls(new Set());
+                              queryClient.invalidateQueries({ queryKey: ["gsc-sitemaps-list", projectId] });
+                            } catch (err: any) {
+                              toast.error(`Erro ao enviar sitemaps: ${err.message}`);
                             }
-                            const batch = urlsToSubmit.slice(0, 50);
-                            toast.info(`Enviando ${batch.length} URL(s) não indexadas para a fila...`);
-                            submitMutation.mutate({ urls: batch, requestType: "URL_UPDATED" });
                           }}
                           disabled={submitMutation.isPending}
                         >
-                          {submitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                          Enviar para Indexação ({inventory.filter(u => u.verdict !== "PASS" && u.last_request_status !== "success").length})
+                          <Send className="h-3 w-3" />
+                          Enviar Sitemap(s) para Indexação ({selectedSmUrls.size})
                         </Button>
                         <Button
                           size="sm"

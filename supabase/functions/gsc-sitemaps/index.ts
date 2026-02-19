@@ -35,7 +35,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project_id, action, sitemap_url } = await req.json();
+    const body = await req.json();
+    const { project_id, action, sitemap_url, sitemaps } = body;
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,13 +66,39 @@ serve(async (req) => {
       });
     }
 
-    if (action === "submit" && sitemap_url) {
-      const res = await fetch(`${baseUrl}/${encodeURIComponent(sitemap_url)}`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) throw new Error(`Sitemap submit error [${res.status}]: ${await res.text()}`);
-      return new Response(JSON.stringify({ success: true }), {
+    if (action === "submit") {
+      // Support batch: sitemaps[] array or single sitemap_url
+      const targets: string[] = sitemaps && Array.isArray(sitemaps) && sitemaps.length > 0
+        ? sitemaps
+        : sitemap_url ? [sitemap_url] : [];
+
+      if (targets.length === 0) {
+        return new Response(JSON.stringify({ error: "No sitemaps provided" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const results: { url: string; success: boolean; error?: string }[] = [];
+      for (const url of targets) {
+        try {
+          const res = await fetch(`${baseUrl}/${encodeURIComponent(url)}`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            results.push({ url, success: false, error: `[${res.status}] ${errText}` });
+          } else {
+            results.push({ url, success: true });
+          }
+        } catch (e: any) {
+          results.push({ url, success: false, error: e.message });
+        }
+      }
+
+      const succeeded = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      return new Response(JSON.stringify({ success: failed === 0, submitted: succeeded, failed, results }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
