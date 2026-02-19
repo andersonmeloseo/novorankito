@@ -111,22 +111,27 @@ export function useSubmitUrls(projectId: string | undefined) {
         const failed = data.results.filter((r: any) => r.status === "failed");
         const quota = data.results.filter((r: any) => r.status === "quota_exceeded");
         if (succeeded.length > 0) {
-          toast.success(`${succeeded.length} URL(s) reenviada(s) para a fila de indexação`, {
+          toast.success(`${succeeded.length} URL(s) enviada(s) com sucesso`, {
             description: succeeded.length <= 3
               ? succeeded.map((r: any) => r.url).join("\n")
               : `${succeeded.slice(0, 2).map((r: any) => r.url).join(", ")} e mais ${succeeded.length - 2}`,
           });
         }
         if (failed.length > 0) {
-          toast.error(`${failed.length} URL(s) falharam no reenvio`, {
+          toast.error(`${failed.length} URL(s) falharam no envio`, {
             description: failed.length <= 3
               ? failed.map((r: any) => `${r.url}: ${r.fail_reason || "erro"}`).join("\n")
               : `${failed.length} URLs não foram aceitas pela API`,
           });
         }
-        if (quota.length > 0) {
-          toast.warning(`${quota.length} URL(s) ainda com quota excedida`, {
-            description: "Tente novamente mais tarde quando a quota resetar",
+        // Only show quota warning if NO successes for those specific URLs (i.e., all quota, no partial success)
+        if (quota.length > 0 && succeeded.length === 0) {
+          toast.warning(`${quota.length} URL(s) com quota excedida`, {
+            description: "A quota diária da API do Google foi atingida. Tente novamente amanhã.",
+          });
+        } else if (quota.length > 0 && succeeded.length > 0) {
+          toast.warning(`${quota.length} URL(s) não enviada(s) — quota excedida nessa conta`, {
+            description: "As demais foram enviadas com sucesso via outra conta.",
           });
         }
         if (succeeded.length === 0 && failed.length === 0 && quota.length === 0) {

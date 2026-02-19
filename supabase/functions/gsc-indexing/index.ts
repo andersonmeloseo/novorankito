@@ -153,7 +153,14 @@ serve(async (req) => {
       const indexed = inventory.filter((u: any) => u.verdict === "PASS").length;
       const notIndexed = inventory.filter((u: any) => u.verdict && u.verdict !== "PASS").length;
       const unknown = inventory.filter((u: any) => !u.verdict).length;
-      const sentToday = (indexingReqs || []).filter((r: any) => r.submitted_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
+
+      // sentToday: count unique URLs whose LATEST request today was successful (deduped by URL)
+      const todayStr = new Date().toISOString().slice(0, 10);
+      // reqMap already holds the latest request per URL (most recent wins due to ascending sort + overwrite)
+      // Count URLs where the latest request was submitted today AND succeeded (not quota_exceeded or failed)
+      const sentToday = Array.from(reqMap.values()).filter(
+        (r: any) => r.submitted_at?.slice(0, 10) === todayStr && r.status === "success"
+      ).length;
 
       return new Response(JSON.stringify({
         inventory,
