@@ -38,6 +38,7 @@ import { IndexCoverageTab } from "@/components/seo/IndexCoverageTab";
 import { PositionHistoryTab } from "@/components/seo/PositionHistoryTab";
 import { UrlGroupingTab } from "@/components/seo/UrlGroupingTab";
 import { AiInsightsTab } from "@/components/seo/AiInsightsTab";
+import { OnPageAuditTab } from "@/components/seo/OnPageAuditTab";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
 import { format, subDays, subYears, parseISO, isWithinInterval } from "date-fns";
@@ -60,7 +61,7 @@ export default function SeoPage() {
 
   const getTabFromHash = (hash: string) => {
     const tab = hash.replace("#", "");
-    const valid = ["queries","pages","countries","devices","appearance","opportunities","decay","cannibalization","inspection","coverage","sitemaps","links","discover","history","grouping","ai-insights"];
+    const valid = ["queries","pages","countries","devices","appearance","opportunities","decay","cannibalization","inspection","coverage","sitemaps","links","discover","history","grouping","ai-insights","onpage"];
     return valid.includes(tab) ? tab : "queries";
   };
   const [activeTab, setActiveTab] = useState(() => getTabFromHash(location.hash));
@@ -987,6 +988,10 @@ export default function SeoPage() {
                       topPages={pageRows}
                       dateRange={dateRange}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="onpage" className="mt-0">
+                    <OnPageAuditTab projectId={projectId} />
                   </TabsContent>
                 </Tabs>
               </AnimatedContainer>

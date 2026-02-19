@@ -96,6 +96,7 @@ const seoNav = [
   { title: "Histórico", url: "/seo#history", icon: History },
   { title: "Agrupamento", url: "/seo#grouping", icon: FolderTree },
   { title: "IA Insights", url: "/seo#ai-insights", icon: Sparkles },
+  { title: "On-Page", url: "/seo#onpage", icon: ScanSearch },
 ];
 
 const analiticaNav = [
