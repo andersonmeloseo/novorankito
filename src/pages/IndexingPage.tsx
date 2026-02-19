@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useInventory, useIndexingRequests, useSubmitUrls, useRetryRequest, useInspectUrls, useRebalanceQuota,
+  useInventory, useIndexingRequests, useSubmitUrls, useRetryRequest, useInspectUrls,
   type InventoryUrl, type IndexingRequest,
 } from "@/hooks/use-indexing";
 
@@ -129,8 +129,6 @@ export default function IndexingPage() {
   const submitMutation = useSubmitUrls(projectId);
   const retryMutation = useRetryRequest(projectId);
   const inspectMutation = useInspectUrls(projectId);
-  const rebalanceMutation = useRebalanceQuota(projectId);
-
 
   const inventory = inventoryData?.inventory || [];
   const stats = inventoryData?.stats || { totalUrls: 0, indexed: 0, notIndexed: 0, unknown: 0, sentToday: 0, dailyLimit: 200 };
@@ -394,31 +392,6 @@ export default function IndexingPage() {
                   {Math.max(0, stats.dailyLimit - stats.sentToday)} restantes hoje
                 </div>
               </div>
-              {/* Rebalance button — shown when quota_exceeded URLs exist */}
-              {inventory.some(u => u.last_request_status === "quota_exceeded") && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 border-warning/40 text-warning hover:bg-warning/10 text-xs h-8"
-                      onClick={() => rebalanceMutation.mutate()}
-                      disabled={rebalanceMutation.isPending}
-                    >
-                      {rebalanceMutation.isPending
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <RefreshCw className="h-3.5 w-3.5" />}
-                      Reequilibrar Quotas
-                      <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-warning/20 text-warning border-0 ml-0.5">
-                        {inventory.filter(u => u.last_request_status === "quota_exceeded").length}
-                      </Badge>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    Reenviar todas as URLs com quota excedida, distribuindo automaticamente entre todas as contas GSC disponíveis.
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground mt-2">

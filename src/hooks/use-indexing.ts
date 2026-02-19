@@ -100,16 +100,31 @@ export function useSubmitUrls(projectId: string | undefined) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Auto-rebalance: if any URLs ended up quota_exceeded, automatically redistribute
+      const results = data?.results || [];
+      const quotaUrls = results.filter((r: any) => r.status === "quota_exceeded");
+      if (quotaUrls.length > 0) {
+        const { data: rebalData } = await supabase.functions.invoke("gsc-indexing", {
+          body: { project_id: projectId, action: "rebalance" },
+        });
+        return { ...data, _rebalance: rebalData };
+      }
+
       return data;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["indexing-inventory", projectId] });
       qc.invalidateQueries({ queryKey: ["indexing-requests", projectId] });
+
+      const rb = (data as any)._rebalance;
+
       // Show per-URL results when available
       if (data.results && Array.isArray(data.results)) {
         const succeeded = data.results.filter((r: any) => r.status === "success");
         const failed = data.results.filter((r: any) => r.status === "failed");
         const quota = data.results.filter((r: any) => r.status === "quota_exceeded");
+
         if (succeeded.length > 0) {
           toast.success(`${succeeded.length} URL(s) enviada(s) com sucesso`, {
             description: succeeded.length <= 3
@@ -124,23 +139,33 @@ export function useSubmitUrls(projectId: string | undefined) {
               : `${failed.length} URLs não foram aceitas pela API`,
           });
         }
-        // Only show quota warning if NO successes for those specific URLs (i.e., all quota, no partial success)
-        if (quota.length > 0 && succeeded.length === 0) {
+
+        // Show rebalance result if auto-rebalance happened
+        if (quota.length > 0 && rb) {
+          if (rb.rebalanced > 0) {
+            toast.success(`${rb.rebalanced} URL(s) redistribuída(s) automaticamente`, {
+              description: rb.still_quota_exceeded > 0
+                ? `${rb.still_quota_exceeded} URL(s) ainda com quota — todas as contas esgotadas.`
+                : "Redistribuídas entre as contas GSC disponíveis.",
+            });
+          } else if (rb.still_quota_exceeded > 0) {
+            toast.warning(`Quota esgotada em todas as contas`, {
+              description: `${rb.still_quota_exceeded} URL(s) aguardando reset da quota (meia-noite UTC).`,
+            });
+          }
+        } else if (quota.length > 0 && !rb) {
           toast.warning(`${quota.length} URL(s) com quota excedida`, {
-            description: "A quota diária da API do Google foi atingida. Tente novamente amanhã.",
-          });
-        } else if (quota.length > 0 && succeeded.length > 0) {
-          toast.warning(`${quota.length} URL(s) não enviada(s) — quota excedida nessa conta`, {
-            description: "As demais foram enviadas com sucesso via outra conta.",
+            description: "A quota diária da API do Google foi atingida.",
           });
         }
+
         if (succeeded.length === 0 && failed.length === 0 && quota.length === 0) {
           toast.info("Nenhuma URL processada");
         }
       } else {
         if (data.submitted > 0) toast.success(`${data.submitted} URL(s) enviada(s) com sucesso`);
         if (data.failed > 0) toast.error(`${data.failed} URL(s) falharam`);
-        if (data.quota_exceeded > 0) toast.warning(`${data.quota_exceeded} URL(s) com quota excedida`);
+        if (data.quota_exceeded > 0 && !rb) toast.warning(`${data.quota_exceeded} URL(s) com quota excedida`);
       }
     },
     onError: (err: Error) => toast.error(err.message),
