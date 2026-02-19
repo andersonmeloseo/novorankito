@@ -323,6 +323,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                   <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
                   <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end />
+                  <div className="h-2" />
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
