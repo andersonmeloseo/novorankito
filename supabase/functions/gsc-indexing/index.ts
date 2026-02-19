@@ -233,7 +233,7 @@ serve(async (req) => {
         try {
           const token = await getAccessToken({ client_email: c.client_email, private_key: c.private_key }, "https://www.googleapis.com/auth/indexing");
           // Estimate per-account usage as even split — actual enforcement is by 429 responses
-          connTokens.push({ conn: c, token, quotaExceeded: false, usedToday: Math.floor(successTodayTotal / (allConns!.length)) });
+          connTokens.push({ conn: c, token, quotaExceeded: false, usedToday: Math.floor(allCallsToday / (allConns!.length)) });
         } catch (e) {
           console.error(`Failed to get token for ${c.client_email}:`, e);
         }
