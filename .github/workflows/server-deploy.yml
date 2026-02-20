@@ -20,40 +20,24 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          set -e  # Exit on any error
-          
-          echo "🚀 Starting deployment..."
-          cd /home/kaik/projetos/projeto-davi-melo-rankito/rankito
-          
-          echo "📥 Pulling latest code..."
+          set -e
+
+          echo "🚀 Deploy iniciado em $(date)"
+          cd /opt/novo-rankito
+
+          echo "📥 Atualizando código..."
           git fetch origin
           git reset --hard origin/main
-          
-          echo "🔧 Checking Node version..."
-          node --version
-          if ! node --version | grep -q "v20"; then
-            echo "⚠️  Node 20 required. Installing..."
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            nvm install 20
-            nvm use 20
-          fi
-          
-          echo "🧹 Cleaning old dependencies..."
-          rm -rf node_modules package-lock.json
-          
-          echo "📦 Installing dependencies..."
-          npm ci --omit=optional
-          
-          echo "🏗️ Building project..."
-          npm run build
-          
-          echo "🔄 Restarting PM2..."
-          pm2 restart rankito || pm2 start ecosystem.config.cjs
-          
-          echo "✅ Verifying deployment..."
-          pm2 status
-          pm2 logs rankito --lines 5
-          
-          echo "🚀 Deploy completed successfully!"
+
+          echo "� Instalando dependências..."
+          export HOME="/root"
+          export PATH="$PATH:/usr/local/bin:/usr/bin:/bin"
+          npm install --prefer-offline
+
+          echo "🏗️ Fazendo build..."
+          ./node_modules/.bin/vite build
+
+          echo "🔄 Recarregando Nginx..."
+          nginx -t && systemctl reload nginx
+
+          echo "✅ Deploy concluído em $(date)"
