@@ -1,25 +1,35 @@
-name: Deploy to Production
+name: Build and Deploy
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
+    strategy:
+      matrix:
+        node-version: [18.x]
+    
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Setup Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: rankito/package-lock.json
         
     - name: Install dependencies
+      run: |
+        cd rankito
+        npm ci --only=production
+        
+    - name: Install all dependencies
       run: |
         cd rankito
         npm ci
@@ -29,13 +39,35 @@ jobs:
         cd rankito
         npm run build
         
+    - name: List build files
+      run: |
+        cd rankito
+        ls -la dist/
+        
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-files
+        name: rankito-build-${{ github.sha }}
         path: rankito/dist/
+        retention-days: 30
         
+    - name: Build summary
+      run: |
+        echo "## 🚀 Build Successful!" >> $GITHUB_STEP_SUMMARY
+        echo "- **Repository:** andersonmeloseo/novorankito" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.js:** ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+        echo "- **Artifacts:** Available for download" >> $GITHUB_STEP_SUMMARY
+        
+  deploy-notification:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
     - name: Deploy notification
       run: |
-        echo "🚀 Build successful!"
-        echo "� Ready for deployment"
+        echo "🎉 BUILD COMPLETED SUCCESSFULLY!"
+        echo "📦 Download artifacts from the Actions tab"
+        echo "🔗 https://github.com/andersonmeloseo/novorankito/actions"
