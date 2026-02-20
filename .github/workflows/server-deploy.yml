@@ -20,18 +20,40 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          cd /home/kaik/projetos/projeto-davi-melo-rankito/rankity
+          set -e  # Exit on any error
           
-          # Pull latest changes
-          git pull origin main
+          echo "🚀 Starting deployment..."
+          cd /home/kaik/projetos/projeto-davi-melo-rankito/rankito
           
-          # Install dependencies
-          npm ci
+          echo "📥 Pulling latest code..."
+          git fetch origin
+          git reset --hard origin/main
           
-          # Build project
+          echo "🔧 Checking Node version..."
+          node --version
+          if ! node --version | grep -q "v20"; then
+            echo "⚠️  Node 20 required. Installing..."
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm install 20
+            nvm use 20
+          fi
+          
+          echo "🧹 Cleaning old dependencies..."
+          rm -rf node_modules package-lock.json
+          
+          echo "📦 Installing dependencies..."
+          npm ci --omit=optional
+          
+          echo "🏗️ Building project..."
           npm run build
           
-          # Restart application
+          echo "🔄 Restarting PM2..."
           pm2 restart rankito || pm2 start ecosystem.config.cjs
+          
+          echo "✅ Verifying deployment..."
+          pm2 status
+          pm2 logs rankito --lines 5
           
           echo "🚀 Deploy completed successfully!"
