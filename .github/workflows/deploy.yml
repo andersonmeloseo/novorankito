@@ -3,11 +3,9 @@ name: Deploy to Production
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     
     steps:
@@ -31,35 +29,13 @@ jobs:
         cd rankito
         npm run build
         
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v1.0.0
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd /home/kaik/projetos/projeto-davi-melo-rankito/rankito
-          
-          # Backup atual
-          pm2 stop rankito || true
-          cp -r dist dist.backup.$(date +%Y%m%d_%H%M%S) || true
-          
-          # Pull das mudanças
-          git pull origin main
-          
-          # Install e build
-          npm ci
-          npm run build
-          
-          # Restart aplicação
-          pm2 start rankito || pm2 restart rankito
-          
-          # Verificar status
-          pm2 status
-          echo "Deploy realizado com sucesso!"
-          
-    - name: Notify deployment
-      if: success()
+        name: build-files
+        path: rankito/dist/
+        
+    - name: Deploy notification
       run: |
-        echo "🚀 Deploy realizado com sucesso para produção!"
-        echo "📱 Aplicação disponível em: http://72.60.54.151:4173"
+        echo "🚀 Build successful!"
+        echo "� Ready for deployment"
