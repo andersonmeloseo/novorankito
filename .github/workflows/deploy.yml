@@ -1,0 +1,65 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: rankito/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd rankito
+        npm ci
+        
+    - name: Build project
+      run: |
+        cd rankito
+        npm run build
+        
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd /home/kaik/projetos/projeto-davi-melo-rankito/rankito
+          
+          # Backup atual
+          pm2 stop rankito || true
+          cp -r dist dist.backup.$(date +%Y%m%d_%H%M%S) || true
+          
+          # Pull das mudanças
+          git pull origin main
+          
+          # Install e build
+          npm ci
+          npm run build
+          
+          # Restart aplicação
+          pm2 start rankito || pm2 restart rankito
+          
+          # Verificar status
+          pm2 status
+          echo "Deploy realizado com sucesso!"
+          
+    - name: Notify deployment
+      if: success()
+      run: |
+        echo "🚀 Deploy realizado com sucesso para produção!"
+        echo "📱 Aplicação disponível em: http://72.60.54.151:4173"
