@@ -75,3 +75,4 @@ Para contribuir com o projeto:
 
 MIT License
 ## Deploy Test sex 20 fev 2026 17:27:21 -03
+# Deploy Test SSH OK - sex 20 fev 2026 17:36:48 -03
