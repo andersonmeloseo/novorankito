@@ -316,6 +316,30 @@
   100% { --agent-border-angle: 360deg; }
 }
 
+.sidebar-academy-pulse {
+  position: relative;
+  border: 1.5px solid transparent;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-image:
+    linear-gradient(hsl(var(--sidebar-accent)), hsl(var(--sidebar-accent))),
+    conic-gradient(
+      from var(--sidebar-border-angle),
+      hsl(var(--primary)) 0%,
+      hsl(var(--warning)) 25%,
+      hsl(var(--primary-glow)) 50%,
+      hsl(var(--success)) 75%,
+      hsl(var(--primary)) 100%
+    );
+  animation: sidebar-border-rotate 3s linear infinite, academy-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 12px hsl(var(--primary) / 0.2), inset 0 0 0 1px hsl(var(--primary) / 0.05);
+}
+
+@keyframes academy-pulse {
+  0%, 100% { box-shadow: 0 0 12px hsl(var(--primary) / 0.2), inset 0 0 0 1px hsl(var(--primary) / 0.05); }
+  50% { box-shadow: 0 0 22px hsl(var(--primary) / 0.4), inset 0 0 0 1px hsl(var(--primary) / 0.1); }
+}
+
 .sidebar-active-glow {
   position: relative;
   border: 1.5px solid transparent;
