@@ -9,51 +9,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        node-version: [20.x]
-    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: rankito/package-lock.json
         
-    - name: Clean and install dependencies
+    - name: Install dependencies
       run: |
         cd rankito
-        npm ci --omit=optional
-        
-    - name: Verify Node and npm versions
-      run: |
-        cd rankito
-        node --version
-        npm --version
-        
-    - name: Check PostCSS config
-      run: |
-        cd rankito
-        cat postcss.config.js
-        echo "---"
-        cat tailwind.config.js
+        npm ci
         
     - name: Build project
       run: |
         cd rankito
         npm run build
-        
-    - name: Verify build output
-      run: |
-        cd rankito
-        echo "📁 Build files:"
-        ls -la dist/
-        echo "📄 Build size:"
-        du -sh dist/
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -62,23 +37,8 @@ jobs:
         path: rankito/dist/
         retention-days: 30
         
-    - name: Build summary
-      run: |
-        echo "## 🚀 Build Successful!" >> $GITHUB_STEP_SUMMARY
-        echo "- **Repository:** andersonmeloseo/novorankito" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Node.js:** ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Build Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
-        echo "- **Artifacts:** Available for download" >> $GITHUB_STEP_SUMMARY
-        
-  deploy-notification:
-    needs: build
-    runs-on: ubuntu-latest
-    if: success()
-    
-    steps:
     - name: Deploy notification
       run: |
-        echo "🎉 BUILD COMPLETED SUCCESSFULLY!"
-        echo "📦 Download artifacts from the Actions tab"
+        echo "🚀 Build completed successfully!"
+        echo "📦 Artifacts uploaded"
         echo "🔗 https://github.com/andersonmeloseo/novorankito/actions"
