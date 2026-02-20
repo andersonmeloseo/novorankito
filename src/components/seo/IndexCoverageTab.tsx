@@ -1,0 +1,347 @@
+import { useState, useMemo } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatedContainer } from "@/components/ui/animated-container";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { StaggeredGrid } from "@/components/ui/animated-container";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
+import { toast } from "@/hooks/use-toast";
+import {
+  Shield, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight,
+  Search, Play, CheckCircle, XCircle, AlertTriangle, MinusCircle, RefreshCw,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { format, parseISO } from "date-fns";
+
+interface Props {
+  projectId: string | undefined;
+}
+
+type SortDir = "asc" | "desc";
+const PAGE_SIZE = 20;
+
+function sortData(data: any[], key: string, dir: SortDir) {
+  return [...data].sort((a, b) => {
+    const av = a[key], bv = b[key];
+    if (typeof av === "number" && typeof bv === "number") return dir === "desc" ? bv - av : av - bv;
+    return dir === "desc" ? String(bv || "").localeCompare(String(av || "")) : String(av || "").localeCompare(String(bv || ""));
+  });
+}
+
+const verdictMap: Record<string, { label: string; color: string; icon: any }> = {
+  PASS: { label: "Válida", color: "bg-success text-success-foreground", icon: CheckCircle },
+  NEUTRAL: { label: "Excluída", color: "bg-muted text-muted-foreground", icon: MinusCircle },
+  FAIL: { label: "Erro", color: "bg-destructive text-destructive-foreground", icon: XCircle },
+  VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle },
+};
+
+const coverageStateMap: Record<string, string> = {
+  "Submitted and indexed": "Enviada e indexada",
+  "Crawled - currently not indexed": "Rastreada — não indexada no momento",
+  "Discovered - currently not indexed": "Descoberta — não indexada no momento",
+  "Page with redirect": "Página com redirecionamento",
+  "Not found (404)": "Não encontrada (404)",
+  "Soft 404": "Soft 404",
+  "Blocked by robots.txt": "Bloqueada por robots.txt",
+  "Blocked due to unauthorized request (401)": "Bloqueada — não autorizada (401)",
+  "Excluded by 'noindex' tag": "Excluída por tag 'noindex'",
+  "Alternate page with proper canonical tag": "Página alternativa com canonical correto",
+  "Duplicate without user-selected canonical": "Duplicada sem canonical selecionado",
+  "Duplicate, Google chose different canonical than user": "Duplicada — Google escolheu canonical diferente",
+  "Server error (5xx)": "Erro no servidor (5xx)",
+  "Blocked due to access forbidden (403)": "Bloqueada — acesso proibido (403)",
+  "Blocked due to other 4xx issue": "Bloqueada — outro erro 4xx",
+  "URL is unknown to Google": "URL desconhecida pelo Google",
+};
+
+const indexingStateMap: Record<string, string> = {
+  INDEXING_ALLOWED: "Indexação permitida",
+  BLOCKED_BY_META_TAG: "Bloqueada por meta tag",
+  BLOCKED_BY_HTTP_HEADER: "Bloqueada por header HTTP",
+  BLOCKED_BY_ROBOTS_TXT: "Bloqueada por robots.txt",
+  INDEXING_STATE_UNSPECIFIED: "Não especificado",
+};
+
+const pageFetchStateMap: Record<string, string> = {
+  SUCCESSFUL: "Sucesso",
+  SOFT_404: "Soft 404",
+  BLOCKED_ROBOTS_TXT: "Bloqueada por robots.txt",
+  NOT_FOUND: "Não encontrada",
+  ACCESS_DENIED: "Acesso negado",
+  SERVER_ERROR: "Erro no servidor",
+  REDIRECT_ERROR: "Erro de redirecionamento",
+  ACCESS_FORBIDDEN: "Acesso proibido",
+  BLOCKED_4XX: "Bloqueada (4xx)",
+  INTERNAL_CRAWL_ERROR: "Erro interno de rastreio",
+  INVALID_URL: "URL inválida",
+  PAGE_FETCH_STATE_UNSPECIFIED: "Não especificado",
+};
+
+const crawledAsMap: Record<string, string> = {
+  DESKTOP: "Desktop",
+  MOBILE: "Dispositivo móvel",
+  CRAWLING_USER_AGENT_UNSPECIFIED: "Não especificado",
+};
+
+function translateField(value: string | null, map: Record<string, string>): string {
+  if (!value) return "—";
+  return map[value] || value;
+}
+
+export function IndexCoverageTab({ projectId }: Props) {
+  const queryClient = useQueryClient();
+  const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: "inspected_at", dir: "desc" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [scanning, setScanning] = useState(false);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["index-coverage", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("gsc-index-coverage", {
+        body: { project_id: projectId, action: "list" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    enabled: !!projectId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const allRows = data?.rows || [];
+
+  // KPIs
+  const kpis = useMemo(() => {
+    const total = allRows.length;
+    const indexed = allRows.filter((r: any) => r.verdict === "PASS").length;
+    const excluded = allRows.filter((r: any) => r.verdict === "NEUTRAL").length;
+    const errors = allRows.filter((r: any) => r.verdict === "FAIL").length;
+    return { total, indexed, excluded, errors };
+  }, [allRows]);
+
+  const rows = useMemo(() => {
+    let items = allRows;
+    if (statusFilter !== "all") items = items.filter((r: any) => r.verdict === statusFilter);
+    if (searchTerm) items = items.filter((r: any) => r.url.toLowerCase().includes(searchTerm.toLowerCase()));
+    return sortData(items, sort.key, sort.dir);
+  }, [allRows, searchTerm, statusFilter, sort]);
+
+  const startScan = async () => {
+    if (!projectId) return;
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gsc-index-coverage", {
+        body: { project_id: projectId, action: "scan" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      if (data?.message) {
+        toast({ title: "Varredura", description: data.message });
+      } else {
+        toast({
+          title: "Varredura concluída!",
+          description: `${data?.inspected || 0} URLs inspecionadas. ${data?.remaining || 0} restantes. ${data?.errors || 0} erros.`,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["index-coverage"] });
+    } catch (e: any) {
+      toast({ title: "Erro na varredura", description: e.message, variant: "destructive" });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const doExportCSV = () => {
+    const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
+    const exportRows = rows.map((r: any) => {
+      const obj: any = {};
+      headers.forEach(h => obj[h] = r[h] || "");
+      return obj;
+    });
+    exportCSVUtil(exportRows, "cobertura-indexacao");
+  };
+  const doExportXML = () => {
+    const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
+    const exportRows = rows.map((r: any) => {
+      const obj: any = {};
+      headers.forEach(h => obj[h] = r[h] || "");
+      return obj;
+    });
+    exportXML(exportRows, "cobertura-indexacao", "indexCoverage", "url");
+  };
+
+  const renderVerdict = (verdict: string) => {
+    const v = verdictMap[verdict] || verdictMap.VERDICT_UNSPECIFIED;
+    const Icon = v.icon;
+    return (
+      <Badge className={`text-[10px] gap-1 ${v.color}`}>
+        <Icon className="h-3 w-3" />
+        {v.label}
+      </Badge>
+    );
+  };
+
+  const columns = [
+    { key: "url", label: "URL" },
+    { key: "verdict", label: "Veredito" },
+    { key: "coverage_state", label: "Status de Cobertura" },
+    { key: "indexing_state", label: "Indexação" },
+    { key: "page_fetch_state", label: "Fetch" },
+    { key: "crawled_as", label: "Rastreado como" },
+    { key: "last_crawl_time", label: "Último Rastreio" },
+    { key: "inspected_at", label: "Inspecionado em" },
+  ];
+
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+  const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  if (isLoading) {
+    return <Card className="p-8 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></Card>;
+  }
+
+  if (error) {
+    return <Card className="p-4 border-destructive/30 bg-destructive/5"><div className="text-destructive text-sm">{(error as Error).message}</div></Card>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <StaggeredGrid className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard label="Total Inspecionadas" value={kpis.total} change={0} />
+        <KpiCard label="Indexadas" value={kpis.indexed} change={kpis.total > 0 ? parseFloat(((kpis.indexed / kpis.total) * 100).toFixed(1)) : 0} suffix="%" />
+        <KpiCard label="Excluídas" value={kpis.excluded} change={0} />
+        <KpiCard label="Com Erro" value={kpis.errors} change={0} />
+      </StaggeredGrid>
+
+      {/* Scan button + info */}
+      <AnimatedContainer>
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <Shield className="h-4 w-4 text-primary" />
+              <span className="text-foreground font-medium">Cobertura de Indexação:</span>
+              <span className="text-muted-foreground">Inspeciona suas URLs para verificar o status no índice do Google. Limite: ~20 URLs por varredura (cota da API).</span>
+            </div>
+            <Button onClick={startScan} disabled={scanning} size="sm" className="gap-1.5 text-xs">
+              {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+              {scanning ? "Varrendo..." : "Iniciar Varredura"}
+            </Button>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
+      {/* Filters */}
+      <AnimatedContainer>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="max-w-sm flex-1 space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar URL</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar URLs..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} className="pl-8 h-9 text-xs" />
+            </div>
+          </div>
+          <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-xs">
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="PASS">Válidas (Indexadas)</SelectItem>
+              <SelectItem value="NEUTRAL">Excluídas</SelectItem>
+              <SelectItem value="FAIL">Com Erro</SelectItem>
+              <SelectItem value="VERDICT_UNSPECIFIED">Desconhecido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </AnimatedContainer>
+
+      {/* Table */}
+      {allRows.length === 0 && !searchTerm ? (
+        <EmptyState
+          icon={Shield}
+          title="Nenhuma URL inspecionada"
+          description="Clique em 'Iniciar Varredura' para verificar o status de indexação das suas URLs."
+        />
+      ) : (
+        <AnimatedContainer delay={0.05}>
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+              <span className="text-xs text-muted-foreground">{rows.length} URLs</span>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5" onClick={() => queryClient.invalidateQueries({ queryKey: ["index-coverage"] })}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Atualizar
+                </Button>
+                <ExportMenu onExportCSV={doExportCSV} onExportXML={doExportXML} />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    {columns.map(col => (
+                      <th
+                        key={col.key}
+                        className="px-4 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => { setSort(prev => ({ key: col.key, dir: prev.key === col.key && prev.dir === "desc" ? "asc" : "desc" })); setPage(1); }}
+                      >
+                        <span className="flex items-center gap-1">
+                          {col.label}
+                          <ArrowUpDown className={`h-3 w-3 ${sort.key === col.key ? "text-primary" : "opacity-40"}`} />
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length === 0 ? (
+                    <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
+                  ) : paginated.map((row: any, i: number) => (
+                    <tr key={i} className="border-b border-border last:border-0 table-row-hover">
+                      <td className="px-4 py-3 text-xs font-mono text-foreground max-w-[300px] truncate" title={row.url}>
+                        <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{row.url}</a>
+                      </td>
+                      <td className="px-4 py-3">{renderVerdict(row.verdict)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={row.coverage_state || ""}>{translateField(row.coverage_state, coverageStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.indexing_state, indexingStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.page_fetch_state, pageFetchStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.crawled_as, crawledAsMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {row.last_crawl_time ? format(parseISO(row.last_crawl_time), "dd/MM/yyyy HH:mm") : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {row.inspected_at ? format(parseISO(row.inspected_at), "dd/MM/yyyy HH:mm") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-border">
+                <span className="text-xs text-muted-foreground">Página {page} de {totalPages}</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const p = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
+                    return <Button key={p} variant={p === page ? "default" : "ghost"} size="sm" className="h-7 w-7 p-0 text-xs" onClick={() => setPage(p)}>{p}</Button>;
+                  })}
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage(page + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </AnimatedContainer>
+      )}
+    </div>
+  );
+}
