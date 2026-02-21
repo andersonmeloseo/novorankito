@@ -2082,8 +2082,91 @@ export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, on
         );
       },
     },
+    "análise seo": {
+      label: "Análise SEO",
+      icon: "🔍",
+      description: "Keywords, posições e oportunidades",
+      response: () => {
+        const seoTasks = realTasks.filter(t => (t.category || "").toLowerCase().includes("seo") || (t.assigned_role || "").toLowerCase().includes("seo"));
+        const done = seoTasks.filter(t => t.status === "done").length;
+        const pending = seoTasks.filter(t => t.status === "pending").length;
+        const inProg = seoTasks.filter(t => t.status === "in_progress").length;
+        return (
+          `ANÁLISE SEO — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📌 Tarefas SEO: ${seoTasks.length}\n` +
+          `✅ Concluídas: ${done} | 🔄 Em progresso: ${inProg} | ⏳ Pendentes: ${pending}\n\n` +
+          (seoTasks.slice(0, 8).map(t => `${t.status === "done" ? "✅" : t.status === "in_progress" ? "🔄" : "⏳"} ${t.title}`).join("\n") || "Nenhuma tarefa SEO encontrada.") +
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
+      },
+    },
+    "relatório analytics": {
+      label: "Analytics",
+      icon: "📈",
+      description: "Métricas de tráfego e engajamento",
+      response: () => {
+        const analyticsTasks = realTasks.filter(t => (t.category || "").toLowerCase().includes("analytics") || (t.assigned_role || "").toLowerCase().includes("analytics"));
+        const done = analyticsTasks.filter(t => t.status === "done").length;
+        return (
+          `ANALYTICS — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📊 Tarefas de Analytics: ${analyticsTasks.length} (${done} concluídas)\n\n` +
+          (analyticsTasks.slice(0, 8).map(t => `${t.status === "done" ? "✅" : "⏳"} ${t.title}`).join("\n") || "Nenhuma tarefa de analytics.") +
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
+      },
+    },
+    "conteúdo": {
+      label: "Conteúdo",
+      icon: "✍️",
+      description: "Produção e calendário editorial",
+      response: () => {
+        const contentTasks = realTasks.filter(t => (t.category || "").toLowerCase().includes("conteúdo") || (t.category || "").toLowerCase().includes("content") || (t.assigned_role || "").toLowerCase().includes("conteúdo"));
+        const done = contentTasks.filter(t => t.status === "done").length;
+        return (
+          `CONTEÚDO — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📝 Tarefas de Conteúdo: ${contentTasks.length} (${done} concluídas)\n\n` +
+          (contentTasks.slice(0, 8).map(t => `${t.status === "done" ? "✅" : "⏳"} ${t.title}`).join("\n") || "Nenhuma tarefa de conteúdo.") +
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
+      },
+    },
+    "performance ads": {
+      label: "Performance Ads",
+      icon: "💰",
+      description: "Campanhas pagas e ROAS",
+      response: () => {
+        const adsTasks = realTasks.filter(t => (t.category || "").toLowerCase().includes("ads") || (t.assigned_role || "").toLowerCase().includes("ads") || (t.assigned_role || "").toLowerCase().includes("tráfego"));
+        const done = adsTasks.filter(t => t.status === "done").length;
+        return (
+          `PERFORMANCE ADS — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📢 Tarefas de Ads: ${adsTasks.length} (${done} concluídas)\n\n` +
+          (adsTasks.slice(0, 8).map(t => `${t.status === "done" ? "✅" : "⏳"} ${t.title}`).join("\n") || "Nenhuma tarefa de ads.") +
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
+      },
+    },
+    "link building": {
+      label: "Link Building",
+      icon: "🔗",
+      description: "Backlinks e autoridade",
+      response: () => {
+        const linkTasks = realTasks.filter(t => (t.category || "").toLowerCase().includes("link") || (t.assigned_role || "").toLowerCase().includes("link"));
+        const done = linkTasks.filter(t => t.status === "done").length;
+        return (
+          `LINK BUILDING — ${deployment.name}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🔗 Tarefas de Links: ${linkTasks.length} (${done} concluídas)\n\n` +
+          (linkTasks.slice(0, 8).map(t => `${t.status === "done" ? "✅" : "⏳"} ${t.title}`).join("\n") || "Nenhuma tarefa de link building.") +
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        );
+      },
+    },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [taskStats, lastRun, deployment.name]);
+  }), [taskStats, lastRun, deployment.name, realTasks]);
 
   const handleCeoCommand = useCallback(async (cmdRaw: string) => {
     const cmd = cmdRaw.trim().toLowerCase();
@@ -2713,9 +2796,9 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                   {/* CEO Commands Tab */}
                    <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
                      {/* Command shortcuts */}
-                     <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
-                       <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
-                       <div className="grid grid-cols-2 gap-2">
+                      <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/50 bg-muted/10 max-h-[240px] overflow-y-auto">
+                        <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Comandos rápidos</p>
+                        <div className="grid grid-cols-2 gap-1.5">
                          {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
                            <button
                              key={key}
@@ -2802,28 +2885,28 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                      </ScrollArea>
 
                      {/* Input */}
-                     <div className="p-3 border-t border-border shrink-0">
-                       <div className="flex items-center gap-1.5">
-                         <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
-                         <Input
-                           value={ceoCmdInput}
-                           onChange={e => setCeoCmdInput(e.target.value)}
-                           onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                           placeholder="Pergunte qualquer coisa sobre o projeto…"
-                           className="h-8 text-[11px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
-                           disabled={ceoCmdSending}
-                         />
-                         <Button
-                           size="sm"
-                           className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
-                           onClick={() => handleCeoCommand(ceoCmdInput)}
-                           disabled={ceoCmdSending || !ceoCmdInput.trim()}
-                         >
-                           {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                           {!ceoCmdSending && <span>Enviar</span>}
-                         </Button>
-                       </div>
-                     </div>
+                     <div className="p-3 border-t border-border shrink-0 bg-muted/20">
+                        <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background p-1">
+                          <span className="text-[11px] font-mono text-muted-foreground/60 pl-1.5">&gt;</span>
+                          <Input
+                            value={ceoCmdInput}
+                            onChange={e => setCeoCmdInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                            placeholder="Pergunte qualquer coisa sobre o projeto…"
+                            className="h-8 text-xs flex-1 border-none bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+                            disabled={ceoCmdSending}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
+                            onClick={() => handleCeoCommand(ceoCmdInput)}
+                            disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                          >
+                            {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            {!ceoCmdSending && <span>Enviar</span>}
+                          </Button>
+                        </div>
+                      </div>
                    </TabsContent>
 
                    {/* Team Chat Tab */}
@@ -2966,9 +3049,9 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
 
                  {/* CEO Commands Tab */}
                  <TabsContent value="cmd" className="m-0 flex flex-col">
-                   <div className="px-3 pt-2.5 pb-2 shrink-0 border-b border-border/50 bg-muted/10">
-                     <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Relatórios do Projeto</p>
-                     <div className="grid grid-cols-2 gap-1.5">
+                    <div className="px-3 pt-2.5 pb-2 shrink-0 border-b border-border/50 bg-muted/10 max-h-[200px] overflow-y-auto">
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Comandos rápidos</p>
+                      <div className="grid grid-cols-2 gap-1.5">
                        {Object.entries(CEO_COMMANDS).map(([key, cmd]) => (
                          <button
                            key={key}
@@ -3031,28 +3114,28 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                         ))}
                       </div>
                     </ScrollArea>
-                   <div className="p-2.5 border-t border-border shrink-0">
-                     <div className="flex items-center gap-1.5">
-                       <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
-                       <Input
-                         value={ceoCmdInput}
-                         onChange={e => setCeoCmdInput(e.target.value)}
-                         onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
-                         placeholder="Pergunte qualquer coisa sobre o projeto…"
-                         className="h-8 text-[10px] flex-1 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
-                         disabled={ceoCmdSending}
-                       />
-                       <Button
-                         size="sm"
-                         className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
-                         onClick={() => handleCeoCommand(ceoCmdInput)}
-                         disabled={ceoCmdSending || !ceoCmdInput.trim()}
-                       >
-                         {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                         {!ceoCmdSending && <span>Enviar</span>}
-                      </Button>
-                    </div>
-                  </div>
+                   <div className="p-2.5 border-t border-border shrink-0 bg-muted/20">
+                      <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background p-1">
+                        <span className="text-[11px] font-mono text-muted-foreground/60 pl-1.5">&gt;</span>
+                        <Input
+                          value={ceoCmdInput}
+                          onChange={e => setCeoCmdInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && !ceoCmdSending) handleCeoCommand(ceoCmdInput); }}
+                          placeholder="Pergunte qualquer coisa sobre o projeto…"
+                          className="h-8 text-[10px] flex-1 border-none bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+                          disabled={ceoCmdSending}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 px-3 shrink-0 gap-1.5 text-[10px]"
+                          onClick={() => handleCeoCommand(ceoCmdInput)}
+                          disabled={ceoCmdSending || !ceoCmdInput.trim()}
+                        >
+                          {ceoCmdSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                          {!ceoCmdSending && <span>Enviar</span>}
+                       </Button>
+                      </div>
+                   </div>
                 </TabsContent>
               </Tabs>
             </div>
