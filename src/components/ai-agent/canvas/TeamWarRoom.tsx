@@ -2540,11 +2540,11 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "canvas" | "hub")} className="flex flex-col flex-1 min-h-0">
         <div className="px-4 pt-2 border-b border-border bg-card/40 shrink-0">
-          <TabsList className="h-7 gap-1 bg-transparent p-0">
-            <TabsTrigger value="canvas" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="h-11 gap-2 bg-transparent p-0">
+            <TabsTrigger value="canvas" className="h-9 text-sm font-bold px-5 gap-2 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-md rounded-lg">
               🖥️ Canvas
             </TabsTrigger>
-            <TabsTrigger value="hub" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="hub" className="h-9 text-sm font-bold px-5 gap-2 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-md rounded-lg">
               📋 Team Hub
             </TabsTrigger>
           </TabsList>
@@ -2699,16 +2699,16 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                 {/* Tabs: Team Chat + CEO Commands */}
                 <Tabs defaultValue="cmd" className="flex flex-col h-full">
                    <div className="px-2 pt-2 shrink-0 border-b border-border bg-card/50">
-                     <TabsList className="h-14 gap-2 bg-transparent p-0 w-full">
-                       <TabsTrigger value="cmd" className="flex-1 h-12 text-sm px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2.5">
-                         <Brain className="h-5 w-5" /> Comandos CEO
-                       </TabsTrigger>
-                       <TabsTrigger value="chat" className="flex-1 h-12 text-sm px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2.5">
-                         <MessageSquare className="h-5 w-5" /> Chat Equipe
-                         {messages.length > 0 && <span className="ml-1 text-[10px] bg-primary/20 text-primary rounded-full px-2 py-0.5">{messages.length}</span>}
-                       </TabsTrigger>
-                     </TabsList>
-                   </div>
+                     <TabsList className="h-10 gap-1.5 bg-transparent p-0 w-full">
+                        <TabsTrigger value="cmd" className="flex-1 h-8 text-xs px-4 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+                          <Brain className="h-4 w-4" /> Comandos CEO
+                        </TabsTrigger>
+                        <TabsTrigger value="chat" className="flex-1 h-8 text-xs px-4 font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+                          <MessageSquare className="h-4 w-4" /> Chat Equipe
+                          {messages.length > 0 && <span className="ml-1 text-[9px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
                   {/* CEO Commands Tab */}
                    <TabsContent value="cmd" className="flex-1 min-h-0 m-0 flex flex-col">
@@ -2900,14 +2900,14 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
             <div className="border-t border-border bg-card/40">
               <Tabs defaultValue="chat" className="flex flex-col">
                  <div className="px-3 pt-2 border-b border-border/60 shrink-0">
-                   <TabsList className="h-9 gap-1 bg-transparent p-0">
-                      <TabsTrigger value="chat" className="h-8 text-[11px] px-3 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1.5 rounded-md">
-                        <MessageSquare className="h-3.5 w-3.5" /> Chat Equipe
-                        {messages.length > 0 && <span className="ml-0.5 text-[9px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                   <TabsList className="h-8 gap-1 bg-transparent p-0">
+                      <TabsTrigger value="chat" className="h-7 text-[10px] px-2.5 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1 rounded-md">
+                        <MessageSquare className="h-3 w-3" /> Chat Equipe
+                        {messages.length > 0 && <span className="ml-0.5 text-[8px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
                       </TabsTrigger>
-                      <TabsTrigger value="cmd" className="h-8 text-[11px] px-3 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1.5 rounded-md">
-                        <Brain className="h-3.5 w-3.5" /> Comandos CEO
-                        <div className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+                      <TabsTrigger value="cmd" className="h-7 text-[10px] px-2.5 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1 rounded-md">
+                        <Brain className="h-3 w-3" /> Comandos CEO
+                        <div className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
                       </TabsTrigger>
                     </TabsList>
                  </div>
@@ -2985,18 +2985,52 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                        ))}
                      </div>
                    </div>
-                   <ScrollArea className="max-h-72 px-3 py-2">
-                     {ceoCmdHistory.length === 0 && (
-                       <p className="text-[10px] text-muted-foreground text-center py-4">Selecione um relatório acima para consultar dados do projeto.</p>
-                     )}
-                     <div className="space-y-2">
-                       {ceoCmdHistory.slice(-3).map((item, i) => (
-                         <div key={i} className="rounded-xl border border-border bg-card/80 p-2">
-                           <p className="text-[9px] text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">{item.response}</p>
-                         </div>
-                       ))}
-                     </div>
-                   </ScrollArea>
+                    {/* History header */}
+                    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 shrink-0 bg-muted/5">
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                        <History className="h-3 w-3" /> Histórico
+                        {ceoCmdHistory.length > 0 && <span className="text-[8px] text-muted-foreground/60">({ceoCmdHistory.length})</span>}
+                      </span>
+                      {ceoCmdHistory.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 text-[8px] gap-1 px-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setCeoCmdHistory([])}
+                        >
+                          <Trash2 className="h-2.5 w-2.5" /> Limpar
+                        </Button>
+                      )}
+                    </div>
+                    <ScrollArea className="max-h-72 px-3 py-2">
+                      {ceoCmdHistory.length === 0 && (
+                        <div className="py-6 text-center">
+                          <BarChart3 className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/20" />
+                          <p className="text-[9px] text-muted-foreground">Selecione um relatório acima ou envie um comando.</p>
+                        </div>
+                      )}
+                      <div className="space-y-2.5">
+                        {ceoCmdHistory.map((item, i) => (
+                          <div key={i} className="space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <div className="h-px flex-1 bg-border/50" />
+                              <span className="text-[7px] text-muted-foreground/50">{new Date(item.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <div className="h-px flex-1 bg-border/50" />
+                            </div>
+                            {/* User command */}
+                            <div className="flex justify-end">
+                              <div className="rounded-lg bg-primary/15 border border-primary/20 px-2 py-1 max-w-[85%]">
+                                <p className="text-[9px] font-semibold text-primary">{item.cmd}</p>
+                              </div>
+                            </div>
+                            {/* Response */}
+                            <div className="rounded-lg border border-border bg-card/80 p-2">
+                              <p className="text-[9px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{item.response}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
                    <div className="p-2.5 border-t border-border shrink-0">
                      <div className="flex items-center gap-1.5">
                        <span className="text-[11px] font-mono text-muted-foreground/40">&gt;</span>
