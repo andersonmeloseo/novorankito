@@ -1774,7 +1774,7 @@ interface TeamWarRoomProps {
 }
 
 export function TeamWarRoom({ deployment, runs, onClose, onRunNow, isRunning, onRefresh, projectId }: TeamWarRoomProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<"canvas" | "hub">("canvas");
   const [hireOpen, setHireOpen] = useState(false);
   const [hireParentRole, setHireParentRole] = useState<any>(null);
@@ -2647,17 +2647,31 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                    </Panel>
                  )}
 
-                {runStatus === "completed" && (
-                  <Panel position="top-center">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                      <span className="text-[11px] font-semibold text-emerald-400">
-                        {successCount}/{totalAgents} agentes bem-sucedidos
-                      </span>
-                    </div>
-                  </Panel>
-                )}
-              </ReactFlow>
+                 {runStatus === "completed" && (
+                   <Panel position="top-center">
+                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm">
+                       <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                       <span className="text-[11px] font-semibold text-emerald-400">
+                         {successCount}/{totalAgents} agentes bem-sucedidos
+                       </span>
+                     </div>
+                   </Panel>
+                 )}
+
+                 {/* FAB Comandos CEO */}
+                 {!expanded && (
+                   <Panel position="bottom-right">
+                     <button
+                       onClick={() => { setExpanded(true); setActiveTab("canvas"); }}
+                       className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 border border-violet-400/50 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all cursor-pointer group"
+                     >
+                       <Brain className="h-4 w-4 text-white" />
+                       <span className="text-xs font-bold text-white">Comandos CEO</span>
+                       <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                     </button>
+                   </Panel>
+                 )}
+               </ReactFlow>
 
               {/* Legend */}
               <div className="absolute bottom-3 left-3 flex items-center gap-3 px-2.5 py-1.5 rounded-lg bg-card/90 border border-border backdrop-blur-sm text-[9px]">
@@ -2886,15 +2900,16 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
             <div className="border-t border-border bg-card/40">
               <Tabs defaultValue="chat" className="flex flex-col">
                  <div className="px-3 pt-2 border-b border-border/60 shrink-0">
-                   <TabsList className="h-7 gap-0.5 bg-transparent p-0">
-                     <TabsTrigger value="chat" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                       <MessageSquare className="h-3 w-3" /> Chat Equipe
-                       {messages.length > 0 && <span className="ml-0.5 text-[8px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
-                     </TabsTrigger>
-                     <TabsTrigger value="cmd" className="h-6 text-[10px] px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1">
-                       <Brain className="h-3 w-3" /> Comandos CEO
-                     </TabsTrigger>
-                   </TabsList>
+                   <TabsList className="h-9 gap-1 bg-transparent p-0">
+                      <TabsTrigger value="chat" className="h-8 text-[11px] px-3 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1.5 rounded-md">
+                        <MessageSquare className="h-3.5 w-3.5" /> Chat Equipe
+                        {messages.length > 0 && <span className="ml-0.5 text-[9px] bg-primary/20 text-primary rounded-full px-1.5">{messages.length}</span>}
+                      </TabsTrigger>
+                      <TabsTrigger value="cmd" className="h-8 text-[11px] px-3 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:shadow-sm gap-1.5 rounded-md">
+                        <Brain className="h-3.5 w-3.5" /> Comandos CEO
+                        <div className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+                      </TabsTrigger>
+                    </TabsList>
                  </div>
 
                  {/* Chat Tab */}
