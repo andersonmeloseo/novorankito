@@ -232,10 +232,11 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 // ─── Pricing Card ─────────────────────────────────────────────────────────
-function PricingCard({ name, price, period, desc, features, cta, highlight, badge }: {
-  name: string; price: string; period: string; desc: string;
-  features: string[]; cta: string; highlight?: boolean; badge?: string;
+function PricingCard({ name, slug, price, period, desc, features, cta, highlight, badge, checkoutUrl }: {
+  name: string; slug: string; price: string; period: string; desc: string;
+  features: string[]; cta: string; highlight?: boolean; badge?: string; checkoutUrl?: string | null;
 }) {
+  const href = checkoutUrl || `/login?plan=${slug}`;
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }}
@@ -258,7 +259,7 @@ function PricingCard({ name, price, period, desc, features, cta, highlight, badg
           </div>
         ))}
       </div>
-      <a href="/login" className={`block text-center font-bold py-3.5 rounded-xl transition-all ${highlight ? "bg-white text-violet-700 hover:bg-violet-50" : "bg-violet-600 text-white hover:bg-violet-700"}`}>{cta}</a>
+      <a href={href} className={`block text-center font-bold py-3.5 rounded-xl transition-all ${highlight ? "bg-white text-violet-700 hover:bg-violet-50" : "bg-violet-600 text-white hover:bg-violet-700"}`}>{cta}</a>
     </motion.div>
   );
 }
@@ -753,6 +754,7 @@ export default function LandingPage() {
                 <PricingCard
                   key={plan.id}
                   name={plan.name}
+                  slug={plan.slug}
                   price={`R$${Number(plan.price).toLocaleString("pt-BR")}`}
                   period="/mês"
                   desc={plan.description || ""}
@@ -760,6 +762,7 @@ export default function LandingPage() {
                   cta={ctaMap[plan.slug] || `Começar com ${plan.name} →`}
                   highlight={isHighlight}
                   badge={isHighlight ? "⭐ Mais popular" : undefined}
+                  checkoutUrl={plan.stripe_checkout_url}
                 />
               );
             })}
