@@ -13,6 +13,7 @@ import {
   AlertTriangle, Flame, Trophy, Map, Link2, FileSearch,
   Smartphone, Eye, BarChart2, PieChart, Repeat2, Megaphone
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Animated Counter ───────────────────────────────────────────────────────
 function Counter({ end, suffix = "", prefix = "", duration = 2000 }: {
@@ -270,6 +271,17 @@ export default function LandingPage() {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+
+  // Fetch plans from database
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
+  useEffect(() => {
+    supabase
+      .from("plans")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => { if (data) setDbPlans(data); });
+  }, []);
 
   const mockups = [
     {
@@ -716,60 +728,41 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6 mb-10">
-            <PricingCard
-              name="Start"
-              price="R$97"
-              period="/mês"
-              desc="Para freelancers e donos de site que querem indexação automática e dados reais do Google."
-              features={[
-                "3 projetos",
-                "SEO completo via Google Search Console",
-                "KPIs GA4 (sessões, conversões, receita)",
-                "Indexação automática — 200 URLs/dia",
-                "1 conta GSC de indexação por projeto",
-                "Orquestrador IA (5 execuções/hora)",
-                "Pixel de tracking próprio",
-                "1 usuário",
-              ]}
-              cta="Começar com Start →"
-            />
-            <PricingCard
-              name="Growth"
-              price="R$297"
-              period="/mês"
-              desc="Para profissionais e agências que gerenciam múltiplos projetos e precisam de IA + WhatsApp."
-              features={[
-                "10 projetos",
-                "SEO + GA4 + Analytics completos",
-                "Indexação — 800 URLs/dia",
-                "Até 4 contas GSC por projeto",
-                "Agentes IA + relatórios no WhatsApp",
-                "Orquestrador IA (20 execuções/hora)",
-                "Pixel v4.1 + Heatmaps + Rank & Rent",
-                "5 usuários",
-              ]}
-              cta="Crescer com Growth →"
-              highlight
-              badge="⭐ Mais popular"
-            />
-            <PricingCard
-              name="Unlimited"
-              price="R$697"
-              period="/mês"
-              desc="Para agências com escala total, white-label, API e sem limites de indexação."
-              features={[
-                "Projetos ilimitados",
-                "Tudo do Growth",
-                "Contas GSC ilimitadas por projeto",
-                "Indexação sem limites diários",
-                "Orquestrador IA ilimitado",
-                "White-label + domínio personalizado",
-                "API pública + Webhooks",
-                "Usuários ilimitados + suporte prioritário",
-              ]}
-              cta="Escalar com Unlimited →"
-            />
+          <div className={`grid gap-6 mb-10 ${dbPlans.filter(p => p.slug !== 'teste').length >= 3 ? 'md:grid-cols-3' : dbPlans.filter(p => p.slug !== 'teste').length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'max-w-md mx-auto'}`}>
+            {dbPlans.filter(p => p.slug !== 'teste').map((plan) => {
+              const fmt = (v: number) => v === -1 ? "Ilimitado" : String(v);
+              const features: string[] = [
+                `${plan.projects_limit === -1 ? "Projetos ilimitados" : plan.projects_limit + " projeto" + (plan.projects_limit > 1 ? "s" : "")}`,
+                `SEO completo via Google Search Console`,
+                plan.ga4_enabled ? "KPIs GA4 (sessões, conversões, receita)" : null,
+                `Indexação — ${plan.indexing_daily_limit === -1 ? "sem limites" : plan.indexing_daily_limit + " URLs/dia"}`,
+                `${plan.gsc_accounts_per_project === -1 ? "Contas GSC ilimitadas por projeto" : plan.gsc_accounts_per_project + " conta" + (plan.gsc_accounts_per_project > 1 ? "s" : "") + " GSC por projeto"}`,
+                `Orquestrador IA (${plan.orchestrator_executions_limit === -1 ? "ilimitado" : plan.orchestrator_executions_limit + " exec/hora"})`,
+                plan.pixel_tracking_enabled ? "Pixel de tracking próprio" : null,
+                plan.whatsapp_reports_enabled ? "Relatórios via WhatsApp" : null,
+                plan.white_label_enabled ? "White-label + domínio personalizado" : null,
+                plan.api_access_enabled ? "API pública" : null,
+                plan.webhooks_enabled ? "Webhooks" : null,
+                `${plan.members_limit === -1 ? "Usuários ilimitados" : plan.members_limit + " usuário" + (plan.members_limit > 1 ? "s" : "")}`,
+              ].filter(Boolean) as string[];
+
+              const isHighlight = plan.slug === "growth";
+              const ctaMap: Record<string, string> = { start: "Começar com Start →", growth: "Crescer com Growth →", unlimited: "Escalar com Unlimited →" };
+
+              return (
+                <PricingCard
+                  key={plan.id}
+                  name={plan.name}
+                  price={`R$${Number(plan.price).toLocaleString("pt-BR")}`}
+                  period="/mês"
+                  desc={plan.description || ""}
+                  features={features}
+                  cta={ctaMap[plan.slug] || `Começar com ${plan.name} →`}
+                  highlight={isHighlight}
+                  badge={isHighlight ? "⭐ Mais popular" : undefined}
+                />
+              );
+            })}
           </div>
 
           {/* Value stack + guarantee */}
