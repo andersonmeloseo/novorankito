@@ -7,9 +7,9 @@ export function AdminLayout() {
   const { pathname } = useLocation();
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-[100dvh] flex flex-col sm:flex-row w-full bg-background">
       <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
