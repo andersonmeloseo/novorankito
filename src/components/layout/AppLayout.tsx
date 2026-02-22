@@ -10,9 +10,9 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-[100dvh] flex flex-col sm:flex-row w-full">
         <AppSidebar />
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
