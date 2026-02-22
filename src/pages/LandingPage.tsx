@@ -728,8 +728,8 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className={`grid gap-6 mb-10 ${dbPlans.filter(p => p.slug !== 'teste').length >= 3 ? 'md:grid-cols-3' : dbPlans.filter(p => p.slug !== 'teste').length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'max-w-md mx-auto'}`}>
-            {dbPlans.filter(p => p.slug !== 'teste').map((plan) => {
+          <div className={`grid gap-6 mb-10 ${dbPlans.length >= 3 ? 'md:grid-cols-3' : dbPlans.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'max-w-md mx-auto'} ${dbPlans.length === 4 ? 'lg:grid-cols-4' : ''}`}>
+            {dbPlans.map((plan) => {
               const fmt = (v: number) => v === -1 ? "Ilimitado" : String(v);
               const features: string[] = [
                 `${plan.projects_limit === -1 ? "Projetos ilimitados" : plan.projects_limit + " projeto" + (plan.projects_limit > 1 ? "s" : "")}`,
