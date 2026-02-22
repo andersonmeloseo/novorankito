@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Loader2, Check, Star, ShieldAlert } from "lucide-react";
+import { Zap, Loader2, Check, Star, ShieldAlert, Phone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [leakedWarning, setLeakedWarning] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
@@ -40,9 +41,37 @@ export default function Login() {
       .then(({ data }) => { if (data) setDbPlans(data); });
   }, []);
 
+  const getSelectedPlanData = () => {
+    return dbPlans.find((p) => p.slug === selectedPlan);
+  };
+
+  const redirectToCheckout = async (priceId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.error("Checkout redirect error:", err);
+      toast({
+        title: "Erro ao redirecionar para pagamento",
+        description: err.message,
+        variant: "destructive",
+      });
+      navigate("/onboarding");
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
+      // Store selected plan in localStorage so we can redirect after OAuth
+      if (selectedPlan) {
+        localStorage.setItem("pending_plan_slug", selectedPlan);
+      }
       const { error } = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
@@ -53,13 +82,36 @@ export default function Login() {
     }
   };
 
+  // Handle pending plan checkout after OAuth redirect
+  useEffect(() => {
+    const pendingPlan = localStorage.getItem("pending_plan_slug");
+    if (pendingPlan && dbPlans.length > 0) {
+      const plan = dbPlans.find((p) => p.slug === pendingPlan);
+      if (plan?.stripe_price_id) {
+        localStorage.removeItem("pending_plan_slug");
+        redirectToCheckout(plan.stripe_price_id);
+      } else {
+        localStorage.removeItem("pending_plan_slug");
+      }
+    }
+  }, [dbPlans]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setLeakedWarning(false);
     try {
       if (isSignup) {
-        // Check for leaked password before signup
+        if (!selectedPlan) {
+          toast({
+            title: "Selecione um plano",
+            description: "Escolha um plano abaixo antes de criar sua conta.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const pwCheck = await checkLeakedPassword(password);
         if (pwCheck.isLeaked) {
           setLeakedWarning(true);
@@ -72,10 +124,20 @@ export default function Login() {
           return;
         }
 
-        const { error } = await signUp(email, password, name);
+        const { error } = await signUp(email, password, name, whatsapp || undefined);
         if (error) throw error;
-        toast({ title: "Conta criada!", description: "Você já está logado." });
-        navigate("/onboarding");
+
+        toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
+
+        // After signup, redirect to Stripe checkout if plan has a price
+        const planData = getSelectedPlanData();
+        if (planData?.stripe_price_id) {
+          // Small delay to ensure auth session is established
+          await new Promise((r) => setTimeout(r, 1500));
+          await redirectToCheckout(planData.stripe_price_id);
+        } else {
+          navigate("/onboarding");
+        }
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
@@ -108,88 +170,17 @@ export default function Login() {
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 gap-8 overflow-y-auto">
-        {/* Login / Signup Form */}
-        <Card className="w-full max-w-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">{isSignup ? "Criar conta" : (wl.login_title || `Bem-vindo ao ${wl.brand_name}`)}</CardTitle>
-            <CardDescription className="text-xs">
-              {isSignup ? "Comece a analisar seus sites" : (wl.login_subtitle || "Entre na sua conta")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignup && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Nome</Label>
-                  <Input placeholder="Seu nome" className="h-9 text-sm" value={name} onChange={(e) => setName(e.target.value)} />
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Email</Label>
-                <Input type="email" placeholder="voce@empresa.com" className="h-9 text-sm" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Senha</Label>
-                <Input type="password" placeholder="••••••••" className="h-9 text-sm" value={password} onChange={(e) => { setPassword(e.target.value); setLeakedWarning(false); }} required minLength={6} />
-                {leakedWarning && (
-                  <p className="text-[11px] text-destructive flex items-center gap-1.5">
-                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-                    Esta senha foi exposta em vazamentos. Escolha outra.
-                  </p>
-                )}
-              </div>
-              <Button className="w-full h-9 text-sm" type="submit" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {isSignup ? "Criar conta" : "Entrar"}
-              </Button>
-
-              <div className="relative my-2">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] text-muted-foreground">
-                  ou
-                </span>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-9 text-sm gap-2"
-                onClick={handleGoogleSignIn}
-                disabled={googleLoading}
-              >
-                {googleLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                  </svg>
-                )}
-                Continuar com Google
-              </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                {isSignup ? "Já tem uma conta?" : "Não tem conta?"}{" "}
-                <button type="button" className="text-primary font-medium hover:underline" onClick={() => setIsSignup(!isSignup)}>
-                  {isSignup ? "Entrar" : "Criar conta"}
-                </button>
-              </p>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Plans Section - visible on signup */}
+        {/* Plans Section - visible on signup, ABOVE the form */}
         {isSignup && (
           <div className="w-full max-w-4xl space-y-4">
             <div className="text-center">
-              <h2 className="text-lg font-bold text-foreground">Escolha seu plano</h2>
-              <p className="text-sm text-muted-foreground">Comece grátis e faça upgrade quando quiser</p>
+              <h2 className="text-lg font-bold text-foreground">1. Escolha seu plano</h2>
+              <p className="text-sm text-muted-foreground">Selecione o plano ideal para você</p>
             </div>
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${dbPlans.length >= 4 ? 'lg:grid-cols-4' : dbPlans.length === 3 ? 'lg:grid-cols-3' : ''}`}>
               {dbPlans.map((plan) => {
                 const isPopular = plan.slug === "growth";
+                const isSelected = selectedPlan === plan.slug;
                 const features: string[] = [
                   `${plan.projects_limit === -1 ? "Projetos ilimitados" : plan.projects_limit + " projeto" + (plan.projects_limit > 1 ? "s" : "")}`,
                   `Indexação — ${plan.indexing_daily_limit === -1 ? "sem limites" : plan.indexing_daily_limit + " URLs/dia"}`,
@@ -206,21 +197,21 @@ export default function Login() {
                     onClick={() => setSelectedPlan(plan.slug)}
                     className={cn(
                       "p-4 relative transition-all hover:shadow-md cursor-pointer",
-                      selectedPlan === plan.slug
+                      isSelected
                         ? "border-primary ring-2 ring-primary bg-primary/5"
                         : isPopular
                           ? "border-primary/50 ring-1 ring-primary/50"
                           : ""
                     )}
                   >
-                    {isPopular && !selectedPlan && (
-                      <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
-                        <Star className="h-2.5 w-2.5" /> Popular
-                      </Badge>
-                    )}
-                    {selectedPlan === plan.slug && (
+                    {isSelected && (
                       <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
                         <Check className="h-2.5 w-2.5" /> Selecionado
+                      </Badge>
+                    )}
+                    {isPopular && !isSelected && (
+                      <Badge variant="secondary" className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
+                        <Star className="h-2.5 w-2.5" /> Popular
                       </Badge>
                     )}
                     <div className="space-y-3">
@@ -247,6 +238,105 @@ export default function Login() {
             </div>
           </div>
         )}
+
+        {/* Login / Signup Form */}
+        <Card className="w-full max-w-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">
+              {isSignup ? (selectedPlan ? "2. Crie sua conta" : "Criar conta") : (wl.login_title || `Bem-vindo ao ${wl.brand_name}`)}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {isSignup
+                ? selectedPlan
+                  ? `Plano selecionado: ${dbPlans.find(p => p.slug === selectedPlan)?.name || selectedPlan}. Após criar a conta, você será redirecionado para o pagamento.`
+                  : "Selecione um plano acima para continuar"
+                : (wl.login_subtitle || "Entre na sua conta")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignup && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome</Label>
+                    <Input placeholder="Seu nome" className="h-9 text-sm" value={name} onChange={(e) => setName(e.target.value)} required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1.5">
+                      <Phone className="h-3 w-3" /> WhatsApp
+                    </Label>
+                    <Input
+                      type="tel"
+                      placeholder="+55 11 99999-9999"
+                      className="h-9 text-sm"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Inclua o código do país (ex: +55 para Brasil, +1 para EUA)
+                    </p>
+                  </div>
+                </>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input type="email" placeholder="voce@empresa.com" className="h-9 text-sm" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Senha</Label>
+                <Input type="password" placeholder="••••••••" className="h-9 text-sm" value={password} onChange={(e) => { setPassword(e.target.value); setLeakedWarning(false); }} required minLength={6} />
+                {leakedWarning && (
+                  <p className="text-[11px] text-destructive flex items-center gap-1.5">
+                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                    Esta senha foi exposta em vazamentos. Escolha outra.
+                  </p>
+                )}
+              </div>
+              <Button className="w-full h-9 text-sm" type="submit" disabled={loading || (isSignup && !selectedPlan)}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {isSignup
+                  ? selectedPlan
+                    ? "Criar conta e ir para pagamento →"
+                    : "Selecione um plano acima"
+                  : "Entrar"}
+              </Button>
+
+              <div className="relative my-2">
+                <Separator />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] text-muted-foreground">
+                  ou
+                </span>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-9 text-sm gap-2"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading || (isSignup && !selectedPlan)}
+              >
+                {googleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                )}
+                Continuar com Google
+              </Button>
+
+              <p className="text-xs text-center text-muted-foreground">
+                {isSignup ? "Já tem uma conta?" : "Não tem conta?"}{" "}
+                <button type="button" className="text-primary font-medium hover:underline" onClick={() => setIsSignup(!isSignup)}>
+                  {isSignup ? "Entrar" : "Criar conta"}
+                </button>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
