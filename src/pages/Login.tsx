@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,10 @@ export default function Login() {
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
-  const [isSignup, setIsSignup] = useState(false);
+  const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const planFromUrl = searchParams.get("plan");
+  const [isSignup, setIsSignup] = useState(!!planFromUrl);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(planFromUrl);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -200,14 +203,24 @@ export default function Login() {
                 return (
                   <Card
                     key={plan.id}
+                    onClick={() => setSelectedPlan(plan.slug)}
                     className={cn(
-                      "p-4 relative transition-all hover:shadow-md",
-                      isPopular && "border-primary ring-1 ring-primary"
+                      "p-4 relative transition-all hover:shadow-md cursor-pointer",
+                      selectedPlan === plan.slug
+                        ? "border-primary ring-2 ring-primary bg-primary/5"
+                        : isPopular
+                          ? "border-primary/50 ring-1 ring-primary/50"
+                          : ""
                     )}
                   >
-                    {isPopular && (
+                    {isPopular && !selectedPlan && (
                       <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
                         <Star className="h-2.5 w-2.5" /> Popular
+                      </Badge>
+                    )}
+                    {selectedPlan === plan.slug && (
+                      <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
+                        <Check className="h-2.5 w-2.5" /> Selecionado
                       </Badge>
                     )}
                     <div className="space-y-3">
