@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,41 +13,7 @@ import { checkLeakedPassword } from "@/lib/password-check";
 import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
 import { lovable } from "@/integrations/lovable/index";
 import { Separator } from "@/components/ui/separator";
-
-const PLANS = [
-  {
-    name: "Free",
-    price: "R$ 0",
-    period: "/mês",
-    description: "Para testar a plataforma",
-    features: ["1 projeto", "100 URLs monitoradas", "Relatórios básicos", "7 dias de histórico"],
-    popular: false,
-  },
-  {
-    name: "Starter",
-    price: "R$ 97",
-    period: "/mês",
-    description: "Para freelancers e sites pequenos",
-    features: ["3 projetos", "1.000 URLs monitoradas", "Integrações GSC + GA4", "30 dias de histórico", "Agente IA básico"],
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "R$ 197",
-    period: "/mês",
-    description: "Para agências e profissionais",
-    features: ["10 projetos", "10.000 URLs monitoradas", "Todas as integrações", "Histórico ilimitado", "Agente IA avançado", "Rank & Rent"],
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "R$ 497",
-    period: "/mês",
-    description: "Para grandes operações",
-    features: ["Projetos ilimitados", "URLs ilimitadas", "White-label", "API dedicada", "Suporte prioritário", "SLA garantido"],
-    popular: false,
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -60,6 +26,16 @@ export default function Login() {
   const [name, setName] = useState("");
   const [leakedWarning, setLeakedWarning] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("plans")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => { if (data) setDbPlans(data); });
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -208,40 +184,53 @@ export default function Login() {
               <h2 className="text-lg font-bold text-foreground">Escolha seu plano</h2>
               <p className="text-sm text-muted-foreground">Comece grátis e faça upgrade quando quiser</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {PLANS.map((plan) => (
-                <Card
-                  key={plan.name}
-                  className={cn(
-                    "p-4 relative transition-all hover:shadow-md",
-                    plan.popular && "border-primary ring-1 ring-primary"
-                  )}
-                >
-                  {plan.popular && (
-                    <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
-                      <Star className="h-2.5 w-2.5" /> Popular
-                    </Badge>
-                  )}
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">{plan.name}</h3>
-                      <p className="text-[10px] text-muted-foreground">{plan.description}</p>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${dbPlans.length >= 4 ? 'lg:grid-cols-4' : dbPlans.length === 3 ? 'lg:grid-cols-3' : ''}`}>
+              {dbPlans.map((plan) => {
+                const isPopular = plan.slug === "growth";
+                const features: string[] = [
+                  `${plan.projects_limit === -1 ? "Projetos ilimitados" : plan.projects_limit + " projeto" + (plan.projects_limit > 1 ? "s" : "")}`,
+                  `Indexação — ${plan.indexing_daily_limit === -1 ? "sem limites" : plan.indexing_daily_limit + " URLs/dia"}`,
+                  plan.ga4_enabled ? "Integrações GSC + GA4" : "SEO via GSC",
+                  `${plan.members_limit === -1 ? "Usuários ilimitados" : plan.members_limit + " usuário" + (plan.members_limit > 1 ? "s" : "")}`,
+                  plan.whatsapp_reports_enabled ? "Relatórios via WhatsApp" : null,
+                  plan.white_label_enabled ? "White-label" : null,
+                  plan.api_access_enabled ? "API dedicada" : null,
+                ].filter(Boolean) as string[];
+
+                return (
+                  <Card
+                    key={plan.id}
+                    className={cn(
+                      "p-4 relative transition-all hover:shadow-md",
+                      isPopular && "border-primary ring-1 ring-primary"
+                    )}
+                  >
+                    {isPopular && (
+                      <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] gap-1">
+                        <Star className="h-2.5 w-2.5" /> Popular
+                      </Badge>
+                    )}
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">{plan.name}</h3>
+                        <p className="text-[10px] text-muted-foreground">{plan.description}</p>
+                      </div>
+                      <div className="flex items-baseline gap-0.5">
+                        <span className="text-2xl font-bold text-foreground">R$ {Number(plan.price).toLocaleString("pt-BR")}</span>
+                        <span className="text-xs text-muted-foreground">/mês</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {features.map((f) => (
+                          <li key={f} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Check className="h-3 w-3 text-primary shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="flex items-baseline gap-0.5">
-                      <span className="text-2xl font-bold text-foreground">{plan.price}</span>
-                      <span className="text-xs text-muted-foreground">{plan.period}</span>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {plan.features.map((f) => (
-                        <li key={f} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <Check className="h-3 w-3 text-primary shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
