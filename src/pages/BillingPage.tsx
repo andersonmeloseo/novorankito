@@ -1,77 +1,84 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, Zap, Loader2, ExternalLink, CreditCard } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Zap, Loader2, ExternalLink, CreditCard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-const STRIPE_PLANS = {
-  start: {
-    name: "Start",
-    price: "R$ 97",
-    period: "/mês",
-    priceId: "price_1T1VifRvsu6nPBN1bgPaETX4",
-    productId: "prod_TzUiyUrbaDCwAX",
-    features: [
-      "3 projetos",
-      "1 conta GSC de indexação/projeto (200 URLs/dia)",
-      "SEO + GA4 básicos",
-      "Orquestrador IA — limitado (5 execuções/mês)",
-      "Tracking Pixel básico",
-      "1 usuário",
-    ],
-  },
-  growth: {
-    name: "Growth",
-    price: "R$ 297",
-    period: "/mês",
-    priceId: "price_1T1VjfRvsu6nPBN1eAHvAPTy",
-    productId: "prod_TzUjFnIptSNEkV",
-    features: [
-      "10 projetos",
-      "Até 4 contas GSC de indexação/projeto (800 URLs/dia)",
-      "SEO + GA4 completos",
-      "Orquestrador IA — limitado (20 execuções/mês)",
-      "Agente IA + relatórios WhatsApp",
-      "Tracking Pixel v4.1 + Rank & Rent",
-      "5 usuários",
-    ],
-  },
-  unlimited: {
-    name: "Unlimited",
-    price: "R$ 697",
-    period: "/mês",
-    priceId: "price_1T1Vk6Rvsu6nPBN1Piw9lyMk",
-    productId: "prod_TzUjdgygGogyta",
-    features: [
-      "Projetos ilimitados",
-      "Contas GSC de indexação ilimitadas/projeto",
-      "Orquestrador IA completo (ilimitado)",
-      "White-label + domínio próprio",
-      "API pública + Webhooks",
-      "Usuários ilimitados",
-      "Suporte prioritário + onboarding dedicado",
-    ],
-  },
-};
+interface DbPlan {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  currency: string;
+  billing_interval: string;
+  stripe_price_id: string | null;
+  projects_limit: number;
+  members_limit: number;
+  events_limit: number;
+  ai_requests_limit: number;
+  gsc_accounts_per_project: number;
+  indexing_daily_limit: number;
+  orchestrator_executions_limit: number;
+  ga4_enabled: boolean;
+  pixel_tracking_enabled: boolean;
+  whatsapp_reports_enabled: boolean;
+  api_access_enabled: boolean;
+  webhooks_enabled: boolean;
+  white_label_enabled: boolean;
+  rank_rent_enabled: boolean;
+  advanced_analytics_enabled: boolean;
+  sort_order: number;
+}
 
-const PLANS_LIST = [STRIPE_PLANS.start, STRIPE_PLANS.growth, STRIPE_PLANS.unlimited];
+function fmt(v: number, suffix = ""): string {
+  if (v === -1) return "Ilimitado";
+  return v.toLocaleString("pt-BR") + suffix;
+}
+
+function buildFeatures(p: DbPlan): string[] {
+  const f: string[] = [];
+  f.push(`${fmt(p.projects_limit)} projeto${p.projects_limit !== 1 ? "s" : ""}`);
+  f.push(`${fmt(p.gsc_accounts_per_project)} conta${p.gsc_accounts_per_project !== 1 ? "s" : ""} GSC/projeto (${fmt(p.indexing_daily_limit)} URLs/dia)`);
+  f.push(p.advanced_analytics_enabled ? "SEO + GA4 completos" : "SEO + GA4 básicos");
+  f.push(`Orquestrador IA — ${p.orchestrator_executions_limit === -1 ? "ilimitado" : `${fmt(p.orchestrator_executions_limit)} exec/mês`}`);
+  if (p.whatsapp_reports_enabled) f.push("Relatórios WhatsApp");
+  if (p.pixel_tracking_enabled) f.push("Tracking Pixel");
+  if (p.rank_rent_enabled) f.push("Rank & Rent");
+  if (p.white_label_enabled) f.push("White-label + domínio próprio");
+  if (p.api_access_enabled) f.push("API pública");
+  if (p.webhooks_enabled) f.push("Webhooks");
+  f.push(`${fmt(p.members_limit)} usuário${p.members_limit !== 1 ? "s" : ""}`);
+  return f;
+}
 
 export default function BillingPage() {
   const { subscription, checkSubscription } = useAuth();
+  const [plans, setPlans] = useState<DbPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
 
-  // Check subscription on success redirect
+  useEffect(() => {
+    supabase
+      .from("plans")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setPlans(data.filter((p: DbPlan) => !!p.stripe_price_id) as DbPlan[]);
+        setLoadingPlans(false);
+      });
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
       toast({ title: "Assinatura ativada!", description: "Seu plano foi atualizado com sucesso." });
       checkSubscription();
-      window.history.replaceState({}, "", "/billing");
+      window.history.replaceState({}, "", "/account/billing");
     }
   }, [checkSubscription]);
 
@@ -82,9 +89,7 @@ export default function BillingPage() {
         body: { priceId },
       });
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao iniciar checkout", variant: "destructive" });
     } finally {
@@ -97,9 +102,7 @@ export default function BillingPage() {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao abrir portal", variant: "destructive" });
     } finally {
@@ -107,7 +110,7 @@ export default function BillingPage() {
     }
   };
 
-  const currentProductId = subscription.product_id;
+  const currentPriceId = subscription.price_id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,8 +123,8 @@ export default function BillingPage() {
           <p className="text-xs text-muted-foreground">Gerencie sua assinatura, faturas e uso de recursos</p>
         </div>
       </header>
+
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Subscription Status */}
         {subscription.subscribed && (
           <Card className="p-5 border-success/30 bg-success/5">
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -142,45 +145,52 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {/* Plans */}
         <div>
           <h2 className="text-sm font-medium text-foreground mb-3">Planos Disponíveis</h2>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {PLANS_LIST.map((plan) => {
-              const isCurrent = currentProductId === plan.productId;
-              return (
-                <Card key={plan.name} className={`p-5 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
-                  {isCurrent && <Badge className="text-[9px] mb-3">Plano Atual</Badge>}
-                  <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                  <div className="mt-1 mb-4">
-                    <span className="text-2xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-xs text-muted-foreground">{plan.period}</span>
-                  </div>
-                  <ul className="space-y-2 mb-4">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Check className="h-3 w-3 text-success flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    variant={isCurrent ? "outline" : "default"}
-                    size="sm"
-                    className="w-full text-xs"
-                    disabled={isCurrent || loadingPlan === plan.priceId}
-                    onClick={() => handleCheckout(plan.priceId)}
-                  >
-                    {loadingPlan === plan.priceId && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                    {isCurrent ? "Plano Atual" : "Assinar este plano"}
-                  </Button>
-                </Card>
-              );
-            })}
-          </div>
+          {loadingPlans ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className={`grid gap-4 ${plans.length <= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
+              {plans.map((plan) => {
+                const isCurrent = currentPriceId === plan.stripe_price_id;
+                const features = buildFeatures(plan);
+                return (
+                  <Card key={plan.id} className={`p-5 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
+                    {isCurrent && <Badge className="text-[9px] mb-3">Plano Atual</Badge>}
+                    <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+                    <div className="mt-1 mb-4">
+                      <span className="text-2xl font-bold text-foreground">
+                        R$ {plan.price.toLocaleString("pt-BR")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">/{plan.billing_interval === "yearly" ? "ano" : "mês"}</span>
+                    </div>
+                    <ul className="space-y-2 mb-4">
+                      {features.map((f) => (
+                        <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Check className="h-3 w-3 text-success flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      variant={isCurrent ? "outline" : "default"}
+                      size="sm"
+                      className="w-full text-xs"
+                      disabled={isCurrent || !plan.stripe_price_id || loadingPlan === plan.stripe_price_id}
+                      onClick={() => plan.stripe_price_id && handleCheckout(plan.stripe_price_id)}
+                    >
+                      {loadingPlan === plan.stripe_price_id && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                      {isCurrent ? "Plano Atual" : "Assinar este plano"}
+                    </Button>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Usage */}
         <Card className="p-5">
           <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <Zap className="h-4 w-4 text-primary" /> Consumo Atual
