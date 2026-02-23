@@ -1,0 +1,1 @@
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS stripe_annual_checkout_url text DEFAULT NULL;

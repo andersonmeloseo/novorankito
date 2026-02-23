@@ -648,35 +648,50 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                   <p className="text-[10px] text-muted-foreground">ID do preço anual no Stripe (preenchido automaticamente ao sincronizar)</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">URL de Checkout</Label>
+                  <Label className="text-xs font-medium">Payment Link Mensal</Label>
                   <Input
                     value={getValue("stripe_checkout_url") || ""}
                     onChange={e => setValue("stripe_checkout_url", e.target.value || null)}
-                    placeholder="https://checkout.stripe.com/..."
+                    placeholder="https://buy.stripe.com/..."
                     className="h-9 text-sm"
                   />
-                  <p className="text-[10px] text-muted-foreground">Link de pagamento direto (Payment Link)</p>
+                  <p className="text-[10px] text-muted-foreground">Link direto de pagamento mensal (Stripe Payment Link)</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Payment Link Anual</Label>
+                  <Input
+                    value={getValue("stripe_annual_checkout_url") || ""}
+                    onChange={e => setValue("stripe_annual_checkout_url", e.target.value || null)}
+                    placeholder="https://buy.stripe.com/..."
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Link direto de pagamento anual (Stripe Payment Link)</p>
                 </div>
               </div>
 
-              {getValue("stripe_checkout_url") && (
-                <div className="flex items-center gap-2">
-                  <a
-                    href={getValue("stripe_checkout_url") as string}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Abrir link de checkout
-                  </a>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(getValue("stripe_checkout_url") as string); toast.success("URL copiada"); }}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                  >
-                    <Copy className="h-3 w-3" /> Copiar
-                  </button>
-                </div>
-              )}
+              {/* Quick links */}
+              <div className="flex flex-wrap items-center gap-3">
+                {getValue("stripe_checkout_url") && (
+                  <div className="flex items-center gap-2">
+                    <a href={getValue("stripe_checkout_url") as string} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" /> Abrir mensal
+                    </a>
+                    <button onClick={() => { navigator.clipboard.writeText(getValue("stripe_checkout_url") as string); toast.success("URL copiada"); }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      <Copy className="h-3 w-3" /> Copiar
+                    </button>
+                  </div>
+                )}
+                {getValue("stripe_annual_checkout_url") && (
+                  <div className="flex items-center gap-2">
+                    <a href={getValue("stripe_annual_checkout_url") as string} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" /> Abrir anual
+                    </a>
+                    <button onClick={() => { navigator.clipboard.writeText(getValue("stripe_annual_checkout_url") as string); toast.success("URL copiada"); }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      <Copy className="h-3 w-3" /> Copiar
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-3 pt-3 border-t border-border">
                 <Label className="text-xs font-medium">Métodos de Pagamento Aceitos</Label>

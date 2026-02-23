@@ -1692,6 +1692,7 @@ export type Database = {
           rank_rent_enabled: boolean
           slug: string
           sort_order: number
+          stripe_annual_checkout_url: string | null
           stripe_annual_price_id: string | null
           stripe_checkout_url: string | null
           stripe_price_id: string | null
@@ -1729,6 +1730,7 @@ export type Database = {
           rank_rent_enabled?: boolean
           slug: string
           sort_order?: number
+          stripe_annual_checkout_url?: string | null
           stripe_annual_price_id?: string | null
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
@@ -1766,6 +1768,7 @@ export type Database = {
           rank_rent_enabled?: boolean
           slug?: string
           sort_order?: number
+          stripe_annual_checkout_url?: string | null
           stripe_annual_price_id?: string | null
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null

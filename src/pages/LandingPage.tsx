@@ -837,7 +837,11 @@ export default function LandingPage() {
                   cta={plan.trial_days > 0 ? `Testar ${plan.trial_days} dias grátis` : (ctaMap[plan.slug] || `Começar com ${plan.name} →`)}
                   highlight={isHighlight}
                   badge={isHighlight ? "⭐ Mais popular" : undefined}
-                  href={`/login?plan=${plan.slug}&interval=${billingInterval}`}
+                  href={
+                    isAnnual
+                      ? (plan.stripe_annual_checkout_url || plan.stripe_checkout_url || `/login?plan=${plan.slug}&interval=annual`)
+                      : (plan.stripe_checkout_url || `/login?plan=${plan.slug}&interval=monthly`)
+                  }
                   trialDays={plan.trial_days}
                   couponBadge={planCoupon?.code}
                 />

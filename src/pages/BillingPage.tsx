@@ -16,6 +16,8 @@ interface DbPlan {
   currency: string;
   billing_interval: string;
   stripe_price_id: string | null;
+  stripe_checkout_url: string | null;
+  stripe_annual_checkout_url: string | null;
   stripe_annual_price_id: string | null;
   annual_price: number | null;
   projects_limit: number;
@@ -123,6 +125,17 @@ export default function BillingPage() {
 
   const handleCheckout = async (plan: DbPlan) => {
     const isAnnual = billingInterval === "annual";
+    
+    // Use direct payment link if available
+    const directLink = isAnnual
+      ? ((plan as any).stripe_annual_checkout_url || plan.stripe_checkout_url)
+      : plan.stripe_checkout_url;
+    
+    if (directLink) {
+      window.location.href = directLink;
+      return;
+    }
+
     const priceId = isAnnual && plan.stripe_annual_price_id ? plan.stripe_annual_price_id : plan.stripe_price_id;
     if (!priceId) return;
     setLoadingPlan(priceId);
