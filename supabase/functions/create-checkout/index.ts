@@ -55,6 +55,9 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/checkout-success`,
       cancel_url: `${req.headers.get("origin")}/landing?checkout=canceled`,
+      metadata: { source: "rankito" },
+      subscription_data: { metadata: { source: "rankito" } },
+      payment_intent_data: undefined,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

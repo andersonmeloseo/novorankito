@@ -52,13 +52,41 @@ serve(async (req) => {
     });
 
     if (mode === "admin") {
-      // Admin: get all recent charges with customer info
+      // Get all platform users' emails to filter Stripe charges
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id");
+      
+      // Get auth emails for all users via admin API
+      const userIds = (profiles || []).map((p: any) => p.user_id);
+      const platformEmails = new Set<string>();
+      
+      // Batch fetch emails from auth.users
+      for (const uid of userIds) {
+        try {
+          const { data: authUser } = await supabase.auth.admin.getUserById(uid);
+          if (authUser?.user?.email) {
+            platformEmails.add(authUser.user.email.toLowerCase());
+          }
+        } catch { /* skip */ }
+      }
+
+      // Get charges and filter to only platform customers
       const charges = await stripe.charges.list({
-        limit,
+        limit: 100,
         expand: ["data.customer"],
       });
 
-      const transactions = charges.data.map((ch) => {
+      const platformCharges = charges.data.filter((ch) => {
+        const cust = ch.customer as Stripe.Customer | null;
+        const email = (cust?.email || ch.billing_details?.email || "").toLowerCase();
+        // Match by email OR by metadata on the invoice/subscription
+        if (platformEmails.has(email)) return true;
+        if (ch.metadata?.source === "rankito") return true;
+        return false;
+      });
+
+      const transactions = platformCharges.slice(0, limit).map((ch) => {
         const cust = ch.customer as Stripe.Customer | null;
         return {
           id: ch.id,
@@ -77,7 +105,7 @@ serve(async (req) => {
         };
       });
 
-      // Also get summary stats
+      // Summary from filtered charges only
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const startOfWeek = new Date(startOfDay);
@@ -89,7 +117,7 @@ serve(async (req) => {
       let monthRevenue = 0;
       let totalTransactions = 0;
 
-      for (const ch of charges.data) {
+      for (const ch of platformCharges) {
         if (!ch.paid || ch.status !== "succeeded") continue;
         const chDate = new Date(ch.created * 1000);
         const amount = ch.amount / 100;
