@@ -5,7 +5,8 @@ import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-conta
 import {
   Users, FolderOpen, CreditCard, Activity, TrendingUp,
   TrendingDown, Database, Shield, AlertTriangle, CheckCircle2,
-  XCircle, Clock, Zap, BarChart3, ArrowRight,
+  XCircle, Clock, Zap, BarChart3, ArrowRight, DollarSign, Receipt,
+  Loader2,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,9 +18,11 @@ import {
   ChartHeader, LineGlowGradient,
 } from "@/components/analytics/ChartPrimitives";
 import { Progress } from "@/components/ui/progress";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { format, subDays, parseISO, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminDashboardTabProps {
   stats: any;
@@ -55,6 +58,35 @@ function InsightItem({ icon: Icon, color, title, description, value, variant = "
 }
 
 export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: AdminDashboardTabProps) {
+  // ── Stripe Sales Data ──
+  const [salesData, setSalesData] = useState<{ today: number; week: number; month: number; total_transactions: number; transactions: any[] }>({
+    today: 0, week: 0, month: 0, total_transactions: 0, transactions: [],
+  });
+  const [loadingSales, setLoadingSales] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("stripe-transactions", {
+          body: { mode: "admin", limit: 10 },
+        });
+        if (data) {
+          setSalesData({
+            today: data.summary?.today || 0,
+            week: data.summary?.week || 0,
+            month: data.summary?.month || 0,
+            total_transactions: data.summary?.total_transactions || 0,
+            transactions: data.transactions || [],
+          });
+        }
+      } catch (e) {
+        console.error("Failed to load sales", e);
+      } finally {
+        setLoadingSales(false);
+      }
+    })();
+  }, []);
+
   // ── Computed data ──
   const userGrowth = useMemo(() => {
     const days: Record<string, number> = {};
@@ -139,6 +171,69 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
         <KpiCard label="Churn" value={Number(stats?.churnRate) || 0} change={0} suffix="%" sparklineColor="hsl(var(--warning))" description="Percentual de assinaturas canceladas vs ativas" />
         <KpiCard label="URLs Monitoradas" value={stats?.totalUrls || 0} change={0} sparklineColor="hsl(var(--chart-5))" description="Total de URLs sendo monitoradas pelo SEO" />
       </StaggeredGrid>
+
+      {/* ── Vendas Stripe (Real-time) ── */}
+      <AnimatedContainer>
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <ChartHeader title="💰 Vendas — Stripe (Produção)" subtitle="Receita real processada pelo Stripe — atualizado em tempo real" />
+            {loadingSales && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-success/10 border border-success/20">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Hoje</div>
+              <div className="text-xl font-bold text-success font-display">R$ {salesData.today.toFixed(2)}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Semana</div>
+              <div className="text-xl font-bold text-primary font-display">R$ {salesData.week.toFixed(2)}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-chart-9/10 border border-chart-9/20" style={{ backgroundColor: "hsl(var(--chart-9) / 0.1)", borderColor: "hsl(var(--chart-9) / 0.2)" }}>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Mês</div>
+              <div className="text-xl font-bold font-display" style={{ color: "hsl(var(--chart-9))" }}>R$ {salesData.month.toFixed(2)}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-muted/30 border border-border">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Transações</div>
+              <div className="text-xl font-bold text-foreground font-display">{salesData.total_transactions}</div>
+            </div>
+          </div>
+
+          {/* Recent transactions mini-table */}
+          {salesData.transactions.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    {["Data/Hora", "Cliente", "E-mail", "Valor", "Status"].map(col => (
+                      <th key={col} className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {salesData.transactions.slice(0, 5).map((tx: any) => (
+                    <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap font-mono">
+                        {(() => { try { return format(new Date(tx.created), "dd/MM/yy HH:mm", { locale: ptBR }); } catch { return "—"; } })()}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-foreground">{tx.customer_name || "—"}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{tx.customer_email || "—"}</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-foreground">R$ {Number(tx.amount).toFixed(2)}</td>
+                      <td className="px-3 py-2">
+                        <Badge className={`text-[10px] ${tx.status === "succeeded" ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20"}`}>
+                          {tx.status === "succeeded" ? "Pago" : tx.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!loadingSales && salesData.transactions.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">Nenhuma transação encontrada no Stripe</p>
+          )}
+        </Card>
+      </AnimatedContainer>
 
       {/* ── Health Score + Risks & Wins ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
