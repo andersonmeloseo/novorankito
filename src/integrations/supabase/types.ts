@@ -2537,6 +2537,75 @@ export type Database = {
           },
         ]
       }
+      stripe_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          description: string | null
+          error_message: string | null
+          hosted_invoice_url: string | null
+          id: string
+          invoice_pdf: string | null
+          paid: boolean
+          period_end: string | null
+          period_start: string | null
+          plan_name: string | null
+          status: string
+          stripe_created_at: string
+          stripe_customer_id: string | null
+          stripe_invoice_id: string
+          stripe_subscription_id: string | null
+          synced_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          error_message?: string | null
+          hosted_invoice_url?: string | null
+          id?: string
+          invoice_pdf?: string | null
+          paid?: boolean
+          period_end?: string | null
+          period_start?: string | null
+          plan_name?: string | null
+          status?: string
+          stripe_created_at?: string
+          stripe_customer_id?: string | null
+          stripe_invoice_id: string
+          stripe_subscription_id?: string | null
+          synced_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          error_message?: string | null
+          hosted_invoice_url?: string | null
+          id?: string
+          invoice_pdf?: string | null
+          paid?: boolean
+          period_end?: string | null
+          period_start?: string | null
+          plan_name?: string | null
+          status?: string
+          stripe_created_at?: string
+          stripe_customer_id?: string | null
+          stripe_invoice_id?: string
+          stripe_subscription_id?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
       sync_jobs: {
         Row: {
           attempts: number | null

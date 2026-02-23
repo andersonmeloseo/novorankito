@@ -29,10 +29,12 @@ serve(async (req) => {
     const user = userData.user;
     let mode = "user";
     let limit = 50;
+    let syncOnly = false;
     try {
       const body = await req.json();
       mode = body.mode || "user";
       limit = Math.min(Number(body.limit || 50), 100);
+      syncOnly = body.syncOnly === true;
     } catch { /* GET with no body */ }
 
     // Check admin role if admin mode
@@ -52,92 +54,122 @@ serve(async (req) => {
     });
 
     if (mode === "admin") {
-      // Get Rankito plan price IDs from DB
-      const { data: plans } = await supabase
-        .from("plans")
-        .select("stripe_price_id")
-        .not("stripe_price_id", "is", null);
-      
-      const rankitoPriceIds = new Set(
-        (plans || []).map((p: any) => p.stripe_price_id).filter(Boolean)
-      );
+      // ---- SYNC: Fetch ALL invoices from Stripe and persist to DB ----
+      console.log("[STRIPE-TX] Starting full invoice sync...");
 
-      console.log("[STRIPE-TX] Rankito price IDs from DB:", [...rankitoPriceIds]);
+      const allInvoices: any[] = [];
+      let hasMore = true;
+      let startingAfter: string | undefined;
 
-      // Get all subscriptions and check their price items
-      const subscriptions = await stripe.subscriptions.list({
-        limit: 100,
-        status: "all",
-        expand: ["data.items"],
-      });
+      while (hasMore) {
+        const params: any = {
+          limit: 100,
+          expand: ["data.customer", "data.subscription"],
+        };
+        if (startingAfter) params.starting_after = startingAfter;
 
-      // Find subscriptions that use Rankito prices
-      const rankitoSubIds = new Set<string>();
-      for (const sub of subscriptions.data) {
-        const hasRankitoItem = sub.items?.data?.some(
-          (item) => item.price && rankitoPriceIds.has(item.price.id)
-        );
-        if (hasRankitoItem) {
-          rankitoSubIds.add(sub.id);
+        const batch = await stripe.invoices.list(params);
+        allInvoices.push(...batch.data);
+        hasMore = batch.has_more;
+        if (batch.data.length > 0) {
+          startingAfter = batch.data[batch.data.length - 1].id;
         }
       }
-      console.log("[STRIPE-TX] Rankito subscription IDs:", [...rankitoSubIds]);
 
-      // Get invoices for these subscriptions
-      const allRankitoInvoices: any[] = [];
-      for (const subId of rankitoSubIds) {
-        const invoices = await stripe.invoices.list({
-          subscription: subId,
-          limit: 100,
-          expand: ["data.customer"],
-        });
-        allRankitoInvoices.push(...invoices.data);
+      console.log(`[STRIPE-TX] Fetched ${allInvoices.length} total invoices from Stripe`);
+
+      // Upsert all invoices into stripe_transactions table
+      const upsertRows = allInvoices.map((inv) => {
+        const cust = typeof inv.customer === "object" ? inv.customer as Stripe.Customer : null;
+        const subId = typeof inv.subscription === "string"
+          ? inv.subscription
+          : (inv.subscription as any)?.id || null;
+
+        return {
+          stripe_invoice_id: inv.id,
+          stripe_subscription_id: subId,
+          stripe_customer_id: cust?.id || (typeof inv.customer === "string" ? inv.customer : null),
+          customer_email: cust?.email || null,
+          customer_name: cust?.name || null,
+          amount: (inv.amount_paid || inv.total || 0) / 100,
+          currency: inv.currency || "brl",
+          status: inv.status === "paid" ? "succeeded" : inv.status || "unknown",
+          paid: inv.status === "paid",
+          description: inv.lines?.data?.[0]?.description || null,
+          plan_name: inv.lines?.data?.[0]?.description || null,
+          invoice_pdf: inv.invoice_pdf || null,
+          hosted_invoice_url: inv.hosted_invoice_url || null,
+          error_message: inv.last_finalization_error?.message || null,
+          period_start: inv.period_start ? new Date(inv.period_start * 1000).toISOString() : null,
+          period_end: inv.period_end ? new Date(inv.period_end * 1000).toISOString() : null,
+          stripe_created_at: new Date(inv.created * 1000).toISOString(),
+          synced_at: new Date().toISOString(),
+        };
+      });
+
+      if (upsertRows.length > 0) {
+        // Upsert in batches of 50
+        for (let i = 0; i < upsertRows.length; i += 50) {
+          const batch = upsertRows.slice(i, i + 50);
+          const { error: upsertErr } = await supabase
+            .from("stripe_transactions")
+            .upsert(batch, { onConflict: "stripe_invoice_id" });
+          if (upsertErr) {
+            console.error("[STRIPE-TX] Upsert error:", upsertErr.message);
+          }
+        }
+        console.log(`[STRIPE-TX] Synced ${upsertRows.length} transactions to DB`);
       }
 
-      console.log("[STRIPE-TX] Total Rankito invoices:", allRankitoInvoices.length);
+      if (syncOnly) {
+        return new Response(
+          JSON.stringify({ synced: upsertRows.length }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
-      const transactions = allRankitoInvoices
-        .filter((inv) => inv.status === "paid" || inv.status === "open")
-        .slice(0, limit)
-        .map((inv) => {
-          const cust = inv.customer as Stripe.Customer | null;
-          return {
-            id: inv.id,
-            amount: (inv.amount_paid || inv.total || 0) / 100,
-            currency: inv.currency,
-            status: inv.status === "paid" ? "succeeded" : inv.status,
-            paid: inv.status === "paid",
-            created: new Date(inv.created * 1000).toISOString(),
-            customer_email: cust?.email || null,
-            customer_name: cust?.name || null,
-            customer_id: cust?.id || null,
-            description: inv.lines?.data?.[0]?.description || null,
-            invoice_id: inv.id,
-            payment_method: null,
-            receipt_url: inv.hosted_invoice_url,
-          };
-        });
+      // ---- READ from DB (always fresh after sync) ----
+      const { data: dbTransactions } = await supabase
+        .from("stripe_transactions")
+        .select("*")
+        .order("stripe_created_at", { ascending: false })
+        .limit(limit);
 
-      // Summary from invoices
+      const transactions = (dbTransactions || []).map((tx: any) => ({
+        id: tx.stripe_invoice_id,
+        amount: Number(tx.amount),
+        currency: tx.currency,
+        status: tx.status,
+        paid: tx.paid,
+        created: tx.stripe_created_at,
+        customer_email: tx.customer_email,
+        customer_name: tx.customer_name,
+        customer_id: tx.stripe_customer_id,
+        description: tx.description,
+        plan_name: tx.plan_name,
+        invoice_id: tx.stripe_invoice_id,
+        payment_method: null,
+        receipt_url: tx.hosted_invoice_url,
+        error_message: tx.error_message,
+      }));
+
+      // Summary from DB
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const startOfWeek = new Date(startOfDay);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      let todayRevenue = 0;
-      let weekRevenue = 0;
-      let monthRevenue = 0;
-      let totalTransactions = 0;
+      let todayRevenue = 0, weekRevenue = 0, monthRevenue = 0, totalTransactions = 0;
 
-      for (const inv of allRankitoInvoices) {
-        if (inv.status !== "paid") continue;
-        const invDate = new Date(inv.created * 1000);
-        const amount = (inv.amount_paid || 0) / 100;
+      for (const tx of dbTransactions || []) {
+        if (!tx.paid) continue;
+        const txDate = new Date(tx.stripe_created_at);
+        const amount = Number(tx.amount);
         totalTransactions++;
-        if (invDate >= startOfMonth) monthRevenue += amount;
-        if (invDate >= startOfWeek) weekRevenue += amount;
-        if (invDate >= startOfDay) todayRevenue += amount;
+        if (txDate >= startOfMonth) monthRevenue += amount;
+        if (txDate >= startOfWeek) weekRevenue += amount;
+        if (txDate >= startOfDay) todayRevenue += amount;
       }
 
       return new Response(
@@ -192,6 +224,7 @@ serve(async (req) => {
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error("[STRIPE-TX] Error:", msg);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
