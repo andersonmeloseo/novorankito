@@ -114,6 +114,8 @@ const App = () => {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/account/billing" element={<BillingPage />} />
+                  <Route path="/account/profile" element={<AccountPage />} />
                 </Route>
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/overview" element={<Overview />} />
@@ -139,8 +141,6 @@ const App = () => {
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/project-settings" element={<ProjectSettingsPage />} />
                   <Route path="/account/users" element={<UsersPage />} />
-                  <Route path="/account/billing" element={<BillingPage />} />
-                  <Route path="/account/profile" element={<AccountPage />} />
                   <Route path="/academy" element={<AcademyPage />} />
                   {/* Rank & Rent */}
                   <Route path="/rank-rent" element={<RROverviewPage />} />

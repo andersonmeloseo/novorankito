@@ -7,27 +7,37 @@ import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
 
 export default function CheckoutSuccessPage() {
   const navigate = useNavigate();
-  const { user, checkSubscription } = useAuth();
+  const { subscription, checkSubscription } = useAuth();
   const wl = useWhiteLabel();
   const [confirmed, setConfirmed] = useState(false);
 
+  // Set grace flag immediately so ProtectedRoute allows onboarding access
   useEffect(() => {
-    // Re-check subscription after Stripe redirect
+    localStorage.setItem("checkout_completed_at", String(Date.now()));
+  }, []);
+
+  useEffect(() => {
     let attempts = 0;
     const verify = async () => {
       await checkSubscription();
       attempts++;
-      // After a few checks, assume it's confirmed (Stripe webhooks can be slow)
-      if (attempts >= 2) setConfirmed(true);
+      if (attempts >= 3) setConfirmed(true);
     };
     verify();
     const interval = setInterval(verify, 3000);
     const timeout = setTimeout(() => {
       setConfirmed(true);
       clearInterval(interval);
-    }, 10000);
+    }, 15000);
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [checkSubscription]);
+
+  // Auto-confirm when subscription is detected
+  useEffect(() => {
+    if (subscription.subscribed) {
+      setConfirmed(true);
+    }
+  }, [subscription.subscribed]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
