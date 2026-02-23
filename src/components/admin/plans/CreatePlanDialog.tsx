@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useCreatePlan } from "@/hooks/use-plans";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Crown } from "lucide-react";
+import { Plus, Crown, Loader2 } from "lucide-react";
 
 interface CreatePlanDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ export function CreatePlanDialog({ open, onOpenChange, nextSortOrder }: CreatePl
   const [slug, setSlug] = useState("");
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -30,11 +32,12 @@ export function CreatePlanDialog({ open, onOpenChange, nextSortOrder }: CreatePl
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim() || !slug.trim()) {
       toast.error("Nome e slug são obrigatórios");
       return;
     }
+    setSyncing(true);
     createPlan.mutate(
       {
         name: name.trim(),
@@ -44,12 +47,40 @@ export function CreatePlanDialog({ open, onOpenChange, nextSortOrder }: CreatePl
         sort_order: nextSortOrder,
       },
       {
-        onSuccess: () => {
-          toast.success(`Plano "${name}" criado com sucesso!`);
+        onSuccess: async () => {
+          // Find the newly created plan to sync with Stripe
+          try {
+            const { data: plans } = await supabase
+              .from("plans")
+              .select("id")
+              .eq("slug", slug.toLowerCase().replace(/\s+/g, "-"))
+              .limit(1)
+              .single();
+            
+            if (plans?.id && price > 0) {
+              toast.info("Criando produto no Stripe...");
+              const { data, error } = await supabase.functions.invoke("sync-plan-stripe", {
+                body: { plan_id: plans.id },
+              });
+              if (error || data?.error) {
+                toast.warning("Plano criado, mas falha ao sincronizar com Stripe: " + (data?.error || error?.message));
+              } else {
+                toast.success(`Plano "${name}" criado e sincronizado com Stripe!`);
+              }
+            } else {
+              toast.success(`Plano "${name}" criado com sucesso!`);
+            }
+          } catch {
+            toast.success(`Plano "${name}" criado com sucesso!`);
+          }
           setName(""); setSlug(""); setPrice(0); setDescription("");
+          setSyncing(false);
           onOpenChange(false);
         },
-        onError: (err) => toast.error("Erro: " + err.message),
+        onError: (err) => {
+          toast.error("Erro: " + err.message);
+          setSyncing(false);
+        },
       }
     );
   };
@@ -102,13 +133,13 @@ export function CreatePlanDialog({ open, onOpenChange, nextSortOrder }: CreatePl
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs">
             Cancelar
           </Button>
-          <Button onClick={handleCreate} disabled={createPlan.isPending || !name.trim()} className="text-xs gap-1.5">
-            {createPlan.isPending ? (
-              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+          <Button onClick={handleCreate} disabled={createPlan.isPending || syncing || !name.trim()} className="text-xs gap-1.5">
+            {(createPlan.isPending || syncing) ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            Criar Plano
+            {syncing ? "Sincronizando Stripe..." : "Criar Plano"}
           </Button>
         </DialogFooter>
       </DialogContent>
