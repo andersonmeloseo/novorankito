@@ -125,20 +125,61 @@ serve(async (req) => {
       logStep("Stripe price created", { priceId: stripePriceId });
     }
 
-    // Save stripe_price_id back to DB
+    // ─── Annual Price ───
+    let stripeAnnualPriceId: string | null = plan.stripe_annual_price_id;
+    const annualAmount = plan.annual_price
+      ? Math.round(plan.annual_price * 100)
+      : Math.round(plan.price * 10 * 100); // 10 months = 2 free
+
+    if (stripeAnnualPriceId) {
+      try {
+        const existingAnnual = await stripe.prices.retrieve(stripeAnnualPriceId);
+        if (existingAnnual.unit_amount !== annualAmount || !existingAnnual.active) {
+          await stripe.prices.update(stripeAnnualPriceId, { active: false });
+          const newAnnual = await stripe.prices.create({
+            product: stripeProductId!,
+            unit_amount: annualAmount,
+            currency: "brl",
+            recurring: { interval: "year" },
+          });
+          stripeAnnualPriceId = newAnnual.id;
+          logStep("New annual price created", { priceId: stripeAnnualPriceId });
+        }
+      } catch (_e) {
+        stripeAnnualPriceId = null;
+      }
+    }
+
+    if (!stripeAnnualPriceId && stripeProductId) {
+      const annualPrice = await stripe.prices.create({
+        product: stripeProductId,
+        unit_amount: annualAmount,
+        currency: "brl",
+        recurring: { interval: "year" },
+      });
+      stripeAnnualPriceId = annualPrice.id;
+      logStep("Annual price created", { priceId: stripeAnnualPriceId });
+    }
+
+    // Save stripe_price_id and stripe_annual_price_id back to DB
     const { error: updateErr } = await supabase
       .from("plans")
-      .update({ stripe_price_id: stripePriceId })
+      .update({
+        stripe_price_id: stripePriceId,
+        stripe_annual_price_id: stripeAnnualPriceId,
+        annual_price: plan.annual_price || plan.price * 10,
+      })
       .eq("id", plan_id);
-    if (updateErr) throw new Error("Failed to save stripe_price_id: " + updateErr.message);
+    if (updateErr) throw new Error("Failed to save stripe IDs: " + updateErr.message);
 
-    logStep("Plan updated in DB", { stripe_price_id: stripePriceId });
+    logStep("Plan updated in DB", { stripe_price_id: stripePriceId, stripe_annual_price_id: stripeAnnualPriceId });
 
     return new Response(
       JSON.stringify({
         success: true,
         stripe_product_id: stripeProductId,
         stripe_price_id: stripePriceId,
+        stripe_annual_price_id: stripeAnnualPriceId,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     );
