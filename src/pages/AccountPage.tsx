@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui/card";
@@ -621,6 +621,8 @@ function NotificationsTab() {
 /* ─── Billing Tab ─── */
 function BillingTab() {
   const { user } = useAuth();
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
 
   const { data: billing } = useQuery({
     queryKey: ["my-billing", user?.id],
@@ -637,6 +639,20 @@ function BillingTab() {
     enabled: !!user,
   });
 
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setLoadingInvoices(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("stripe-transactions", {
+          body: { mode: "user", limit: 20 },
+        });
+        if (!error && data?.invoices) setInvoices(data.invoices);
+      } catch { /* ignore */ }
+      setLoadingInvoices(false);
+    };
+    fetchInvoices();
+  }, []);
+
   const planColors: Record<string, string> = {
     start: "text-muted-foreground border-border",
     growth: "text-primary border-primary/30",
@@ -651,6 +667,12 @@ function BillingTab() {
 
   const currentPlan = billing?.plan || "start";
   const usagePercent = billing ? Math.round((billing.events_used / billing.events_limit) * 100) : 0;
+
+  const invoiceStatusColor = (status: string) => {
+    if (status === "paid") return "bg-success/10 text-success border-success/20";
+    if (status === "open") return "bg-warning/10 text-warning border-warning/20";
+    return "bg-muted text-muted-foreground border-border";
+  };
 
   return (
     <div className="space-y-4">
@@ -671,7 +693,6 @@ function BillingTab() {
           </Button>
         </div>
 
-        {/* Usage */}
         {billing && (
           <div className="space-y-3">
             <div>
@@ -708,6 +729,66 @@ function BillingTab() {
           <div className="p-4 rounded-xl bg-muted/30 text-center">
             <p className="text-xs text-muted-foreground">Você está no plano gratuito.</p>
             <Button size="sm" className="text-xs mt-3">Fazer upgrade</Button>
+          </div>
+        )}
+      </Card>
+
+      {/* Payment History */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-medium text-foreground">Histórico de Pagamentos</h3>
+        </div>
+        {loadingInvoices ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <p className="text-xs text-muted-foreground">Nenhum pagamento registrado ainda.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  {["Data", "Descrição", "Valor", "Status", "Fatura"].map(col => (
+                    <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv: any) => (
+                  <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 text-xs text-foreground whitespace-nowrap">
+                      {format(new Date(inv.created), "dd/MM/yyyy", { locale: ptBR })}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-foreground max-w-[200px] truncate">
+                      {inv.plan_name || inv.number || "Assinatura"}
+                    </td>
+                    <td className="px-4 py-3 text-xs font-medium text-foreground">
+                      R$ {inv.amount.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={`text-[10px] ${invoiceStatusColor(inv.status)}`}>
+                        {inv.status === "paid" ? "Pago" : inv.status === "open" ? "Aberto" : inv.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {inv.invoice_pdf ? (
+                        <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                          <Download className="h-3 w-3" /> PDF
+                        </a>
+                      ) : inv.hosted_invoice_url ? (
+                        <a href={inv.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                          Ver
+                        </a>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Card>
