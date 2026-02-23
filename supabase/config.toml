@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.stripe-transactions]
 verify_jwt = false
+
+[functions.billing-lifecycle-notifications]
+verify_jwt = false

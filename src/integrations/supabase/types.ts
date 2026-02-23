@@ -578,6 +578,42 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_notifications: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       billing_subscriptions: {
         Row: {
           created_at: string
@@ -1788,6 +1824,7 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          whatsapp_phone: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1796,6 +1833,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id: string
+          whatsapp_phone?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1804,6 +1842,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+          whatsapp_phone?: string | null
         }
         Relationships: []
       }
