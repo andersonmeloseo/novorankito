@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TopBar } from "@/components/layout/TopBar";
+import { ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,8 +110,16 @@ export default function BillingPage() {
   const currentProductId = subscription.product_id;
 
   return (
-    <>
-      <TopBar title="Billing & Planos" subtitle="Gerencie sua assinatura, faturas e uso de recursos" />
+    <div className="min-h-screen bg-background">
+      <header className="border-b p-4 sm:p-6 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Billing & Planos</h1>
+          <p className="text-xs text-muted-foreground">Gerencie sua assinatura, faturas e uso de recursos</p>
+        </div>
+      </header>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Subscription Status */}
         {subscription.subscribed && (
@@ -196,6 +204,6 @@ export default function BillingPage() {
           </div>
         </Card>
       </div>
-    </>
+    </div>
   );
 }
