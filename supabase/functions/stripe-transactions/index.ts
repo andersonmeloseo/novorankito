@@ -62,55 +62,63 @@ serve(async (req) => {
         (plans || []).map((p: any) => p.stripe_price_id).filter(Boolean)
       );
 
-      // Get all invoices and filter to those containing Rankito price line items
-      const invoices = await stripe.invoices.list({
+      console.log("[STRIPE-TX] Rankito price IDs from DB:", [...rankitoPriceIds]);
+
+      // Get all subscriptions and check their price items
+      const subscriptions = await stripe.subscriptions.list({
         limit: 100,
-        expand: ["data.charge"],
+        status: "all",
+        expand: ["data.items"],
       });
 
-      const rankitoChargeIds = new Set<string>();
-      for (const inv of invoices.data) {
-        const hasRankitoLine = inv.lines?.data?.some(
-          (line) => line.price && rankitoPriceIds.has(line.price.id)
+      // Find subscriptions that use Rankito prices
+      const rankitoSubIds = new Set<string>();
+      for (const sub of subscriptions.data) {
+        const hasRankitoItem = sub.items?.data?.some(
+          (item) => item.price && rankitoPriceIds.has(item.price.id)
         );
-        if (hasRankitoLine && inv.charge) {
-          const chargeId = typeof inv.charge === "string" ? inv.charge : inv.charge.id;
-          rankitoChargeIds.add(chargeId);
+        if (hasRankitoItem) {
+          rankitoSubIds.add(sub.id);
         }
       }
+      console.log("[STRIPE-TX] Rankito subscription IDs:", [...rankitoSubIds]);
 
-      // Get charges and filter
-      const charges = await stripe.charges.list({
-        limit: 100,
-        expand: ["data.customer"],
-      });
+      // Get invoices for these subscriptions
+      const allRankitoInvoices: any[] = [];
+      for (const subId of rankitoSubIds) {
+        const invoices = await stripe.invoices.list({
+          subscription: subId,
+          limit: 100,
+          expand: ["data.customer"],
+        });
+        allRankitoInvoices.push(...invoices.data);
+      }
 
-      const platformCharges = charges.data.filter((ch) => {
-        if (rankitoChargeIds.has(ch.id)) return true;
-        if (ch.metadata?.source === "rankito") return true;
-        return false;
-      });
+      console.log("[STRIPE-TX] Total Rankito invoices:", allRankitoInvoices.length);
 
-      const transactions = platformCharges.slice(0, limit).map((ch) => {
-        const cust = ch.customer as Stripe.Customer | null;
-        return {
-          id: ch.id,
-          amount: ch.amount / 100,
-          currency: ch.currency,
-          status: ch.status,
-          paid: ch.paid,
-          created: new Date(ch.created * 1000).toISOString(),
-          customer_email: cust?.email || ch.billing_details?.email || null,
-          customer_name: cust?.name || ch.billing_details?.name || null,
-          customer_id: cust?.id || null,
-          description: ch.description,
-          invoice_id: ch.invoice,
-          payment_method: ch.payment_method_details?.type || null,
-          receipt_url: ch.receipt_url,
-        };
-      });
+      const transactions = allRankitoInvoices
+        .filter((inv) => inv.status === "paid" || inv.status === "open")
+        .slice(0, limit)
+        .map((inv) => {
+          const cust = inv.customer as Stripe.Customer | null;
+          return {
+            id: inv.id,
+            amount: (inv.amount_paid || inv.total || 0) / 100,
+            currency: inv.currency,
+            status: inv.status === "paid" ? "succeeded" : inv.status,
+            paid: inv.status === "paid",
+            created: new Date(inv.created * 1000).toISOString(),
+            customer_email: cust?.email || null,
+            customer_name: cust?.name || null,
+            customer_id: cust?.id || null,
+            description: inv.lines?.data?.[0]?.description || null,
+            invoice_id: inv.id,
+            payment_method: null,
+            receipt_url: inv.hosted_invoice_url,
+          };
+        });
 
-      // Summary from filtered charges only
+      // Summary from invoices
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const startOfWeek = new Date(startOfDay);
@@ -122,14 +130,14 @@ serve(async (req) => {
       let monthRevenue = 0;
       let totalTransactions = 0;
 
-      for (const ch of platformCharges) {
-        if (!ch.paid || ch.status !== "succeeded") continue;
-        const chDate = new Date(ch.created * 1000);
-        const amount = ch.amount / 100;
+      for (const inv of allRankitoInvoices) {
+        if (inv.status !== "paid") continue;
+        const invDate = new Date(inv.created * 1000);
+        const amount = (inv.amount_paid || 0) / 100;
         totalTransactions++;
-        if (chDate >= startOfMonth) monthRevenue += amount;
-        if (chDate >= startOfWeek) weekRevenue += amount;
-        if (chDate >= startOfDay) todayRevenue += amount;
+        if (invDate >= startOfMonth) monthRevenue += amount;
+        if (invDate >= startOfWeek) weekRevenue += amount;
+        if (invDate >= startOfDay) todayRevenue += amount;
       }
 
       return new Response(
