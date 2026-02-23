@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, Zap, Loader2, ExternalLink, CreditCard } from "lucide-react";
+import { Check, Zap, Loader2, ExternalLink, CreditCard, Tag } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +32,9 @@ interface DbPlan {
   rank_rent_enabled: boolean;
   advanced_analytics_enabled: boolean;
   sort_order: number;
+  trial_days: number;
+  promo_price: number | null;
+  promo_ends_at: string | null;
 }
 
 function fmt(v: number, suffix = ""): string {
@@ -43,7 +47,8 @@ function buildFeatures(p: DbPlan): string[] {
   f.push(`${fmt(p.projects_limit)} projeto${p.projects_limit !== 1 ? "s" : ""}`);
   f.push(`${fmt(p.gsc_accounts_per_project)} conta${p.gsc_accounts_per_project !== 1 ? "s" : ""} GSC/projeto (${fmt(p.indexing_daily_limit)} URLs/dia)`);
   f.push(p.advanced_analytics_enabled ? "SEO + GA4 completos" : "SEO + GA4 básicos");
-  f.push(`Orquestrador IA — ${p.orchestrator_executions_limit === -1 ? "ilimitado" : `${fmt(p.orchestrator_executions_limit)} exec/mês`}`);
+  f.push(`Rankito IA — ${p.ai_requests_limit === -1 ? "ilimitado" : `${fmt(p.ai_requests_limit)} req/mês`}`);
+  f.push(`Orquestrador IA — ${p.orchestrator_executions_limit === -1 ? "ilimitado" : `${fmt(p.orchestrator_executions_limit)} exec/hora`}`);
   if (p.whatsapp_reports_enabled) f.push("Relatórios WhatsApp");
   if (p.pixel_tracking_enabled) f.push("Tracking Pixel");
   if (p.rank_rent_enabled) f.push("Rank & Rent");
@@ -60,6 +65,9 @@ export default function BillingPage() {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent?: number; discount_amount?: number } | null>(null);
 
   useEffect(() => {
     supabase
@@ -82,11 +90,44 @@ export default function BillingPage() {
     }
   }, [checkSubscription]);
 
-  const handleCheckout = async (priceId: string) => {
-    setLoadingPlan(priceId);
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setValidatingCoupon(true);
+    try {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode.toUpperCase().trim())
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Cupom não encontrado");
+      if (data.valid_until && new Date(data.valid_until) < new Date()) throw new Error("Cupom expirado");
+      if (data.max_uses && data.uses_count >= data.max_uses) throw new Error("Cupom esgotado");
+      setAppliedCoupon({
+        code: data.code,
+        discount_percent: data.discount_percent,
+        discount_amount: data.discount_amount,
+      });
+      toast({ title: "Cupom aplicado!", description: `${data.discount_percent ? data.discount_percent + "% de desconto" : "R$" + data.discount_amount + " de desconto"}` });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Cupom inválido", variant: "destructive" });
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleCheckout = async (plan: DbPlan) => {
+    if (!plan.stripe_price_id) return;
+    setLoadingPlan(plan.stripe_price_id);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+        body: {
+          priceId: plan.stripe_price_id,
+          trialDays: plan.trial_days || undefined,
+          couponCode: appliedCoupon?.code || undefined,
+        },
       });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
@@ -140,6 +181,28 @@ export default function BillingPage() {
           </Card>
         )}
 
+        {/* Coupon input */}
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <Tag className="h-4 w-4 text-primary shrink-0" />
+            <Input
+              placeholder="Código do cupom"
+              value={couponCode}
+              onChange={e => setCouponCode(e.target.value.toUpperCase())}
+              className="h-9 text-sm font-mono max-w-[200px]"
+            />
+            <Button variant="outline" size="sm" onClick={handleApplyCoupon} disabled={validatingCoupon || !couponCode.trim()} className="text-xs">
+              {validatingCoupon && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+              Aplicar
+            </Button>
+            {appliedCoupon && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                ✅ {appliedCoupon.code} — {appliedCoupon.discount_percent ? `${appliedCoupon.discount_percent}% off` : `R$${appliedCoupon.discount_amount} off`}
+              </Badge>
+            )}
+          </div>
+        </Card>
+
         <div>
           <h2 className="text-sm font-medium text-foreground mb-3">Planos Disponíveis</h2>
           {loadingPlans ? (
@@ -151,16 +214,29 @@ export default function BillingPage() {
               {plans.map((plan) => {
                 const isCurrent = currentPriceId === plan.stripe_price_id;
                 const features = buildFeatures(plan);
+                const hasPromo = plan.promo_price != null && (!plan.promo_ends_at || new Date(plan.promo_ends_at) > new Date());
+                const displayPrice = hasPromo ? plan.promo_price : plan.price;
                 return (
                   <Card key={plan.id} className={`p-5 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
                     {isCurrent && <Badge className="text-[9px] mb-3">Plano Atual</Badge>}
                     <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                    <div className="mt-1 mb-4">
+                    <div className="mt-1 mb-2">
+                      {hasPromo && (
+                        <span className="text-sm text-muted-foreground line-through mr-2">
+                          R$ {plan.price.toLocaleString("pt-BR")}
+                        </span>
+                      )}
                       <span className="text-2xl font-bold text-foreground">
-                        R$ {plan.price.toLocaleString("pt-BR")}
+                        R$ {Number(displayPrice).toLocaleString("pt-BR")}
                       </span>
                       <span className="text-xs text-muted-foreground">/{plan.billing_interval === "yearly" ? "ano" : "mês"}</span>
                     </div>
+                    {plan.trial_days > 0 && (
+                      <Badge variant="secondary" className="text-[10px] mb-3 gap-1">🎁 {plan.trial_days} dias grátis</Badge>
+                    )}
+                    {hasPromo && plan.promo_ends_at && (
+                      <p className="text-[10px] text-warning mb-2">⏰ Promoção até {new Date(plan.promo_ends_at).toLocaleDateString("pt-BR")}</p>
+                    )}
                     <ul className="space-y-2 mb-4">
                       {features.map((f) => (
                         <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -174,10 +250,10 @@ export default function BillingPage() {
                       size="sm"
                       className="w-full text-xs"
                       disabled={isCurrent || !plan.stripe_price_id || loadingPlan === plan.stripe_price_id}
-                      onClick={() => plan.stripe_price_id && handleCheckout(plan.stripe_price_id)}
+                      onClick={() => handleCheckout(plan)}
                     >
                       {loadingPlan === plan.stripe_price_id && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                      {isCurrent ? "Plano Atual" : "Assinar este plano"}
+                      {isCurrent ? "Plano Atual" : plan.trial_days > 0 ? `Testar ${plan.trial_days} dias grátis` : "Assinar este plano"}
                     </Button>
                   </Card>
                 );
