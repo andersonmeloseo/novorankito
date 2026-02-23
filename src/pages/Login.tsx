@@ -105,23 +105,18 @@ export default function Login() {
           return;
         }
 
-        // Store pending checkout BEFORE signUp, because onAuthStateChange
-        // may trigger navigation before we get a chance to redirect
         const planData = getSelectedPlanData();
-
         const fullName = [firstName, lastName].filter(Boolean).join(" ");
         const { error } = await signUp(email, password, fullName, whatsapp || undefined);
         if (error) throw error;
 
-        // Auto-confirm is enabled — session activates immediately.
-        // If there's a plan with a stripe price, redirect to checkout immediately
+        // Redirect to Stripe checkout immediately after signup
+        // Pass email directly since session may not exist yet (email confirmation pending)
         if (planData?.stripe_price_id) {
           toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
-          // Wait a tick for the session to be established
-          await new Promise(r => setTimeout(r, 500));
           try {
             const { data, error: checkoutError } = await supabase.functions.invoke("create-checkout", {
-              body: { priceId: planData.stripe_price_id },
+              body: { priceId: planData.stripe_price_id, email },
             });
             if (checkoutError) throw checkoutError;
             if (data?.url) {
@@ -131,12 +126,11 @@ export default function Login() {
           } catch (err: any) {
             console.error("Checkout redirect error:", err);
             toast({ title: "Erro ao redirecionar para pagamento", description: err.message, variant: "destructive" });
-            navigate("/onboarding");
           }
-        } else {
-          toast({ title: "Conta criada!" });
-          navigate("/onboarding");
         }
+
+        // If no plan or checkout failed, show confirmation message
+        toast({ title: "Conta criada!", description: "Verifique seu e-mail para confirmar." });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
