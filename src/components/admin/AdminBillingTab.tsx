@@ -30,9 +30,11 @@ interface Transaction {
   customer_name: string | null;
   customer_id: string | null;
   description: string | null;
+  plan_name: string | null;
   invoice_id: string | null;
   payment_method: string | null;
   receipt_url: string | null;
+  error_message: string | null;
 }
 
 interface TransactionSummary {
@@ -56,13 +58,14 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
     setLoadingTx(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-transactions", {
-        body: { mode: "admin", limit: 100 },
+        body: { mode: "admin", limit: 200 },
       });
       if (error) throw error;
       if (data?.transactions) setTransactions(data.transactions);
       if (data?.summary) setSummary(data.summary);
     } catch (err: any) {
       console.error("Failed to fetch transactions", err);
+      toast({ title: "Erro ao buscar transações", description: err.message, variant: "destructive" });
     } finally {
       setLoadingTx(false);
     }
@@ -104,8 +107,18 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
 
   const statusColor = (status: string) => {
     if (status === "succeeded") return "bg-success/10 text-success border-success/20";
-    if (status === "pending") return "bg-warning/10 text-warning border-warning/20";
+    if (status === "open" || status === "pending") return "bg-warning/10 text-warning border-warning/20";
+    if (status === "void" || status === "uncollectible") return "bg-muted/20 text-muted-foreground border-muted/20";
+    if (status === "draft") return "bg-muted/10 text-muted-foreground border-muted/10";
     return "bg-destructive/10 text-destructive border-destructive/20";
+  };
+
+  const statusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      succeeded: "Pago", open: "Aberta", pending: "Pendente",
+      draft: "Rascunho", void: "Cancelada", uncollectible: "Não cobrada",
+    };
+    return map[status] || status;
   };
 
   return (
@@ -165,14 +178,14 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  {["Data", "Cliente", "E-mail", "Valor", "Status", "Método", "Recibo"].map(col => (
+                  {["Data", "Cliente", "E-mail", "Plano", "Valor", "Status", "Erro", "Recibo"].map(col => (
                     <th key={col} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{col}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {transactions.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma transação encontrada</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma transação encontrada</td></tr>
                 ) : transactions.map(tx => (
                   <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 text-xs text-foreground whitespace-nowrap">
@@ -180,15 +193,20 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
                     </td>
                     <td className="px-4 py-3 text-xs text-foreground">{tx.customer_name || "—"}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{tx.customer_email || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={tx.plan_name || ""}>
+                      {tx.plan_name || "—"}
+                    </td>
                     <td className="px-4 py-3 text-xs font-medium text-foreground">
                       R$ {tx.amount.toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <Badge className={`text-[10px] ${statusColor(tx.status)}`}>
-                        {tx.status === "succeeded" ? "Pago" : tx.status === "pending" ? "Pendente" : tx.status}
+                        {statusLabel(tx.status)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground capitalize">{tx.payment_method || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-destructive max-w-[150px] truncate" title={tx.error_message || ""}>
+                      {tx.error_message || "—"}
+                    </td>
                     <td className="px-4 py-3">
                       {tx.receipt_url ? (
                         <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
