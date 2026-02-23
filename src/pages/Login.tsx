@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp, subscription } = useAuth();
   const { toast } = useToast();
   const wl = useWhiteLabel();
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -32,6 +32,14 @@ export default function Login() {
   const [leakedWarning, setLeakedWarning] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+
+  // Redirect already logged-in users
+  useEffect(() => {
+    if (user && !planFromUrl) {
+      // If subscribed, go to projects. If not, go to billing.
+      navigate(subscription.subscribed ? "/projects" : "/account/billing", { replace: true });
+    }
+  }, [user, subscription.subscribed, planFromUrl, navigate]);
 
   useEffect(() => {
     supabase
@@ -55,7 +63,7 @@ export default function Login() {
     } catch (err: any) {
       console.error("Checkout redirect error:", err);
       toast({ title: "Erro ao redirecionar para pagamento", description: err.message, variant: "destructive" });
-      navigate("/onboarding");
+      navigate("/account/billing");
     }
   };
 
@@ -126,16 +134,17 @@ export default function Login() {
         } catch (err: any) {
             console.error("Checkout redirect error:", err);
             toast({ title: "Erro ao redirecionar para pagamento", description: err.message, variant: "destructive" });
-            navigate("/onboarding");
+            navigate("/account/billing");
           }
         } else {
-          toast({ title: "Conta criada!" });
-          navigate("/onboarding");
+          // No plan selected — send to billing to pick one
+          toast({ title: "Conta criada!", description: "Escolha um plano para começar." });
+          navigate("/account/billing");
         }
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        navigate("/projects");
+        // After sign-in, the useEffect above will handle redirect based on subscription
       }
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
