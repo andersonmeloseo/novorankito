@@ -742,6 +742,57 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          plan_slugs: string[]
+          stripe_coupon_id: string | null
+          updated_at: string
+          uses_count: number
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_slugs?: string[]
+          stripe_coupon_id?: string | null
+          updated_at?: string
+          uses_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_slugs?: string[]
+          stripe_coupon_id?: string | null
+          updated_at?: string
+          uses_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       custom_event_configs: {
         Row: {
           conditions: Json
@@ -1629,11 +1680,14 @@ export type Database = {
           pixel_tracking_enabled: boolean
           price: number
           projects_limit: number
+          promo_ends_at: string | null
+          promo_price: number | null
           rank_rent_enabled: boolean
           slug: string
           sort_order: number
           stripe_checkout_url: string | null
           stripe_price_id: string | null
+          trial_days: number
           updated_at: string
           webhooks_enabled: boolean
           whatsapp_reports_enabled: boolean
@@ -1661,11 +1715,14 @@ export type Database = {
           pixel_tracking_enabled?: boolean
           price?: number
           projects_limit?: number
+          promo_ends_at?: string | null
+          promo_price?: number | null
           rank_rent_enabled?: boolean
           slug: string
           sort_order?: number
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
+          trial_days?: number
           updated_at?: string
           webhooks_enabled?: boolean
           whatsapp_reports_enabled?: boolean
@@ -1693,11 +1750,14 @@ export type Database = {
           pixel_tracking_enabled?: boolean
           price?: number
           projects_limit?: number
+          promo_ends_at?: string | null
+          promo_price?: number | null
           rank_rent_enabled?: boolean
           slug?: string
           sort_order?: number
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
+          trial_days?: number
           updated_at?: string
           webhooks_enabled?: boolean
           whatsapp_reports_enabled?: boolean
