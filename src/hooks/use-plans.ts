@@ -20,6 +20,7 @@ export interface Plan {
   sort_order: number;
   stripe_price_id: string | null;
   stripe_checkout_url: string | null;
+  stripe_annual_checkout_url: string | null;
   annual_price: number | null;
   stripe_annual_price_id: string | null;
   payment_methods: string[];
