@@ -33,7 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkSubscription = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
-      if (error) throw error;
+      if (error) {
+        // If the user was deleted, sign out to clear stale JWT
+        const msg = typeof error === "object" && error !== null && "message" in error ? (error as any).message : String(error);
+        if (msg?.includes("does not exist") || msg?.includes("user_not_found")) {
+          console.warn("[Auth] User no longer exists, signing out");
+          await supabase.auth.signOut();
+          return;
+        }
+        throw error;
+      }
+      if (data?.error && typeof data.error === "string" && data.error.includes("does not exist")) {
+        console.warn("[Auth] User no longer exists, signing out");
+        await supabase.auth.signOut();
+        return;
+      }
       if (data) setSubscription(data as SubscriptionInfo);
     } catch {
       setSubscription(DEFAULT_SUB);
