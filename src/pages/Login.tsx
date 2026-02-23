@@ -124,7 +124,11 @@ export default function Login() {
           toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
           try {
             const { data, error: checkoutError } = await supabase.functions.invoke("create-checkout", {
-              body: { priceId: planData.stripe_price_id, email },
+              body: {
+                priceId: planData.stripe_price_id,
+                email,
+                trialDays: planData.trial_days || undefined,
+              },
             });
             if (checkoutError) throw checkoutError;
             if (data?.url) {

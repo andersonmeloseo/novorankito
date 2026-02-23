@@ -74,6 +74,7 @@ const AccountPage = lazy(() => import("@/pages/AccountPage"));
 const AcademyPage = lazy(() => import("@/pages/AcademyPage"));
 const AdminAcademyPage = lazy(() => import("@/pages/admin/AdminAcademyPage"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/CheckoutSuccessPage"));
+const AdminCouponsPage = lazy(() => import("@/pages/admin/AdminCouponsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -176,6 +177,7 @@ const App = () => {
                   <Route path="/admin/flags" element={<AdminFlagsPage />} />
                   <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
                   <Route path="/admin/academy" element={<AdminAcademyPage />} />
+                  <Route path="/admin/coupons" element={<AdminCouponsPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

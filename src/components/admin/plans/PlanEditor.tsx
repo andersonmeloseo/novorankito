@@ -28,7 +28,7 @@ import {
 } from "@/hooks/use-plans";
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
-  free: Zap, start: Zap, growth: Crown, unlimited: Infinity,
+  free: Zap, start: Zap, growth: Crown, pro: Shield, unlimited: Infinity, teste: Zap,
 };
 
 const LIMIT_FIELDS = [
@@ -316,6 +316,41 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Ordem de Exibição</Label>
                   <Input type="number" value={getValue("sort_order")} onChange={e => setValue("sort_order", parseInt(e.target.value) || 0)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Dias de Teste Grátis</Label>
+                  <Input
+                    type="number"
+                    value={getValue("trial_days") ?? 0}
+                    onChange={e => setValue("trial_days", parseInt(e.target.value) || 0)}
+                    className="h-9 text-sm"
+                    placeholder="0 = sem trial"
+                  />
+                  <p className="text-[10px] text-muted-foreground">0 = sem trial. Aplica trial_period_days no Stripe Checkout.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Preço Promocional (R$)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input
+                      type="number"
+                      value={getValue("promo_price") ?? ""}
+                      onChange={e => setValue("promo_price", e.target.value ? parseFloat(e.target.value) : null)}
+                      className="h-9 text-sm pl-9"
+                      placeholder="Vazio = sem promo"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Preço exibido como "de X por Y" na landing. Vazio = sem promoção.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Promoção válida até</Label>
+                  <Input
+                    type="datetime-local"
+                    value={getValue("promo_ends_at") ? new Date(getValue("promo_ends_at") as string).toISOString().slice(0, 16) : ""}
+                    onChange={e => setValue("promo_ends_at", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Após esta data o preço volta ao normal automaticamente.</p>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label className="text-xs font-medium">Descrição</Label>

@@ -14,12 +14,11 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { priceId, email: directEmail } = body;
+    const { priceId, email: directEmail, trialDays, couponCode } = body;
     if (!priceId) throw new Error("priceId is required");
 
     let email: string | null = null;
 
-    // Try to get email from auth token first
     const authHeader = req.headers.get("Authorization");
     if (authHeader && authHeader !== "Bearer ") {
       const supabaseClient = createClient(
@@ -31,7 +30,6 @@ serve(async (req) => {
       email = data.user?.email ?? null;
     }
 
-    // Fall back to directly provided email (for post-signup before email confirmation)
     if (!email && directEmail) {
       email = directEmail;
     }
@@ -48,7 +46,58 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    // Handle coupon validation and Stripe coupon
+    let stripeCouponId: string | undefined;
+    if (couponCode) {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      const { data: coupon } = await supabaseAdmin
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode.toUpperCase().trim())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (coupon) {
+        // Validate expiry and usage
+        if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
+          throw new Error("Cupom expirado");
+        }
+        if (coupon.max_uses && coupon.uses_count >= coupon.max_uses) {
+          throw new Error("Cupom esgotado");
+        }
+
+        // Create or reuse Stripe coupon
+        if (coupon.stripe_coupon_id) {
+          stripeCouponId = coupon.stripe_coupon_id;
+        } else {
+          const stripeCoupon = await stripe.coupons.create({
+            ...(coupon.discount_percent
+              ? { percent_off: Number(coupon.discount_percent) }
+              : { amount_off: Math.round(Number(coupon.discount_amount) * 100), currency: "brl" }),
+            duration: "once",
+            name: coupon.code,
+          });
+          stripeCouponId = stripeCoupon.id;
+          // Save stripe_coupon_id back
+          await supabaseAdmin
+            .from("coupons")
+            .update({ stripe_coupon_id: stripeCoupon.id })
+            .eq("id", coupon.id);
+        }
+
+        // Increment uses_count
+        await supabaseAdmin
+          .from("coupons")
+          .update({ uses_count: coupon.uses_count + 1 })
+          .eq("id", coupon.id);
+      }
+    }
+
+    const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : email,
       line_items: [{ price: priceId, quantity: 1 }],
@@ -56,9 +105,14 @@ serve(async (req) => {
       success_url: `${req.headers.get("origin")}/checkout-success`,
       cancel_url: `${req.headers.get("origin")}/landing?checkout=canceled`,
       metadata: { source: "rankito" },
-      subscription_data: { metadata: { source: "rankito" } },
-      payment_intent_data: undefined,
-    });
+      subscription_data: {
+        metadata: { source: "rankito" },
+        ...(trialDays && trialDays > 0 ? { trial_period_days: trialDays } : {}),
+      },
+      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

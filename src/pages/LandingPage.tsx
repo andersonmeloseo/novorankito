@@ -232,9 +232,10 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 // ─── Pricing Card ─────────────────────────────────────────────────────────
-function PricingCard({ name, slug, price, period, desc, features, cta, highlight, badge, checkoutUrl }: {
+function PricingCard({ name, slug, price, period, desc, features, cta, highlight, badge, checkoutUrl, originalPrice, trialDays }: {
   name: string; slug: string; price: string; period: string; desc: string;
   features: string[]; cta: string; highlight?: boolean; badge?: string; checkoutUrl?: string | null;
+  originalPrice?: string; trialDays?: number;
 }) {
   const href = checkoutUrl || `/login?plan=${slug}`;
   return (
@@ -246,10 +247,18 @@ function PricingCard({ name, slug, price, period, desc, features, cta, highlight
       <div className="mb-6">
         <div className={`text-xs font-black uppercase tracking-widest mb-2 ${highlight ? "text-violet-200" : "text-violet-600 dark:text-violet-400"}`}>{name}</div>
         <div className="flex items-baseline gap-1 mb-1">
+          {originalPrice && (
+            <span className={`text-xl line-through mr-1 ${highlight ? "text-violet-300" : "text-slate-400"}`}>{originalPrice}</span>
+          )}
           <span className={`text-5xl font-black ${highlight ? "text-white" : "text-slate-900 dark:text-white"}`}>{price}</span>
           <span className={`text-sm ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{period}</span>
         </div>
         <p className={`text-sm leading-relaxed ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{desc}</p>
+        {trialDays && trialDays > 0 && (
+          <div className={`mt-2 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${highlight ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"}`}>
+            🎁 {trialDays} dias grátis
+          </div>
+        )}
       </div>
       <div className="space-y-3 flex-1 mb-8">
         {features.map((f, i) => (
@@ -739,23 +748,31 @@ export default function LandingPage() {
                 `Indexação — ${plan.indexing_daily_limit === -1 ? "sem limites" : plan.indexing_daily_limit + " URLs/dia"}`,
                 `${plan.gsc_accounts_per_project === -1 ? "Contas GSC ilimitadas por projeto" : plan.gsc_accounts_per_project + " conta" + (plan.gsc_accounts_per_project > 1 ? "s" : "") + " GSC por projeto"}`,
                 `Orquestrador IA (${plan.orchestrator_executions_limit === -1 ? "ilimitado" : plan.orchestrator_executions_limit + " exec/hora"})`,
+                plan.ai_requests_limit !== 0 ? `Rankito IA — ${plan.ai_requests_limit === -1 ? "ilimitado" : plan.ai_requests_limit + " req/mês"}` : null,
                 plan.pixel_tracking_enabled ? "Pixel de tracking próprio" : null,
                 plan.whatsapp_reports_enabled ? "Relatórios via WhatsApp" : null,
                 plan.white_label_enabled ? "White-label + domínio personalizado" : null,
                 plan.api_access_enabled ? "API pública" : null,
                 plan.webhooks_enabled ? "Webhooks" : null,
+                plan.rank_rent_enabled ? "Rank & Rent" : null,
                 `${plan.members_limit === -1 ? "Usuários ilimitados" : plan.members_limit + " usuário" + (plan.members_limit > 1 ? "s" : "")}`,
               ].filter(Boolean) as string[];
 
               const isHighlight = plan.slug === "growth";
-              const ctaMap: Record<string, string> = { start: "Começar com Start →", growth: "Crescer com Growth →", unlimited: "Escalar com Unlimited →" };
+              const ctaMap: Record<string, string> = { start: "Começar com Start →", growth: "Crescer com Growth →", pro: "Escalar com Pro →", unlimited: "Ir Unlimited →" };
+
+              // Promo pricing
+              const hasPromo = plan.promo_price != null && (!plan.promo_ends_at || new Date(plan.promo_ends_at) > new Date());
+              const displayPrice = hasPromo ? plan.promo_price : plan.price;
+              const originalPrice = hasPromo ? `R$${Number(plan.price).toLocaleString("pt-BR")}` : undefined;
 
               return (
                 <PricingCard
                   key={plan.id}
                   name={plan.name}
                   slug={plan.slug}
-                  price={`R$${Number(plan.price).toLocaleString("pt-BR")}`}
+                  price={`R$${Number(displayPrice).toLocaleString("pt-BR")}`}
+                  originalPrice={originalPrice}
                   period="/mês"
                   desc={plan.description || ""}
                   features={features}
@@ -763,6 +780,7 @@ export default function LandingPage() {
                   highlight={isHighlight}
                   badge={isHighlight ? "⭐ Mais popular" : undefined}
                   checkoutUrl={plan.stripe_checkout_url}
+                  trialDays={plan.trial_days}
                 />
               );
             })}

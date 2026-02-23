@@ -32,6 +32,26 @@ export interface Plan {
   ga4_enabled: boolean;
   advanced_analytics_enabled: boolean;
   webhooks_enabled: boolean;
+  trial_days: number;
+  promo_price: number | null;
+  promo_ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string | null;
+  discount_percent: number | null;
+  discount_amount: number | null;
+  valid_from: string;
+  valid_until: string | null;
+  max_uses: number | null;
+  uses_count: number;
+  is_active: boolean;
+  plan_slugs: string[];
+  stripe_coupon_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -170,6 +190,80 @@ export function useDeletePlanFeature() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-plan-features"] });
+    },
+  });
+}
+
+// ─── Coupon hooks ───
+
+export function useAdminCoupons() {
+  return useQuery({
+    queryKey: ["admin-coupons"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Coupon[];
+    },
+  });
+}
+
+export function useCreateCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (coupon: Partial<Coupon> & { code: string }) => {
+      const { error } = await supabase.from("coupons").insert(coupon);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
+    },
+  });
+}
+
+export function useUpdateCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Coupon> & { id: string }) => {
+      const { error } = await supabase.from("coupons").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
+    },
+  });
+}
+
+export function useDeleteCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("coupons").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
+    },
+  });
+}
+
+export function useValidateCoupon() {
+  return useMutation({
+    mutationFn: async ({ code, planSlug }: { code: string; planSlug: string }) => {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", code.toUpperCase().trim())
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Cupom não encontrado");
+      if (data.valid_until && new Date(data.valid_until) < new Date()) throw new Error("Cupom expirado");
+      if (data.max_uses && data.uses_count >= data.max_uses) throw new Error("Cupom esgotado");
+      if (data.plan_slugs.length > 0 && !data.plan_slugs.includes(planSlug)) throw new Error("Cupom não válido para este plano");
+      return data as Coupon;
     },
   });
 }
