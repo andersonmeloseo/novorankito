@@ -127,29 +127,19 @@ export default function Login() {
         const { error } = await signUp(email, password, name, whatsapp || undefined);
         if (error) throw error;
 
-        // Store selected plan so checkout happens after email confirmation + login
+        // Auto-confirm is enabled, so session is active immediately
         const planData = getSelectedPlanData();
         if (planData?.stripe_price_id) {
-          localStorage.setItem("pending_checkout_price_id", planData.stripe_price_id);
+          toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
+          await new Promise((r) => setTimeout(r, 1500));
+          await redirectToCheckout(planData.stripe_price_id);
+        } else {
+          toast({ title: "Conta criada!" });
+          navigate("/onboarding");
         }
-
-        toast({
-          title: "Conta criada!",
-          description: "Verifique seu email para confirmar a conta. Após confirmar, faça login para ser redirecionado ao pagamento.",
-        });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
-
-        // Check if there's a pending checkout from a previous signup
-        const pendingPriceId = localStorage.getItem("pending_checkout_price_id");
-        if (pendingPriceId) {
-          localStorage.removeItem("pending_checkout_price_id");
-          toast({ title: "Redirecionando para pagamento..." });
-          await redirectToCheckout(pendingPriceId);
-          return;
-        }
-
         navigate("/projects");
       }
     } catch (err: any) {
