@@ -120,9 +120,10 @@ export default function Login() {
         }
 
         // Auto-confirm is enabled — session activates immediately.
-        // The ProtectedRoute/Onboarding will pick up pending_checkout_price_id
-        // and redirect to Stripe checkout.
+        // Navigate to a protected route so ProtectedRoute picks up
+        // pending_checkout_price_id and redirects to Stripe checkout.
         toast({ title: "Conta criada!", description: planData?.stripe_price_id ? "Redirecionando para pagamento..." : undefined });
+        navigate("/onboarding");
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
