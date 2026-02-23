@@ -89,7 +89,7 @@ export default function BillingPage() {
         body: { priceId },
       });
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
+      if (data?.url) window.location.href = data.url;
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao iniciar checkout", variant: "destructive" });
     } finally {
