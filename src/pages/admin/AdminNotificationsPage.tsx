@@ -56,15 +56,17 @@ export default function AdminNotificationsPage() {
     },
   });
 
-  // Fetch users with WhatsApp
-  const { data: usersWithWa = [] } = useQuery({
-    queryKey: ["admin-users-whatsapp"],
+  // Fetch all users
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["admin-users-all-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("user_id, display_name, whatsapp_phone").not("whatsapp_phone", "is", null).neq("whatsapp_phone", "");
+      const { data, error } = await supabase.from("profiles").select("user_id, display_name, whatsapp_phone").order("display_name");
       if (error) throw error;
       return data || [];
     },
   });
+
+  const usersWithWa = allUsers.filter((u: any) => u.whatsapp_phone && u.whatsapp_phone.trim() !== "");
 
   // Run cron
   const runCron = useMutation({
@@ -199,11 +201,14 @@ export default function AdminNotificationsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__" className="text-xs">
-                    <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Todos os usuários ({usersWithWa.length})</span>
+                    <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Todos os usuários ({allUsers.length})</span>
                   </SelectItem>
-                  {usersWithWa.map((u: any) => (
+                  {allUsers.map((u: any) => (
                     <SelectItem key={u.user_id} value={u.user_id} className="text-xs">
-                      <span className="flex items-center gap-1.5"><User className="h-3 w-3" /> {u.display_name} — {u.whatsapp_phone}</span>
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3 w-3" /> {u.display_name || "Sem nome"}
+                        {u.whatsapp_phone ? ` — ${u.whatsapp_phone}` : " (sem WA)"}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -226,7 +231,7 @@ export default function AdminNotificationsPage() {
 
               <div className="flex items-center justify-between">
                 <p className="text-[10px] text-muted-foreground">
-                  {customTarget === "__all__" ? `Será enviado para ${usersWithWa.length} usuário(s)` : "Envio individual"}
+                  {customTarget === "__all__" ? `Será enviado para ${allUsers.length} usuário(s)` : "Envio individual"}
                 </p>
                 <Button
                   size="sm"
@@ -256,9 +261,9 @@ export default function AdminNotificationsPage() {
                   <SelectValue placeholder="Selecionar usuário..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {usersWithWa.map((u: any) => (
+                  {allUsers.map((u: any) => (
                     <SelectItem key={u.user_id} value={u.user_id} className="text-xs">
-                      {u.display_name} — {u.whatsapp_phone}
+                      {u.display_name || "Sem nome"} {u.whatsapp_phone ? `— ${u.whatsapp_phone}` : "(sem WA)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
