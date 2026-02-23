@@ -68,7 +68,7 @@ export default function BillingPage() {
       .eq("is_active", true)
       .order("sort_order")
       .then(({ data }) => {
-        if (data) setPlans(data.filter((p: DbPlan) => !!p.stripe_price_id) as DbPlan[]);
+        if (data) setPlans(data as DbPlan[]);
         setLoadingPlans(false);
       });
   }, []);
