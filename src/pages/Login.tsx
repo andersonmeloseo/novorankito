@@ -105,20 +105,24 @@ export default function Login() {
           return;
         }
 
-        const fullName = [firstName, lastName].filter(Boolean).join(" ");
-        const { error } = await signUp(email, password, fullName, whatsapp || undefined);
-        if (error) throw error;
-
-        // Auto-confirm is enabled, session is active immediately
+        // Store pending checkout BEFORE signUp, because onAuthStateChange
+        // may trigger navigation before we get a chance to redirect
         const planData = getSelectedPlanData();
         if (planData?.stripe_price_id) {
-          toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
-          await new Promise((r) => setTimeout(r, 1500));
-          await redirectToCheckout(planData.stripe_price_id);
-        } else {
-          toast({ title: "Conta criada!" });
-          navigate("/onboarding");
+          localStorage.setItem("pending_checkout_price_id", planData.stripe_price_id);
         }
+
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
+        const { error } = await signUp(email, password, fullName, whatsapp || undefined);
+        if (error) {
+          localStorage.removeItem("pending_checkout_price_id");
+          throw error;
+        }
+
+        // Auto-confirm is enabled — session activates immediately.
+        // The ProtectedRoute/Onboarding will pick up pending_checkout_price_id
+        // and redirect to Stripe checkout.
+        toast({ title: "Conta criada!", description: planData?.stripe_price_id ? "Redirecionando para pagamento..." : undefined });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
