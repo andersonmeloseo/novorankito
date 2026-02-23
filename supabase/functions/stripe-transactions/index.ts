@@ -52,36 +52,41 @@ serve(async (req) => {
     });
 
     if (mode === "admin") {
-      // Get all platform users' emails to filter Stripe charges
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id");
-      
-      // Get auth emails for all users via admin API
-      const userIds = (profiles || []).map((p: any) => p.user_id);
-      const platformEmails = new Set<string>();
-      
-      // Batch fetch emails from auth.users
-      for (const uid of userIds) {
-        try {
-          const { data: authUser } = await supabase.auth.admin.getUserById(uid);
-          if (authUser?.user?.email) {
-            platformEmails.add(authUser.user.email.toLowerCase());
+      // Only fetch subscriptions created by Rankito (tagged with metadata)
+      const subscriptions = await stripe.subscriptions.list({
+        limit: 100,
+        expand: ["data.customer", "data.latest_invoice"],
+      });
+
+      // Filter only subscriptions with rankito metadata
+      const rankitoSubs = subscriptions.data.filter(
+        (sub) => sub.metadata?.source === "rankito"
+      );
+
+      // Collect invoice IDs from rankito subscriptions
+      const rankitoInvoiceIds = new Set<string>();
+      for (const sub of rankitoSubs) {
+        // List all invoices for this subscription
+        const invoices = await stripe.invoices.list({
+          subscription: sub.id,
+          limit: 100,
+        });
+        for (const inv of invoices.data) {
+          if (inv.charge) {
+            rankitoInvoiceIds.add(typeof inv.charge === "string" ? inv.charge : inv.charge.id);
           }
-        } catch { /* skip */ }
+        }
       }
 
-      // Get charges and filter to only platform customers
+      // Get charges and filter to only those from rankito subscriptions
       const charges = await stripe.charges.list({
         limit: 100,
         expand: ["data.customer"],
       });
 
       const platformCharges = charges.data.filter((ch) => {
-        const cust = ch.customer as Stripe.Customer | null;
-        const email = (cust?.email || ch.billing_details?.email || "").toLowerCase();
-        // Match by email OR by metadata on the invoice/subscription
-        if (platformEmails.has(email)) return true;
+        // Only include charges that came from rankito subscriptions
+        if (rankitoInvoiceIds.has(ch.id)) return true;
         if (ch.metadata?.source === "rankito") return true;
         return false;
       });
