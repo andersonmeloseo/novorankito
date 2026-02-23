@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Zap, Loader2, ExternalLink, CreditCard } from "lucide-react";
+import { Check, Zap, Loader2, ExternalLink, CreditCard } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,15 +113,10 @@ export default function BillingPage() {
   const currentPriceId = subscription.price_id;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b p-4 sm:p-6 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Billing & Planos</h1>
-          <p className="text-xs text-muted-foreground">Gerencie sua assinatura, faturas e uso de recursos</p>
-        </div>
+    <div className="flex-1 bg-background">
+      <header className="border-b p-4 sm:p-6">
+        <h1 className="text-lg font-semibold text-foreground">Billing & Planos</h1>
+        <p className="text-xs text-muted-foreground">Gerencie sua assinatura, faturas e uso de recursos</p>
       </header>
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">

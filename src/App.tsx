@@ -114,8 +114,10 @@ const App = () => {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/account/billing" element={<BillingPage />} />
-                  <Route path="/account/profile" element={<AccountPage />} />
+                  <Route element={<AppLayout />}>
+                    <Route path="/account/billing" element={<BillingPage />} />
+                    <Route path="/account/profile" element={<AccountPage />} />
+                  </Route>
                 </Route>
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/overview" element={<Overview />} />
