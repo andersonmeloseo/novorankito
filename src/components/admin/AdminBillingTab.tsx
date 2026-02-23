@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
-import { Download, Loader2, RefreshCw, ExternalLink, Receipt, FileText, TrendingUp, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Download, Loader2, RefreshCw, ExternalLink, Receipt, FileText, TrendingUp, AlertTriangle, CheckCircle2, Clock, XCircle, BarChart3 } from "lucide-react";
 import { generateBillingReport } from "@/lib/billing-report";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import {
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RevenueAnalytics } from "./RevenueAnalytics";
 
 interface Transaction {
   id: string;
@@ -163,6 +164,13 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
   };
 
   return (
+    <Tabs defaultValue="transactions" className="space-y-4">
+      <TabsList className="flex flex-wrap h-auto gap-1">
+        <TabsTrigger value="transactions" className="text-xs gap-1.5"><Receipt className="h-3 w-3" /> Transações</TabsTrigger>
+        <TabsTrigger value="analytics" className="text-xs gap-1.5"><BarChart3 className="h-3 w-3" /> Revenue Analytics</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="transactions" className="mt-0">
     <div className="space-y-5">
       {/* Revenue KPIs */}
       <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -414,5 +422,11 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
         </div>
       </Card>
     </div>
+      </TabsContent>
+
+      <TabsContent value="analytics" className="mt-0">
+        <RevenueAnalytics />
+      </TabsContent>
+    </Tabs>
   );
 }
