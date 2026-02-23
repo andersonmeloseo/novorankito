@@ -232,43 +232,51 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 // ─── Pricing Card ─────────────────────────────────────────────────────────
-function PricingCard({ name, slug, price, period, desc, features, cta, highlight, badge, checkoutUrl, originalPrice, trialDays }: {
+function PricingCard({ name, slug, price, period, desc, features, cta, highlight, badge, href, originalPrice, trialDays, couponBadge }: {
   name: string; slug: string; price: string; period: string; desc: string;
-  features: string[]; cta: string; highlight?: boolean; badge?: string; checkoutUrl?: string | null;
-  originalPrice?: string; trialDays?: number;
+  features: string[]; cta: string; highlight?: boolean; badge?: string; href: string;
+  originalPrice?: string; trialDays?: number; couponBadge?: string;
 }) {
-  const href = checkoutUrl || `/login?plan=${slug}`;
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }}
-      className={`relative rounded-2xl p-8 flex flex-col border transition-all duration-300 ${highlight ? "bg-gradient-to-b from-violet-600 to-indigo-700 border-violet-500 shadow-2xl shadow-violet-500/30 text-white" : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"}`}
+      className={`relative rounded-2xl p-8 flex flex-col border transition-all duration-300 ${highlight ? "bg-white dark:bg-slate-800/80 border-violet-400 dark:border-violet-500 shadow-2xl shadow-violet-500/20 ring-2 ring-violet-400/50" : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"}`}
     >
-      {badge && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-black px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap">{badge}</div>}
+      {badge && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-black px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap">{badge}</div>}
       <div className="mb-6">
-        <div className={`text-xs font-black uppercase tracking-widest mb-2 ${highlight ? "text-violet-200" : "text-violet-600 dark:text-violet-400"}`}>{name}</div>
+        <div className="text-xs font-black uppercase tracking-widest mb-2 text-violet-600 dark:text-violet-400">{name}</div>
+        {originalPrice && (
+          <div className="text-sm text-slate-400 line-through mb-0.5">{originalPrice}</div>
+        )}
         <div className="flex items-baseline gap-1 mb-1">
-          {originalPrice && (
-            <span className={`text-xl line-through mr-1 ${highlight ? "text-violet-300" : "text-slate-400"}`}>{originalPrice}</span>
-          )}
-          <span className={`text-5xl font-black ${highlight ? "text-white" : "text-slate-900 dark:text-white"}`}>{price}</span>
-          <span className={`text-sm ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{period}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">R$</span>
+          <span className="text-5xl font-black text-slate-900 dark:text-white">{price}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">{period}</span>
         </div>
-        <p className={`text-sm leading-relaxed ${highlight ? "text-violet-200" : "text-slate-500 dark:text-slate-400"}`}>{desc}</p>
+        <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{desc}</p>
         {trialDays && trialDays > 0 && (
-          <div className={`mt-2 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${highlight ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"}`}>
+          <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
             🎁 {trialDays} dias grátis
           </div>
+        )}
+        {couponBadge && (
+          <button
+            onClick={() => { navigator.clipboard.writeText(couponBadge); }}
+            className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+          >
+            🎟️ Use o Cupom {couponBadge}
+          </button>
         )}
       </div>
       <div className="space-y-3 flex-1 mb-8">
         {features.map((f, i) => (
           <div key={i} className="flex items-start gap-2.5">
-            <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${highlight ? "text-violet-200" : "text-violet-500"}`} />
-            <span className={`text-sm ${highlight ? "text-violet-100" : "text-slate-600 dark:text-slate-300"}`}>{f}</span>
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-violet-500" />
+            <span className="text-sm text-slate-600 dark:text-slate-300">{f}</span>
           </div>
         ))}
       </div>
-      <a href={href} className={`block text-center font-bold py-3.5 rounded-xl transition-all ${highlight ? "bg-white text-violet-700 hover:bg-violet-50" : "bg-violet-600 text-white hover:bg-violet-700"}`}>{cta}</a>
+      <a href={href} className="block text-center font-bold py-3.5 rounded-xl transition-all bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/25">{cta}</a>
     </motion.div>
   );
 }
@@ -284,6 +292,8 @@ export default function LandingPage() {
 
   // Fetch plans from database
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
+  const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
   useEffect(() => {
     supabase
       .from("plans")
@@ -291,6 +301,11 @@ export default function LandingPage() {
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .then(({ data }) => { if (data) setDbPlans(data); });
+    supabase
+      .from("coupons")
+      .select("*")
+      .eq("is_active", true)
+      .then(({ data }) => { if (data) setActiveCoupons(data); });
   }, []);
 
   const mockups = [
@@ -733,14 +748,30 @@ export default function LandingPage() {
               <Clock className="w-3.5 h-3.5" /> Preços de lançamento — por tempo limitado
             </div>
             <h2 className="text-4xl sm:text-5xl font-black mb-3">Quanto custa ter visibilidade total do seu SEO?</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-base max-w-xl mx-auto">
-              Se você depende do Google para ganhar dinheiro, não pode operar sem visibilidade total. O Rankito Start começa em <strong className="text-slate-800 dark:text-slate-200">R$97/mês</strong>.
+            <p className="text-slate-500 dark:text-slate-400 text-base max-w-xl mx-auto mb-8">
+              Se você depende do Google para ganhar dinheiro, não pode operar sem visibilidade total.
             </p>
+
+            {/* Monthly/Annual Toggle */}
+            <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-full p-1 mb-2">
+              <button
+                onClick={() => setBillingInterval("monthly")}
+                className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${billingInterval === "monthly" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700"}`}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setBillingInterval("annual")}
+                className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${billingInterval === "annual" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700"}`}
+              >
+                Anual
+                <span className="text-[10px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full">2 meses grátis</span>
+              </button>
+            </div>
           </motion.div>
 
           <div className={`grid gap-6 mb-10 ${dbPlans.length >= 3 ? 'md:grid-cols-3' : dbPlans.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'max-w-md mx-auto'} ${dbPlans.length === 4 ? 'lg:grid-cols-4' : ''}`}>
             {dbPlans.map((plan) => {
-              const fmt = (v: number) => v === -1 ? "Ilimitado" : String(v);
               const features: string[] = [
                 `${plan.projects_limit === -1 ? "Projetos ilimitados" : plan.projects_limit + " projeto" + (plan.projects_limit > 1 ? "s" : "")}`,
                 `SEO completo via Google Search Console`,
@@ -761,26 +792,54 @@ export default function LandingPage() {
               const isHighlight = plan.slug === "growth";
               const ctaMap: Record<string, string> = { start: "Começar com Start →", growth: "Crescer com Growth →", pro: "Escalar com Pro →", unlimited: "Ir Unlimited →" };
 
-              // Promo pricing
+              // Pricing logic based on billing interval
+              const isAnnual = billingInterval === "annual";
+              const hasAnnualPrice = plan.annual_price != null && plan.annual_price > 0;
+              const monthlyPrice = plan.price;
+              const annualTotal = hasAnnualPrice ? plan.annual_price : monthlyPrice * 10;
+              const annualMonthly = annualTotal / 12;
+
+              // Promo pricing (applies to monthly)
               const hasPromo = plan.promo_price != null && (!plan.promo_ends_at || new Date(plan.promo_ends_at) > new Date());
-              const displayPrice = hasPromo ? plan.promo_price : plan.price;
-              const originalPrice = hasPromo ? `R$${Number(plan.price).toLocaleString("pt-BR")}` : undefined;
+
+              let displayPrice: number;
+              let originalPrice: string | undefined;
+              let period: string;
+
+              if (isAnnual) {
+                displayPrice = Math.round(annualMonthly);
+                originalPrice = `R$${Number(monthlyPrice).toLocaleString("pt-BR")}/mês`;
+                period = "/mês no anual";
+              } else {
+                displayPrice = hasPromo ? plan.promo_price : monthlyPrice;
+                originalPrice = hasPromo ? `R$${Number(monthlyPrice).toLocaleString("pt-BR")}/mês` : undefined;
+                period = "/mês";
+              }
+
+              // Find active public coupon for this plan
+              const planCoupon = activeCoupons.find(c => {
+                if (c.valid_until && new Date(c.valid_until) < new Date()) return false;
+                if (c.max_uses && c.uses_count >= c.max_uses) return false;
+                if (c.plan_slugs && c.plan_slugs.length > 0 && !c.plan_slugs.includes(plan.slug)) return false;
+                return true;
+              });
 
               return (
                 <PricingCard
                   key={plan.id}
                   name={plan.name}
                   slug={plan.slug}
-                  price={`R$${Number(displayPrice).toLocaleString("pt-BR")}`}
+                  price={Number(displayPrice).toLocaleString("pt-BR")}
                   originalPrice={originalPrice}
-                  period="/mês"
+                  period={period}
                   desc={plan.description || ""}
                   features={features}
-                  cta={ctaMap[plan.slug] || `Começar com ${plan.name} →`}
+                  cta={plan.trial_days > 0 ? `Testar ${plan.trial_days} dias grátis` : (ctaMap[plan.slug] || `Começar com ${plan.name} →`)}
                   highlight={isHighlight}
                   badge={isHighlight ? "⭐ Mais popular" : undefined}
-                  checkoutUrl={plan.stripe_checkout_url}
+                  href={`/login?plan=${plan.slug}&interval=${billingInterval}`}
                   trialDays={plan.trial_days}
+                  couponBadge={planCoupon?.code}
                 />
               );
             })}

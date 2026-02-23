@@ -16,6 +16,8 @@ interface DbPlan {
   currency: string;
   billing_interval: string;
   stripe_price_id: string | null;
+  stripe_annual_price_id: string | null;
+  annual_price: number | null;
   projects_limit: number;
   members_limit: number;
   events_limit: number;
@@ -68,6 +70,7 @@ export default function BillingPage() {
   const [couponCode, setCouponCode] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent?: number; discount_amount?: number } | null>(null);
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
 
   useEffect(() => {
     supabase
@@ -119,14 +122,17 @@ export default function BillingPage() {
   };
 
   const handleCheckout = async (plan: DbPlan) => {
-    if (!plan.stripe_price_id) return;
-    setLoadingPlan(plan.stripe_price_id);
+    const isAnnual = billingInterval === "annual";
+    const priceId = isAnnual && plan.stripe_annual_price_id ? plan.stripe_annual_price_id : plan.stripe_price_id;
+    if (!priceId) return;
+    setLoadingPlan(priceId);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
-          priceId: plan.stripe_price_id,
+          priceId,
           trialDays: plan.trial_days || undefined,
           couponCode: appliedCoupon?.code || undefined,
+          billingInterval,
         },
       });
       if (error) throw error;
@@ -204,7 +210,24 @@ export default function BillingPage() {
         </Card>
 
         <div>
-          <h2 className="text-sm font-medium text-foreground mb-3">Planos Disponíveis</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-foreground">Planos Disponíveis</h2>
+            <div className="inline-flex items-center gap-1 bg-muted rounded-full p-0.5">
+              <button
+                onClick={() => setBillingInterval("monthly")}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setBillingInterval("annual")}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Anual
+                <Badge variant="secondary" className="text-[9px] py-0">-17%</Badge>
+              </button>
+            </div>
+          </div>
           {loadingPlans ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -212,24 +235,40 @@ export default function BillingPage() {
           ) : (
             <div className={`grid gap-4 ${plans.length <= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
               {plans.map((plan) => {
-                const isCurrent = currentPriceId === plan.stripe_price_id;
+                const isAnnual = billingInterval === "annual";
+                const priceId = isAnnual && plan.stripe_annual_price_id ? plan.stripe_annual_price_id : plan.stripe_price_id;
+                const isCurrent = currentPriceId === priceId;
                 const features = buildFeatures(plan);
-                const hasPromo = plan.promo_price != null && (!plan.promo_ends_at || new Date(plan.promo_ends_at) > new Date());
-                const displayPrice = hasPromo ? plan.promo_price : plan.price;
+
+                const hasAnnualPrice = plan.annual_price != null && plan.annual_price > 0;
+                const annualTotal = hasAnnualPrice ? plan.annual_price : plan.price * 10;
+                const annualMonthly = annualTotal / 12;
+
+                const hasPromo = !isAnnual && plan.promo_price != null && (!plan.promo_ends_at || new Date(plan.promo_ends_at) > new Date());
+
+                let displayPrice: number;
+                let originalPriceStr: string | undefined;
+
+                if (isAnnual) {
+                  displayPrice = Math.round(annualMonthly);
+                  originalPriceStr = `R$ ${plan.price.toLocaleString("pt-BR")}`;
+                } else {
+                  displayPrice = hasPromo ? plan.promo_price! : plan.price;
+                  originalPriceStr = hasPromo ? `R$ ${plan.price.toLocaleString("pt-BR")}` : undefined;
+                }
+
                 return (
                   <Card key={plan.id} className={`p-5 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
                     {isCurrent && <Badge className="text-[9px] mb-3">Plano Atual</Badge>}
                     <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
                     <div className="mt-1 mb-2">
-                      {hasPromo && (
-                        <span className="text-sm text-muted-foreground line-through mr-2">
-                          R$ {plan.price.toLocaleString("pt-BR")}
-                        </span>
+                      {originalPriceStr && (
+                        <span className="text-sm text-muted-foreground line-through mr-2">{originalPriceStr}</span>
                       )}
                       <span className="text-2xl font-bold text-foreground">
                         R$ {Number(displayPrice).toLocaleString("pt-BR")}
                       </span>
-                      <span className="text-xs text-muted-foreground">/{plan.billing_interval === "yearly" ? "ano" : "mês"}</span>
+                      <span className="text-xs text-muted-foreground">/{isAnnual ? "mês no anual" : "mês"}</span>
                     </div>
                     {plan.trial_days > 0 && (
                       <Badge variant="secondary" className="text-[10px] mb-3 gap-1">🎁 {plan.trial_days} dias grátis</Badge>
@@ -249,10 +288,10 @@ export default function BillingPage() {
                       variant={isCurrent ? "outline" : "default"}
                       size="sm"
                       className="w-full text-xs"
-                      disabled={isCurrent || !plan.stripe_price_id || loadingPlan === plan.stripe_price_id}
+                      disabled={isCurrent || !priceId || loadingPlan === priceId}
                       onClick={() => handleCheckout(plan)}
                     >
-                      {loadingPlan === plan.stripe_price_id && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                      {loadingPlan === priceId && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                       {isCurrent ? "Plano Atual" : plan.trial_days > 0 ? `Testar ${plan.trial_days} dias grátis` : "Assinar este plano"}
                     </Button>
                   </Card>

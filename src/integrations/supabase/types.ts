@@ -749,6 +749,8 @@ export type Database = {
           description: string | null
           discount_amount: number | null
           discount_percent: number | null
+          duration: string
+          duration_in_months: number | null
           id: string
           is_active: boolean
           max_uses: number | null
@@ -765,6 +767,8 @@ export type Database = {
           description?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          duration?: string
+          duration_in_months?: number | null
           id?: string
           is_active?: boolean
           max_uses?: number | null
@@ -781,6 +785,8 @@ export type Database = {
           description?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          duration?: string
+          duration_in_months?: number | null
           id?: string
           is_active?: boolean
           max_uses?: number | null
@@ -1661,6 +1667,7 @@ export type Database = {
         Row: {
           advanced_analytics_enabled: boolean
           ai_requests_limit: number
+          annual_price: number | null
           api_access_enabled: boolean
           billing_interval: string
           created_at: string
@@ -1685,6 +1692,7 @@ export type Database = {
           rank_rent_enabled: boolean
           slug: string
           sort_order: number
+          stripe_annual_price_id: string | null
           stripe_checkout_url: string | null
           stripe_price_id: string | null
           trial_days: number
@@ -1696,6 +1704,7 @@ export type Database = {
         Insert: {
           advanced_analytics_enabled?: boolean
           ai_requests_limit?: number
+          annual_price?: number | null
           api_access_enabled?: boolean
           billing_interval?: string
           created_at?: string
@@ -1720,6 +1729,7 @@ export type Database = {
           rank_rent_enabled?: boolean
           slug: string
           sort_order?: number
+          stripe_annual_price_id?: string | null
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
           trial_days?: number
@@ -1731,6 +1741,7 @@ export type Database = {
         Update: {
           advanced_analytics_enabled?: boolean
           ai_requests_limit?: number
+          annual_price?: number | null
           api_access_enabled?: boolean
           billing_interval?: string
           created_at?: string
@@ -1755,6 +1766,7 @@ export type Database = {
           rank_rent_enabled?: boolean
           slug?: string
           sort_order?: number
+          stripe_annual_price_id?: string | null
           stripe_checkout_url?: string | null
           stripe_price_id?: string | null
           trial_days?: number

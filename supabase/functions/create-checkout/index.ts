@@ -14,8 +14,28 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { priceId, email: directEmail, trialDays, couponCode } = body;
-    if (!priceId) throw new Error("priceId is required");
+    const { priceId, email: directEmail, trialDays, couponCode, billingInterval, planSlug } = body;
+
+    // If planSlug provided, resolve priceId from DB
+    let resolvedPriceId = priceId;
+    if (planSlug && !priceId) {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      const { data: planData } = await supabaseAdmin
+        .from("plans")
+        .select("stripe_price_id, stripe_annual_price_id")
+        .eq("slug", planSlug)
+        .single();
+      if (planData) {
+        resolvedPriceId = billingInterval === "annual" && planData.stripe_annual_price_id
+          ? planData.stripe_annual_price_id
+          : planData.stripe_price_id;
+      }
+    }
+    if (!resolvedPriceId) throw new Error("priceId is required");
 
     let email: string | null = null;
 
@@ -74,11 +94,15 @@ serve(async (req) => {
         if (coupon.stripe_coupon_id) {
           stripeCouponId = coupon.stripe_coupon_id;
         } else {
+          const couponDuration = coupon.duration || "once";
           const stripeCoupon = await stripe.coupons.create({
             ...(coupon.discount_percent
               ? { percent_off: Number(coupon.discount_percent) }
               : { amount_off: Math.round(Number(coupon.discount_amount) * 100), currency: "brl" }),
-            duration: "once",
+            duration: couponDuration as any,
+            ...(couponDuration === "repeating" && coupon.duration_in_months
+              ? { duration_in_months: coupon.duration_in_months }
+              : {}),
             name: coupon.code,
           });
           stripeCouponId = stripeCoupon.id;
@@ -100,7 +124,7 @@ serve(async (req) => {
     const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : email,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: resolvedPriceId, quantity: 1 }],
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/checkout-success`,
       cancel_url: `${req.headers.get("origin")}/landing?checkout=canceled`,

@@ -314,6 +314,20 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Preço Anual (R$)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input
+                      type="number"
+                      value={getValue("annual_price") ?? ""}
+                      onChange={e => setValue("annual_price", e.target.value ? parseFloat(e.target.value) : null)}
+                      className="h-9 text-sm pl-9"
+                      placeholder={`${(getValue("price") as number * 10)} (10x mensal)`}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Vazio = 10x mensal (2 meses grátis). Preenchido automaticamente ao sincronizar.</p>
+                </div>
+                <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Ordem de Exibição</Label>
                   <Input type="number" value={getValue("sort_order")} onChange={e => setValue("sort_order", parseInt(e.target.value) || 0)} className="h-9 text-sm" />
                 </div>
@@ -614,14 +628,24 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Stripe Price ID</Label>
+                  <Label className="text-xs font-medium">Stripe Price ID (Mensal)</Label>
                   <Input
                     value={getValue("stripe_price_id") || ""}
                     onChange={e => setValue("stripe_price_id", e.target.value || null)}
                     placeholder="price_1MoBy5LkdIwHu7ixZhnattbh"
                     className="h-9 text-sm font-mono"
                   />
-                  <p className="text-[10px] text-muted-foreground">ID do preço no Stripe Dashboard</p>
+                  <p className="text-[10px] text-muted-foreground">ID do preço mensal no Stripe</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Stripe Annual Price ID</Label>
+                  <Input
+                    value={getValue("stripe_annual_price_id") || ""}
+                    onChange={e => setValue("stripe_annual_price_id", e.target.value || null)}
+                    placeholder="price_1MoBy5LkdIwHu7ixZhnattbh"
+                    className="h-9 text-sm font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">ID do preço anual no Stripe (preenchido automaticamente ao sincronizar)</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">URL de Checkout</Label>

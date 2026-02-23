@@ -36,6 +36,8 @@ export default function AdminCouponsPage() {
   const [validUntil, setValidUntil] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [selectedPlanSlugs, setSelectedPlanSlugs] = useState<string[]>([]);
+  const [duration, setDuration] = useState("once");
+  const [durationInMonths, setDurationInMonths] = useState("");
 
   const handleCreate = () => {
     if (!code.trim()) { toast.error("Código é obrigatório"); return; }
@@ -48,12 +50,15 @@ export default function AdminCouponsPage() {
       valid_until: validUntil ? new Date(validUntil).toISOString() : null,
       max_uses: maxUses ? parseInt(maxUses) : null,
       plan_slugs: selectedPlanSlugs,
+      duration,
+      duration_in_months: duration === "repeating" && durationInMonths ? parseInt(durationInMonths) : null,
     } as any, {
       onSuccess: () => {
         toast.success("Cupom criado!");
         setOpen(false);
         setCode(""); setDescription(""); setDiscountPercent(""); setDiscountAmount("");
         setValidUntil(""); setMaxUses(""); setSelectedPlanSlugs([]);
+        setDuration("once"); setDurationInMonths("");
       },
       onError: (err) => toast.error(err.message),
     });
@@ -127,6 +132,28 @@ export default function AdminCouponsPage() {
                   ))}
                 </div>
               </div>
+              {/* Duration */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Duração do desconto</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "once", label: "Uma vez" },
+                    { value: "repeating", label: "Primeiro(s) mês(es)" },
+                    { value: "forever", label: "Para sempre" },
+                  ].map(opt => (
+                    <label key={opt.value} className={`flex items-center gap-2 text-xs p-2 rounded-lg border cursor-pointer transition-all ${duration === opt.value ? "border-primary bg-primary/5" : "border-border"}`}>
+                      <input type="radio" name="duration" value={opt.value} checked={duration === opt.value} onChange={e => setDuration(e.target.value)} className="accent-primary" />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+                {duration === "repeating" && (
+                  <div className="space-y-1 mt-2">
+                    <Label className="text-[10px]">Número de meses</Label>
+                    <Input type="number" value={durationInMonths} onChange={e => setDurationInMonths(e.target.value)} placeholder="1" className="h-8 text-sm w-24" min="1" />
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={handleCreate} disabled={createCoupon.isPending} className="gap-1.5 text-xs">
@@ -186,6 +213,9 @@ export default function AdminCouponsPage() {
                       {expired && <Badge variant="destructive" className="text-[10px]">Expirado</Badge>}
                       {exhausted && <Badge variant="destructive" className="text-[10px]">Esgotado</Badge>}
                       {coupon.max_uses && <Badge variant="outline" className="text-[10px]">{coupon.uses_count}/{coupon.max_uses} usos</Badge>}
+                      <Badge variant="outline" className="text-[10px]">
+                        {coupon.duration === "forever" ? "∞ Para sempre" : coupon.duration === "repeating" ? `${coupon.duration_in_months || "?"} mês(es)` : "Uma vez"}
+                      </Badge>
                       {coupon.plan_slugs.length > 0 && coupon.plan_slugs.map(s => <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>)}
                     </div>
                     <div className="text-[10px] text-muted-foreground">

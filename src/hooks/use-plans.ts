@@ -20,6 +20,8 @@ export interface Plan {
   sort_order: number;
   stripe_price_id: string | null;
   stripe_checkout_url: string | null;
+  annual_price: number | null;
+  stripe_annual_price_id: string | null;
   payment_methods: string[];
   // Granular feature controls
   gsc_accounts_per_project: number;
@@ -52,6 +54,8 @@ export interface Coupon {
   is_active: boolean;
   plan_slugs: string[];
   stripe_coupon_id: string | null;
+  duration: string;
+  duration_in_months: number | null;
   created_at: string;
   updated_at: string;
 }
