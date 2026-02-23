@@ -33,7 +33,7 @@ serve(async (req) => {
     try {
       const body = await req.json();
       mode = body.mode || "user";
-      limit = Math.min(Number(body.limit || 50), 100);
+      limit = Math.min(Number(body.limit || 50), 500);
       syncOnly = body.syncOnly === true;
     } catch { /* GET with no body */ }
 
@@ -54,10 +54,47 @@ serve(async (req) => {
     });
 
     if (mode === "admin") {
-      // ---- SYNC: Fetch ALL invoices from Stripe and persist to DB ----
-      console.log("[STRIPE-TX] Starting full invoice sync...");
+      // 1. Get known price IDs from our plans table
+      const { data: plans } = await supabase
+        .from("plans")
+        .select("stripe_price_id, slug, name")
+        .not("stripe_price_id", "is", null);
 
-      const allInvoices: any[] = [];
+      const knownPriceIds = new Set(
+        (plans || []).map((p: any) => p.stripe_price_id).filter(Boolean)
+      );
+      const priceToName: Record<string, string> = {};
+      for (const p of plans || []) {
+        if (p.stripe_price_id) priceToName[p.stripe_price_id] = p.name;
+      }
+
+      console.log(`[STRIPE-TX] Known price IDs: ${[...knownPriceIds].join(", ")}`);
+
+      // 2. Fetch subscriptions with source=rankito metadata
+      const rankitoSubIds = new Set<string>();
+      let subHasMore = true;
+      let subStartingAfter: string | undefined;
+
+      while (subHasMore) {
+        const subParams: any = { limit: 100, status: "all" };
+        if (subStartingAfter) subParams.starting_after = subStartingAfter;
+        const batch = await stripe.subscriptions.list(subParams);
+
+        for (const sub of batch.data) {
+          const isRankito =
+            sub.metadata?.source === "rankito" ||
+            sub.items.data.some((item: any) => knownPriceIds.has(item.price?.id));
+          if (isRankito) rankitoSubIds.add(sub.id);
+        }
+
+        subHasMore = batch.has_more;
+        if (batch.data.length > 0) subStartingAfter = batch.data[batch.data.length - 1].id;
+      }
+
+      console.log(`[STRIPE-TX] Found ${rankitoSubIds.size} Rankito subscriptions`);
+
+      // 3. Fetch invoices and filter only platform ones
+      const platformInvoices: any[] = [];
       let hasMore = true;
       let startingAfter: string | undefined;
 
@@ -69,17 +106,42 @@ serve(async (req) => {
         if (startingAfter) params.starting_after = startingAfter;
 
         const batch = await stripe.invoices.list(params);
-        allInvoices.push(...batch.data);
-        hasMore = batch.has_more;
-        if (batch.data.length > 0) {
-          startingAfter = batch.data[batch.data.length - 1].id;
+
+        for (const inv of batch.data) {
+          const subId = typeof inv.subscription === "string"
+            ? inv.subscription
+            : (inv.subscription as any)?.id || null;
+
+          // Check if invoice belongs to a Rankito subscription
+          const belongsToRankito = subId && rankitoSubIds.has(subId);
+
+          // Check if any line item uses a known price
+          const hasKnownPrice = inv.lines?.data?.some(
+            (line: any) => knownPriceIds.has(line.price?.id)
+          );
+
+          if (belongsToRankito || hasKnownPrice) {
+            platformInvoices.push(inv);
+          }
         }
+
+        hasMore = batch.has_more;
+        if (batch.data.length > 0) startingAfter = batch.data[batch.data.length - 1].id;
       }
 
-      console.log(`[STRIPE-TX] Fetched ${allInvoices.length} total invoices from Stripe`);
+      console.log(`[STRIPE-TX] Filtered ${platformInvoices.length} platform invoices`);
 
-      // Upsert all invoices into stripe_transactions table
-      const upsertRows = allInvoices.map((inv) => {
+      // 4. Resolve plan names from line items
+      const resolveplanName = (inv: any): string | null => {
+        for (const line of inv.lines?.data || []) {
+          const pid = line.price?.id;
+          if (pid && priceToName[pid]) return priceToName[pid];
+        }
+        return inv.lines?.data?.[0]?.description || null;
+      };
+
+      // 5. Upsert to DB
+      const upsertRows = platformInvoices.map((inv) => {
         const cust = typeof inv.customer === "object" ? inv.customer as Stripe.Customer : null;
         const subId = typeof inv.subscription === "string"
           ? inv.subscription
@@ -96,7 +158,7 @@ serve(async (req) => {
           status: inv.status === "paid" ? "succeeded" : inv.status || "unknown",
           paid: inv.status === "paid",
           description: inv.lines?.data?.[0]?.description || null,
-          plan_name: inv.lines?.data?.[0]?.description || null,
+          plan_name: resolveplanName(inv),
           invoice_pdf: inv.invoice_pdf || null,
           hosted_invoice_url: inv.hosted_invoice_url || null,
           error_message: inv.last_finalization_error?.message || null,
@@ -108,34 +170,48 @@ serve(async (req) => {
       });
 
       if (upsertRows.length > 0) {
-        // Upsert in batches of 50
         for (let i = 0; i < upsertRows.length; i += 50) {
           const batch = upsertRows.slice(i, i + 50);
           const { error: upsertErr } = await supabase
             .from("stripe_transactions")
             .upsert(batch, { onConflict: "stripe_invoice_id" });
-          if (upsertErr) {
-            console.error("[STRIPE-TX] Upsert error:", upsertErr.message);
-          }
+          if (upsertErr) console.error("[STRIPE-TX] Upsert error:", upsertErr.message);
         }
-        console.log(`[STRIPE-TX] Synced ${upsertRows.length} transactions to DB`);
+      }
+
+      // Delete any previously synced invoices that are NOT platform ones
+      const platformIds = new Set(platformInvoices.map((inv) => inv.id));
+      const { data: existingRows } = await supabase
+        .from("stripe_transactions")
+        .select("stripe_invoice_id");
+
+      const toDelete = (existingRows || [])
+        .filter((r: any) => !platformIds.has(r.stripe_invoice_id))
+        .map((r: any) => r.stripe_invoice_id);
+
+      if (toDelete.length > 0) {
+        await supabase
+          .from("stripe_transactions")
+          .delete()
+          .in("stripe_invoice_id", toDelete);
+        console.log(`[STRIPE-TX] Cleaned ${toDelete.length} non-platform transactions`);
       }
 
       if (syncOnly) {
         return new Response(
-          JSON.stringify({ synced: upsertRows.length }),
+          JSON.stringify({ synced: upsertRows.length, cleaned: toDelete.length }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      // ---- READ from DB (always fresh after sync) ----
-      const { data: dbTransactions } = await supabase
+      // 6. Read from DB
+      const { data: dbTx } = await supabase
         .from("stripe_transactions")
         .select("*")
         .order("stripe_created_at", { ascending: false })
         .limit(limit);
 
-      const transactions = (dbTransactions || []).map((tx: any) => ({
+      const transactions = (dbTx || []).map((tx: any) => ({
         id: tx.stripe_invoice_id,
         amount: Number(tx.amount),
         currency: tx.currency,
@@ -148,28 +224,39 @@ serve(async (req) => {
         description: tx.description,
         plan_name: tx.plan_name,
         invoice_id: tx.stripe_invoice_id,
-        payment_method: null,
         receipt_url: tx.hosted_invoice_url,
+        invoice_pdf: tx.invoice_pdf,
         error_message: tx.error_message,
+        period_start: tx.period_start,
+        period_end: tx.period_end,
       }));
 
-      // Summary from DB
+      // Summary
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const startOfWeek = new Date(startOfDay);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-      let todayRevenue = 0, weekRevenue = 0, monthRevenue = 0, totalTransactions = 0;
+      let todayRevenue = 0, weekRevenue = 0, monthRevenue = 0, lastMonthRevenue = 0;
+      let totalPaid = 0, totalFailed = 0, totalPending = 0;
 
-      for (const tx of dbTransactions || []) {
-        if (!tx.paid) continue;
+      for (const tx of dbTx || []) {
         const txDate = new Date(tx.stripe_created_at);
         const amount = Number(tx.amount);
-        totalTransactions++;
-        if (txDate >= startOfMonth) monthRevenue += amount;
-        if (txDate >= startOfWeek) weekRevenue += amount;
-        if (txDate >= startOfDay) todayRevenue += amount;
+
+        if (tx.paid) {
+          totalPaid++;
+          if (txDate >= startOfMonth) monthRevenue += amount;
+          if (txDate >= startOfWeek) weekRevenue += amount;
+          if (txDate >= startOfDay) todayRevenue += amount;
+          if (txDate >= startOfLastMonth && txDate < startOfMonth) lastMonthRevenue += amount;
+        } else if (tx.status === "open" || tx.status === "pending" || tx.status === "draft") {
+          totalPending++;
+        } else {
+          totalFailed++;
+        }
       }
 
       return new Response(
@@ -179,13 +266,17 @@ serve(async (req) => {
             today: todayRevenue,
             week: weekRevenue,
             month: monthRevenue,
-            total_transactions: totalTransactions,
+            last_month: lastMonthRevenue,
+            total_paid: totalPaid,
+            total_failed: totalFailed,
+            total_pending: totalPending,
+            total_transactions: (dbTx || []).length,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } else {
-      // User mode: get invoices for this specific customer
+      // User mode
       if (!user.email) throw new Error("User email not available");
 
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
