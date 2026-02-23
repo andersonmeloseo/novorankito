@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StaggeredGrid, AnimatedContainer } from "@/components/ui/animated-container";
-import { Download, Loader2, RefreshCw, ExternalLink, Receipt, FileText, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Download, Loader2, RefreshCw, ExternalLink, Receipt, FileText, TrendingUp, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { generateBillingReport } from "@/lib/billing-report";
 import { translateStatus, getStatusVariant } from "@/lib/admin-status";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell,
@@ -281,6 +282,13 @@ export function AdminBillingTab({ billing, profiles }: AdminBillingTabProps) {
             </Button>
             <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={handleExportTx}>
               <Download className="h-3 w-3" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={() => {
+              const filterName = statusFilter === "all" ? "Todas" : statusFilter === "paid" ? "Pagas" : statusFilter === "pending" ? "Pendentes" : "Falhas";
+              generateBillingReport(filteredTx, summary, filterName);
+              toast({ title: "PDF gerado com sucesso" });
+            }}>
+              <FileText className="h-3 w-3" /> PDF
             </Button>
           </div>
         </div>
