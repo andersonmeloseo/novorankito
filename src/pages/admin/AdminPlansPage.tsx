@@ -100,7 +100,7 @@ export default function AdminPlansPage() {
                 <table className="w-full text-xs">
                   <thead>
                   <tr className="border-b border-border">
-                      {["Plano", "Preço", "Projetos", "Eventos/mês", "IA/mês", "Membros", "Index/dia", "GSC/proj", "Orq./hora", "Pixel", "WA", "API", "Status", "Assin."].map(h => (
+                      {["Plano", "Preço", "Projetos", "Eventos/mês", "IA/mês", "Membros", "Link Mensal", "Link Anual", "Status", "Assin."].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -128,27 +128,19 @@ export default function AdminPlansPage() {
                         <td className="px-3 py-2.5 text-muted-foreground">{plan.events_limit === -1 ? "∞" : (plan.events_limit / 1000).toFixed(0) + "k"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{plan.ai_requests_limit === -1 ? "∞" : plan.ai_requests_limit}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{plan.members_limit === -1 ? "∞" : plan.members_limit}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{plan.indexing_daily_limit === -1 ? "∞" : plan.indexing_daily_limit}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground font-medium">
-                          {(plan as any).gsc_accounts_per_project === -1 ? "∞" : ((plan as any).gsc_accounts_per_project ?? 1)}
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground">
-                          {(plan as any).orchestrator_executions_limit === -1 ? "∞" : ((plan as any).orchestrator_executions_limit ?? 5)}
+                        <td className="px-3 py-2.5">
+                          {plan.stripe_checkout_url ? (
+                            <a href={plan.stripe_checkout_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate max-w-[120px] block" title={plan.stripe_checkout_url}>
+                              {plan.stripe_checkout_url.replace("https://buy.stripe.com/", "").slice(0, 12)}…
+                            </a>
+                          ) : <span className="text-muted-foreground text-[10px]">—</span>}
                         </td>
                         <td className="px-3 py-2.5">
-                          {(plan as any).pixel_tracking_enabled !== false
-                            ? <span className="text-foreground font-bold text-sm">✓</span>
-                            : <span className="text-muted-foreground text-sm">–</span>}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {(plan as any).whatsapp_reports_enabled
-                            ? <span className="text-foreground font-bold text-sm">✓</span>
-                            : <span className="text-muted-foreground text-sm">–</span>}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {(plan as any).api_access_enabled
-                            ? <span className="text-foreground font-bold text-sm">✓</span>
-                            : <span className="text-muted-foreground text-sm">–</span>}
+                          {(plan as any).stripe_annual_checkout_url ? (
+                            <a href={(plan as any).stripe_annual_checkout_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate max-w-[120px] block" title={(plan as any).stripe_annual_checkout_url}>
+                              {(plan as any).stripe_annual_checkout_url.replace("https://buy.stripe.com/", "").slice(0, 12)}…
+                            </a>
+                          ) : <span className="text-muted-foreground text-[10px]">—</span>}
                         </td>
                         <td className="px-3 py-2.5">
                           <Badge variant={plan.is_active ? "default" : "destructive"} className="text-[9px]">
