@@ -123,14 +123,15 @@ export default function Login() {
               window.location.href = data.url;
               return; // Don't set loading to false, we're redirecting
             }
-          } catch (err: any) {
+        } catch (err: any) {
             console.error("Checkout redirect error:", err);
             toast({ title: "Erro ao redirecionar para pagamento", description: err.message, variant: "destructive" });
+            navigate("/onboarding");
           }
+        } else {
+          toast({ title: "Conta criada!" });
+          navigate("/onboarding");
         }
-
-        // If no plan or checkout failed, show confirmation message
-        toast({ title: "Conta criada!", description: "Verifique seu e-mail para confirmar." });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
