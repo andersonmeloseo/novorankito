@@ -52,41 +52,41 @@ serve(async (req) => {
     });
 
     if (mode === "admin") {
-      // Only fetch subscriptions created by Rankito (tagged with metadata)
-      const subscriptions = await stripe.subscriptions.list({
-        limit: 100,
-        expand: ["data.customer", "data.latest_invoice"],
-      });
-
-      // Filter only subscriptions with rankito metadata
-      const rankitoSubs = subscriptions.data.filter(
-        (sub) => sub.metadata?.source === "rankito"
+      // Get Rankito plan price IDs from DB
+      const { data: plans } = await supabase
+        .from("plans")
+        .select("stripe_price_id")
+        .not("stripe_price_id", "is", null);
+      
+      const rankitoPriceIds = new Set(
+        (plans || []).map((p: any) => p.stripe_price_id).filter(Boolean)
       );
 
-      // Collect invoice IDs from rankito subscriptions
-      const rankitoInvoiceIds = new Set<string>();
-      for (const sub of rankitoSubs) {
-        // List all invoices for this subscription
-        const invoices = await stripe.invoices.list({
-          subscription: sub.id,
-          limit: 100,
-        });
-        for (const inv of invoices.data) {
-          if (inv.charge) {
-            rankitoInvoiceIds.add(typeof inv.charge === "string" ? inv.charge : inv.charge.id);
-          }
+      // Get all invoices and filter to those containing Rankito price line items
+      const invoices = await stripe.invoices.list({
+        limit: 100,
+        expand: ["data.charge"],
+      });
+
+      const rankitoChargeIds = new Set<string>();
+      for (const inv of invoices.data) {
+        const hasRankitoLine = inv.lines?.data?.some(
+          (line) => line.price && rankitoPriceIds.has(line.price.id)
+        );
+        if (hasRankitoLine && inv.charge) {
+          const chargeId = typeof inv.charge === "string" ? inv.charge : inv.charge.id;
+          rankitoChargeIds.add(chargeId);
         }
       }
 
-      // Get charges and filter to only those from rankito subscriptions
+      // Get charges and filter
       const charges = await stripe.charges.list({
         limit: 100,
         expand: ["data.customer"],
       });
 
       const platformCharges = charges.data.filter((ch) => {
-        // Only include charges that came from rankito subscriptions
-        if (rankitoInvoiceIds.has(ch.id)) return true;
+        if (rankitoChargeIds.has(ch.id)) return true;
         if (ch.metadata?.source === "rankito") return true;
         return false;
       });
