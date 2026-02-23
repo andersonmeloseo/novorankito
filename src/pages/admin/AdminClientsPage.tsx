@@ -160,17 +160,32 @@ export default function AdminClientsPage() {
     }
   };
 
-  // Bulk: Delete selected
+  // Bulk: Delete selected (uses edge function with service_role to fully delete from auth + cascade)
   const handleBulkDelete = async () => {
     const userIds = Array.from(selected);
+    let deleted = 0;
+    let errors: string[] = [];
     try {
       for (const uid of userIds) {
-        await supabase.from("billing_subscriptions").delete().eq("user_id", uid);
-        await supabase.from("user_roles").delete().eq("user_id", uid);
-        await supabase.from("profiles").delete().eq("user_id", uid);
+        const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+          body: { userId: uid },
+        });
+        if (error) {
+          errors.push(`${uid.slice(0, 8)}: ${error.message}`);
+        } else if (data?.error) {
+          errors.push(`${uid.slice(0, 8)}: ${data.error}`);
+        } else {
+          deleted++;
+        }
       }
-      toast({ title: "Excluídos", description: `${userIds.length} cliente(s) removido(s)` });
+      if (deleted > 0) {
+        toast({ title: "Excluídos", description: `${deleted} cliente(s) removido(s) permanentemente` });
+      }
+      if (errors.length > 0) {
+        toast({ title: "Erros", description: errors.join("; "), variant: "destructive" });
+      }
       handleRefresh();
+      setSelected(new Set());
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
