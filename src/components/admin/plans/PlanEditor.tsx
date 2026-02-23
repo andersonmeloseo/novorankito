@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,9 @@ import {
 import {
   Settings2, ToggleLeft, Save, Check, AlertTriangle, Users,
   FolderOpen, Bot, Activity, Send, Shield, Trash2, Crown, Zap, Infinity,
-  Plus, X, Copy, Sparkles, Eye, EyeOff, CreditCard, ExternalLink, Link2,
+  Plus, X, Copy, Sparkles, Eye, EyeOff, CreditCard, ExternalLink, Link2, RefreshCw, Loader2,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -71,6 +72,7 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
   const [newFeatureKey, setNewFeatureKey] = useState("");
   const [newFeatureName, setNewFeatureName] = useState("");
   const [showAddFeature, setShowAddFeature] = useState(false);
+  const [syncingStripe, setSyncingStripe] = useState(false);
 
   const [lastPlanId, setLastPlanId] = useState(plan.id);
   if (plan.id !== lastPlanId) {
@@ -146,6 +148,24 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
       onError: (err) => toast.error(err.message),
     });
   };
+
+  const handleSyncStripe = useCallback(async () => {
+    setSyncingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-plan-stripe", {
+        body: { plan_id: plan.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Plano sincronizado com Stripe! Price ID: ${data.stripe_price_id}`);
+      // Force refetch
+      window.location.reload();
+    } catch (err: any) {
+      toast.error("Erro ao sincronizar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSyncingStripe(false);
+    }
+  }, [plan.id]);
 
   const Icon = PLAN_ICONS[plan.slug] || Zap;
   const enabledCount = features.filter(f => f.enabled).length;
@@ -641,12 +661,25 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-border">
+              <div className="pt-3 border-t border-border space-y-3">
+                <Button
+                  onClick={handleSyncStripe}
+                  disabled={syncingStripe}
+                  className="w-full gap-2 text-xs"
+                  variant={getValue("stripe_price_id") ? "outline" : "default"}
+                >
+                  {syncingStripe ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {getValue("stripe_price_id") ? "Sincronizar Alterações com Stripe" : "Criar Produto no Stripe"}
+                </Button>
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
                   <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-[11px] text-muted-foreground">
-                    Para integração completa com Stripe, configure a chave da API em <strong>Configurações → APIs</strong>. 
-                    O checkout será gerado automaticamente ao atribuir este plano a um cliente.
+                    Ao sincronizar, o produto e preço são criados/atualizados automaticamente no Stripe.
+                    Se o preço mudar, um novo Price será criado e o antigo desativado.
                   </p>
                 </div>
               </div>
