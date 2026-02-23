@@ -18,19 +18,14 @@ interface NotificationTarget {
 const MESSAGES: Record<string, (name: string, plan: string, days?: number) => string> = {
   welcome: (name, plan) =>
     `🎉 Olá, ${name}! Seja muito bem-vindo(a) ao *Rankito*!\n\nSua conta foi criada com sucesso no plano *${plan}*. Estamos animados em ter você aqui!\n\n📊 Acesse sua dashboard e comece a monitorar seu SEO agora mesmo.\n\n💬 Qualquer dúvida, é só chamar por aqui!\n\n— Equipe Rankito 🚀`,
-
   expiring_7d: (name, plan) =>
     `⏰ Oi, ${name}! Passando para avisar que seu plano *${plan}* no Rankito vence em *7 dias*.\n\nRenove para não perder acesso aos seus dados e relatórios.\n\n💳 Acesse sua conta para renovar: rankito.com\n\n— Equipe Rankito`,
-
   expiring_3d: (name, plan) =>
     `⚠️ ${name}, seu plano *${plan}* vence em *3 dias*!\n\nNão deixe para a última hora — renove agora e mantenha seu monitoramento ativo.\n\n💳 Renovar: rankito.com\n\n— Equipe Rankito`,
-
   expiring_1d: (name, plan) =>
     `🚨 ${name}, *último dia* do seu plano *${plan}*!\n\nAmanhã seu acesso será suspenso. Renove agora para não perder nenhum dado.\n\n💳 Renovar: rankito.com\n\n— Equipe Rankito`,
-
   expired: (name, plan) =>
     `🚫 ${name}, seu plano *${plan}* no Rankito *expirou*.\n\nSeu acesso foi limitado. Renove para voltar a ter acesso completo aos seus projetos e relatórios.\n\n💳 Renovar: rankito.com\n\nSentimos sua falta! — Equipe Rankito`,
-
   payment_reminder: (name, plan) =>
     `💰 Oi, ${name}! Lembrete de que a cobrança do seu plano *${plan}* está próxima.\n\nVerifique se seus dados de pagamento estão atualizados para evitar interrupções.\n\n💳 Gerenciar pagamento: rankito.com\n\n— Equipe Rankito`,
 };
@@ -52,14 +47,103 @@ serve(async (req) => {
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json().catch(() => ({}));
-    const { mode, user_id, notification_type } = body;
+    const { mode, user_id, notification_type, custom_message, custom_title } = body;
 
-    // Mode: "manual" = send specific type to specific user
-    // Mode: "cron" or default = scan all subscriptions and send appropriate notifications
+    // ── MODE: custom ── send a free-text message to one user or all users ──
+    if (mode === "custom") {
+      if (!custom_message) {
+        return new Response(JSON.stringify({ error: "custom_message is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Gather recipients
+      let recipients: Array<{ user_id: string; display_name: string; whatsapp_phone: string }> = [];
+
+      if (user_id === "__all__") {
+        const { data } = await sb
+          .from("profiles")
+          .select("user_id, display_name, whatsapp_phone")
+          .not("whatsapp_phone", "is", null)
+          .neq("whatsapp_phone", "");
+        recipients = data || [];
+      } else if (user_id) {
+        const { data } = await sb
+          .from("profiles")
+          .select("user_id, display_name, whatsapp_phone")
+          .eq("user_id", user_id)
+          .single();
+        if (data?.whatsapp_phone) recipients = [data];
+      }
+
+      if (recipients.length === 0) {
+        return new Response(JSON.stringify({ error: "No recipients with WhatsApp" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const baseUrl = WHATSAPP_API_URL.replace(/\/+$/, "");
+      const results: Array<{ user_id: string; status: string; error?: string }> = [];
+      const nType = notification_type || "custom";
+      const title = custom_title || "📢 Novidade do Rankito";
+
+      for (const r of recipients) {
+        const firstName = (r.display_name || "Cliente").split(" ")[0];
+        // Replace {nome} placeholder in custom messages
+        const message = custom_message.replace(/\{nome\}/gi, firstName);
+        const cleanPhone = r.whatsapp_phone.replace(/\D/g, "");
+
+        try {
+          const res = await fetch(`${baseUrl}/message/sendText/rankito`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: WHATSAPP_API_KEY },
+            body: JSON.stringify({ number: cleanPhone, text: message }),
+          });
+          const resText = await res.text();
+          if (!res.ok) throw new Error(`WhatsApp API ${res.status}: ${resText.substring(0, 200)}`);
+
+          await sb.from("billing_notifications").insert({
+            user_id: r.user_id,
+            notification_type: nType,
+            channel: "whatsapp",
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            metadata: { phone: cleanPhone, custom: true, title },
+          });
+
+          await sb.from("notifications").insert({
+            user_id: r.user_id,
+            title,
+            message: message.substring(0, 500),
+            type: "info",
+          });
+
+          results.push({ user_id: r.user_id, status: "sent" });
+        } catch (err: any) {
+          await sb.from("billing_notifications").insert({
+            user_id: r.user_id,
+            notification_type: nType,
+            channel: "whatsapp",
+            status: "failed",
+            error_message: err.message,
+            metadata: { phone: cleanPhone, custom: true, title },
+          });
+          results.push({ user_id: r.user_id, status: "failed", error: err.message });
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        sent: results.filter(r => r.status === "sent").length,
+        failed: results.filter(r => r.status === "failed").length,
+        results,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── MODE: manual ── predefined notification to one user ──
     const targets: NotificationTarget[] = [];
 
     if (mode === "manual" && user_id && notification_type) {
-      // Manual send from admin
       const { data: profile } = await sb
         .from("profiles")
         .select("user_id, display_name, whatsapp_phone")
@@ -90,7 +174,7 @@ serve(async (req) => {
         notification_type,
       });
     } else {
-      // Cron mode: scan all users with whatsapp + active subscriptions
+      // ── MODE: cron ── scan all subscriptions ──
       const { data: profiles } = await sb
         .from("profiles")
         .select("user_id, display_name, whatsapp_phone")
@@ -125,11 +209,9 @@ serve(async (req) => {
         if (diffDays === 3) typesToSend.push("expiring_3d");
         if (diffDays === 1) typesToSend.push("expiring_1d");
         if (diffDays === 0 || diffDays === -1) typesToSend.push("expired");
-        // Payment reminder 5 days before expiry
         if (diffDays === 5) typesToSend.push("payment_reminder");
 
         for (const type of typesToSend) {
-          // Check if already sent today for this type
           const { data: existing } = await sb
             .from("billing_notifications")
             .select("id")
@@ -151,8 +233,9 @@ serve(async (req) => {
         }
       }
 
-      // Also check for welcome messages (users created in the last hour without a welcome notification)
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+      // Welcome messages for new users
+      const now2 = new Date();
+      const oneHourAgo = new Date(now2.getTime() - 60 * 60 * 1000).toISOString();
       const { data: newUsers } = await sb
         .from("profiles")
         .select("user_id, display_name, whatsapp_phone, created_at")
@@ -161,6 +244,11 @@ serve(async (req) => {
         .gte("created_at", oneHourAgo);
 
       if (newUsers) {
+        const { data: subs2 } = await sb
+          .from("billing_subscriptions")
+          .select("user_id, plan, expires_at")
+          .in("user_id", newUsers.map(n => n.user_id));
+
         for (const nu of newUsers) {
           const { data: existing } = await sb
             .from("billing_notifications")
@@ -171,7 +259,7 @@ serve(async (req) => {
 
           if (existing && existing.length > 0) continue;
 
-          const sub = subs?.find(s => s.user_id === nu.user_id);
+          const sub = subs2?.find(s => s.user_id === nu.user_id);
           targets.push({
             user_id: nu.user_id,
             display_name: nu.display_name || "Cliente",
@@ -184,7 +272,7 @@ serve(async (req) => {
       }
     }
 
-    // Send WhatsApp messages
+    // Send WhatsApp messages for lifecycle targets
     const results: Array<{ user_id: string; type: string; status: string; error?: string }> = [];
     const baseUrl = WHATSAPP_API_URL.replace(/\/+$/, "");
 
@@ -204,11 +292,8 @@ serve(async (req) => {
         });
 
         const resText = await res.text();
-        console.log(`[Billing WA] ${target.notification_type} to ${cleanPhone}: ${res.status}`);
-
         if (!res.ok) throw new Error(`WhatsApp API ${res.status}: ${resText.substring(0, 200)}`);
 
-        // Log success
         await sb.from("billing_notifications").insert({
           user_id: target.user_id,
           notification_type: target.notification_type,
@@ -218,7 +303,6 @@ serve(async (req) => {
           metadata: { plan: target.plan, phone: cleanPhone },
         });
 
-        // Also create in-app notification
         await sb.from("notifications").insert({
           user_id: target.user_id,
           title: getNotificationTitle(target.notification_type),
@@ -229,8 +313,6 @@ serve(async (req) => {
 
         results.push({ user_id: target.user_id, type: target.notification_type, status: "sent" });
       } catch (err: any) {
-        console.error(`[Billing WA] Error ${target.notification_type} to ${cleanPhone}:`, err.message);
-
         await sb.from("billing_notifications").insert({
           user_id: target.user_id,
           notification_type: target.notification_type,
@@ -244,9 +326,12 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, sent: results.filter(r => r.status === "sent").length, failed: results.filter(r => r.status === "failed").length, results }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      success: true,
+      sent: results.filter(r => r.status === "sent").length,
+      failed: results.filter(r => r.status === "failed").length,
+      results,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("billing-lifecycle-notifications error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
