@@ -108,22 +108,35 @@ export default function Login() {
         // Store pending checkout BEFORE signUp, because onAuthStateChange
         // may trigger navigation before we get a chance to redirect
         const planData = getSelectedPlanData();
-        if (planData?.stripe_price_id) {
-          localStorage.setItem("pending_checkout_price_id", planData.stripe_price_id);
-        }
 
         const fullName = [firstName, lastName].filter(Boolean).join(" ");
         const { error } = await signUp(email, password, fullName, whatsapp || undefined);
-        if (error) {
-          localStorage.removeItem("pending_checkout_price_id");
-          throw error;
-        }
+        if (error) throw error;
 
         // Auto-confirm is enabled — session activates immediately.
-        // Navigate to a protected route so ProtectedRoute picks up
-        // pending_checkout_price_id and redirects to Stripe checkout.
-        toast({ title: "Conta criada!", description: planData?.stripe_price_id ? "Redirecionando para pagamento..." : undefined });
-        navigate("/onboarding");
+        // If there's a plan with a stripe price, redirect to checkout immediately
+        if (planData?.stripe_price_id) {
+          toast({ title: "Conta criada!", description: "Redirecionando para pagamento..." });
+          // Wait a tick for the session to be established
+          await new Promise(r => setTimeout(r, 500));
+          try {
+            const { data, error: checkoutError } = await supabase.functions.invoke("create-checkout", {
+              body: { priceId: planData.stripe_price_id },
+            });
+            if (checkoutError) throw checkoutError;
+            if (data?.url) {
+              window.location.href = data.url;
+              return; // Don't set loading to false, we're redirecting
+            }
+          } catch (err: any) {
+            console.error("Checkout redirect error:", err);
+            toast({ title: "Erro ao redirecionar para pagamento", description: err.message, variant: "destructive" });
+            navigate("/onboarding");
+          }
+        } else {
+          toast({ title: "Conta criada!" });
+          navigate("/onboarding");
+        }
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;

@@ -42,7 +42,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/onboarding?checkout=success`,
+      success_url: `${req.headers.get("origin")}/checkout-success`,
       cancel_url: `${req.headers.get("origin")}/landing?checkout=canceled`,
     });
 

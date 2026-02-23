@@ -73,6 +73,7 @@ const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const AccountPage = lazy(() => import("@/pages/AccountPage"));
 const AcademyPage = lazy(() => import("@/pages/AcademyPage"));
 const AdminAcademyPage = lazy(() => import("@/pages/admin/AdminAcademyPage"));
+const CheckoutSuccessPage = lazy(() => import("@/pages/CheckoutSuccessPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,7 @@ const App = () => {
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
                 <Route element={<ProtectedRoute />}>
+                  <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                 </Route>
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
