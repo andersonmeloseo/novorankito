@@ -921,8 +921,14 @@ async function authenticate(req: Request): Promise<boolean> {
   const auth = req.headers.get("Authorization");
   const apikey = req.headers.get("apikey");
 
+  console.log("[MCP-AUTH] apikey present:", !!apikey, "auth present:", !!auth, "ANON_KEY len:", SUPABASE_ANON_KEY?.length);
+
   // 1. If apikey header matches anon key (SDK calls & Claude MCP config)
   if (apikey && apikey === SUPABASE_ANON_KEY) return true;
+
+  // 1b. Also check SUPABASE_PUBLISHABLE_KEY as fallback
+  const publishableKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+  if (apikey && publishableKey && apikey === publishableKey) return true;
 
   if (!auth) return false;
   const token = auth.replace("Bearer ", "");
