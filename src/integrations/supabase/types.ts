@@ -1251,6 +1251,112 @@ export type Database = {
           },
         ]
       }
+      mcp_action_log: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          owner_id: string | null
+          project_id: string | null
+          result: Json | null
+          source: string
+          status: string
+          tool_args: Json | null
+          tool_name: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          owner_id?: string | null
+          project_id?: string | null
+          result?: Json | null
+          source?: string
+          status?: string
+          tool_args?: Json | null
+          tool_name: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          owner_id?: string | null
+          project_id?: string | null
+          result?: Json | null
+          source?: string
+          status?: string
+          tool_args?: Json | null
+          tool_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_action_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_anomalies: {
+        Row: {
+          actioned_at: string | null
+          anomaly_type: string
+          claude_response: string | null
+          created_at: string
+          description: string | null
+          id: string
+          metric_data: Json | null
+          owner_id: string
+          project_id: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actioned_at?: string | null
+          anomaly_type: string
+          claude_response?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metric_data?: Json | null
+          owner_id: string
+          project_id?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actioned_at?: string | null
+          anomaly_type?: string
+          claude_response?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metric_data?: Json | null
+          owner_id?: string
+          project_id?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_anomalies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           action_url: string | null
