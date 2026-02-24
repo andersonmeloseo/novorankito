@@ -14,6 +14,7 @@ import {
   Sparkles, Terminal, Eye, BarChart3, ArrowRight, Copy,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { McpHealthBadge } from "@/components/command-center/McpHealthBadge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -108,10 +109,13 @@ export default function CommandCenterPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Claude Command Center"
-        description="Central de automação IA — anomalias, ações do Claude e integração MCP"
-      />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <PageHeader
+          title="Claude Command Center"
+          description="Central de automação IA — anomalias, ações do Claude e integração MCP"
+        />
+        <McpHealthBadge />
+      </div>
 
       {/* Project selector + MCP info */}
       <div className="flex flex-wrap items-center gap-3">
