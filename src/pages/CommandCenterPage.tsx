@@ -11,12 +11,13 @@ import { toast } from "sonner";
 import {
   Bot, Zap, AlertTriangle, TrendingDown, Target, Shield,
   RefreshCw, Loader2, Activity, Clock, CheckCircle2, XCircle,
-  Sparkles, Terminal, Eye, BarChart3, ArrowRight, Copy, Workflow,
+  Sparkles, Terminal, Eye, BarChart3, ArrowRight, Copy, Workflow, Route,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { McpHealthBadge } from "@/components/command-center/McpHealthBadge";
 import { ProjectSyncButton } from "@/components/command-center/ProjectSyncButton";
 import { AutomationRulesTab } from "@/components/command-center/AutomationRulesTab";
+import { InsightRouterTab } from "@/components/command-center/InsightRouterTab";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -185,14 +186,17 @@ export default function CommandCenterPage() {
           <TabsTrigger value="anomalies" className="text-xs gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" /> Anomalias {newAnomalies.length > 0 && <Badge variant="destructive" className="text-[9px] px-1 h-4">{newAnomalies.length}</Badge>}
           </TabsTrigger>
+          <TabsTrigger value="router" className="text-xs gap-1.5">
+            <Route className="h-3.5 w-3.5" /> Insight Router
+          </TabsTrigger>
           <TabsTrigger value="actions" className="text-xs gap-1.5">
             <Terminal className="h-3.5 w-3.5" /> Log de Ações
           </TabsTrigger>
-          <TabsTrigger value="setup" className="text-xs gap-1.5">
-            <Shield className="h-3.5 w-3.5" /> Configuração MCP
-          </TabsTrigger>
           <TabsTrigger value="automations" className="text-xs gap-1.5">
             <Workflow className="h-3.5 w-3.5" /> Automações
+          </TabsTrigger>
+          <TabsTrigger value="setup" className="text-xs gap-1.5">
+            <Shield className="h-3.5 w-3.5" /> Config MCP
           </TabsTrigger>
         </TabsList>
 
@@ -250,6 +254,11 @@ export default function CommandCenterPage() {
               );
             })
           )}
+        </TabsContent>
+
+        {/* Insight Router Tab */}
+        <TabsContent value="router">
+          <InsightRouterTab projectId={projectId} />
         </TabsContent>
 
         {/* Action Log Tab */}
