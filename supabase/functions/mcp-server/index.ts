@@ -920,25 +920,29 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 async function authenticate(req: Request): Promise<boolean> {
   const auth = req.headers.get("Authorization");
   const apikey = req.headers.get("apikey");
+
+  // 1. If apikey header matches anon key (SDK calls & Claude MCP config)
+  if (apikey && apikey === SUPABASE_ANON_KEY) return true;
+
   if (!auth) return false;
   const token = auth.replace("Bearer ", "");
 
-  // 1. Service role key
+  // 2. Service role key
   if (token === SUPABASE_SERVICE_ROLE_KEY) return true;
 
-  // 2. Anon key (used by Claude MCP config from settings panel)
-  if (token === SUPABASE_ANON_KEY || apikey === SUPABASE_ANON_KEY) return true;
+  // 3. Anon key as Bearer token
+  if (token === SUPABASE_ANON_KEY) return true;
 
-  // 3. Authenticated user JWT
+  // 4. Authenticated user JWT via getClaims
   try {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    const { data: { user } } = await userClient.auth.getUser(token);
-    if (user) return true;
+    const { data, error } = await userClient.auth.getClaims(token);
+    if (!error && data?.claims?.sub) return true;
   } catch { /* not a valid JWT */ }
 
-  // 4. Custom API key hash
+  // 5. Custom API key hash
   const encoder = new TextEncoder();
   const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(token));
   const keyHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
