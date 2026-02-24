@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Key, Copy, Plus, Trash2, Loader2, Eye, EyeOff, BookOpen, Code2, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Key, Copy, Plus, Trash2, Loader2, Eye, EyeOff, BookOpen, Code2, ExternalLink, ChevronDown, ChevronUp, Bot, CheckCircle2 } from "lucide-react";
 
 const USE_CASES = [
   { title: "Dashboard externo", desc: "Puxe métricas de SEO, GA4 e GSC para Power BI, Grafana ou Data Studio.", icon: "📊" },
@@ -36,6 +36,24 @@ export function ApiKeysSettings({ projectId }: ApiKeysSettingsProps) {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [showMcp, setShowMcp] = useState(false);
+  const [mcpCopied, setMcpCopied] = useState(false);
+
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const mcpConfig = JSON.stringify({
+    mcpServers: {
+      rankito: {
+        type: "streamable-http",
+        url: `${SUPABASE_URL}/functions/v1/mcp-server`,
+        headers: {
+          Authorization: `Bearer ${ANON_KEY}`,
+          apikey: ANON_KEY,
+        },
+      },
+    },
+  }, null, 2);
 
   const { data: keys = [], isLoading } = useQuery({
     queryKey: ["api-keys", projectId],
@@ -223,6 +241,82 @@ export function ApiKeysSettings({ projectId }: ApiKeysSettingsProps) {
               <div className="text-[10px] text-muted-foreground border-t border-border pt-2">
                 <p>🔒 Rate limit: 60 requisições/minuto por chave</p>
                 <p>📦 Formato: JSON • Autenticação: header <code className="bg-background px-1 rounded">X-API-Key</code></p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* MCP Server Config for Claude */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Claude MCP Server
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Conecte o Claude Desktop ou Claude Code ao Rankito via MCP (Model Context Protocol)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 text-center">
+              <span className="text-base">🔌</span>
+              <p className="text-[10px] font-semibold mt-1">Transporte</p>
+              <p className="text-[10px] text-muted-foreground">streamable-http</p>
+            </div>
+            <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 text-center">
+              <span className="text-base">🛠️</span>
+              <p className="text-[10px] font-semibold mt-1">Tools disponíveis</p>
+              <p className="text-[10px] text-muted-foreground">24 ferramentas MCP</p>
+            </div>
+            <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 text-center">
+              <span className="text-base">🔒</span>
+              <p className="text-[10px] font-semibold mt-1">Autenticação</p>
+              <p className="text-[10px] text-muted-foreground">Bearer Token (anon key)</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowMcp(!showMcp)}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-primary hover:underline"
+          >
+            <Code2 className="h-3.5 w-3.5" />
+            {showMcp ? "Ocultar" : "Ver"} configuração para Claude
+            {showMcp ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+
+          {showMcp && (
+            <div className="space-y-3 p-3 rounded-lg border border-border bg-muted/20">
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground">
+                  Cole no <code className="bg-background px-1 rounded">settings.json</code> do Claude Desktop ou no config do Claude Code:
+                </p>
+                <div className="relative">
+                  <pre className="bg-background rounded p-3 font-mono text-[10px] text-foreground overflow-x-auto whitespace-pre leading-relaxed max-h-64 overflow-y-auto">
+                    {mcpConfig}
+                  </pre>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1.5 right-1.5 h-7 text-[10px] gap-1"
+                    onClick={() => {
+                      copyToClipboard(mcpConfig);
+                      setMcpCopied(true);
+                      setTimeout(() => setMcpCopied(false), 2000);
+                    }}
+                  >
+                    {mcpCopied ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                    {mcpCopied ? "Copiado!" : "Copiar"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-muted-foreground border-t border-border pt-2 space-y-1">
+                <p className="font-semibold text-foreground">📍 Como configurar:</p>
+                <p>1. No Claude Desktop: <code className="bg-background px-1 rounded">Settings → Developer → Edit Config</code></p>
+                <p>2. No Claude Code: <code className="bg-background px-1 rounded">claude mcp add-json rankito '...'</code></p>
+                <p>3. Reinicie o Claude e verifique se as 24 ferramentas aparecem</p>
               </div>
             </div>
           )}
