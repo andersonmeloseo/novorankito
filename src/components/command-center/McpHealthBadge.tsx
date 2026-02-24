@@ -17,9 +17,14 @@ export function McpHealthBadge({ className }: { className?: string }) {
     setStatus("checking");
     const start = performance.now();
     try {
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(MCP_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": ANON_KEY,
+          "Authorization": `Bearer ${ANON_KEY}`,
+        },
         body: JSON.stringify({ jsonrpc: "2.0", id: 0, method: "tools/list", params: {} }),
         signal: AbortSignal.timeout(8000),
       });
