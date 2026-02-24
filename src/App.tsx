@@ -75,6 +75,7 @@ const AcademyPage = lazy(() => import("@/pages/AcademyPage"));
 const AdminAcademyPage = lazy(() => import("@/pages/admin/AdminAcademyPage"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/CheckoutSuccessPage"));
 const AdminCouponsPage = lazy(() => import("@/pages/admin/AdminCouponsPage"));
+const CommandCenterPage = lazy(() => import("@/pages/CommandCenterPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -156,6 +157,7 @@ const App = () => {
                   <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
                   {/* Semantic Graph */}
                   <Route path="/semantic-graph" element={<SemanticGraphPage />} />
+                  <Route path="/command-center" element={<CommandCenterPage />} />
                   <Route path="/project/:id/dashboard" element={<ProjectDashboardPage />} />
                 </Route>
                 {/* Admin — protected by role check */}
