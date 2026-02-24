@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { ClaudeModeSetup } from "@/components/onboarding/ClaudeModeSetup";
 import {
   FolderOpen, Search, BarChart3, Bot, Database, Layers,
   Target, Coins, Network, MousePointerClick, CheckCircle2,
-  Circle, ArrowRight, Sparkles, Rocket, BookOpen,
+  Circle, ArrowRight, Sparkles, Rocket, BookOpen, Terminal,
 } from "lucide-react";
 
 interface Step {
@@ -157,6 +158,14 @@ export default function GettingStartedPage() {
       category: "advanced",
     },
     {
+      id: "claude-mode",
+      title: "Conecte o Claude Mode (MCP)",
+      description: "Integre o Claude Desktop via protocolo MCP para automação com streamable-http transport.",
+      icon: Terminal,
+      route: "/command-center",
+      category: "advanced",
+    },
+    {
       id: "rank-rent",
       title: "Explore o Rank & Rent",
       description: "Monetize seus sites ranqueados alugando-os para clientes locais.",
@@ -273,6 +282,21 @@ export default function GettingStartedPage() {
             <div className="space-y-2">
               {catSteps.map((step, i) => {
                 const done = completed.has(step.id);
+
+                // Render dedicated Claude Mode setup for this step
+                if (step.id === "claude-mode") {
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <ClaudeModeSetup />
+                    </motion.div>
+                  );
+                }
+
                 return (
                   <motion.div
                     key={step.id}
