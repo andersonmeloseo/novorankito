@@ -245,6 +245,72 @@ const TOOLS = [
       required: ["project_id"],
     },
   },
+  // === AUTOMATION TOOLS ===
+  {
+    name: "automate_from_anomalies",
+    description: "Analisa anomalias abertas e cria tarefas automaticamente baseado em regras de automação configuradas. Converte insights em ações no Kanban.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID do projeto" },
+        anomaly_ids: { type: "array", items: { type: "string" }, description: "UUIDs específicos (opcional, se vazio processa todas as anomalias 'new')" },
+        dry_run: { type: "boolean", description: "Se true, retorna ações planejadas sem executar" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "batch_create_tasks",
+    description: "Cria múltiplas tarefas de uma vez no Kanban a partir de uma lista de insights, anomalias ou recomendações do Claude.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID do projeto" },
+        tasks: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              category: { type: "string" },
+              priority: { type: "string" },
+              assigned_role: { type: "string" },
+              source_anomaly_id: { type: "string" },
+            },
+            required: ["title"],
+          },
+          description: "Lista de tarefas para criar",
+        },
+      },
+      required: ["project_id", "tasks"],
+    },
+  },
+  {
+    name: "get_automation_rules",
+    description: "Lista regras de automação configuradas para um projeto (mapeamento anomalia→tarefa).",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string", description: "UUID do projeto" } },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "create_automation_rule",
+    description: "Cria uma regra de automação para converter anomalias em tarefas automaticamente.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID do projeto" },
+        name: { type: "string", description: "Nome da regra" },
+        trigger_type: { type: "string", description: "'anomaly' (default)" },
+        trigger_filter: { type: "object", description: "Filtros: { anomaly_type, min_severity }" },
+        action_type: { type: "string", description: "'create_task' | 'run_orchestrator' | 'notify'" },
+        action_config: { type: "object", description: "Config da ação: { category, priority, assigned_role, deployment_id }" },
+      },
+      required: ["project_id", "name"],
+    },
+  },
 ];
 
 // ─── Anomaly detection logic ───────────────────────────────────────────────
@@ -645,6 +711,165 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
         const { data, error } = await sb.from("mcp_sync_snapshots").select("*").eq("project_id", pid).order("created_at", { ascending: false }).limit(1).maybeSingle();
         if (error) throw new Error(error.message);
         result = data || { message: "No sync found. Run sync_project_context first." };
+        break;
+      }
+
+      case "automate_from_anomalies": {
+        if (!pid) throw new Error("project_id required");
+        const anomalyIds = args.anomaly_ids as string[] | undefined;
+        const dryRun = args.dry_run as boolean || false;
+
+        // Fetch automation rules
+        const { data: rules } = await sb.from("mcp_automation_rules").select("*").eq("project_id", pid).eq("enabled", true);
+        
+        // Fetch target anomalies
+        let anomalyQuery = sb.from("mcp_anomalies").select("*").eq("project_id", pid).eq("status", "new");
+        if (anomalyIds?.length) {
+          anomalyQuery = anomalyQuery.in("id", anomalyIds);
+        }
+        const { data: anomalies } = await anomalyQuery.order("created_at", { ascending: false }).limit(50);
+
+        const { data: proj } = await sb.from("projects").select("owner_id").eq("id", pid).single();
+        if (!proj) throw new Error("Project not found");
+
+        const planned: any[] = [];
+        const sevOrder: Record<string, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+
+        for (const anomaly of (anomalies || [])) {
+          // Find matching rules
+          const matching = (rules || []).filter((r: any) => {
+            const f = r.trigger_filter || {};
+            if (f.anomaly_type && f.anomaly_type !== anomaly.anomaly_type) return false;
+            if (f.min_severity && (sevOrder[anomaly.severity] || 0) < (sevOrder[f.min_severity] || 0)) return false;
+            return true;
+          });
+
+          if (matching.length === 0) {
+            // Default: create a task from the anomaly directly
+            planned.push({
+              anomaly_id: anomaly.id,
+              anomaly_title: anomaly.title,
+              action: "create_task",
+              task: {
+                title: `[Auto] ${anomaly.title}`,
+                description: anomaly.description || "",
+                category: anomaly.anomaly_type === "indexing_error" ? "technical" : "seo",
+                priority: anomaly.severity === "critical" ? "critical" : anomaly.severity === "high" ? "high" : "medium",
+              },
+              matched_rule: null,
+            });
+          } else {
+            for (const rule of matching) {
+              const cfg = rule.action_config || {};
+              planned.push({
+                anomaly_id: anomaly.id,
+                anomaly_title: anomaly.title,
+                action: rule.action_type,
+                task: rule.action_type === "create_task" ? {
+                  title: `[Auto] ${anomaly.title}`,
+                  description: anomaly.description || "",
+                  category: cfg.category || "seo",
+                  priority: cfg.priority || anomaly.severity,
+                  assigned_role: cfg.assigned_role || null,
+                } : null,
+                matched_rule: rule.name,
+              });
+            }
+          }
+        }
+
+        if (dryRun) {
+          result = { dry_run: true, planned_actions: planned, total: planned.length };
+          break;
+        }
+
+        // Execute planned actions
+        let tasksCreated = 0;
+        for (const plan of planned) {
+          if (plan.action === "create_task" && plan.task) {
+            await sb.from("orchestrator_tasks").insert({
+              project_id: pid, owner_id: proj.owner_id,
+              title: plan.task.title, description: plan.task.description,
+              category: plan.task.category, priority: plan.task.priority,
+              assigned_role: plan.task.assigned_role, status: "todo",
+            });
+            tasksCreated++;
+            // Mark anomaly as actioned
+            await sb.from("mcp_anomalies").update({
+              status: "actioned", actioned_at: new Date().toISOString(),
+              claude_response: `Auto-task criada: ${plan.task.title}`,
+            }).eq("id", plan.anomaly_id);
+          }
+          // Update rule stats
+          if (plan.matched_rule) {
+            const rule = (rules || []).find((r: any) => r.name === plan.matched_rule);
+            if (rule) {
+              await sb.from("mcp_automation_rules").update({
+                runs_count: (rule.runs_count || 0) + 1,
+                last_run_at: new Date().toISOString(),
+              }).eq("id", rule.id);
+            }
+          }
+        }
+
+        result = { tasks_created: tasksCreated, anomalies_processed: (anomalies || []).length, actions: planned };
+        break;
+      }
+
+      case "batch_create_tasks": {
+        if (!pid) throw new Error("project_id required");
+        const tasks = args.tasks as any[];
+        if (!tasks?.length) throw new Error("tasks array required");
+        const { data: proj } = await sb.from("projects").select("owner_id").eq("id", pid).single();
+        if (!proj) throw new Error("Project not found");
+
+        const created = [];
+        for (const t of tasks) {
+          const { data, error } = await sb.from("orchestrator_tasks").insert({
+            project_id: pid, owner_id: proj.owner_id,
+            title: t.title, description: t.description || "",
+            category: t.category || "seo", priority: t.priority || "medium",
+            assigned_role: t.assigned_role || null, status: "todo",
+          }).select("id, title").single();
+          if (!error && data) {
+            created.push(data);
+            // Link to anomaly if provided
+            if (t.source_anomaly_id) {
+              await sb.from("mcp_anomalies").update({
+                status: "actioned", actioned_at: new Date().toISOString(),
+                claude_response: `Task criada: ${t.title}`,
+              }).eq("id", t.source_anomaly_id);
+            }
+          }
+        }
+        result = { created_count: created.length, tasks: created };
+        break;
+      }
+
+      case "get_automation_rules": {
+        if (!pid) throw new Error("project_id required");
+        const { data, error } = await sb.from("mcp_automation_rules").select("*").eq("project_id", pid).order("created_at", { ascending: false });
+        if (error) throw new Error(error.message);
+        result = data;
+        break;
+      }
+
+      case "create_automation_rule": {
+        if (!pid) throw new Error("project_id required");
+        const name = args.name as string;
+        if (!name) throw new Error("name required");
+        const { data: proj } = await sb.from("projects").select("owner_id").eq("id", pid).single();
+        if (!proj) throw new Error("Project not found");
+        const { data, error } = await sb.from("mcp_automation_rules").insert({
+          project_id: pid, owner_id: proj.owner_id,
+          name,
+          trigger_type: (args.trigger_type as string) || "anomaly",
+          trigger_filter: args.trigger_filter || {},
+          action_type: (args.action_type as string) || "create_task",
+          action_config: args.action_config || {},
+        }).select("id, name").single();
+        if (error) throw new Error(error.message);
+        result = data;
         break;
       }
 

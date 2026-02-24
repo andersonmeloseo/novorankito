@@ -11,11 +11,12 @@ import { toast } from "sonner";
 import {
   Bot, Zap, AlertTriangle, TrendingDown, Target, Shield,
   RefreshCw, Loader2, Activity, Clock, CheckCircle2, XCircle,
-  Sparkles, Terminal, Eye, BarChart3, ArrowRight, Copy,
+  Sparkles, Terminal, Eye, BarChart3, ArrowRight, Copy, Workflow,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { McpHealthBadge } from "@/components/command-center/McpHealthBadge";
 import { ProjectSyncButton } from "@/components/command-center/ProjectSyncButton";
+import { AutomationRulesTab } from "@/components/command-center/AutomationRulesTab";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -190,6 +191,9 @@ export default function CommandCenterPage() {
           <TabsTrigger value="setup" className="text-xs gap-1.5">
             <Shield className="h-3.5 w-3.5" /> Configuração MCP
           </TabsTrigger>
+          <TabsTrigger value="automations" className="text-xs gap-1.5">
+            <Workflow className="h-3.5 w-3.5" /> Automações
+          </TabsTrigger>
         </TabsList>
 
         {/* Anomalies Tab */}
@@ -347,6 +351,11 @@ export default function CommandCenterPage() {
             </div>
           </Card>
         </TabsContent>
+
+        {/* Automations Tab */}
+        <TabsContent value="automations">
+          <AutomationRulesTab projectId={projectId} />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -373,4 +382,8 @@ const TOOL_NAMES = [
   { name: "get_mcp_action_log", isAction: false },
   { name: "sync_project_context", isAction: true },
   { name: "get_latest_sync", isAction: false },
+  { name: "automate_from_anomalies", isAction: true },
+  { name: "batch_create_tasks", isAction: true },
+  { name: "get_automation_rules", isAction: false },
+  { name: "create_automation_rule", isAction: true },
 ];

@@ -1357,6 +1357,65 @@ export type Database = {
           },
         ]
       }
+      mcp_automation_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          last_run_at: string | null
+          name: string
+          owner_id: string
+          project_id: string | null
+          runs_count: number
+          trigger_filter: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          name: string
+          owner_id: string
+          project_id?: string | null
+          runs_count?: number
+          trigger_filter?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          owner_id?: string
+          project_id?: string | null
+          runs_count?: number
+          trigger_filter?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_automation_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcp_sync_snapshots: {
         Row: {
           created_at: string
