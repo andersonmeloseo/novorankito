@@ -1357,6 +1357,53 @@ export type Database = {
           },
         ]
       }
+      mcp_sync_snapshots: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          owner_id: string
+          project_id: string
+          sections_synced: string[]
+          snapshot_data: Json
+          status: string
+          sync_duration_ms: number | null
+          total_records: number
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          owner_id: string
+          project_id: string
+          sections_synced?: string[]
+          snapshot_data?: Json
+          status?: string
+          sync_duration_ms?: number | null
+          total_records?: number
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          owner_id?: string
+          project_id?: string
+          sections_synced?: string[]
+          snapshot_data?: Json
+          status?: string
+          sync_duration_ms?: number | null
+          total_records?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_sync_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           action_url: string | null

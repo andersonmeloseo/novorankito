@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { McpHealthBadge } from "@/components/command-center/McpHealthBadge";
+import { ProjectSyncButton } from "@/components/command-center/ProjectSyncButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -138,6 +139,11 @@ export default function CommandCenterPage() {
           {scanMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
           Scan de Anomalias
         </Button>
+        <ProjectSyncButton
+          projectId={projectId}
+          projectName={projects.find((p: any) => p.id === projectId)?.name}
+          compact
+        />
       </div>
 
       {/* KPI Cards */}
@@ -286,6 +292,12 @@ export default function CommandCenterPage() {
             </h3>
 
             <div className="space-y-4">
+              {/* Sync card */}
+              <ProjectSyncButton
+                projectId={projectId}
+                projectName={projects.find((p: any) => p.id === projectId)?.name}
+              />
+
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">URL do Servidor MCP</p>
                 <div className="flex items-center gap-2">
@@ -359,4 +371,6 @@ const TOOL_NAMES = [
   { name: "update_anomaly_status", isAction: true },
   { name: "generate_seo_report", isAction: true },
   { name: "get_mcp_action_log", isAction: false },
+  { name: "sync_project_context", isAction: true },
+  { name: "get_latest_sync", isAction: false },
 ];

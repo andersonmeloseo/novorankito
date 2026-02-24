@@ -223,6 +223,28 @@ const TOOLS = [
       required: ["project_id"],
     },
   },
+  {
+    name: "sync_project_context",
+    description: "Sincroniza todos os dados do projeto (SEO, analytics, indexação, anomalias, agentes) em um snapshot unificado para contexto do Claude. Use antes de análises complexas.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID do projeto" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "get_latest_sync",
+    description: "Retorna o snapshot mais recente de um projeto sincronizado via sync_project_context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID do projeto" },
+      },
+      required: ["project_id"],
+    },
+  },
 ];
 
 // ─── Anomaly detection logic ───────────────────────────────────────────────
@@ -546,6 +568,86 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
         break;
       }
 
+      case "sync_project_context": {
+        if (!pid) throw new Error("project_id required");
+        const syncStart = Date.now();
+        const sections: string[] = [];
+        let totalRecords = 0;
+        const snapshot: Record<string, unknown> = {};
+
+        // 1. Project overview
+        const { data: overview } = await sb.rpc("get_project_overview_v2", { p_project_id: pid });
+        if (overview) { snapshot.overview = overview; sections.push("overview"); totalRecords++; }
+
+        // 2. SEO metrics (last 28 days, top 30)
+        const d28 = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
+        const { data: seoPages } = await sb.from("seo_metrics").select("metric_date, url, clicks, impressions, ctr, position").eq("project_id", pid).eq("dimension_type", "page").gte("metric_date", d28).order("clicks", { ascending: false }).limit(30);
+        if (seoPages?.length) { snapshot.seo_pages = seoPages; sections.push("seo_pages"); totalRecords += seoPages.length; }
+
+        const { data: seoQueries } = await sb.from("seo_metrics").select("metric_date, query, clicks, impressions, ctr, position").eq("project_id", pid).eq("dimension_type", "query").gte("metric_date", d28).order("clicks", { ascending: false }).limit(30);
+        if (seoQueries?.length) { snapshot.seo_queries = seoQueries; sections.push("seo_queries"); totalRecords += seoQueries.length; }
+
+        // 3. Analytics sessions (last 30 days)
+        const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        const { data: sessions } = await sb.from("analytics_sessions").select("session_date, sessions_count, users_count, bounce_rate, engagement_rate, source, medium, channel, country, device, revenue, conversions_count").eq("project_id", pid).gte("session_date", d30).order("session_date", { ascending: false }).limit(50);
+        if (sessions?.length) { snapshot.analytics = sessions; sections.push("analytics"); totalRecords += sessions.length; }
+
+        // 4. Indexing status
+        const { data: indexReqs } = await sb.from("indexing_requests").select("url, status, request_type, submitted_at, fail_reason").eq("project_id", pid).order("submitted_at", { ascending: false }).limit(30);
+        if (indexReqs?.length) { snapshot.indexing = indexReqs; sections.push("indexing"); totalRecords += indexReqs.length; }
+
+        // 5. Index coverage
+        const { data: coverage } = await sb.from("index_coverage").select("url, verdict, coverage_state, indexing_state").eq("project_id", pid).limit(50);
+        if (coverage?.length) { snapshot.coverage = coverage; sections.push("coverage"); totalRecords += coverage.length; }
+
+        // 6. Conversions (last 30 days)
+        const { data: convs } = await sb.from("conversions").select("event_type, page, source, medium, value, converted_at").eq("project_id", pid).gte("converted_at", new Date(Date.now() - 30 * 86400000).toISOString()).order("converted_at", { ascending: false }).limit(30);
+        if (convs?.length) { snapshot.conversions = convs; sections.push("conversions"); totalRecords += convs.length; }
+
+        // 7. Active anomalies
+        const { data: anom } = await sb.from("mcp_anomalies").select("title, severity, anomaly_type, status, description, created_at").eq("project_id", pid).in("status", ["new", "sent_to_claude"]).order("created_at", { ascending: false }).limit(20);
+        if (anom?.length) { snapshot.anomalies = anom; sections.push("anomalies"); totalRecords += anom.length; }
+
+        // 8. AI agents
+        const { data: agents } = await sb.from("ai_agents").select("name, speciality, enabled").eq("project_id", pid);
+        if (agents?.length) { snapshot.agents = agents; sections.push("agents"); totalRecords += agents.length; }
+
+        // 9. Site URLs sample
+        const { data: urls } = await sb.from("site_urls").select("url, status, url_type, priority").eq("project_id", pid).order("priority", { ascending: false }).limit(30);
+        if (urls?.length) { snapshot.site_urls = urls; sections.push("site_urls"); totalRecords += urls.length; }
+
+        const syncDuration = Date.now() - syncStart;
+
+        // Persist snapshot
+        const { data: proj } = await sb.from("projects").select("owner_id").eq("id", pid).single();
+        await sb.from("mcp_sync_snapshots").insert({
+          project_id: pid,
+          owner_id: proj?.owner_id,
+          snapshot_data: snapshot,
+          sections_synced: sections,
+          total_records: totalRecords,
+          sync_duration_ms: syncDuration,
+          status: "completed",
+        });
+
+        result = {
+          synced_at: new Date().toISOString(),
+          sections,
+          total_records: totalRecords,
+          duration_ms: syncDuration,
+          snapshot,
+        };
+        break;
+      }
+
+      case "get_latest_sync": {
+        if (!pid) throw new Error("project_id required");
+        const { data, error } = await sb.from("mcp_sync_snapshots").select("*").eq("project_id", pid).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (error) throw new Error(error.message);
+        result = data || { message: "No sync found. Run sync_project_context first." };
+        break;
+      }
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -612,8 +714,8 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") {
     if (req.method === "GET") {
-      const dataTools = TOOLS.filter(t => !["run_orchestrator","create_task","trigger_anomaly_scan","update_anomaly_status","generate_seo_report"].includes(t.name));
-      const actionTools = TOOLS.filter(t => ["run_orchestrator","create_task","trigger_anomaly_scan","update_anomaly_status","generate_seo_report"].includes(t.name));
+      const dataTools = TOOLS.filter(t => !["run_orchestrator","create_task","trigger_anomaly_scan","update_anomaly_status","generate_seo_report","sync_project_context"].includes(t.name));
+      const actionTools = TOOLS.filter(t => ["run_orchestrator","create_task","trigger_anomaly_scan","update_anomaly_status","generate_seo_report","sync_project_context"].includes(t.name));
       return new Response(JSON.stringify({
         name: "rankito-mcp-server", version: "2.0.0",
         description: "MCP Server do Rankito — dados de SEO, Analytics, Indexação, Agentes IA + ações automatizadas para Claude Command Center",
