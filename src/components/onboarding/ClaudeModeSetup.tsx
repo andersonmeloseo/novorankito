@@ -107,7 +107,7 @@ export function ClaudeModeSetup() {
                 <Shield className="h-2 w-2" /> Bearer Auth
               </Badge>
               <Badge variant="outline" className="text-[8px] gap-1 px-1.5">
-                <Zap className="h-2 w-2" /> 20 tools
+                <Zap className="h-2 w-2" /> 24 tools
               </Badge>
             </div>
             {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
