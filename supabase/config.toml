@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.billing-lifecycle-notifications]
 verify_jwt = false
+
+[functions.mcp-server]
+verify_jwt = false
