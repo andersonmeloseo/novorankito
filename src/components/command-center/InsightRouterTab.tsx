@@ -6,15 +6,128 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, AlertTriangle, TrendingDown,
   Target, Zap, BarChart3, ArrowRight, Bot, Sparkles,
-  ListChecks, Send, Brain,
+  ListChecks, Send, Brain, LayoutTemplate, Search,
+  Link2, FileWarning, Gauge, ShieldAlert,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+
+/* ── Prebuilt Action Templates ── */
+interface ActionTemplate {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  prompt: string;
+  matchTypes: string[];
+  description: string;
+}
+
+const ACTION_TEMPLATES: ActionTemplate[] = [
+  {
+    id: "traffic-recovery",
+    label: "Recuperar Tráfego",
+    icon: TrendingDown,
+    color: "text-destructive",
+    matchTypes: ["traffic_drop"],
+    description: "Diagnostica quedas de tráfego e gera plano de recuperação com ações priorizadas",
+    prompt: `Para cada anomalia de queda de tráfego, gere tarefas focadas em recuperação:
+1. Diagnóstico da causa raiz (atualização de algoritmo, perda de backlinks, canibalização)
+2. Ações corretivas imediatas (redirect, atualização de conteúdo, re-otimização)
+3. Monitoramento pós-correção
+Responda em JSON array com campos: title, description, category, priority, source_index.`,
+  },
+  {
+    id: "indexing-fix",
+    label: "Corrigir Indexação",
+    icon: FileWarning,
+    color: "text-orange-500",
+    matchTypes: ["indexing_error"],
+    description: "Identifica problemas de indexação e cria tarefas técnicas de correção",
+    prompt: `Para cada erro de indexação, gere tarefas técnicas:
+1. Verificar robots.txt e meta robots
+2. Corrigir erros de crawl (404, 500, redirect loops)
+3. Submeter URLs corrigidas para re-indexação
+4. Validar sitemap.xml
+Responda em JSON array com campos: title, description, category (sempre "technical"), priority, source_index.`,
+  },
+  {
+    id: "opportunity-capture",
+    label: "Capturar Oportunidades",
+    icon: Target,
+    color: "text-emerald-500",
+    matchTypes: ["opportunity", "ctr_spike"],
+    description: "Transforma oportunidades detectadas em ações de crescimento rápido",
+    prompt: `Para cada oportunidade detectada, gere tarefas de crescimento:
+1. Quick wins de CTR (melhorar titles/descriptions)
+2. Conteúdo complementar para queries emergentes
+3. Internal linking estratégico
+4. Schema markup para rich snippets
+Responda em JSON array com campos: title, description, category (seo/content/growth), priority, source_index.`,
+  },
+  {
+    id: "position-defense",
+    label: "Defender Posições",
+    icon: ShieldAlert,
+    color: "text-yellow-500",
+    matchTypes: ["position_change"],
+    description: "Protege rankings em queda com ações de fortalecimento de conteúdo",
+    prompt: `Para cada mudança de posição negativa, gere tarefas defensivas:
+1. Atualização e expansão do conteúdo existente
+2. Fortalecimento de backlinks internos
+3. Análise competitiva da SERP
+4. Otimização de E-E-A-T
+Responda em JSON array com campos: title, description, category (seo/content), priority, source_index.`,
+  },
+  {
+    id: "full-audit",
+    label: "Auditoria Completa",
+    icon: Search,
+    color: "text-primary",
+    matchTypes: [],
+    description: "Análise profunda de todas as anomalias com plano estratégico completo",
+    prompt: `Analise TODAS as anomalias em conjunto e gere um plano estratégico:
+1. Priorize por impacto no negócio
+2. Agrupe ações relacionadas
+3. Defina dependências entre tarefas
+4. Estime esforço (quick-win / médio / alto)
+Responda em JSON array com campos: title, description, category (seo/content/technical/analytics/growth), priority (critical/high/medium/low), source_index.`,
+  },
+  {
+    id: "link-building",
+    label: "Link Building",
+    icon: Link2,
+    color: "text-blue-500",
+    matchTypes: ["opportunity", "position_change"],
+    description: "Gera estratégias de aquisição de links baseadas nos insights detectados",
+    prompt: `Com base nas anomalias, gere tarefas de link building:
+1. Identificar páginas que precisam de autoridade
+2. Sugerir estratégias de outreach
+3. Criar plano de guest posting
+4. Digital PR para conteúdos de destaque
+Responda em JSON array com campos: title, description, category (sempre "seo"), priority, source_index.`,
+  },
+  {
+    id: "performance-boost",
+    label: "Boost de Performance",
+    icon: Gauge,
+    color: "text-violet-500",
+    matchTypes: ["traffic_drop", "position_change"],
+    description: "Otimizações técnicas de Core Web Vitals e velocidade de carregamento",
+    prompt: `Para anomalias que podem ter causa técnica, gere tarefas de performance:
+1. Otimização de Core Web Vitals (LCP, FID, CLS)
+2. Compressão de imagens e lazy loading
+3. Minificação de CSS/JS
+4. Cache headers e CDN
+Responda em JSON array com campos: title, description, category (sempre "technical"), priority, source_index.`,
+  },
+];
 
 const ANOMALY_ICONS: Record<string, React.ElementType> = {
   traffic_drop: TrendingDown,
@@ -45,6 +158,7 @@ export function InsightRouterTab({ projectId }: { projectId: string }) {
   const [phase, setPhase] = useState<RoutingPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<RoutingResult[]>([]);
+  const [activeTemplate, setActiveTemplate] = useState<string>("auto");
 
   const { data: anomalies = [], isLoading } = useQuery({
     queryKey: ["router-anomalies", projectId],
@@ -93,8 +207,13 @@ export function InsightRouterTab({ projectId }: { projectId: string }) {
 
       setProgress(25);
 
-      // Phase 2: Ask AI for action plan
+      // Phase 2: Ask AI for action plan using selected template
       setPhase("planning");
+      const tpl = ACTION_TEMPLATES.find(t => t.id === activeTemplate);
+      const templatePrompt = tpl
+        ? `${tpl.prompt}\n\nAnomalias:\n${anomalySummary}`
+        : `Analise as seguintes anomalias detectadas e para CADA UMA gere exatamente uma tarefa acionável com título, categoria (seo/content/technical/analytics/growth), prioridade (low/medium/high/critical) e descrição curta. Responda em JSON array com campos: title, description, category, priority, source_index (0-based).\n\nAnomalias:\n${anomalySummary}`;
+
       const { data: aiResp, error: aiErr } = await supabase.functions.invoke("mcp-server", {
         body: {
           jsonrpc: "2.0", id: 1, method: "tools/call",
@@ -102,8 +221,8 @@ export function InsightRouterTab({ projectId }: { projectId: string }) {
             name: "ask_rankito_ai",
             arguments: {
               project_id: projectId,
-              question: `Analise as seguintes anomalias detectadas e para CADA UMA gere exatamente uma tarefa acionável com título, categoria (seo/content/technical/analytics/growth), prioridade (low/medium/high/critical) e descrição curta. Responda em JSON array com campos: title, description, category, priority, source_index (0-based).\n\nAnomalias:\n${anomalySummary}`,
-              agent_name: "Rankito Task Planner",
+              question: templatePrompt,
+              agent_name: tpl ? `Rankito ${tpl.label}` : "Rankito Task Planner",
             },
           },
         },
@@ -240,6 +359,47 @@ export function InsightRouterTab({ projectId }: { projectId: string }) {
               {phaseLabels[phase]}
             </p>
           </div>
+        )}
+      </Card>
+
+      {/* Action Templates */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <LayoutTemplate className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-semibold">Templates de Ação</h3>
+          <Badge variant="secondary" className="text-[9px] ml-auto">{ACTION_TEMPLATES.length} disponíveis</Badge>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          <button
+            onClick={() => setActiveTemplate("auto")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-center transition-all ${
+              activeTemplate === "auto"
+                ? "border-primary/40 bg-primary/5"
+                : "border-border hover:border-primary/20 hover:bg-muted/50"
+            }`}
+          >
+            <Sparkles className={`h-4 w-4 ${activeTemplate === "auto" ? "text-primary" : "text-muted-foreground"}`} />
+            <span className="text-[10px] font-medium">Auto-detectar</span>
+          </button>
+          {ACTION_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              onClick={() => setActiveTemplate(tpl.id)}
+              className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-center transition-all ${
+                activeTemplate === tpl.id
+                  ? "border-primary/40 bg-primary/5"
+                  : "border-border hover:border-primary/20 hover:bg-muted/50"
+              }`}
+            >
+              <tpl.icon className={`h-4 w-4 ${activeTemplate === tpl.id ? "text-primary" : tpl.color}`} />
+              <span className="text-[10px] font-medium">{tpl.label}</span>
+            </button>
+          ))}
+        </div>
+        {activeTemplate !== "auto" && (
+          <p className="text-[10px] text-muted-foreground bg-muted/50 rounded-md px-2.5 py-1.5">
+            {ACTION_TEMPLATES.find(t => t.id === activeTemplate)?.description}
+          </p>
         )}
       </Card>
 
