@@ -5,6 +5,7 @@ import {
   Layers, DollarSign, Store, TrendingUp, Plus, Network,
   History, CalendarClock, Wifi, Map, Monitor, Sparkles, TrendingDown,
   Copy, ScanSearch, MapPin, Link2, Compass, FolderTree, Plug, Bell, Palette, Key, User, Check,
+  PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -18,7 +19,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, SidebarFooter,
+  SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +29,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { cn } from "@/lib/utils";
 import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
+import {
+  Tooltip, TooltipContent, TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   Activity, Flame as FlameIcon, ShoppingCart, Footprints, PhoneCall, Flag, Code,
@@ -144,7 +148,7 @@ const academyNav = [
   { title: "Academy", url: "/academy", icon: Sparkles },
 ];
 
-function NavItem({ item, end }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean }) {
+function NavItem({ item, end, collapsed }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean; collapsed?: boolean }) {
   const { pathname, hash } = useLocation();
   const navigate = useNavigate();
   const fullPath = pathname + hash;
@@ -153,22 +157,36 @@ function NavItem({ item, end }: { item: { title: string; url: string; icon: Reac
     ? fullPath === item.url
     : end ? pathname === item.url : pathname.startsWith(item.url);
 
-  // For hash-based URLs, use a button to ensure proper navigation
+  const iconEl = <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />;
+
+  const wrapWithTooltip = (children: React.ReactNode) => {
+    if (!collapsed) return children;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   if (hasHash) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton asChild>
-          <button
-            data-tour={item.tourId}
-            onClick={() => navigate(item.url)}
-            className={cn(
-              "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative w-full text-left",
-              isActive && "sidebar-active-glow bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-            )}
-          >
-            <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
-            <span>{item.title}</span>
-          </button>
+          {wrapWithTooltip(
+            <button
+              data-tour={item.tourId}
+              onClick={() => navigate(item.url)}
+              className={cn(
+                "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative w-full text-left",
+                isActive && "sidebar-active-glow bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                collapsed && "justify-center px-0"
+              )}
+            >
+              {iconEl}
+              {!collapsed && <span>{item.title}</span>}
+            </button>
+          )}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -177,21 +195,68 @@ function NavItem({ item, end }: { item: { title: string; url: string; icon: Reac
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild>
-        <NavLink
-          to={item.url}
-          end={end}
-          data-tour={item.tourId}
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative",
-            isActive && "sidebar-active-glow"
-          )}
-          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-        >
-          <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
-          <span>{item.title}</span>
-        </NavLink>
+        {wrapWithTooltip(
+          <NavLink
+            to={item.url}
+            end={end}
+            data-tour={item.tourId}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative",
+              isActive && "sidebar-active-glow",
+              collapsed && "justify-center px-0"
+            )}
+            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          >
+            {iconEl}
+            {!collapsed && <span>{item.title}</span>}
+          </NavLink>
+        )}
       </SidebarMenuButton>
     </SidebarMenuItem>
+  );
+}
+
+function CollapsibleSection({ 
+  label, emoji, items, defaultOpen, collapsed, pathname 
+}: { 
+  label: string; emoji: string; items: { title: string; url: string; icon: React.ElementType }[]; 
+  defaultOpen: boolean; collapsed?: boolean; pathname: string;
+}) {
+  if (collapsed) {
+    // In collapsed mode, show only icons without group labels
+    return (
+      <SidebarGroup className="px-1">
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {items.map((item) => (
+              <NavItem key={item.url} item={item} end collapsed />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <Collapsible defaultOpen={defaultOpen}>
+      <SidebarGroup>
+        <CollapsibleTrigger className="w-full">
+          <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+            <span>{emoji} {label}</span>
+            <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <NavItem key={item.url} item={item} end />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   );
 }
 
@@ -201,6 +266,8 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { data: isAdmin } = useIsAdmin();
   const wl = useWhiteLabel();
+  const { state, toggleSidebar } = useSidebar();
+  const collapsed = state === "collapsed";
 
   const { data: projects = [] } = useQuery({
     queryKey: ["sidebar-projects", user?.id],
@@ -240,317 +307,236 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarHeader className="p-4 pb-3 border-b border-sidebar-border">
-         <div className="flex items-center gap-2.5 mb-4">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
+      <SidebarHeader className={cn("p-4 pb-3 border-b border-sidebar-border", collapsed && "p-2 pb-2")}>
+        {/* Brand */}
+        <div className={cn("flex items-center gap-2.5", collapsed ? "justify-center mb-0" : "mb-4")}>
           {wl.logo_url ? (
-            <img src={wl.logo_url} alt={wl.brand_name} className="h-9 w-9 rounded-xl object-contain" />
+            <img src={wl.logo_url} alt={wl.brand_name} className={cn("rounded-xl object-contain", collapsed ? "h-7 w-7" : "h-9 w-9")} />
           ) : (
             <div
               className={cn(
-                "h-9 w-9 rounded-xl flex items-center justify-center shadow-glow ring-1 ring-white/10 animate-[spin_8s_linear_infinite]",
-                !wl.gradient_end_color && "gradient-primary"
+                "rounded-xl flex items-center justify-center shadow-glow ring-1 ring-white/10 animate-[spin_8s_linear_infinite]",
+                !wl.gradient_end_color && "gradient-primary",
+                collapsed ? "h-7 w-7" : "h-9 w-9"
               )}
               style={wl.gradient_end_color
                 ? { background: `linear-gradient(135deg, ${wl.primary_color || '#6366f1'}, ${wl.gradient_end_color})` }
                 : undefined
               }
             >
-              <span className="text-sm font-bold text-primary-foreground font-display tracking-tight animate-[spin_8s_linear_infinite_reverse]">{wl.brand_name.charAt(0)}</span>
+              <span className={cn("font-bold text-primary-foreground font-display tracking-tight animate-[spin_8s_linear_infinite_reverse]", collapsed ? "text-xs" : "text-sm")}>{wl.brand_name.charAt(0)}</span>
             </div>
           )}
-          <div>
-            <span className="font-bold text-base text-transparent bg-clip-text bg-gradient-to-r from-white via-sidebar-primary to-white bg-[length:200%_100%] animate-[shimmer-text_3s_ease-in-out_infinite] font-display tracking-tight block leading-tight">{wl.brand_name}</span>
-            <span className="text-[10px] text-sidebar-foreground/50">{wl.subtitle}</span>
-          </div>
+          {!collapsed && (
+            <div>
+              <span className="font-bold text-base text-transparent bg-clip-text bg-gradient-to-r from-white via-sidebar-primary to-white bg-[length:200%_100%] animate-[shimmer-text_3s_ease-in-out_infinite] font-display tracking-tight block leading-tight">{wl.brand_name}</span>
+              <span className="text-[10px] text-sidebar-foreground/50">{wl.subtitle}</span>
+            </div>
+          )}
         </div>
 
         {/* Project selector */}
-        <div className="space-y-1">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold">
-            Projeto Ativo
-          </span>
-        {activeProject ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-medium bg-sidebar-muted/80 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group border border-sidebar-border/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_8px_hsl(155_70%_42%/0.6)] animate-pulse" />
-                    <span className="truncate">{activeProject.name}</span>
-                  </div>
-                  <ChevronDown className="h-3 w-3 text-sidebar-foreground/40 shrink-0 group-hover:text-sidebar-accent-foreground transition-all group-hover:translate-y-0.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="bottom" align="start" className="w-56 z-[200] bg-popover border border-border shadow-lg">
-                {projects.map(p => (
-                  <DropdownMenuItem key={p.id} onClick={() => switchProject(p.id)} className="cursor-pointer">
-                    <Check className={cn("h-3.5 w-3.5 mr-2 shrink-0", p.id !== activeProject?.id && "invisible")} />
-                    <span className="truncate">{p.name}</span>
+        {!collapsed && (
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase tracking-[0.15em] text-sidebar-foreground/35 font-semibold">
+              Projeto Ativo
+            </span>
+            {activeProject ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-medium bg-sidebar-muted/80 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group border border-sidebar-border/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-2 w-2 rounded-full bg-success shrink-0 shadow-[0_0_8px_hsl(155_70%_42%/0.6)] animate-pulse" />
+                      <span className="truncate">{activeProject.name}</span>
+                    </div>
+                    <ChevronDown className="h-3 w-3 text-sidebar-foreground/40 shrink-0 group-hover:text-sidebar-accent-foreground transition-all group-hover:translate-y-0.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="start" className="w-56 z-[200] bg-popover border border-border shadow-lg">
+                  {projects.map(p => (
+                    <DropdownMenuItem key={p.id} onClick={() => switchProject(p.id)} className="cursor-pointer">
+                      <Check className={cn("h-3.5 w-3.5 mr-2 shrink-0", p.id !== activeProject?.id && "invisible")} />
+                      <span className="truncate">{p.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
+                    <FolderOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                    <span>Ver todos os projetos</span>
                   </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
-                  <FolderOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                  <span>Ver todos os projetos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/onboarding?new=1")} className="cursor-pointer">
-                  <Plus className="h-3.5 w-3.5 mr-2 shrink-0" />
-                  <span>Novo Projeto</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <button
-              onClick={() => navigate("/onboarding?new=1")}
-              className="flex items-center justify-center gap-1.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-medium border border-dashed border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-primary/50 transition-all duration-200"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Criar Projeto</span>
-            </button>
-          )}
-        </div>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding?new=1")} className="cursor-pointer">
+                    <Plus className="h-3.5 w-3.5 mr-2 shrink-0" />
+                    <span>Novo Projeto</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <button
+                onClick={() => navigate("/onboarding?new=1")}
+                className="flex items-center justify-center gap-1.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-medium border border-dashed border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-primary/50 transition-all duration-200"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Criar Projeto</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Collapsed: show project dot only */}
+        {collapsed && activeProject && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => navigate("/projects")}
+                className="flex items-center justify-center w-full mt-1"
+              >
+                <div className="h-2.5 w-2.5 rounded-full bg-success shadow-[0_0_8px_hsl(155_70%_42%/0.6)] animate-pulse" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">{activeProject.name}</TooltipContent>
+          </Tooltip>
+        )}
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin py-1">
-        <Collapsible defaultOpen={true}>
-          <SidebarGroup>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                <span>🚀 Inicie por Aqui</span>
-                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
-                  <div className="h-2" />
-                  <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end />
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
+        {/* Inicie por Aqui */}
+        {collapsed ? (
+          <SidebarGroup className="px-1">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end collapsed />
+                <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end collapsed />
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
-        </Collapsible>
+        ) : (
+          <Collapsible defaultOpen={true}>
+            <SidebarGroup>
+              <CollapsibleTrigger className="w-full">
+                <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                  <span>🚀 Inicie por Aqui</span>
+                  <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
+                    <div className="h-2" />
+                    <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end />
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        )}
 
         {activeProject && (
-          <div className="relative ml-3 mr-2">
-            {/* Vertical hierarchy line with animated glow */}
-            <div className="absolute left-0 top-0 bottom-3 w-[2px] rounded-full bg-sidebar-primary/50 shadow-[0_0_8px_hsl(var(--sidebar-primary)/0.6)] overflow-hidden">
-              <div className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-sidebar-primary to-transparent animate-[sidebar-flow_2.5s_ease-in-out_infinite] opacity-80" />
-            </div>
-            
-            {/* Connection dot at top */}
-            <div className="absolute left-0 top-2 -translate-x-[2.5px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_10px_hsl(var(--sidebar-primary)/0.7)] animate-pulse" />
+          <div className={cn("relative", collapsed ? "" : "ml-3 mr-2")}>
+            {/* Vertical hierarchy line with animated glow - only in expanded */}
+            {!collapsed && (
+              <>
+                <div className="absolute left-0 top-0 bottom-3 w-[2px] rounded-full bg-sidebar-primary/50 shadow-[0_0_8px_hsl(var(--sidebar-primary)/0.6)] overflow-hidden">
+                  <div className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-sidebar-primary to-transparent animate-[sidebar-flow_2.5s_ease-in-out_infinite] opacity-80" />
+                </div>
+                <div className="absolute left-0 top-2 -translate-x-[2.5px] h-[7px] w-[7px] rounded-full bg-sidebar-primary shadow-[0_0_10px_hsl(var(--sidebar-primary)/0.7)] animate-pulse" />
+              </>
+            )}
 
-            <div className="pl-2.5">
-              <Collapsible defaultOpen={pathname === "/overview" || pathname === "/reports"}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>📁 Projeto</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {projectNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
+            <div className={collapsed ? "" : "pl-2.5"}>
+              <CollapsibleSection label="Projeto" emoji="📁" items={projectNav} defaultOpen={pathname === "/overview" || pathname === "/reports"} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="Configurações" emoji="⚙️" items={settingsNav} defaultOpen={pathname.startsWith("/project-settings")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label={`${wl.brand_name} IA`} emoji="🤖" items={rankitoAiNav} defaultOpen={pathname.startsWith("/rankito-ai")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="SEO" emoji="🔍" items={seoNav} defaultOpen={pathname.startsWith("/seo")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="GA4" emoji="📊" items={ga4Nav} defaultOpen={pathname.startsWith("/ga4")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="Indexação" emoji="🗂️" items={indexingNav} defaultOpen={pathname.startsWith("/indexing")} collapsed={collapsed} pathname={pathname} />
+
+              {/* Analítica Rankito */}
+              {collapsed ? (
+                <SidebarGroup className="px-1">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end collapsed />
+                      {analiticaNav.map((item) => (
+                        <NavItem key={item.url} item={item} end collapsed />
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
                 </SidebarGroup>
-              </Collapsible>
+              ) : (
+                <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
+                  <SidebarGroup>
+                    <CollapsibleTrigger className="w-full">
+                      <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                        <span>📊 Analítica Rankito</span>
+                        <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                      </SidebarGroupLabel>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarGroupContent>
+                        <SidebarMenu>
+                          <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end />
+                          {analiticaNav.map((item) => (
+                            <NavItem key={item.url} item={item} end />
+                          ))}
+                        </SidebarMenu>
+                      </SidebarGroupContent>
+                    </CollapsibleContent>
+                  </SidebarGroup>
+                </Collapsible>
+              )}
 
-              <Collapsible defaultOpen={pathname.startsWith("/project-settings")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>⚙️ Configurações</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {settingsNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
+              {!collapsed && (
+                <div className="mx-4 my-1">
+                  <div className="h-px bg-sidebar-border/50" />
+                </div>
+              )}
 
-              <Collapsible defaultOpen={pathname.startsWith("/rankito-ai")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>🤖 {wl.brand_name} IA</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {rankitoAiNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <Collapsible defaultOpen={pathname.startsWith("/seo")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>🔍 SEO</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {seoNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <Collapsible defaultOpen={pathname.startsWith("/ga4")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>📊 GA4</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {ga4Nav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <Collapsible defaultOpen={pathname.startsWith("/indexing")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>🗂️ Indexação</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {indexingNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <Collapsible defaultOpen={pathname.startsWith("/analitica-rankito")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>📊 Analítica Rankito</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        <NavItem item={{ title: "Visão Geral", url: "/analitica-rankito", icon: MousePointerClick, tourId: "tracking" }} end />
-                        {analiticaNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <div className="mx-4 my-1">
-                <div className="h-px bg-sidebar-border/50" />
-              </div>
-
-              <Collapsible defaultOpen={pathname.startsWith("/rank-rent")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>💰 Rank & Rent</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {rankRentNav.map((item) => (
-                          <NavItem key={item.url} item={item} end={item.url === "/rank-rent"} />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-
-              <Collapsible defaultOpen={pathname.startsWith("/semantic-graph")}>
-                <SidebarGroup>
-                  <CollapsibleTrigger className="w-full">
-                    <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                      <span>🧠 SEO Semântico</span>
-                      <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-                    </SidebarGroupLabel>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {semanticNav.map((item) => (
-                          <NavItem key={item.url} item={item} end />
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
+              <CollapsibleSection label="Rank & Rent" emoji="💰" items={rankRentNav} defaultOpen={pathname.startsWith("/rank-rent")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="SEO Semântico" emoji="🧠" items={semanticNav} defaultOpen={pathname.startsWith("/semantic-graph")} collapsed={collapsed} pathname={pathname} />
             </div>
           </div>
         )}
 
-        <div className="mx-4 my-1">
-          <div className="h-px bg-sidebar-border/50" />
-        </div>
+        {!collapsed && (
+          <div className="mx-4 my-1">
+            <div className="h-px bg-sidebar-border/50" />
+          </div>
+        )}
 
         {/* Academy */}
-        <SidebarGroup>
+        <SidebarGroup className={collapsed ? "px-1" : undefined}>
           <SidebarGroupContent>
             <SidebarMenu>
               {academyNav.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="sidebar-academy-pulse flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative font-medium"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <span className="text-base leading-none shrink-0">🎓</span>
-                      <span>{item.title}</span>
-                    </NavLink>
+                    {collapsed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <NavLink
+                            to={item.url}
+                            end
+                            className="flex items-center justify-center py-1.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                          >
+                            <item.icon className="h-4 w-4 shrink-0" />
+                          </NavLink>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <NavLink
+                        to={item.url}
+                        end
+                        className="sidebar-academy-pulse flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative font-medium"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                      >
+                        <span className="text-base leading-none shrink-0">🎓</span>
+                        <span>{item.title}</span>
+                      </NavLink>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -558,43 +544,72 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="mx-4 my-1">
-          <div className="h-px bg-sidebar-border/50" />
-        </div>
+        {!collapsed && (
+          <div className="mx-4 my-1">
+            <div className="h-px bg-sidebar-border/50" />
+          </div>
+        )}
 
-        <Collapsible defaultOpen={pathname.startsWith("/account")}>
-          <SidebarGroup>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
-                <span>👤 Conta</span>
-                <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {accountNav.map((item) => (
-                    <NavItem key={item.url} item={item} />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
+        {/* Account */}
+        {collapsed ? (
+          <SidebarGroup className="px-1">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {accountNav.map((item) => (
+                  <NavItem key={item.url} item={item} collapsed />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
-        </Collapsible>
+        ) : (
+          <Collapsible defaultOpen={pathname.startsWith("/account")}>
+            <SidebarGroup>
+              <CollapsibleTrigger className="w-full">
+                <SidebarGroupLabel className="sidebar-section-label cursor-pointer flex items-center justify-between w-full">
+                  <span>👤 Conta</span>
+                  <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {accountNav.map((item) => (
+                      <NavItem key={item.url} item={item} />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        )}
 
         {isAdmin && (
-          <SidebarGroup>
+          <SidebarGroup className={collapsed ? "px-1" : undefined}>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <button
-                      onClick={() => navigate("/admin")}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-destructive hover:bg-destructive/10 transition-all duration-200"
-                    >
-                      <Shield className="h-4 w-4 shrink-0" />
-                      <span>Super Admin</span>
-                    </button>
+                    {collapsed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => navigate("/admin")}
+                            className="flex items-center justify-center py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200 w-full"
+                          >
+                            <Shield className="h-4 w-4 shrink-0" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">Super Admin</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <button
+                        onClick={() => navigate("/admin")}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-destructive hover:bg-destructive/10 transition-all duration-200"
+                      >
+                        <Shield className="h-4 w-4 shrink-0" />
+                        <span>Super Admin</span>
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -603,9 +618,9 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-sidebar-border space-y-2">
+      <SidebarFooter className={cn("border-t border-sidebar-border", collapsed ? "p-2 space-y-1" : "p-3 space-y-2")}>
         {/* Footer text / Powered by */}
-        {(wl.footer_text || !wl.hide_powered_by) && (
+        {!collapsed && (wl.footer_text || !wl.hide_powered_by) && (
           <div className="text-center">
             {wl.footer_text && (
               <p className="text-[10px] text-sidebar-foreground/40">{wl.footer_text}</p>
@@ -615,26 +630,65 @@ export function AppSidebar() {
             )}
           </div>
         )}
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => navigate("/account/profile")}
-            className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left"
-          >
-            <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0 shadow-glow ring-1 ring-white/10">
-              {displayName[0]?.toUpperCase()}
-            </div>
-            <div className="text-xs min-w-0">
-              <div className="font-semibold text-sidebar-primary-foreground truncate leading-tight">{displayName}</div>
-              <div className="text-sidebar-foreground/40 truncate text-[11px]">{user?.email}</div>
-            </div>
-          </button>
-          <div className="flex items-center gap-0.5 shrink-0">
+
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate("/account/profile")}
+                  className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shadow-glow ring-1 ring-white/10"
+                >
+                  {displayName[0]?.toUpperCase()}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">{displayName}</TooltipContent>
+            </Tooltip>
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10" onClick={signOut} title="Sair">
               <LogOut className="h-3.5 w-3.5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-sidebar-foreground/50"
+              onClick={toggleSidebar}
+              title="Expandir"
+            >
+              <PanelLeft className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => navigate("/account/profile")}
+              className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left"
+            >
+              <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0 shadow-glow ring-1 ring-white/10">
+                {displayName[0]?.toUpperCase()}
+              </div>
+              <div className="text-xs min-w-0">
+                <div className="font-semibold text-sidebar-primary-foreground truncate leading-tight">{displayName}</div>
+                <div className="text-sidebar-foreground/40 truncate text-[11px]">{user?.email}</div>
+              </div>
+            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10" onClick={signOut} title="Sair">
+                <LogOut className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-sidebar-foreground/50"
+                onClick={toggleSidebar}
+                title="Recolher"
+              >
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
