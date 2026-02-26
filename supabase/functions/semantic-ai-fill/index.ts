@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getOpenAIKey, callOpenAI, OpenAIError } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +49,10 @@ serve(async (req) => {
       });
     }
 
-    const openaiKey = await getOpenAIKey();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY não configurada.");
+    }
 
     // Process entities in batches of 3 to avoid token limits
     const BATCH_SIZE = 3;
@@ -126,16 +128,34 @@ ${relDescriptions || "Nenhum relacionamento direto"}
 
 Retorne o JSON array com propriedades preenchidas para cada entidade.`;
 
-      const response = await callOpenAI({
-        apiKey: openaiKey,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        model: "gpt-4o-mini",
-        temperature: 0.4,
-        max_tokens: 4096,
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.4,
+          max_tokens: 4096,
+        }),
       });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("AI gateway error:", response.status, text);
+        if (response.status === 429) {
+          throw new GatewayError("Rate limit excedido. Tente novamente em alguns segundos.", 429);
+        }
+        if (response.status === 402) {
+          throw new GatewayError("Créditos de IA esgotados. Adicione créditos no workspace.", 402);
+        }
+        throw new GatewayError(`Erro no gateway de IA: ${response.status}`, 500);
+      }
 
       const aiData = await response.json();
       const rawContent = aiData.choices?.[0]?.message?.content || "";
@@ -154,10 +174,18 @@ Retorne o JSON array com propriedades preenchidas para cada entidade.`;
     });
   } catch (e) {
     console.error("semantic-ai-fill error:", e);
-    const status = e instanceof OpenAIError ? e.status : 500;
+    const status = e instanceof GatewayError ? e.status : 500;
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
       { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+class GatewayError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
