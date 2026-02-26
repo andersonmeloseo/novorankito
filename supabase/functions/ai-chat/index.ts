@@ -4,6 +4,54 @@ import { getCorsHeaders, validateUUID, errorResponse } from "../_shared/utils.ts
 import { createLogger, getRequestId } from "../_shared/logger.ts";
 import { getOpenAIKey, callOpenAI, OpenAIError } from "../_shared/openai.ts";
 
+async function callLovableGateway(params: {
+  messages: Array<{ role: string; content: string }>;
+  model?: string;
+  temperature?: number;
+  stream?: boolean;
+  max_tokens?: number;
+}): Promise<Response> {
+  const {
+    messages,
+    model = "google/gemini-3-flash-preview",
+    temperature = 0.3,
+    stream = true,
+    max_tokens,
+  } = params;
+
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    throw new OpenAIError("LOVABLE_API_KEY não configurada.", 500);
+  }
+
+  const body: Record<string, unknown> = { model, messages, temperature, stream };
+  if (max_tokens) body.max_tokens = max_tokens;
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Lovable AI Gateway error:", response.status, text);
+
+    if (response.status === 429) {
+      throw new OpenAIError("Rate limit de IA excedido. Tente novamente em alguns segundos.", 429);
+    }
+    if (response.status === 402) {
+      throw new OpenAIError("Créditos de IA esgotados no workspace. Adicione créditos para continuar.", 402);
+    }
+    throw new OpenAIError(`Erro no gateway de IA: ${response.status}`, 500);
+  }
+
+  return response;
+}
+
 serve(async (req) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -12,8 +60,6 @@ serve(async (req) => {
   const log = createLogger("ai-chat", requestId);
 
   try {
-    const openaiKey = await getOpenAIKey();
-
     const body = await req.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
@@ -131,12 +177,34 @@ REGRA CRÍTICA DE FINALIZAÇÃO:
 - Seja OPINATIVO e DECISIVO — o usuário quer direcionamento, não mais perguntas
 - Se houver múltiplas ações, ORDENE por prioridade e justifique a ordem com dados reais do projeto`;
 
-    const response = await log.time("openai-call", () => callOpenAI({
-      apiKey: openaiKey,
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-      model: "gpt-4o-mini",
-      stream: true,
-    }), { project_id: project_id || "NONE" });
+    const aiMessages = [{ role: "system", content: systemPrompt }, ...messages];
+
+    let response: Response;
+    try {
+      const openaiKey = await getOpenAIKey();
+      response = await log.time("openai-call", () => callOpenAI({
+        apiKey: openaiKey,
+        messages: aiMessages,
+        model: "gpt-4o-mini",
+        stream: true,
+      }), { project_id: project_id || "NONE" });
+    } catch (openAiErr) {
+      const shouldFallback =
+        !(openAiErr instanceof OpenAIError) ||
+        [401, 402, 403, 429].includes(openAiErr.status);
+
+      if (!shouldFallback) throw openAiErr;
+
+      log.info("Falling back to Lovable AI Gateway", {
+        reason: openAiErr instanceof Error ? openAiErr.message : "unknown",
+        project_id: project_id || "NONE",
+      });
+
+      response = await log.time("gateway-call", () => callLovableGateway({
+        messages: aiMessages,
+        stream: true,
+      }), { project_id: project_id || "NONE" });
+    }
 
     log.info("Streaming response started", { project_id: project_id || "NONE" });
 
