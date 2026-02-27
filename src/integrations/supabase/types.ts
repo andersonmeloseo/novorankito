@@ -706,12 +706,21 @@ export type Database = {
       conversions: {
         Row: {
           campaign: string | null
+          city: string | null
           converted_at: string
+          country_code: string | null
           created_at: string
+          currency: string | null
           device: string | null
           event_type: string
+          fbc: string | null
+          fbclid: string | null
+          fbp: string | null
+          gbraid: string | null
+          gclid: string | null
           goal_project_id: string | null
           id: string
+          ip_address: string | null
           lead_email: string | null
           lead_name: string | null
           lead_phone: string | null
@@ -720,17 +729,33 @@ export type Database = {
           owner_id: string
           page: string | null
           project_id: string
+          quality: string | null
           source: string | null
+          state: string | null
+          transaction_id: string | null
+          user_agent: string | null
           value: number | null
+          visitor_id: string | null
+          wbraid: string | null
+          zip_code: string | null
         }
         Insert: {
           campaign?: string | null
+          city?: string | null
           converted_at?: string
+          country_code?: string | null
           created_at?: string
+          currency?: string | null
           device?: string | null
           event_type?: string
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
+          gbraid?: string | null
+          gclid?: string | null
           goal_project_id?: string | null
           id?: string
+          ip_address?: string | null
           lead_email?: string | null
           lead_name?: string | null
           lead_phone?: string | null
@@ -739,17 +764,33 @@ export type Database = {
           owner_id: string
           page?: string | null
           project_id: string
+          quality?: string | null
           source?: string | null
+          state?: string | null
+          transaction_id?: string | null
+          user_agent?: string | null
           value?: number | null
+          visitor_id?: string | null
+          wbraid?: string | null
+          zip_code?: string | null
         }
         Update: {
           campaign?: string | null
+          city?: string | null
           converted_at?: string
+          country_code?: string | null
           created_at?: string
+          currency?: string | null
           device?: string | null
           event_type?: string
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
+          gbraid?: string | null
+          gclid?: string | null
           goal_project_id?: string | null
           id?: string
+          ip_address?: string | null
           lead_email?: string | null
           lead_name?: string | null
           lead_phone?: string | null
@@ -758,8 +799,15 @@ export type Database = {
           owner_id?: string
           page?: string | null
           project_id?: string
+          quality?: string | null
           source?: string | null
+          state?: string | null
+          transaction_id?: string | null
+          user_agent?: string | null
           value?: number | null
+          visitor_id?: string | null
+          wbraid?: string | null
+          zip_code?: string | null
         }
         Relationships: [
           {
