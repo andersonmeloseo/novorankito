@@ -16,7 +16,10 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid,
   Treemap,
 } from "recharts";
-import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2, Bot, Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Activity, Zap, Globe, Smartphone, Monitor, Clock, Layers, Eye, MapPin, Flame, Loader2, Bot, Search, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, ChartGradient, LineGlowGradient, BarGradient,
   ChartHeader, AXIS_STYLE, GRID_STYLE, LEGEND_STYLE,
@@ -131,6 +134,37 @@ export function AllEventsTab() {
     else { setEvtSortKey(key); setEvtSortDir("desc"); }
     setEvtPage(1);
   }, [evtSortKey]);
+
+  const exportEvents = useCallback((fmt: "csv" | "json") => {
+    const rows = sortedEvents.map(e => ({
+      data_hora: new Date(e.created_at).toLocaleString("pt-BR"),
+      tipo: EVENT_LABELS[e.event_type] || e.event_type,
+      pagina: e.page_url || "/",
+      referrer: e.referrer || "direto",
+      cta: e.cta_text || e.cta_selector || "",
+      dispositivo: e.device || "",
+      navegador: e.browser || "",
+      cidade: e.city || "",
+      estado: e.state || "",
+      ip: e.ip_address || "",
+      utm_source: e.utm_source || "",
+      utm_medium: e.utm_medium || "",
+      utm_campaign: e.utm_campaign || "",
+    }));
+    if (fmt === "json") {
+      const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "eventos.json"; a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = Object.keys(rows[0] || {});
+      const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${(r as any)[h] ?? ""}"`).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "eventos.csv"; a.click();
+      URL.revokeObjectURL(url);
+    }
+  }, [sortedEvents]);
 
   const heatmapData = useMemo(() => buildHeatmap(events), [events]);
   const allEventsByDay = useMemo(() => buildEventsByDay(events), [events]);
@@ -401,9 +435,20 @@ export function AllEventsTab() {
                 {Math.min((evtSafePage - 1) * EVT_PAGE_SIZE + 1, sortedEvents.length)}–{Math.min(evtSafePage * EVT_PAGE_SIZE, sortedEvents.length)} de {sortedEvents.length}
               </p>
             </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Buscar..." className="pl-8 h-8 text-xs w-[180px]" value={evtSearch} onChange={e => { setEvtSearch(e.target.value); setEvtPage(1); }} />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="Buscar..." className="pl-8 h-8 text-xs w-[180px]" value={evtSearch} onChange={e => { setEvtSearch(e.target.value); setEvtPage(1); }} />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"><Download className="h-3.5 w-3.5" /> Exportar</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportEvents("csv")} className="text-xs gap-2"><FileSpreadsheet className="h-3.5 w-3.5" /> CSV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportEvents("json")} className="text-xs gap-2"><FileJson className="h-3.5 w-3.5" /> JSON</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
