@@ -707,6 +707,7 @@ export type Database = {
         Row: {
           campaign: string | null
           city: string | null
+          conversion_action_name: string | null
           converted_at: string
           country_code: string | null
           created_at: string
@@ -724,8 +725,10 @@ export type Database = {
           lead_email: string | null
           lead_name: string | null
           lead_phone: string | null
+          lead_status: string | null
           location: string | null
           medium: string | null
+          offline_campaign_id: string | null
           owner_id: string
           page: string | null
           project_id: string
@@ -742,6 +745,7 @@ export type Database = {
         Insert: {
           campaign?: string | null
           city?: string | null
+          conversion_action_name?: string | null
           converted_at?: string
           country_code?: string | null
           created_at?: string
@@ -759,8 +763,10 @@ export type Database = {
           lead_email?: string | null
           lead_name?: string | null
           lead_phone?: string | null
+          lead_status?: string | null
           location?: string | null
           medium?: string | null
+          offline_campaign_id?: string | null
           owner_id: string
           page?: string | null
           project_id: string
@@ -777,6 +783,7 @@ export type Database = {
         Update: {
           campaign?: string | null
           city?: string | null
+          conversion_action_name?: string | null
           converted_at?: string
           country_code?: string | null
           created_at?: string
@@ -794,8 +801,10 @@ export type Database = {
           lead_email?: string | null
           lead_name?: string | null
           lead_phone?: string | null
+          lead_status?: string | null
           location?: string | null
           medium?: string | null
+          offline_campaign_id?: string | null
           owner_id?: string
           page?: string | null
           project_id?: string
@@ -815,6 +824,13 @@ export type Database = {
             columns: ["goal_project_id"]
             isOneToOne: false
             referencedRelation: "goal_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversions_offline_campaign_id_fkey"
+            columns: ["offline_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "offline_campaigns"
             referencedColumns: ["id"]
           },
           {
@@ -1546,6 +1562,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      offline_campaigns: {
+        Row: {
+          conversion_action_name: string | null
+          created_at: string
+          default_currency: string | null
+          default_value: number | null
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          platform: string
+          project_id: string
+          status: string
+          total_conversions: number | null
+          total_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          conversion_action_name?: string | null
+          created_at?: string
+          default_currency?: string | null
+          default_value?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          platform?: string
+          project_id: string
+          status?: string
+          total_conversions?: number | null
+          total_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          conversion_action_name?: string | null
+          created_at?: string
+          default_currency?: string | null
+          default_value?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          platform?: string
+          project_id?: string
+          status?: string
+          total_conversions?: number | null
+          total_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onpage_audits: {
         Row: {
