@@ -706,6 +706,7 @@ export type Database = {
       conversions: {
         Row: {
           campaign: string | null
+          capture_method: string
           city: string | null
           conversion_action_name: string | null
           converted_at: string
@@ -744,6 +745,7 @@ export type Database = {
         }
         Insert: {
           campaign?: string | null
+          capture_method?: string
           city?: string | null
           conversion_action_name?: string | null
           converted_at?: string
@@ -782,6 +784,7 @@ export type Database = {
         }
         Update: {
           campaign?: string | null
+          capture_method?: string
           city?: string | null
           conversion_action_name?: string | null
           converted_at?: string
@@ -1579,6 +1582,7 @@ export type Database = {
           total_conversions: number | null
           total_value: number | null
           updated_at: string
+          utm_campaign_match: string[]
         }
         Insert: {
           conversion_action_name?: string | null
@@ -1595,6 +1599,7 @@ export type Database = {
           total_conversions?: number | null
           total_value?: number | null
           updated_at?: string
+          utm_campaign_match?: string[]
         }
         Update: {
           conversion_action_name?: string | null
@@ -1611,6 +1616,7 @@ export type Database = {
           total_conversions?: number | null
           total_value?: number | null
           updated_at?: string
+          utm_campaign_match?: string[]
         }
         Relationships: [
           {

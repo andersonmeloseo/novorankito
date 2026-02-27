@@ -17,7 +17,7 @@ import {
   ChevronLeft, ChevronRight,
   ThumbsUp, ThumbsDown, Upload, Shield, Globe, Fingerprint, MousePointer,
   Megaphone, FolderOpen, ArrowLeft, Trash2, BarChart3, Target,
-  Star, Clock, Hash,
+  Star, Clock, Hash, Zap, PenLine, Radio, Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -52,6 +52,7 @@ interface OfflineCampaign {
   total_conversions: number;
   total_value: number;
   created_at: string;
+  utm_campaign_match: string[];
 }
 
 interface OfflineConversion {
@@ -87,6 +88,7 @@ interface OfflineConversion {
   offline_campaign_id: string | null;
   lead_status: string | null;
   conversion_action_name: string | null;
+  capture_method: string;
 }
 
 const LEAD_STATUS_OPTIONS = [
@@ -129,6 +131,7 @@ function CreateCampaignDialog({ open, onOpenChange, projectId }: { open: boolean
     description: "",
     default_value: "",
     default_currency: "BRL",
+    utm_campaign_match: "",
   });
   const up = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
@@ -138,6 +141,7 @@ function CreateCampaignDialog({ open, onOpenChange, projectId }: { open: boolean
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Faça login."); return; }
+      const utmMatches = form.utm_campaign_match.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
       const { error } = await supabase.from("offline_campaigns").insert({
         project_id: projectId,
         owner_id: user.id,
@@ -147,12 +151,13 @@ function CreateCampaignDialog({ open, onOpenChange, projectId }: { open: boolean
         description: form.description.trim() || null,
         default_value: form.default_value ? parseFloat(form.default_value) : 0,
         default_currency: form.default_currency,
+        utm_campaign_match: utmMatches,
       } as any);
       if (error) throw error;
       toast.success("Campanha criada!");
       qc.invalidateQueries({ queryKey: ["offline-campaigns"] });
       onOpenChange(false);
-      setForm({ name: "", platform: "google", conversion_action_name: "", description: "", default_value: "", default_currency: "BRL" });
+      setForm({ name: "", platform: "google", conversion_action_name: "", description: "", default_value: "", default_currency: "BRL", utm_campaign_match: "" });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -211,6 +216,12 @@ function CreateCampaignDialog({ open, onOpenChange, projectId }: { open: boolean
                 <Input type="number" step="0.01" placeholder="0.00" value={form.default_value} onChange={e => up("default_value", e.target.value)} className="h-9 text-xs flex-1" />
               </div>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Captura Automática — UTM Campaigns <Badge variant="outline" className="text-[7px] ml-1 border-chart-3/30 text-chart-3">Auto</Badge></Label>
+            <Input placeholder="verao-2025, campanha-leads, black-friday" value={form.utm_campaign_match} onChange={e => up("utm_campaign_match", e.target.value)} className="h-9 text-xs" />
+            <p className="text-[9px] text-muted-foreground">Separe com vírgula. Conversões com esses nomes de UTM Campaign serão vinculadas automaticamente a esta campanha.</p>
           </div>
 
           <div className="space-y-1.5">
@@ -299,6 +310,7 @@ function NewConversionDialog({ open, onOpenChange, projectId, campaignId, campai
         zip_code: form.zip_code || null,
         country_code: form.country_code || null,
         goal_project_id: null,
+        capture_method: "manual",
       } as any);
       if (error) throw error;
       toast.success("Conversão registrada!");
@@ -515,6 +527,14 @@ function MatchScore({ conv }: { conv: OfflineConversion }) {
   return <span className={`font-bold text-xs ${color}`}>{score}/10</span>;
 }
 
+function CaptureMethodBadge({ conv }: { conv: OfflineConversion }) {
+  const method = conv.capture_method || (conv.offline_campaign_id ? "manual" : "pixel");
+  if (method === "pixel") return <Badge variant="outline" className="text-[7px] border-chart-3/30 text-chart-3 bg-chart-3/5 gap-0.5"><Zap className="h-2 w-2" />Pixel</Badge>;
+  if (method === "api") return <Badge variant="outline" className="text-[7px] border-primary/30 text-primary bg-primary/5 gap-0.5"><Link2 className="h-2 w-2" />API</Badge>;
+  if (method === "import") return <Badge variant="outline" className="text-[7px] border-warning/30 text-warning bg-warning/5 gap-0.5"><Upload className="h-2 w-2" />Import</Badge>;
+  return <Badge variant="outline" className="text-[7px] border-muted-foreground/30 text-muted-foreground bg-muted/20 gap-0.5"><PenLine className="h-2 w-2" />Manual</Badge>;
+}
+
 function SignalBadges({ conv }: { conv: OfflineConversion }) {
   const items = [
     conv.gclid && { l: "GCLID", c: "border-primary/30 text-primary bg-primary/5" },
@@ -572,6 +592,11 @@ function CampaignCard({ campaign, onClick }: { campaign: OfflineCampaign; onClic
           </div>
         </div>
 
+        {campaign.utm_campaign_match?.length > 0 && (
+          <p className="text-[10px] text-chart-3 flex items-center gap-1">
+            <Zap className="h-2.5 w-2.5" /> Auto: {campaign.utm_campaign_match.join(", ")}
+          </p>
+        )}
         {campaign.description && <p className="text-[10px] text-muted-foreground truncate">{campaign.description}</p>}
       </div>
     </Card>
@@ -591,7 +616,7 @@ function exportConversions(data: OfflineConversion[], fmt: "csv" | "json", campa
   } else {
     const headers = [
       "Conversion Action", "Timestamp", "GCLID", "Email", "Phone", "Name",
-      "Value", "Currency", "Transaction ID", "Lead Status", "Quality",
+      "Value", "Currency", "Transaction ID", "Lead Status", "Quality", "Capture Method",
       "FBCLID", "FBC", "FBP", "IP Address",
       "Source", "Medium", "Campaign",
       "City", "State", "Country", "ZIP",
@@ -600,7 +625,7 @@ function exportConversions(data: OfflineConversion[], fmt: "csv" | "json", campa
       c.conversion_action_name || "", format(new Date(c.converted_at), "yyyy-MM-dd HH:mm:ss"),
       c.gclid || "", c.lead_email || "", c.lead_phone || "", c.lead_name || "",
       (c.value || 0).toFixed(2), c.currency || "BRL", c.transaction_id || "",
-      c.lead_status || "new", c.quality || "",
+      c.lead_status || "new", c.quality || "", c.capture_method || "manual",
       c.fbclid || "", c.fbc || "", c.fbp || "", c.ip_address || "",
       c.source || "", c.medium || "", c.campaign || "",
       c.city || "", c.state || "", c.country_code || "", c.zip_code || "",
@@ -666,8 +691,18 @@ export function OfflineConversionsTab() {
 
   const campaignConversions = useMemo(() => {
     if (!selectedCampaignId) return allConversions;
-    return allConversions.filter(c => c.offline_campaign_id === selectedCampaignId);
-  }, [allConversions, selectedCampaignId]);
+    const camp = campaigns.find(c => c.id === selectedCampaignId);
+    const utmMatches = camp?.utm_campaign_match?.map(s => s.toLowerCase()) || [];
+    return allConversions.filter(c => {
+      // Directly linked
+      if (c.offline_campaign_id === selectedCampaignId) return true;
+      // Auto-match by UTM campaign name
+      if (utmMatches.length > 0 && c.campaign) {
+        return utmMatches.some(utm => c.campaign!.toLowerCase().includes(utm));
+      }
+      return false;
+    });
+  }, [allConversions, selectedCampaignId, campaigns]);
 
   const filtered = useMemo(() => {
     let data = campaignConversions;
@@ -692,6 +727,8 @@ export function OfflineConversionsTab() {
   const totalConversions = filtered.length;
   const totalRevenue = filtered.reduce((s, c) => s + (c.value || 0), 0);
   const withGclid = filtered.filter(c => c.gclid).length;
+  const autoCount = filtered.filter(c => (c.capture_method || "manual") !== "manual").length;
+  const manualCount = filtered.filter(c => (c.capture_method || "manual") === "manual").length;
   const avgMatch = filtered.length ? Math.round(filtered.reduce((s, c) => {
     let sc = 0;
     if (c.gclid) sc += 4; if (c.lead_email) sc += 2; if (c.lead_phone) sc += 2; if (c.lead_name) sc += 1; if (c.ip_address) sc += 1;
@@ -761,11 +798,12 @@ export function OfflineConversionsTab() {
         </div>
 
         {/* KPIs */}
-        <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { label: "Conversões", value: totalConversions, icon: Hash },
+            { label: "Pixel / Auto", value: autoCount, icon: Zap },
+            { label: "Manual", value: manualCount, icon: PenLine },
             { label: "Receita", value: `${selectedCampaign.default_currency} ${totalRevenue.toFixed(0)}`, icon: DollarSign },
-            { label: "Com GCLID", value: `${withGclid}/${totalConversions}`, icon: MousePointer },
             { label: "Match Médio", value: `${avgMatch}/10`, icon: Target },
           ].map((kpi, i) => (
             <Card key={i} className="p-3 card-hover group relative overflow-hidden">
@@ -828,6 +866,7 @@ export function OfflineConversionsTab() {
                   <thead>
                     <tr className="border-b border-border/50 bg-muted/30">
                       <th className="text-left p-3 font-semibold text-muted-foreground">Contato</th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">Origem</th>
                       <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
                       <th className="text-left p-3 font-semibold text-muted-foreground">Qualidade</th>
                       <th className="text-left p-3 font-semibold text-muted-foreground">Valor</th>
@@ -847,6 +886,7 @@ export function OfflineConversionsTab() {
                             {conv.lead_email && <p className="text-[10px] text-muted-foreground">{conv.lead_email}</p>}
                             {conv.lead_phone && <p className="text-[10px] text-muted-foreground">{conv.lead_phone}</p>}
                           </td>
+                          <td className="p-3"><CaptureMethodBadge conv={conv} /></td>
                           <td className="p-3">
                             <Badge variant="outline" className={`text-[8px] ${statusOpt?.color || ""}`}>
                               {statusOpt?.label || conv.lead_status || "Novo"}
