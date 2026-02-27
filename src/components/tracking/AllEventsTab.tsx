@@ -493,6 +493,7 @@ export function AllEventsTab() {
                     { key: "device", label: "Dispositivo" },
                     { key: "browser", label: "Navegador" },
                     { key: "city", label: "Localização" },
+                    { key: "ip_address", label: "IP" },
                   ]).map(col => (
                     <th key={col.key} className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap" onClick={() => handleEvtSort(col.key)}>
                       <span className="inline-flex items-center gap-1">
@@ -506,7 +507,7 @@ export function AllEventsTab() {
               </thead>
               <tbody>
                 {pagedEvents.length === 0 ? (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
+                  <tr><td colSpan={10} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
                 ) : pagedEvents.map((e, i) => {
                   const bot = detectBot(e.browser, e.platform, { city: e.city, os: e.os, device: e.device, referrer: e.referrer });
                   return (
@@ -534,6 +535,9 @@ export function AllEventsTab() {
                       </td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap" title={e.country ? `${e.city || "?"}, ${e.state || "?"}, ${e.country}` : undefined}>
                         📍 {e.city || "?"}, {e.state || "?"}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap font-mono" title={e.ip_address || "—"}>
+                        {e.ip_address || "—"}
                       </td>
                       <td className="px-3 py-2 text-[11px]">
                         {bot.isBot ? <Badge variant="outline" className="text-[9px]">{bot.botEmoji} {bot.botName}</Badge> : <span className="text-muted-foreground">—</span>}

@@ -42,6 +42,7 @@ interface DerivedSession {
   device: string;
   browser: string;
   city: string;
+  ip_address: string;
   is_bounce: boolean;
   bot_name: string;
   bot_emoji: string;
@@ -81,6 +82,7 @@ function deriveSessionsFromEvents(events: TrackingEvent[]): DerivedSession[] {
       device: first.device || "desktop",
       browser: first.browser || "Other",
       city: first.city || "Desconhecido",
+      ip_address: first.ip_address || "—",
       is_bounce: pages.size <= 1 && duration_sec < 10,
       bot_name: bot.botName || "",
       bot_emoji: bot.botEmoji || "",
@@ -146,6 +148,7 @@ const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "device", label: "Dispositivo" },
   { key: "browser", label: "Browser" },
   { key: "city", label: "Cidade" },
+  { key: "ip_address", label: "IP" },
   { key: "bot_name", label: "Bot" },
 ];
 
@@ -573,6 +576,7 @@ export function SessionsTab() {
                       <td className="px-3 py-2 text-[11px] capitalize text-foreground">{s.device === "mobile" ? "📱" : s.device === "desktop" ? "🖥️" : "📟"} {s.device}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">{s.browser === "Chrome" ? "🌐" : s.browser === "Firefox" ? "🦊" : s.browser === "Safari" ? "🧭" : "🌐"} {s.browser}</td>
                       <td className="px-3 py-2 text-[11px] text-foreground">📍 {s.city}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground font-mono">{s.ip_address}</td>
                       <td className="px-3 py-2">
                         {s.bot_name ? (
                           <Badge variant="outline" className={`text-[9px] gap-1 ${BOT_CATEGORY_STYLES[s.bot_category] || ""}`}>

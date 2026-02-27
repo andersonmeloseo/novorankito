@@ -3035,6 +3035,7 @@ export type Database = {
           form_id: string | null
           gclid: string | null
           id: string
+          ip_address: string | null
           language: string | null
           metadata: Json | null
           os: string | null
@@ -3073,6 +3074,7 @@ export type Database = {
           form_id?: string | null
           gclid?: string | null
           id?: string
+          ip_address?: string | null
           language?: string | null
           metadata?: Json | null
           os?: string | null
@@ -3111,6 +3113,7 @@ export type Database = {
           form_id?: string | null
           gclid?: string | null
           id?: string
+          ip_address?: string | null
           language?: string | null
           metadata?: Json | null
           os?: string | null

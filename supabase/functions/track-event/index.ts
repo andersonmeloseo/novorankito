@@ -97,6 +97,13 @@ serve(async (req) => {
       });
     }
 
+    // --- Get client IP ---
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-real-ip") ||
+      null;
+
     // --- Geolocation: prioritize client-sent > Cloudflare headers > IP API ---
     const firstEvent = events[0];
     const needsGeo = !firstEvent?.country && !firstEvent?.city;
@@ -110,16 +117,8 @@ serve(async (req) => {
 
       if (cfCountry && cfCountry !== "XX") {
         geo = { country: cfCountry, city: cfCity || null, state: cfRegion || null };
-      } else {
-        // Fallback to IP geolocation API
-        const clientIP =
-          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-          req.headers.get("cf-connecting-ip") ||
-          req.headers.get("x-real-ip") ||
-          null;
-        if (clientIP) {
-          geo = await getGeoFromIP(clientIP);
-        }
+      } else if (clientIP) {
+        geo = await getGeoFromIP(clientIP);
       }
     }
 
@@ -179,6 +178,7 @@ serve(async (req) => {
       product_price: sanitizeNum(e.product_price),
       cart_value: sanitizeNum(e.cart_value),
       metadata: e.metadata && typeof e.metadata === "object" ? e.metadata : null,
+      ip_address: clientIP || null,
     }));
 
     const { error: insertErr } = await supabase.from("tracking_events").insert(rows);
