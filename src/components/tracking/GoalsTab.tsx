@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,8 @@ import {
   Loader2, AlertTriangle, Pencil, X, Check, Flag,
   Eye, Zap, ChevronRight, ChevronLeft, Globe, Search,
   MousePointerClick, Link, ArrowDown, Clock, Layers,
-  ExternalLink, Hash
+  ExternalLink, Hash, ChevronDown, ChevronUp, Monitor,
+  Smartphone, Tablet, MapPin, FileSpreadsheet, BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTrackingGoals, GOAL_TYPES, SCROLL_THRESHOLDS, TIME_PRESETS, TrackingGoal, GoalConfig } from "@/hooks/use-tracking-goals";
@@ -116,10 +117,11 @@ function useDetectedCTAs(events: any[]) {
 
 /* ─── Goal Progress Calculator ─── */
 function calcGoalProgress(goal: TrackingGoal, events: any[]) {
-  if (!events.length) return { current: 0, percentage: 0, completed: false };
+  if (!events.length) return { current: 0, percentage: 0, completed: false, matchedEvents: [] as any[] };
 
   const cfg = goal.config || {};
   let current = 0;
+  const matchedEvents: any[] = [];
 
   switch (goal.goal_type) {
     case "cta_click": {
@@ -134,7 +136,7 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
           mode === "exact" ? txt === p.toLowerCase() : txt.includes(p.toLowerCase())
         );
         const matchSel = selectors.some((s: string) => sel.includes(s.toLowerCase()));
-        if (matchText || matchSel) current++;
+        if (matchText || matchSel) { current++; matchedEvents.push(e); }
       });
       break;
     }
@@ -150,10 +152,10 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
           const match = mode === "exact" ? normalized === nu
             : mode === "pattern" ? normalized.includes(nu)
             : normalized.includes(nu) || nu.includes(normalized);
-          if (match) visited.add(nu);
+          if (match) { visited.add(nu); matchedEvents.push(e); }
         });
       });
-      current = visited.size;
+      current = visited.size > 0 ? matchedEvents.length : 0;
       break;
     }
     case "url_pattern": {
@@ -165,7 +167,7 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
         const txt = (e.cta_text || "").toLowerCase();
         const matchUrl = patterns.some((p: string) => href.includes(p.toLowerCase()));
         const matchTxt = textPatterns.some((p: string) => txt.includes(p.toLowerCase()));
-        if (matchUrl || matchTxt) current++;
+        if (matchUrl || matchTxt) { current++; matchedEvents.push(e); }
       });
       break;
     }
@@ -173,7 +175,7 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
       const threshold = cfg.scroll_threshold || 75;
       events.forEach(e => {
         if (e.event_type === "page_exit" && e.scroll_depth != null && e.scroll_depth >= threshold) {
-          current++;
+          current++; matchedEvents.push(e);
         }
       });
       break;
@@ -182,7 +184,7 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
       const minSec = cfg.min_seconds || 60;
       events.forEach(e => {
         if (e.event_type === "page_exit" && e.time_on_page != null && e.time_on_page >= minSec) {
-          current++;
+          current++; matchedEvents.push(e);
         }
       });
       break;
@@ -190,7 +192,6 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
     case "combined": {
       const conditions = cfg.conditions || [];
       if (conditions.length === 0) break;
-      // Each event must match ALL conditions to count
       events.forEach(e => {
         const allMatch = conditions.every((cond: any) => {
           const c = cond.config || {};
@@ -218,18 +219,17 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
             default: return false;
           }
         });
-        if (allMatch) current++;
+        if (allMatch) { current++; matchedEvents.push(e); }
       });
       break;
     }
-    // Legacy types
     case "pages_visited": {
       const visited = new Set<string>();
       events.forEach(e => {
         if (e.event_type === "page_view" && e.page_url) {
           const n = e.page_url.replace(/\/$/, "").toLowerCase();
           goal.target_urls.forEach(t => {
-            if (n.includes(t.replace(/\/$/, "").toLowerCase())) visited.add(t);
+            if (n.includes(t.replace(/\/$/, "").toLowerCase())) { visited.add(t); matchedEvents.push(e); }
           });
         }
       });
@@ -237,13 +237,13 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
       break;
     }
     case "event_count":
-      events.forEach(e => { if (goal.target_events.includes(e.event_type)) current++; });
+      events.forEach(e => { if (goal.target_events.includes(e.event_type)) { current++; matchedEvents.push(e); } });
       break;
     case "page_value":
       events.forEach(e => {
         if (e.event_type === "page_view" && e.page_url) {
           const n = e.page_url.replace(/\/$/, "").toLowerCase();
-          if (goal.target_urls.some(t => n.includes(t.replace(/\/$/, "").toLowerCase()))) current++;
+          if (goal.target_urls.some(t => n.includes(t.replace(/\/$/, "").toLowerCase()))) { current++; matchedEvents.push(e); }
         }
       });
       break;
@@ -251,13 +251,254 @@ function calcGoalProgress(goal: TrackingGoal, events: any[]) {
 
   const target = Math.max(goal.target_value, 1);
   const percentage = Math.min(100, Math.round((current / target) * 100));
-  return { current, percentage, completed: current >= target };
+  return { current, percentage, completed: current >= target, matchedEvents };
+}
+
+/* ─── Goal Detail Panel ─── */
+function GoalDetailPanel({ matchedEvents, currencyValue }: { matchedEvents: any[]; currencyValue: number }) {
+  const urlBreakdown = useMemo(() => {
+    const map = new Map<string, { url: string; count: number; devices: Set<string>; lastSeen: string }>();
+    matchedEvents.forEach(e => {
+      const url = e.page_url || "(sem URL)";
+      const existing = map.get(url);
+      if (existing) {
+        existing.count++;
+        if (e.device) existing.devices.add(e.device);
+        if (e.created_at > existing.lastSeen) existing.lastSeen = e.created_at;
+      } else {
+        map.set(url, { url, count: 1, devices: new Set(e.device ? [e.device] : []), lastSeen: e.created_at });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [matchedEvents]);
+
+  const deviceBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    matchedEvents.forEach(e => {
+      const d = e.device || "Desconhecido";
+      map.set(d, (map.get(d) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [matchedEvents]);
+
+  const locationBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    matchedEvents.forEach(e => {
+      const parts = [e.city, e.state, e.country].filter(Boolean);
+      const loc = parts.length > 0 ? parts.join(", ") : null;
+      if (loc) map.set(loc, (map.get(loc) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [matchedEvents]);
+
+  const utmBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    matchedEvents.forEach(e => {
+      const src = [e.utm_source, e.utm_medium, e.utm_campaign].filter(Boolean).join(" / ");
+      if (src) map.set(src, (map.get(src) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [matchedEvents]);
+
+  const recentEvents = useMemo(() =>
+    [...matchedEvents].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 20),
+    [matchedEvents]
+  );
+
+  const DeviceIcon = ({ device }: { device: string }) => {
+    const d = device?.toLowerCase() || "";
+    if (d.includes("mobile")) return <Smartphone className="h-3 w-3" />;
+    if (d.includes("tablet")) return <Tablet className="h-3 w-3" />;
+    return <Monitor className="h-3 w-3" />;
+  };
+
+  const exportConversions = useCallback((fmt: "csv" | "json") => {
+    const rows = matchedEvents.map(e => ({
+      data_hora: new Date(e.created_at).toLocaleString("pt-BR"),
+      pagina: e.page_url || "",
+      tipo_evento: e.event_type || "",
+      cta: e.cta_text || "",
+      dispositivo: e.device || "",
+      navegador: e.browser || "",
+      ip: e.ip_address || "",
+      cidade: e.city || "",
+      estado: e.state || "",
+      pais: e.country || "",
+      utm_source: e.utm_source || "",
+      utm_medium: e.utm_medium || "",
+      utm_campaign: e.utm_campaign || "",
+      referrer: e.referrer || "",
+    }));
+    if (fmt === "csv") {
+      const headers = Object.keys(rows[0] || {});
+      const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${(r as any)[h] || ""}"`).join(","))].join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `conversoes-meta-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+    } else {
+      const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `conversoes-meta-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+    }
+  }, [matchedEvents]);
+
+  if (matchedEvents.length === 0) {
+    return (
+      <div className="pt-3 border-t border-border mt-3">
+        <p className="text-xs text-muted-foreground text-center py-4">Nenhuma conversão registrada ainda. As conversões aparecerão aqui conforme o Pixel capturar eventos.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-3 border-t border-border mt-3 space-y-3">
+      {/* Export buttons */}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{matchedEvents.length} conversões encontradas</span>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={() => exportConversions("csv")}>
+            <FileSpreadsheet className="h-3 w-3" /> CSV
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={() => exportConversions("json")}>
+            <BarChart3 className="h-3 w-3" /> JSON
+          </Button>
+        </div>
+      </div>
+
+      <Tabs defaultValue="urls" className="w-full">
+        <TabsList className="h-8 w-full grid grid-cols-4">
+          <TabsTrigger value="urls" className="text-[10px] gap-1"><Globe className="h-3 w-3" /> URLs</TabsTrigger>
+          <TabsTrigger value="sources" className="text-[10px] gap-1"><TrendingUp className="h-3 w-3" /> Fontes</TabsTrigger>
+          <TabsTrigger value="geo" className="text-[10px] gap-1"><MapPin className="h-3 w-3" /> Local</TabsTrigger>
+          <TabsTrigger value="timeline" className="text-[10px] gap-1"><Clock className="h-3 w-3" /> Recentes</TabsTrigger>
+        </TabsList>
+
+        {/* URLs Tab */}
+        <TabsContent value="urls" className="mt-2">
+          <ScrollArea className="max-h-[250px]">
+            <div className="space-y-1">
+              {urlBreakdown.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono truncate text-foreground">{item.url}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] text-muted-foreground">Último: {new Date(item.lastSeen).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                      <div className="flex gap-0.5">
+                        {Array.from(item.devices).map((d, j) => (
+                          <span key={j} className="text-[9px] text-muted-foreground"><DeviceIcon device={d} /></span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-bold text-primary">{item.count}</span>
+                    {currencyValue > 0 && (
+                      <span className="text-[9px] text-success block">R$ {(item.count * currencyValue).toFixed(2)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          {/* Device summary bar */}
+          {deviceBreakdown.length > 0 && (
+            <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
+              {deviceBreakdown.map(([device, count], i) => (
+                <div key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <DeviceIcon device={device} />
+                  <span className="capitalize">{device}</span>
+                  <Badge variant="secondary" className="text-[8px] h-4 px-1">{count}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Sources / UTM Tab */}
+        <TabsContent value="sources" className="mt-2">
+          <ScrollArea className="max-h-[250px]">
+            {utmBreakdown.length > 0 ? (
+              <div className="space-y-1">
+                {utmBreakdown.map(([source, count], i) => {
+                  const pct = Math.round((count / matchedEvents.length) * 100);
+                  return (
+                    <div key={i} className="p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium truncate">{source}</span>
+                        <span className="text-xs font-bold text-primary shrink-0 ml-2">{count} <span className="text-[9px] text-muted-foreground font-normal">({pct}%)</span></span>
+                      </div>
+                      <Progress value={pct} className="h-1.5" />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum UTM capturado nas conversões. As conversões sem UTM vieram de tráfego direto ou orgânico.</p>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Geo Tab */}
+        <TabsContent value="geo" className="mt-2">
+          <ScrollArea className="max-h-[250px]">
+            {locationBreakdown.length > 0 ? (
+              <div className="space-y-1">
+                {locationBreakdown.map(([loc, count], i) => {
+                  const pct = Math.round((count / matchedEvents.length) * 100);
+                  return (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="text-xs flex-1 truncate">{loc}</span>
+                      <span className="text-xs font-bold text-primary shrink-0">{count}</span>
+                      <span className="text-[9px] text-muted-foreground shrink-0">({pct}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma localização capturada nas conversões.</p>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Timeline Tab */}
+        <TabsContent value="timeline" className="mt-2">
+          <ScrollArea className="max-h-[280px]">
+            <div className="space-y-0.5">
+              {recentEvents.map((e, i) => (
+                <div key={i} className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-medium text-foreground">
+                        {new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} {new Date(e.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {e.device && <Badge variant="secondary" className="text-[8px] h-4 px-1 gap-0.5"><DeviceIcon device={e.device} /> {e.device}</Badge>}
+                      {e.ip_address && <Badge variant="outline" className="text-[8px] h-4 px-1 font-mono">{e.ip_address}</Badge>}
+                    </div>
+                    <p className="text-[10px] font-mono text-muted-foreground truncate mt-0.5">{e.page_url || "—"}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {e.cta_text && <span className="text-[9px] text-primary">CTA: {e.cta_text}</span>}
+                      {e.referrer && <span className="text-[9px] text-muted-foreground">Ref: {new URL(e.referrer).hostname}</span>}
+                      {e.utm_source && <span className="text-[9px] text-muted-foreground">UTM: {[e.utm_source, e.utm_medium].filter(Boolean).join("/")}</span>}
+                      {(e.city || e.country) && <span className="text-[9px] text-muted-foreground flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{[e.city, e.state].filter(Boolean).join(", ")}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
 
 /* ─── Goal Card ─── */
 function GoalCard({ goal, events, onToggle, onDelete, onEdit, loading }: {
   goal: TrackingGoal; events: any[]; onToggle: () => void; onDelete: () => void; onEdit: () => void; loading: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const progress = useMemo(() => calcGoalProgress(goal, events), [goal, events]);
   const typeInfo = GOAL_TYPES.find(t => t.value === goal.goal_type);
   const GoalIcon = GOAL_ICONS[goal.goal_type] || Target;
@@ -315,8 +556,13 @@ function GoalCard({ goal, events, onToggle, onDelete, onEdit, loading }: {
             </Badge>
             {goal.currency_value > 0 && (
               <Badge variant="outline" className="text-[9px] gap-1 text-success border-success/20">
-                <DollarSign className="h-2.5 w-2.5" /> R$ {goal.currency_value.toFixed(2)}
+                <DollarSign className="h-2.5 w-2.5" /> R$ {(progress.current * goal.currency_value).toFixed(2)}
               </Badge>
+            )}
+            {progress.matchedEvents.length > 0 && (
+              <Button variant="ghost" size="sm" className="h-5 text-[9px] gap-1 px-1.5 text-primary hover:text-primary" onClick={() => setExpanded(!expanded)}>
+                <Eye className="h-2.5 w-2.5" /> Ver detalhes {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+              </Button>
             )}
           </div>
         </div>
@@ -326,6 +572,9 @@ function GoalCard({ goal, events, onToggle, onDelete, onEdit, loading }: {
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete} disabled={loading}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></Button>
         </div>
       </div>
+
+      {/* Expandable Detail Panel */}
+      {expanded && <GoalDetailPanel matchedEvents={progress.matchedEvents} currencyValue={goal.currency_value} />}
     </Card>
   );
 }
