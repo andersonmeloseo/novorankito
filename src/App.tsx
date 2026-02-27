@@ -112,7 +112,7 @@ const App = () => {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/landing" element={<LandingPage />} />
-                <Route path="/" element={<Navigate to="/projects" replace />} />
+                <Route path="/" element={<LandingPage />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
