@@ -2008,6 +2008,13 @@ export type Database = {
             referencedRelation: "plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       plan_usage: {
@@ -3827,6 +3834,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans_public: {
+        Row: {
+          advanced_analytics_enabled: boolean | null
+          ai_requests_limit: number | null
+          annual_price: number | null
+          api_access_enabled: boolean | null
+          billing_interval: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          events_limit: number | null
+          ga4_enabled: boolean | null
+          gsc_accounts_per_project: number | null
+          id: string | null
+          indexing_daily_limit: number | null
+          is_active: boolean | null
+          is_default: boolean | null
+          members_limit: number | null
+          name: string | null
+          orchestrator_executions_limit: number | null
+          payment_methods: string[] | null
+          pixel_tracking_enabled: boolean | null
+          price: number | null
+          projects_limit: number | null
+          promo_ends_at: string | null
+          promo_price: number | null
+          rank_rent_enabled: boolean | null
+          slug: string | null
+          sort_order: number | null
+          trial_days: number | null
+          updated_at: string | null
+          webhooks_enabled: boolean | null
+          whatsapp_reports_enabled: boolean | null
+          white_label_enabled: boolean | null
+        }
+        Insert: {
+          advanced_analytics_enabled?: boolean | null
+          ai_requests_limit?: number | null
+          annual_price?: number | null
+          api_access_enabled?: boolean | null
+          billing_interval?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          events_limit?: number | null
+          ga4_enabled?: boolean | null
+          gsc_accounts_per_project?: number | null
+          id?: string | null
+          indexing_daily_limit?: number | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          members_limit?: number | null
+          name?: string | null
+          orchestrator_executions_limit?: number | null
+          payment_methods?: string[] | null
+          pixel_tracking_enabled?: boolean | null
+          price?: number | null
+          projects_limit?: number | null
+          promo_ends_at?: string | null
+          promo_price?: number | null
+          rank_rent_enabled?: boolean | null
+          slug?: string | null
+          sort_order?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+          webhooks_enabled?: boolean | null
+          whatsapp_reports_enabled?: boolean | null
+          white_label_enabled?: boolean | null
+        }
+        Update: {
+          advanced_analytics_enabled?: boolean | null
+          ai_requests_limit?: number | null
+          annual_price?: number | null
+          api_access_enabled?: boolean | null
+          billing_interval?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          events_limit?: number | null
+          ga4_enabled?: boolean | null
+          gsc_accounts_per_project?: number | null
+          id?: string | null
+          indexing_daily_limit?: number | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          members_limit?: number | null
+          name?: string | null
+          orchestrator_executions_limit?: number | null
+          payment_methods?: string[] | null
+          pixel_tracking_enabled?: boolean | null
+          price?: number | null
+          projects_limit?: number | null
+          promo_ends_at?: string | null
+          promo_price?: number | null
+          rank_rent_enabled?: boolean | null
+          slug?: string | null
+          sort_order?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+          webhooks_enabled?: boolean | null
+          whatsapp_reports_enabled?: boolean | null
+          white_label_enabled?: boolean | null
+        }
+        Relationships: []
       }
     }
     Functions: {

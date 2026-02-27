@@ -60,6 +60,21 @@ serve(async (req) => {
   const log = createLogger("ai-chat", requestId);
 
   try {
+    // --- Auth validation ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return errorResponse("Authorization header is required", cors, 401);
+    }
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsErr } = await sb.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (claimsErr || !claimsData?.user) {
+      return errorResponse("Invalid or expired token", cors, 401);
+    }
+    const authedUserId = claimsData.user.id;
+    // --- End auth validation ---
+
     const body = await req.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
@@ -85,7 +100,7 @@ serve(async (req) => {
       if (uuidErr) return uuidErr;
     }
 
-    log.info("Chat request", { agent_name, project_id: project_id || "NONE", msg_count: messages?.length });
+    log.info("Chat request", { user_id: authedUserId, agent_name, project_id: project_id || "NONE", msg_count: messages?.length });
 
     let projectContext = "";
     if (project_id) {
