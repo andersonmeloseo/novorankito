@@ -1,0 +1,40 @@
+name: Deploy Novo Rankito
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "🚀 Iniciando deploy..."
+            cd /opt/novo-rankito
+
+            echo "📥 Atualizando código..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "📦 Instalando dependências..."
+            npm install
+
+            echo "🏗️ Buildando projeto..."
+            npm run build
+
+            echo "♻️ Reiniciando aplicação..."
+            pm2 delete rankito || true
+            pm2 start "serve -s dist -l 3005" --name rankito
+            pm2 save
+
+            echo "✅ Deploy concluído com sucesso!"
