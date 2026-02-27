@@ -1,0 +1,1 @@
+ALTER TABLE public.tracking_events ADD COLUMN ip_address text;

@@ -36,6 +36,7 @@ export interface TrackingEvent {
   language: string | null;
   screen_width: number | null;
   screen_height: number | null;
+  ip_address: string | null;
   metadata: any;
   created_at: string;
 }
