@@ -417,7 +417,9 @@ export function CeoOnboardingChat({ open, onOpenChange, projectId, onDeployed }:
                       : "bg-primary text-primary-foreground rounded-tr-md"
                   )}>
                     {msg.content ? (
-                      <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                      <span>{msg.content.split(/\*\*(.*?)\*\*/g).map((part, i) =>
+                        i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                      )}</span>
                     ) : msg.isStreaming ? (
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" /> Pensando...
