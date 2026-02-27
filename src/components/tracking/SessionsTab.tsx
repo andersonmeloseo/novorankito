@@ -283,10 +283,10 @@ export function SessionsTab() {
   }, [filtered]);
 
   const exportData = useCallback((fmt: "csv" | "json") => {
-    const headers = ["Início", "Duração", "Páginas", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "Status"];
+    const headers = ["Início", "Duração", "Páginas", "Cliques", "Landing Page", "Saída", "Source", "Medium", "Dispositivo", "Browser", "Cidade", "IP", "Status"];
     const rows = sorted.map(s => [
-      format(new Date(s.started_at), "dd/MM/yyyy HH:mm"), formatDuration(s.duration_sec), String(s.pages_viewed),
-      s.landing_page, s.exit_page, s.source, s.medium, s.device, s.browser, s.city, getSessionStatus(s),
+      format(new Date(s.started_at), "dd/MM/yyyy HH:mm"), formatDuration(s.duration_sec), String(s.pages_viewed), String(s.clicks),
+      s.landing_page, s.exit_page, s.source, s.medium, s.device, s.browser, s.city, s.ip_address, getSessionStatus(s),
     ]);
     if (fmt === "json") {
       downloadBlob(new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" }), "sessoes.json");
