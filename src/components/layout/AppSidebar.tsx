@@ -447,11 +447,6 @@ export function AppSidebar() {
             <div className={collapsed ? "" : "pl-2.5"}>
               <CollapsibleSection label="Projeto" emoji="📁" items={projectNav} defaultOpen={pathname === "/overview" || pathname === "/reports"} collapsed={collapsed} pathname={pathname} />
               <CollapsibleSection label="Configurações" emoji="⚙️" items={settingsNav} defaultOpen={pathname.startsWith("/project-settings")} collapsed={collapsed} pathname={pathname} />
-              <CollapsibleSection label={`${wl.brand_name} IA`} emoji="🤖" items={rankitoAiNav} defaultOpen={pathname.startsWith("/rankito-ai")} collapsed={collapsed} pathname={pathname} />
-              <CollapsibleSection label="SEO" emoji="🔍" items={seoNav} defaultOpen={pathname.startsWith("/seo")} collapsed={collapsed} pathname={pathname} />
-              <CollapsibleSection label="GA4" emoji="📊" items={ga4Nav} defaultOpen={pathname.startsWith("/ga4")} collapsed={collapsed} pathname={pathname} />
-              <CollapsibleSection label="Indexação" emoji="🗂️" items={indexingNav} defaultOpen={pathname.startsWith("/indexing")} collapsed={collapsed} pathname={pathname} />
-
               {/* Analítica Rankito */}
               {collapsed ? (
                 <SidebarGroup className="px-1">
@@ -486,6 +481,11 @@ export function AppSidebar() {
                   </SidebarGroup>
                 </Collapsible>
               )}
+
+              <CollapsibleSection label={`${wl.brand_name} IA`} emoji="🤖" items={rankitoAiNav} defaultOpen={pathname.startsWith("/rankito-ai")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="SEO" emoji="🔍" items={seoNav} defaultOpen={pathname.startsWith("/seo")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="GA4" emoji="📊" items={ga4Nav} defaultOpen={pathname.startsWith("/ga4")} collapsed={collapsed} pathname={pathname} />
+              <CollapsibleSection label="Indexação" emoji="🗂️" items={indexingNav} defaultOpen={pathname.startsWith("/indexing")} collapsed={collapsed} pathname={pathname} />
 
               {!collapsed && (
                 <div className="mx-4 my-1">
