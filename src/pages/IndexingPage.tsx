@@ -1275,16 +1275,27 @@ export default function IndexingPage() {
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" className="gap-1.5 text-xs flex-1" onClick={() => {
-                    submitMutation.mutate({ urls: [detailUrl.url], requestType: "URL_UPDATED" });
-                    setDetailUrl(null);
+                    submitMutation.mutate({ urls: [detailUrl.url], requestType: "URL_UPDATED" }, {
+                      onSuccess: () => toast("URL enviada para indexação com sucesso"),
+                    });
                   }} disabled={submitMutation.isPending}>
-                    <Send className="h-3 w-3" /> Enviar para Indexação
+                    {submitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                    Enviar para Indexação
                   </Button>
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs flex-1" onClick={() => {
-                    inspectMutation.mutate([detailUrl.url]);
-                    setDetailUrl(null);
+                    inspectMutation.mutate([detailUrl.url], {
+                      onSuccess: () => {
+                        toast("Inspeção concluída — atualizando dados...");
+                        // Refresh inventory to get updated coverage data
+                        setTimeout(() => {
+                          const updated = inventory.find(u => u.url === detailUrl.url);
+                          if (updated) setDetailUrl({ ...updated });
+                        }, 1500);
+                      },
+                    });
                   }} disabled={inspectMutation.isPending}>
-                    <ScanSearch className="h-3 w-3" /> Inspecionar
+                    {inspectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                    Inspecionar
                   </Button>
                 </div>
               </div>
