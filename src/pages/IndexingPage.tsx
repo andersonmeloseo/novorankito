@@ -198,6 +198,7 @@ export default function IndexingPage() {
       await supabase.from("indexing_schedules").insert(payload);
     }
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
   };
 
   const handleScheduleManual = async (config: ManualSchedule) => {
@@ -213,6 +214,7 @@ export default function IndexingPage() {
       status: "pending",
     });
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
   };
 
   // ─── GSC Connections ───
