@@ -2465,13 +2465,22 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          niche: string | null
           notes: string | null
           owner_id: string
           page_url: string | null
+          period_end: string | null
+          period_start: string | null
           phone: string | null
           project_id: string
+          quantity: number | null
+          sale_status: string | null
+          sold_at: string | null
+          sold_to_client_id: string | null
           source: string | null
           status: string
+          total_price: number | null
+          unit_price: number | null
           updated_at: string
           value: number | null
         }
@@ -2482,13 +2491,22 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          niche?: string | null
           notes?: string | null
           owner_id: string
           page_url?: string | null
+          period_end?: string | null
+          period_start?: string | null
           phone?: string | null
           project_id: string
+          quantity?: number | null
+          sale_status?: string | null
+          sold_at?: string | null
+          sold_to_client_id?: string | null
           source?: string | null
           status?: string
+          total_price?: number | null
+          unit_price?: number | null
           updated_at?: string
           value?: number | null
         }
@@ -2499,13 +2517,22 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          niche?: string | null
           notes?: string | null
           owner_id?: string
           page_url?: string | null
+          period_end?: string | null
+          period_start?: string | null
           phone?: string | null
           project_id?: string
+          quantity?: number | null
+          sale_status?: string | null
+          sold_at?: string | null
+          sold_to_client_id?: string | null
           source?: string | null
           status?: string
+          total_price?: number | null
+          unit_price?: number | null
           updated_at?: string
           value?: number | null
         }
@@ -2522,6 +2549,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_leads_sold_to_client_id_fkey"
+            columns: ["sold_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "rr_clients"
             referencedColumns: ["id"]
           },
         ]
