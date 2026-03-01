@@ -128,11 +128,11 @@ serve(async (req) => {
     const agentResults: AgentResult[] = [];
     const resultsByRole = new Map<string, string>();
 
-    const callAI = async (system: string, user: string, maxTokens = 2000): Promise<string> => {
+    const callAI = async (system: string, user: string, maxTokens = 3000): Promise<string> => {
       const resp = await fetch(aiEndpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: aiModel, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens }),
+        body: JSON.stringify({ model: aiModel, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens, temperature: 0.7 }),
       });
       if (!resp.ok) throw new Error(`AI error ${resp.status}`);
       const d = await resp.json();
@@ -143,21 +143,21 @@ serve(async (req) => {
     const buildSpecialistData = (role: RoleConfig): string => {
       const t = role.title.toLowerCase();
       const isSeo = t.includes("seo") || t.includes("orgân") || t.includes("busca");
-      const isContent = t.includes("content") || t.includes("conteú") || t.includes("redator");
-      const isLinks = t.includes("link") || t.includes("autoridade") || t.includes("backlink");
-      const isAds = t.includes("ads") || t.includes("mídia") || t.includes("paid") || t.includes("pago");
-      const isTech = t.includes("técn") || t.includes("tech") || t.includes("desenvolv");
+      const isContent = t.includes("content") || t.includes("conteú") || t.includes("redator") || t.includes("estrategista");
+      const isLinks = t.includes("link") || t.includes("autoridade") || t.includes("backlink") || t.includes("digital pr");
+      const isAds = t.includes("ads") || t.includes("mídia") || t.includes("paid") || t.includes("pago") || t.includes("performance");
+      const isTech = t.includes("técn") || t.includes("tech") || t.includes("desenvolv") || t.includes("engenheir") || t.includes("performance web");
       const isAnalytics = t.includes("analytic") || t.includes("dados") || t.includes("data");
-      const isCro = t.includes("cro") || t.includes("convers") || t.includes("ux");
+      const isCro = t.includes("cro") || t.includes("convers") || t.includes("ux") || t.includes("designer");
 
-      if (isSeo) return `## Dados SEO:\nQueries: ${topQueries.join("\n")}\nQuick wins: ${quickWins.join("\n")}\nCTR baixo: ${lowCtr.join("\n")}\nURLs: ${topUrls.join("\n")}`;
-      if (isContent) return `## Dados Conteúdo:\nURLs: ${topUrls.join("\n")}\nGaps: ${quickWins.slice(0, 6).join("\n")}\nCTR fraco: ${lowCtr.join("\n")}`;
-      if (isLinks) return `## Dados Links:\nURLs: ${topUrls.slice(0, 8).join("\n")}\nKWs pos 5-15: ${quickWins.slice(0, 6).join("\n")}`;
-      if (isAds) return `## Dados Ads:\n${ga4Context.slice(0, 1200)}\nQueries org: ${topQueries.slice(0, 8).join("\n")}`;
-      if (isTech) return `## Dados Técnicos:\nURLs pos>20: ${allSeoRows.filter((r: any) => r.url && r.position > 20).slice(0, 8).map((r: any) => `${r.url}: pos ${r.position?.toFixed(1)}`).join("\n")}\nCTR baixo: ${lowCtr.join("\n")}`;
-      if (isAnalytics) return `## Dados Analytics:\n${ga4Context}`;
-      if (isCro) return `## Dados CRO:\n${ga4Context.slice(0, 1200)}\nURLs: ${topUrls.slice(0, 8).join("\n")}`;
-      return `## Dados Gerais:\nQueries: ${topQueries.slice(0, 8).join("\n")}\nURLs: ${topUrls.slice(0, 5).join("\n")}\nQuick wins: ${quickWins.slice(0, 5).join("\n")}\n${ga4Context.slice(0, 800)}`;
+      if (isSeo) return `## Dados SEO Reais do Projeto:\n### Top Queries por Cliques:\n${topQueries.join("\n")}\n### Quick Wins (pos 3-15, alto volume):\n${quickWins.join("\n")}\n### Problemas de CTR (top posições, CTR baixo):\n${lowCtr.join("\n")}\n### Top URLs por Performance:\n${topUrls.join("\n")}`;
+      if (isContent) return `## Dados de Conteúdo Reais:\n### URLs com Melhor Performance:\n${topUrls.join("\n")}\n### Content Gaps (queries sem página otimizada):\n${quickWins.slice(0, 6).join("\n")}\n### Páginas com CTR Subotimizado:\n${lowCtr.join("\n")}\n### Queries com Potencial:\n${topQueries.slice(0, 10).join("\n")}`;
+      if (isLinks) return `## Dados de Links e Autoridade:\n### URLs Mais Linkadas:\n${topUrls.slice(0, 8).join("\n")}\n### Keywords em Striking Distance (pos 5-15):\n${quickWins.slice(0, 6).join("\n")}\n### Overview:\n${JSON.stringify(overviewRes.data || {})}`;
+      if (isAds) return `## Dados de Performance e Ads:\n### Analytics (GA4):\n${ga4Context.slice(0, 1500)}\n### Top Queries Orgânicas (benchmark para Ads):\n${topQueries.slice(0, 8).join("\n")}\n### Conversion Data:\n${topUrls.slice(0, 5).join("\n")}`;
+      if (isTech) return `## Dados Técnicos do Projeto:\n### URLs com Problemas de Performance (pos>20):\n${allSeoRows.filter((r: any) => r.url && r.position > 20).slice(0, 10).map((r: any) => `${r.url}: pos ${r.position?.toFixed(1)}, ${r.clicks} cliques`).join("\n")}\n### Páginas com CTR Baixo (possível problema técnico):\n${lowCtr.join("\n")}\n### Indexação Overview:\n${JSON.stringify((overviewRes.data as any)?.indexing || {})}`;
+      if (isAnalytics) return `## Dados de Analytics Completos:\n### GA4 Context:\n${ga4Context}\n### SEO Overview:\n${JSON.stringify(overviewRes.data || {})}\n### Top Queries:\n${topQueries.slice(0, 10).join("\n")}`;
+      if (isCro) return `## Dados de CRO/UX:\n### Analytics:\n${ga4Context.slice(0, 1500)}\n### Landing Pages por Performance:\n${topUrls.slice(0, 10).join("\n")}\n### Queries de Alta Intenção:\n${topQueries.filter((q: string) => q.toLowerCase().includes("comprar") || q.toLowerCase().includes("preço") || q.toLowerCase().includes("melhor")).slice(0, 5).join("\n") || topQueries.slice(0, 5).join("\n")}`;
+      return `## Dados Gerais do Projeto:\n### Queries:\n${topQueries.slice(0, 10).join("\n")}\n### URLs:\n${topUrls.slice(0, 8).join("\n")}\n### Quick Wins:\n${quickWins.slice(0, 6).join("\n")}\n### Analytics:\n${ga4Context.slice(0, 1000)}`;
     };
 
     const nextWeek = new Date(today);
@@ -175,27 +175,45 @@ serve(async (req) => {
 
         const peerContext = rolesArr
           .filter((r) => r.id !== role.id && hierarchyMap[r.id] === (superiorId || ""))
-          .map((r) => { const pr = resultsByRole.get(r.id); return pr ? `### ${r.emoji} ${r.title}:\n${pr.slice(0, 500)}` : ""; })
+          .map((r) => { const pr = resultsByRole.get(r.id); return pr ? `### ${r.emoji} ${r.title}:\n${pr.slice(0, 600)}` : ""; })
           .filter(Boolean).join("\n");
 
         const system = `${role.instructions}
-Você é ${role.emoji} ${role.title}. Hoje: ${todayStr}.
-${buildSpecialistData(role)}
-Rotina (${role.routine?.frequency || "diária"}): ${(role.routine?.tasks || []).join("; ")}
-Saídas: ${(role.routine?.outputs || []).join(", ")}
-${superiorResult && superiorRole ? `## Diretrizes do superior (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult.slice(0, 800)}` : ""}
-${peerContext ? `## Contexto dos colegas:\n${peerContext.slice(0, 1000)}` : ""}
-${hasData ? "Cite SEMPRE dados reais do projeto com números exatos." : "Dados ainda não sincronizados. Foque em melhores práticas."}
-Prazo máximo das tarefas: ${dueDateStr}
 
-FORMATO (obrigatório):
-[Relatório de até 500 palavras]
+Você é ${role.emoji} ${role.title}. Data: ${todayStr}.
+
+${buildSpecialistData(role)}
+
+Sua rotina (${role.routine?.frequency || "diária"}): ${(role.routine?.tasks || []).join("; ")}
+Entregas esperadas: ${(role.routine?.outputs || []).join(", ")}
+${superiorResult && superiorRole ? `\n## Diretrizes do Superior Hierárquico (${superiorRole.emoji} ${superiorRole.title}):\n${superiorResult.slice(0, 1000)}` : ""}
+${peerContext ? `\n## Contexto de Colegas de Equipe:\n${peerContext.slice(0, 1200)}` : ""}
+
+REGRAS OBRIGATÓRIAS:
+1. ${hasData ? "CITE SEMPRE dados reais do projeto com números exatos. Não invente dados." : "Dados ainda não sincronizados. Foque em melhores práticas do setor com exemplos específicos."}
+2. Seja ESPECÍFICO: cite URLs, queries, números exatos. Nunca use "melhorar SEO" — diga "otimizar title tag da URL /x para incluir keyword Y (pos 8, 500 imp/mês)".
+3. Priorize por IMPACTO: use framework ICE (Impact × Confidence × Ease) ou similar.
+4. Toda recomendação deve ter MÉTRICA DE SUCESSO quantificável.
+5. Prazo máximo das tarefas: ${dueDateStr}
+
+FORMATO DE RESPOSTA (obrigatório):
+[Relatório analítico de 400-800 palavras com seções claras, dados reais e recomendações priorizadas]
 ---TASKS_JSON---
-[{"title":"...","description":"...","category":"seo|conteudo|links|ads|tecnico|estrategia|analytics","priority":"urgente|alta|normal|baixa","assigned_role":"${role.title}","assigned_role_emoji":"${role.emoji}","due_date":"${dueDateStr}","success_metric":"...","estimated_impact":"..."}]`;
+[{"title":"...","description":"Passo a passo detalhado com 2-3 ações específicas","category":"seo|conteudo|links|ads|tecnico|estrategia|analytics","priority":"urgente|alta|normal|baixa","assigned_role":"${role.title}","assigned_role_emoji":"${role.emoji}","due_date":"${dueDateStr}","success_metric":"Métrica quantificável (ex: aumentar CTR de 2.1% para 4%)","estimated_impact":"Impacto estimado em tráfego/conversões"}]`;
 
         const user = isCeo
-          ? "Entregue: 1) Diagnóstico executivo com 3 métricas-chave 2) Top 3 prioridades da semana 3) Diretrizes por área 4) 3-5 tarefas estratégicas JSON"
-          : `Execute sua análise de ${role.title}. Entregue: 1) Análise com dados reais 2) Top achados 3) 3-5 tarefas específicas JSON`;
+          ? `Entregue sua análise executiva completa:
+1) DIAGNÓSTICO: Cruze TODOS os dados disponíveis e identifique os 3 maiores gargalos do projeto
+2) PRIORIDADES: Top 3 prioridades da semana usando ICE score, com justificativa baseada em dados
+3) DECISÕES: Decisões estratégicas com impacto estimado e prazo
+4) DIRETRIZES: Orientações específicas para cada área (SEO, Conteúdo, Ads, Tech, Analytics)
+5) TAREFAS: 4-6 tarefas estratégicas no formato JSON com métricas de sucesso quantificáveis`
+          : `Execute sua análise especializada como ${role.title}:
+1) DIAGNÓSTICO: Analise os dados reais e identifique patterns, problemas e oportunidades
+2) TOP ACHADOS: Liste os 3-5 insights mais importantes com dados que comprovam
+3) RECOMENDAÇÕES: Ações priorizadas por ICE score com estimativa de impacto
+4) QUICK WINS: O que pode ser feito HOJE para gerar resultado imediato
+5) TAREFAS: 3-6 tarefas específicas no formato JSON com passos detalhados e métricas de sucesso`;
 
         const fullOutput = await callAI(system, user, 2000);
         const [reportText, tasksJsonRaw] = fullOutput.split("---TASKS_JSON---").map((s: string) => s.trim());
