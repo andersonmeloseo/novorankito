@@ -127,7 +127,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
     if (error) toast.error(error.message);
     else {
       toast.success(newStatus === "active" ? "Orquestrador ativado" : "Orquestrador pausado");
-      refetchDeployments();
+      await qc.invalidateQueries({ queryKey: ["orchestrator-deployments", projectId] });
     }
   };
 
