@@ -66,6 +66,7 @@ const RRFinancialPage = lazy(() => import("@/pages/rank-rent/RRFinancialPage"));
 const RRAvailabilityPage = lazy(() => import("@/pages/rank-rent/RRAvailabilityPage"));
 const RRPerformancePage = lazy(() => import("@/pages/rank-rent/RRPerformancePage"));
 const RRProjectMonetizationPage = lazy(() => import("@/pages/rank-rent/RRProjectMonetizationPage"));
+const RRLeadsPage = lazy(() => import("@/pages/rank-rent/RRLeadsPage"));
 const SemanticGraphPage = lazy(() => import("@/pages/SemanticGraphPage"));
 const GettingStartedPage = lazy(() => import("@/pages/GettingStartedPage"));
 const ProjectDashboardPage = lazy(() => import("@/pages/ProjectDashboardPage"));
@@ -155,6 +156,7 @@ const App = () => {
                   <Route path="/rank-rent/availability" element={<RRAvailabilityPage />} />
                   <Route path="/rank-rent/performance" element={<RRPerformancePage />} />
                   <Route path="/rank-rent/project/:projectId" element={<RRProjectMonetizationPage />} />
+                  <Route path="/rank-rent/leads" element={<RRLeadsPage />} />
                   {/* Semantic Graph */}
                   <Route path="/semantic-graph" element={<SemanticGraphPage />} />
                   <Route path="/command-center" element={<CommandCenterPage />} />
