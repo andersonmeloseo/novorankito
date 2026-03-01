@@ -1735,6 +1735,34 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                           {rawErrors.map((e: string, i: number) => <div key={i}>⚠ {e}</div>)}
                         </div>
                       )}
+                      {/* URL list from execution results */}
+                      {actionResults.length > 0 && (() => {
+                        const allUrls: { url: string; status?: string; verdict?: string; type: string }[] = [];
+                        for (const ar of actionResults) {
+                          const urls = ar.result?.urls || [];
+                          for (const u of urls) {
+                            allUrls.push({ ...u, type: ar.type });
+                          }
+                        }
+                        if (allUrls.length === 0) return null;
+                        return (
+                          <details className="mt-2">
+                            <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                              Ver {allUrls.length} URL(s) processada(s)
+                            </summary>
+                            <div className="mt-1.5 max-h-40 overflow-y-auto rounded border border-border bg-muted/20 divide-y divide-border">
+                              {allUrls.map((u, i) => (
+                                <div key={i} className="flex items-center justify-between px-2 py-1.5 text-[10px]">
+                                  <span className="truncate max-w-[70%] font-mono text-foreground">{u.url}</span>
+                                  <Badge variant={u.status === "success" ? "default" : u.status === "quota_exceeded" ? "secondary" : u.verdict === "PASS" ? "default" : "outline"} className="text-[9px] shrink-0">
+                                    {u.status === "success" ? "Enviada" : u.status === "failed" ? "Falhou" : u.status === "quota_exceeded" ? "Quota" : u.verdict || "—"}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        );
+                      })()}
                     </div>
                   );
                 })}

@@ -585,6 +585,7 @@ serve(async (req) => {
         failed: results.filter(r => r.status === "failed").length,
         quota_exceeded: results.filter(r => r.status === "quota_exceeded").length,
         total: results.length,
+        urls: results.map(r => ({ url: r.url, status: r.status })),
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -671,7 +672,11 @@ serve(async (req) => {
         await supabase.from("index_coverage").upsert(results, { onConflict: "project_id,url" });
       }
 
-      return new Response(JSON.stringify({ inspected: results.length, errors }), {
+      return new Response(JSON.stringify({
+        inspected: results.length,
+        errors,
+        urls: results.map(r => ({ url: r.url, verdict: r.verdict })),
+      }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

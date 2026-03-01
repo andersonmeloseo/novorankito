@@ -80,7 +80,7 @@ const indexingNav = [
   { title: "URLs", url: "/indexing#inventory", icon: Layers },
   { title: "Sitemap", url: "/indexing#sitemap", icon: Map },
   { title: "Histórico", url: "/indexing#history", icon: History },
-  { title: "Agendar", url: "/indexing#schedule", icon: CalendarClock },
+  { title: "Agendar Indexação", url: "/indexing#schedule", icon: CalendarClock },
   { title: "Contas", url: "/indexing#accounts", icon: Wifi },
 ];
 
