@@ -122,6 +122,7 @@ const rankRentNav = [
   { title: "Clientes", url: "/rank-rent/clients", icon: Building2 },
   { title: "Contratos", url: "/rank-rent/contracts", icon: FileSignature },
   { title: "Páginas", url: "/rank-rent/pages", icon: Layers },
+  { title: "Leads", url: "/rank-rent/leads", icon: Users },
   { title: "Financeiro", url: "/rank-rent/financial", icon: DollarSign },
   { title: "Performance", url: "/rank-rent/performance", icon: TrendingUp },
   { title: "Disponibilidade", url: "/rank-rent/availability", icon: Store },

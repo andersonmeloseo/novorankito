@@ -2457,6 +2457,75 @@ export type Database = {
           },
         ]
       }
+      rr_leads: {
+        Row: {
+          client_id: string | null
+          converted_at: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          page_url: string | null
+          phone: string | null
+          project_id: string
+          source: string | null
+          status: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          client_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id: string
+          page_url?: string | null
+          phone?: string | null
+          project_id: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          client_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          page_url?: string | null
+          phone?: string | null
+          project_id?: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rr_leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rr_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rr_pages: {
         Row: {
           avg_lead_value: number | null
