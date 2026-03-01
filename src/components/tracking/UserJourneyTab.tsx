@@ -108,19 +108,14 @@ function buildJourneys(events: any[]): Journey[] {
 
     // Build steps from page_view and click events
     const steps: JourneyStep[] = [];
-    const pageViews = sorted.filter((e: any) => e.event_type === "page_view" || e.event_type === "page_exit");
 
-    // Group by page
+    // Group by page, collecting all CTA clicks per page
     let currentPage = "";
-    let pageStart = "";
+    let currentStepIdx = -1;
     sorted.forEach((e: any, idx: number) => {
       const page = e.page_url || "/";
       if (page !== currentPage || idx === 0) {
-        if (currentPage && pageStart) {
-          // Close previous step
-        }
         currentPage = page;
-        pageStart = e.created_at;
 
         const nextPageEvent = sorted.slice(idx + 1).find((ne: any) => (ne.page_url || "/") !== page);
         const endTime = nextPageEvent ? new Date(nextPageEvent.created_at).getTime() : new Date(e.created_at).getTime();
@@ -135,6 +130,11 @@ function buildJourneys(events: any[]): Journey[] {
           cta_clicked: e.cta_text || undefined,
           cta_selector: e.cta_selector || undefined,
         });
+        currentStepIdx = steps.length - 1;
+      } else if (e.cta_text && currentStepIdx >= 0 && !steps[currentStepIdx].cta_clicked) {
+        // Capture CTA click from same-page event into the current step
+        steps[currentStepIdx].cta_clicked = e.cta_text;
+        steps[currentStepIdx].cta_selector = e.cta_selector || undefined;
       }
     });
 
@@ -456,11 +456,21 @@ export function UserJourneyTab() {
 
   const ctaData = useMemo(() => {
     const map = new Map<string, number>();
-    filtered.forEach(j => j.steps.forEach(s => {
-      if (s.cta_clicked) map.set(s.cta_clicked, (map.get(s.cta_clicked) || 0) + 1);
-    }));
-    return Array.from(map.entries()).map(([cta, count]) => ({ cta, count })).sort((a, b) => b.count - a.count);
-  }, [filtered]);
+    // Count CTAs from raw events for accuracy (journey steps only keep one per page)
+    (allEvents || []).forEach((e: any) => {
+      if (e.cta_text) map.set(e.cta_text, (map.get(e.cta_text) || 0) + 1);
+    });
+    // Also count from click-type events where event_type contains "click"
+    if (map.size === 0) {
+      (allEvents || []).forEach((e: any) => {
+        if (e.event_type && e.event_type.includes("click") && e.page_url) {
+          const label = e.cta_text || e.cta_selector || e.event_type.replace(/_/g, " ");
+          map.set(label, (map.get(label) || 0) + 1);
+        }
+      });
+    }
+    return Array.from(map.entries()).map(([cta, count]) => ({ cta, count })).sort((a, b) => b.count - a.count).slice(0, 10);
+  }, [allEvents]);
 
   const sourceData = useMemo(() => {
     const map = new Map<string, number>();
