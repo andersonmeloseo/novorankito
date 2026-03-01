@@ -332,8 +332,11 @@ export default function IndexingPage() {
 
   // ─── Submit ───
   const handleSubmitManual = () => {
-    const urls = urlsText.split("\n").map(u => u.trim()).filter(u => u.startsWith("http"));
-    if (urls.length === 0) return;
+    // Parse URLs from text — supports newlines, commas, tabs, semicolons, and quoted values
+    const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+    const found = urlsText.match(urlRegex) || [];
+    const urls = [...new Set(found)].slice(0, 50);
+    if (urls.length === 0) { toast.warning("Nenhuma URL válida detectada"); return; }
     submitMutation.mutate({ urls, requestType }, {
       onSuccess: () => { setSubmitOpen(false); setUrlsText(""); },
     });
@@ -533,13 +536,45 @@ export default function IndexingPage() {
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <Textarea
-                      placeholder={"Cole as URLs (uma por linha):\nhttps://seusite.com/pagina-1\nhttps://seusite.com/pagina-2"}
+                      placeholder={"Cole as URLs (uma por linha):\nhttps://seusite.com/pagina-1\nhttps://seusite.com/pagina-2\n\nOu cole diretamente de uma planilha/CSV — o sistema detecta automaticamente."}
                       value={urlsText} onChange={e => setUrlsText(e.target.value)}
                       rows={8} className="font-mono text-xs"
                     />
-                    <p className="text-[10px] text-muted-foreground">
-                      {urlsText.split("\n").filter(u => u.trim().startsWith("http")).length} URL(s) detectada(s) • Máx. 50 por envio
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground">
+                        {urlsText.split(/[\n,;\t]+/).map(u => u.trim().replace(/^["']|["']$/g, "")).filter(u => u.startsWith("http")).length} URL(s) detectada(s) • Máx. 50 por envio
+                      </p>
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept=".csv,.txt,.tsv,.xlsx"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const text = ev.target?.result as string;
+                              if (!text) return;
+                              // Parse CSV/TSV/TXT — extract anything that looks like a URL
+                              const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+                              const found = text.match(urlRegex) || [];
+                              const unique = [...new Set(found)];
+                              setUrlsText(prev => {
+                                const existing = prev.trim();
+                                return existing ? existing + "\n" + unique.join("\n") : unique.join("\n");
+                              });
+                              toast.success(`${unique.length} URL(s) importada(s) do arquivo`);
+                            };
+                            reader.readAsText(file);
+                            e.target.value = "";
+                          }}
+                        />
+                        <span className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium">
+                          <Upload className="h-3 w-3" /> Importar CSV/Planilha
+                        </span>
+                      </label>
+                    </div>
                     <Select value={requestType} onValueChange={setRequestType}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
