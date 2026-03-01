@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.mcp-server]
 verify_jwt = false
+
+[functions.abacatepay-create-billing]
+verify_jwt = false
+
+[functions.abacatepay-webhook]
+verify_jwt = false
