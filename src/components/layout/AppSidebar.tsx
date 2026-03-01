@@ -111,7 +111,7 @@ const analiticaNav = [
   { title: "E-commerce", url: "/analitica-rankito/ecommerce", icon: ShoppingCart },
   { title: "Jornada", url: "/analitica-rankito/jornada", icon: Footprints },
   { title: "Ads & UTM", url: "/analitica-rankito/ads-utm", icon: Target },
-  { title: "Offline", url: "/analitica-rankito/offline", icon: PhoneCall },
+  { title: "Conversão Offline", url: "/analitica-rankito/offline", icon: PhoneCall },
   { title: "Event Builder", url: "/analitica-rankito/event-builder", icon: MousePointerClick },
   { title: "Metas", url: "/analitica-rankito/metas", icon: Flag },
   { title: "Instalar o Pixel", url: "/analitica-rankito/pixel", icon: Code },
