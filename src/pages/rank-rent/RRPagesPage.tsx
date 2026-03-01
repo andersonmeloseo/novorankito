@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Globe, Send, CheckCircle2, XCircle, Clock, AlertTriangle,
   Loader2, ArrowUpDown, DollarSign, TrendingUp, Users, ChevronLeft, ChevronRight,
+  Download, FileText, FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -21,6 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { exportCSV } from "@/lib/export-utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 /* ── Types ─────────────────────────────────────────── */
 interface PageRow {
@@ -58,6 +62,29 @@ const IDX_REQUEST_BADGE: Record<string, { label: string; cls: string }> = {
 
 type SortField = "url" | "clicks" | "impressions" | "ctr" | "position" | "avgLeadsMonth" | "monthlyValue";
 
+/* ── ROI helpers ── */
+/** ROI Interno: (receita de leads - custo manutenção) / custo manutenção. Locação = receita nossa */
+function calcRoiInterno(row: PageRow) {
+  // Receita = valor da locação que cobramos do cliente
+  // Custo = estimativa baseada em leads (custo de aquisição)
+  // Simplificado: ROI = receita locação vs custo de geração de leads
+  const receita = row.monthlyValue;
+  const custo = row.avgLeadsMonth * row.avgLeadValue * 0.3; // ~30% custo operacional estimado
+  if (custo <= 0 && receita <= 0) return null;
+  if (custo <= 0) return 999;
+  return ((receita - custo) / custo) * 100;
+}
+
+/** ROI Cliente: (valor dos leads recebidos - valor pago de locação) / locação */
+function calcRoiCliente(row: PageRow) {
+  const valorLeads = row.avgLeadsMonth * row.avgLeadValue;
+  const investimento = row.monthlyValue;
+  if (investimento <= 0) return null;
+  return ((valorLeads - investimento) / investimento) * 100;
+}
+
+const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 export default function RRPagesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -72,6 +99,7 @@ export default function RRPagesPage() {
   const [editingCell, setEditingCell] = useState<{ url: string; field: string } | null>(null);
   const [page, setPage] = useState(0);
   const PAGE_TABLE_SIZE = 10;
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   /* ── Projects ──────────────────── */
   const { data: projects } = useQuery({
@@ -88,6 +116,7 @@ export default function RRPagesPage() {
   });
 
   const projectId = selectedProject || projects?.[0]?.id || "";
+  const currentProject = projects?.find((p) => p.id === projectId);
 
   /* ── Clients ──────────────────── */
   const { data: clients } = useQuery({
@@ -261,7 +290,6 @@ export default function RRPagesPage() {
     if (statusFilter === "not_indexed") list = list.filter((r) => r.verdict && r.verdict !== "PASS" && r.indexingStatus !== "INDEXING_ALLOWED");
     if (statusFilter === "rented") list = list.filter((r) => r.isRented);
     if (statusFilter === "available") list = list.filter((r) => !r.isRented);
-    // Reset page when filters change - handled via useEffect below
 
     list = [...list].sort((a, b) => {
       const av = a[sortField] ?? 0;
@@ -272,12 +300,10 @@ export default function RRPagesPage() {
     return list;
   }, [rows, search, statusFilter, sortField, sortAsc]);
 
-  // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_TABLE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const paginated = filtered.slice(safePage * PAGE_TABLE_SIZE, (safePage + 1) * PAGE_TABLE_SIZE);
 
-  // Reset page when filters/sort change
   useEffect(() => { setPage(0); }, [search, statusFilter, sortField, sortAsc]);
 
   /* ── Indexing action ── */
@@ -302,7 +328,6 @@ export default function RRPagesPage() {
     },
   });
 
-  /* ── Inline update rr_pages fields ── */
   const updateFieldMutation = useMutation({
     mutationFn: async ({ url, field, value }: { url: string; field: string; value: number }) => {
       const existing = rrPages?.[url];
@@ -311,11 +336,7 @@ export default function RRPagesPage() {
         if (error) throw error;
       } else {
         const { error } = await supabase.from("rr_pages").insert({
-          owner_id: user!.id,
-          project_id: projectId,
-          url,
-          status: "disponivel",
-          [field]: value,
+          owner_id: user!.id, project_id: projectId, url, status: "disponivel", [field]: value,
         });
         if (error) throw error;
       }
@@ -327,33 +348,27 @@ export default function RRPagesPage() {
     onError: () => toast.error("Erro ao salvar"),
   });
 
-  /* ── Rent / Unrent page ── */
   const rentMutation = useMutation({
     mutationFn: async (formData: { url: string; client_id: string; monthly_value: number; avg_leads_month: number; avg_lead_value: number }) => {
       const existing = rrPages?.[formData.url];
       if (existing) {
         const { error } = await supabase.from("rr_pages").update({
           status: "alugada", client_id: formData.client_id,
-          monthly_value: formData.monthly_value,
-          avg_leads_month: formData.avg_leads_month,
-          avg_lead_value: formData.avg_lead_value,
+          monthly_value: formData.monthly_value, avg_leads_month: formData.avg_leads_month, avg_lead_value: formData.avg_lead_value,
         }).eq("id", existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("rr_pages").insert({
           owner_id: user!.id, project_id: projectId, url: formData.url,
           status: "alugada", client_id: formData.client_id,
-          monthly_value: formData.monthly_value,
-          avg_leads_month: formData.avg_leads_month,
-          avg_lead_value: formData.avg_lead_value,
+          monthly_value: formData.monthly_value, avg_leads_month: formData.avg_leads_month, avg_lead_value: formData.avg_lead_value,
         });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rr-pages-rental", projectId] });
-      setRentDialogOpen(false);
-      setRentingUrl(null);
+      setRentDialogOpen(false); setRentingUrl(null);
       toast.success("Página alugada com sucesso!");
     },
     onError: () => toast.error("Erro ao alugar página"),
@@ -375,8 +390,7 @@ export default function RRPagesPage() {
     if (!rentingUrl) return;
     const fd = new FormData(e.currentTarget);
     rentMutation.mutate({
-      url: rentingUrl,
-      client_id: fd.get("client_id") as string,
+      url: rentingUrl, client_id: fd.get("client_id") as string,
       monthly_value: Number(fd.get("monthly_value") || 0),
       avg_leads_month: Number(fd.get("avg_leads_month") || 0),
       avg_lead_value: Number(fd.get("avg_lead_value") || 0),
@@ -394,6 +408,153 @@ export default function RRPagesPage() {
   const rentedCount = rows.filter((r) => r.isRented).length;
   const totalRevenue = rows.reduce((s, r) => s + r.monthlyValue, 0);
   const totalLeadRevenue = rows.reduce((s, r) => s + (r.avgLeadsMonth * r.avgLeadValue), 0);
+
+  /* ── Export CSV ── */
+  const handleExportCSV = useCallback((dataSet: "filtered" | "all") => {
+    const data = dataSet === "filtered" ? filtered : rows;
+    const csvRows = data.map((r) => ({
+      URL: r.url,
+      Cliques: r.clicks,
+      Impressões: r.impressions,
+      CTR: `${r.ctr.toFixed(1)}%`,
+      Posição: r.position > 0 ? r.position.toFixed(1) : "",
+      "Leads/mês": r.avgLeadsMonth,
+      "Vlr Lead": r.avgLeadValue,
+      Locação: r.monthlyValue,
+      "ROI Interno": calcRoiInterno(r) !== null ? `${calcRoiInterno(r)!.toFixed(0)}%` : "",
+      "ROI Cliente": calcRoiCliente(r) !== null ? `${calcRoiCliente(r)!.toFixed(0)}%` : "",
+      Status: r.isRented ? "Alugada" : "Disponível",
+      Cliente: r.clientName || "",
+    }));
+    exportCSV(csvRows, `paginas-rr-${currentProject?.domain || "export"}`);
+    toast.success(`${csvRows.length} linhas exportadas em CSV`);
+  }, [filtered, rows, currentProject]);
+
+  /* ── Export PDF table ── */
+  const handleExportPDFTable = useCallback(() => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text(`Inventário de Páginas — ${currentProject?.name || ""}`, 14, 18);
+    doc.setFontSize(8);
+    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")} • ${filtered.length} URLs`, 14, 24);
+
+    autoTable(doc, {
+      startY: 28,
+      styles: { fontSize: 6, cellPadding: 1.5 },
+      headStyles: { fillColor: [30, 30, 40], textColor: 255, fontSize: 6 },
+      head: [["URL", "Cliques", "Impr.", "CTR", "Pos.", "Leads/mês", "Vlr Lead", "Locação", "ROI Int.", "ROI Cli.", "Status", "Cliente"]],
+      body: filtered.map((r) => [
+        r.url.replace(/^https?:\/\/[^/]+/, ""),
+        r.clicks, r.impressions, `${r.ctr.toFixed(1)}%`,
+        r.position > 0 ? r.position.toFixed(1) : "—",
+        r.avgLeadsMonth, fmtBRL(r.avgLeadValue), fmtBRL(r.monthlyValue),
+        calcRoiInterno(r) !== null ? `${calcRoiInterno(r)!.toFixed(0)}%` : "—",
+        calcRoiCliente(r) !== null ? `${calcRoiCliente(r)!.toFixed(0)}%` : "—",
+        r.isRented ? "Alugada" : "Disponível",
+        r.clientName || "—",
+      ]),
+    });
+    doc.save(`paginas-rr-${currentProject?.domain || "export"}.pdf`);
+    toast.success("PDF exportado!");
+  }, [filtered, currentProject]);
+
+  /* ── Client Report PDF ── */
+  const generateClientReport = useCallback((clientId?: string) => {
+    const rentedRows = rows.filter((r) => r.isRented && (!clientId || (rrPages?.[r.url]?.client_id === clientId)));
+    if (rentedRows.length === 0) { toast.error("Nenhuma página alugada encontrada"); return; }
+
+    const clientName = clientId
+      ? clients?.find((c) => c.id === clientId)?.company_name || "Cliente"
+      : "Todos os Clientes";
+
+    const totalInvestimento = rentedRows.reduce((s, r) => s + r.monthlyValue, 0);
+    const totalLeads = rentedRows.reduce((s, r) => s + r.avgLeadsMonth, 0);
+    const totalValorLeads = rentedRows.reduce((s, r) => s + (r.avgLeadsMonth * r.avgLeadValue), 0);
+    const roiGeral = totalInvestimento > 0 ? ((totalValorLeads - totalInvestimento) / totalInvestimento) * 100 : 0;
+
+    const doc = new jsPDF();
+    let y = 20;
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(30, 30, 40);
+    doc.text("Relatório de Performance", 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${currentProject?.name || "Projeto"} • ${clientName}`, 14, y);
+    y += 5;
+    doc.text(`Período: ${new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}`, 14, y);
+    y += 12;
+
+    // KPI Summary
+    doc.setFillColor(245, 245, 250);
+    doc.roundedRect(14, y, 182, 32, 3, 3, "F");
+    y += 8;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+
+    const kpis = [
+      { label: "Investimento", value: fmtBRL(totalInvestimento), x: 24 },
+      { label: "Leads/mês", value: String(totalLeads), x: 70 },
+      { label: "Valor dos Leads", value: fmtBRL(totalValorLeads), x: 116 },
+      { label: "ROI", value: `${roiGeral.toFixed(0)}%`, x: 162 },
+    ];
+
+    kpis.forEach((kpi) => {
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 130);
+      doc.text(kpi.label, kpi.x, y);
+      doc.setFontSize(14);
+      doc.setTextColor(30, 30, 40);
+      doc.text(kpi.value, kpi.x, y + 10);
+    });
+    y += 28;
+
+    // ROI explanation
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 70);
+    doc.text("O ROI demonstra que para cada R$1,00 investido, o retorno em leads qualificados é de", 14, y);
+    y += 5;
+    doc.setFontSize(11);
+    doc.setTextColor(16, 185, 129);
+    doc.text(`${fmtBRL(totalValorLeads / Math.max(totalInvestimento, 1))}`, 14, y);
+    y += 10;
+
+    // Table
+    autoTable(doc, {
+      startY: y,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [30, 30, 40], textColor: 255, fontSize: 7 },
+      head: [["Página", "Cliques", "Leads/mês", "Vlr Lead", "Investimento", "Retorno Leads", "ROI"]],
+      body: rentedRows.map((r) => {
+        const valorLeads = r.avgLeadsMonth * r.avgLeadValue;
+        const roi = calcRoiCliente(r);
+        return [
+          r.url.replace(/^https?:\/\/[^/]+/, ""),
+          r.clicks,
+          r.avgLeadsMonth,
+          fmtBRL(r.avgLeadValue),
+          fmtBRL(r.monthlyValue),
+          fmtBRL(valorLeads),
+          roi !== null ? `${roi.toFixed(0)}%` : "—",
+        ];
+      }),
+      foot: [[
+        "TOTAL", "", String(totalLeads), "", fmtBRL(totalInvestimento), fmtBRL(totalValorLeads), `${roiGeral.toFixed(0)}%`
+      ]],
+      footStyles: { fillColor: [240, 240, 245], textColor: [30, 30, 40], fontStyle: "bold" },
+    });
+
+    // Footer
+    const finalY = (doc as any).lastAutoTable?.finalY || 200;
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 160);
+    doc.text(`Gerado automaticamente em ${new Date().toLocaleString("pt-BR")}`, 14, finalY + 10);
+
+    doc.save(`relatorio-cliente-${clientName.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 7)}.pdf`);
+    toast.success("Relatório do cliente gerado!");
+  }, [rows, rrPages, clients, currentProject]);
 
   const SortHeader = ({ label, field, align }: { label: string; field: SortField; align?: string }) => (
     <th
@@ -413,11 +574,8 @@ export default function RRPagesPage() {
     if (isEditing) {
       return (
         <Input
-          type="number"
-          step="0.01"
-          defaultValue={value}
-          className="h-6 w-20 text-[10px] p-1"
-          autoFocus
+          type="number" step="0.01" defaultValue={value}
+          className="h-6 w-20 text-[10px] p-1" autoFocus
           onBlur={(e) => {
             const v = Number(e.target.value);
             if (v !== value) updateFieldMutation.mutate({ url: row.url, field, value: v });
@@ -431,29 +589,30 @@ export default function RRPagesPage() {
       );
     }
     return (
-      <span
-        className="cursor-pointer hover:bg-muted/80 rounded px-1 py-0.5 transition-colors"
-        onClick={() => setEditingCell({ url: row.url, field })}
-        title="Clique para editar"
-      >
+      <span className="cursor-pointer hover:bg-muted/80 rounded px-1 py-0.5 transition-colors"
+        onClick={() => setEditingCell({ url: row.url, field })} title="Clique para editar">
         {value > 0 ? `${prefix}${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
       </span>
     );
   };
 
-  /* ── ROI calc ── */
-  const calcRoi = (row: PageRow) => {
-    const revenue = row.avgLeadsMonth * row.avgLeadValue;
-    const cost = row.monthlyValue;
-    if (cost <= 0) return null;
-    return ((revenue - cost) / cost) * 100;
-  };
+  /* ── Unique rented clients for report selector ── */
+  const rentedClients = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => {
+      if (r.isRented && r.clientName) {
+        const cid = rrPages?.[r.url]?.client_id;
+        if (cid) map.set(cid, r.clientName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [rows, rrPages]);
 
   return (
     <>
       <TopBar title="Páginas" subtitle="Inventário completo de URLs com métricas GSC, indexação, leads e ROI" />
       <div className="p-4 sm:p-6 space-y-5">
-        {/* Project Selector */}
+        {/* Project Selector + Export Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end justify-between">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
@@ -489,8 +648,26 @@ export default function RRPagesPage() {
               </select>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{filtered.length} de {rows.length} URLs</p>
+
+          {/* Export & Report buttons */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => handleExportCSV("filtered")}>
+              <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExportPDFTable}>
+              <FileText className="h-3.5 w-3.5" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => handleExportCSV("all")}>
+              <Download className="h-3.5 w-3.5" /> Exportar Tudo
+            </Button>
+            <Button variant="default" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setReportDialogOpen(true)}>
+              <FileText className="h-3.5 w-3.5" /> Relatório Cliente
+            </Button>
+          </div>
         </div>
+
+        {/* Info */}
+        <p className="text-xs text-muted-foreground">{filtered.length} de {rows.length} URLs</p>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -529,7 +706,8 @@ export default function RRPagesPage() {
                       <SortHeader label="Leads/mês" field="avgLeadsMonth" align="right" />
                       <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap">Vlr Lead</th>
                       <SortHeader label="Locação" field="monthlyValue" align="right" />
-                      <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap">ROI</th>
+                      <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap" title="ROI interno: retorno sobre custo operacional">ROI Int.</th>
+                      <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap" title="ROI do cliente: retorno sobre investimento em locação">ROI Cli.</th>
                       <th className="text-left font-medium text-muted-foreground p-2 whitespace-nowrap">Status</th>
                       <th className="text-right font-medium text-muted-foreground p-2">Ações</th>
                     </tr>
@@ -542,7 +720,8 @@ export default function RRPagesPage() {
                       const isSubmitting = indexingUrls.has(row.url);
                       const reqStatus = row.indexRequestStatus;
                       const reqBadge = reqStatus ? IDX_REQUEST_BADGE[reqStatus] : null;
-                      const roi = calcRoi(row);
+                      const roiInt = calcRoiInterno(row);
+                      const roiCli = calcRoiCliente(row);
 
                       return (
                         <motion.tr
@@ -569,9 +748,7 @@ export default function RRPagesPage() {
                           </td>
                           <td className="p-2">
                             {reqBadge ? (
-                              <Badge variant="outline" className={`text-[10px] ${reqBadge.cls}`}>
-                                {reqBadge.label}
-                              </Badge>
+                              <Badge variant="outline" className={`text-[10px] ${reqBadge.cls}`}>{reqBadge.label}</Badge>
                             ) : (
                               <span className="text-muted-foreground text-[10px]">—</span>
                             )}
@@ -585,10 +762,21 @@ export default function RRPagesPage() {
                           <td className="p-2 text-right tabular-nums">
                             <EditableCell row={row} field="monthly_value" value={row.monthlyValue} prefix="R$ " />
                           </td>
+                          {/* ROI Interno */}
                           <td className="p-2 text-right tabular-nums">
-                            {roi !== null ? (
-                              <Badge variant="outline" className={`text-[10px] ${roi >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-                                {roi >= 0 ? "+" : ""}{roi.toFixed(0)}%
+                            {roiInt !== null ? (
+                              <Badge variant="outline" className={`text-[10px] ${roiInt >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                                {roiInt >= 0 ? "+" : ""}{roiInt > 900 ? "∞" : `${roiInt.toFixed(0)}%`}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            )}
+                          </td>
+                          {/* ROI Cliente */}
+                          <td className="p-2 text-right tabular-nums">
+                            {roiCli !== null ? (
+                              <Badge variant="outline" className={`text-[10px] ${roiCli >= 0 ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                                {roiCli >= 0 ? "+" : ""}{roiCli.toFixed(0)}%
                               </Badge>
                             ) : (
                               <span className="text-muted-foreground text-[10px]">—</span>
@@ -606,26 +794,17 @@ export default function RRPagesPage() {
                           </td>
                           <td className="p-2 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost" size="sm"
-                                className="h-6 text-[10px] gap-1 px-1.5"
-                                disabled={isSubmitting}
-                                onClick={() => indexMutation.mutate(row.url)}
-                                title="Enviar para indexação"
-                              >
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5"
+                                disabled={isSubmitting} onClick={() => indexMutation.mutate(row.url)} title="Enviar para indexação">
                                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                                 Indexar
                               </Button>
                               {row.isRented ? (
                                 <Button variant="outline" size="sm" className="h-6 text-[10px] px-1.5"
-                                  onClick={() => row.rrPageId && unrentMutation.mutate(row.rrPageId)}>
-                                  Liberar
-                                </Button>
+                                  onClick={() => row.rrPageId && unrentMutation.mutate(row.rrPageId)}>Liberar</Button>
                               ) : (
                                 <Button variant="default" size="sm" className="h-6 text-[10px] px-1.5"
-                                  onClick={() => { setRentingUrl(row.url); setRentDialogOpen(true); }}>
-                                  Alugar
-                                </Button>
+                                  onClick={() => { setRentingUrl(row.url); setRentDialogOpen(true); }}>Alugar</Button>
                               )}
                             </div>
                           </td>
@@ -643,23 +822,11 @@ export default function RRPagesPage() {
                   {safePage * PAGE_TABLE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_TABLE_SIZE, filtered.length)} de {filtered.length}
                 </span>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost" size="icon"
-                    className="h-6 w-6"
-                    disabled={safePage === 0}
-                    onClick={() => setPage(p => p - 1)}
-                  >
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safePage === 0} onClick={() => setPage(p => p - 1)}>
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </Button>
-                  <span className="text-[10px] text-muted-foreground px-1">
-                    {safePage + 1} / {totalPages}
-                  </span>
-                  <Button
-                    variant="ghost" size="icon"
-                    className="h-6 w-6"
-                    disabled={safePage >= totalPages - 1}
-                    onClick={() => setPage(p => p + 1)}
-                  >
+                  <span className="text-[10px] text-muted-foreground px-1">{safePage + 1} / {totalPages}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={safePage >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -698,14 +865,38 @@ export default function RRPagesPage() {
                 <Input name="avg_lead_value" type="number" step="0.01" defaultValue={0} className="h-9 text-xs" />
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setRentDialogOpen(false); setRentingUrl(null); }}>
-                  Cancelar
-                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { setRentDialogOpen(false); setRentingUrl(null); }}>Cancelar</Button>
                 <Button type="submit" size="sm" disabled={rentMutation.isPending}>
                   {rentMutation.isPending ? "Salvando…" : "Alugar"}
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Client Report Dialog */}
+        <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Gerar Relatório do Cliente</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground mb-4">
+              Gera um PDF profissional mostrando investimento vs retorno em leads para enviar ao cliente.
+            </p>
+            <div className="space-y-3">
+              <Button variant="outline" className="w-full justify-start text-xs h-9 gap-2" onClick={() => { generateClientReport(); setReportDialogOpen(false); }}>
+                <FileText className="h-3.5 w-3.5" /> Todos os Clientes
+              </Button>
+              {rentedClients.map((c) => (
+                <Button key={c.id} variant="outline" className="w-full justify-start text-xs h-9 gap-2"
+                  onClick={() => { generateClientReport(c.id); setReportDialogOpen(false); }}>
+                  <FileText className="h-3.5 w-3.5" /> {c.name}
+                </Button>
+              ))}
+              {rentedClients.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma página alugada para gerar relatório.</p>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
