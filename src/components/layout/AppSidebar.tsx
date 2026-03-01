@@ -113,7 +113,7 @@ const analiticaNav = [
   { title: "Ads & UTM", url: "/analitica-rankito/ads-utm", icon: Target },
   { title: "Conversão Offline", url: "/analitica-rankito/offline", icon: PhoneCall },
   { title: "Event Builder", url: "/analitica-rankito/event-builder", icon: MousePointerClick },
-  { title: "Metas", url: "/analitica-rankito/metas", icon: Flag },
+  { title: "Metas Personalizadas", url: "/analitica-rankito/metas", icon: Flag },
   { title: "Instalar o Pixel", url: "/analitica-rankito/pixel", icon: Code },
 ];
 
