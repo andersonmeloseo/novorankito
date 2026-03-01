@@ -124,25 +124,11 @@ export default function BillingPage() {
   };
 
   const handleCheckout = async (plan: DbPlan) => {
-    const isAnnual = billingInterval === "annual";
-    
-    // Use direct payment link if available
-    const directLink = isAnnual
-      ? ((plan as any).stripe_annual_checkout_url || plan.stripe_checkout_url)
-      : plan.stripe_checkout_url;
-    
-    if (directLink) {
-      window.location.href = directLink;
-      return;
-    }
-
-    const priceId = isAnnual && plan.stripe_annual_price_id ? plan.stripe_annual_price_id : plan.stripe_price_id;
-    if (!priceId) return;
-    setLoadingPlan(priceId);
+    setLoadingPlan(plan.slug);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
-          priceId,
+          planSlug: plan.slug,
           trialDays: plan.trial_days || undefined,
           couponCode: appliedCoupon?.code || undefined,
           billingInterval,
@@ -150,6 +136,7 @@ export default function BillingPage() {
       });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
+      else throw new Error("URL de checkout não retornada");
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao iniciar checkout", variant: "destructive" });
     } finally {
@@ -169,8 +156,6 @@ export default function BillingPage() {
       setLoadingPortal(false);
     }
   };
-
-  const currentPriceId = subscription.price_id;
 
   return (
     <div className="flex-1 bg-background">
@@ -249,8 +234,7 @@ export default function BillingPage() {
             <div className={`grid gap-4 ${plans.length <= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
               {plans.map((plan) => {
                 const isAnnual = billingInterval === "annual";
-                const priceId = isAnnual && plan.stripe_annual_price_id ? plan.stripe_annual_price_id : plan.stripe_price_id;
-                const isCurrent = currentPriceId === priceId;
+                const isCurrent = subscription.subscribed && subscription.price_id === plan.slug;
                 const features = buildFeatures(plan);
 
                 const hasAnnualPrice = plan.annual_price != null && plan.annual_price > 0;
@@ -301,10 +285,10 @@ export default function BillingPage() {
                       variant={isCurrent ? "outline" : "default"}
                       size="sm"
                       className="w-full text-xs"
-                      disabled={isCurrent || !priceId || loadingPlan === priceId}
+                      disabled={isCurrent || loadingPlan === plan.slug}
                       onClick={() => handleCheckout(plan)}
                     >
-                      {loadingPlan === priceId && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                      {loadingPlan === plan.slug && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                       {isCurrent ? "Plano Atual" : plan.trial_days > 0 ? `Testar ${plan.trial_days} dias grátis` : "Assinar este plano"}
                     </Button>
                   </Card>
