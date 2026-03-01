@@ -2459,6 +2459,8 @@ export type Database = {
       }
       rr_pages: {
         Row: {
+          avg_lead_value: number | null
+          avg_leads_month: number | null
           client_id: string | null
           contract_id: string | null
           conversions: number
@@ -2479,6 +2481,8 @@ export type Database = {
           url: string
         }
         Insert: {
+          avg_lead_value?: number | null
+          avg_leads_month?: number | null
           client_id?: string | null
           contract_id?: string | null
           conversions?: number
@@ -2499,6 +2503,8 @@ export type Database = {
           url: string
         }
         Update: {
+          avg_lead_value?: number | null
+          avg_leads_month?: number | null
           client_id?: string | null
           contract_id?: string | null
           conversions?: number
