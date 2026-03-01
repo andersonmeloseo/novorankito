@@ -1497,7 +1497,7 @@ function LiveConvoDialog({ open, onOpenChange, activeRole, targetRole, entries, 
 }
 
 
-function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations, deploymentId }: {
+function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, vacations, deploymentId, deploymentStatus }: {
   roles: any[];
   hierarchy: Record<string, string>;
   agentResults: Record<string, any>;
@@ -1505,17 +1505,18 @@ function ReorganizeButton({ roles, hierarchy, agentResults, lastRun, setNodes, v
   setNodes: (nodes: any[]) => void;
   vacations: Set<string>;
   deploymentId: string;
+  deploymentStatus?: string;
 }) {
   const { fitView } = useReactFlow();
   const handleReorganize = useCallback(() => {
-    const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, undefined, undefined, undefined, undefined, vacations);
+    const { rfNodes } = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, undefined, undefined, undefined, undefined, vacations, undefined, undefined, deploymentStatus);
     // Save freshly computed positions
     const freshPositions: Record<string, { x: number; y: number }> = {};
     rfNodes.forEach((n: any) => { freshPositions[n.id] = n.position; });
     savePositions(deploymentId, freshPositions);
     setNodes(rfNodes);
     setTimeout(() => fitView({ padding: 0.3, duration: 500 }), 50);
-  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView, vacations, deploymentId]);
+  }, [roles, hierarchy, agentResults, lastRun, setNodes, fitView, vacations, deploymentId, deploymentStatus]);
 
   return (
     <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm" onClick={handleReorganize}>
@@ -1629,6 +1630,7 @@ function buildNodesAndEdges(
   vacations: Set<string> = new Set(),
   onClickNode?: (id: string) => void,
   onDeleteEdge?: (id: string) => void,
+  deploymentStatus?: string,
 ) {
   const getDepth = (id: string, d = 0): number => {
     if (id === "ceo" || d > 8) return d;
@@ -1638,8 +1640,11 @@ function buildNodesAndEdges(
 
   const nodePositions = computeTreePositions(roles, hierarchy);
 
+  const isPaused = deploymentStatus === "paused";
+
   const getStatus = (roleId: string): AgentNodeData["status"] => {
     if (vacations.has(roleId)) return "vacation";
+    if (isPaused) return "idle";
     if (!lastRun) return "idle";
     const ar = agentResults[roleId];
     if (!ar) return lastRun.status === "running" ? "waiting" : "idle";
@@ -2502,7 +2507,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
 
   const { rfNodes: initialNodes, rfEdges: initialEdges } = useMemo(
     () => {
-      const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
+      const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge, deployment.status);
       // Apply spotlight
       if (spotlightRoleId) {
         result.rfNodes = result.rfNodes.map(n => ({
@@ -2521,7 +2526,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
   setNodesRef.current = setNodes; // wire ref so handleCeoCommand can patch nodes live
 
   useEffect(() => {
-    const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge);
+    const result = buildNodesAndEdges(roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, (id) => { setProfileRoleId(id); setProfileOpen(true); }, handleDeleteEdge, deployment.status);
     if (spotlightRoleId) {
       result.rfNodes = result.rfNodes.map(n => ({
         ...n,
@@ -2538,7 +2543,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
     }
     setNodes(result.rfNodes);
     setEdges(result.rfEdges);
-  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId, deployment.id]);
+  }, [roles, hierarchy, agentResults, lastRun, handleFireMember, handlePromoteMember, handleDemoteMember, handleVacationToggle, vacations, handleDeleteEdge, spotlightRoleId, deployment.id, deployment.status]);
 
   const messages = useMemo(() => buildMessages(depRuns, roles, hierarchy), [depRuns, roles, hierarchy]);
 
@@ -2669,7 +2674,7 @@ Responda APENAS com o índice numérico do agente (ex: 0, 1, 2...).`;
                     <ReorganizeButton
                       roles={roles} hierarchy={hierarchy} agentResults={agentResults}
                       lastRun={lastRun} setNodes={setNodes} vacations={vacations}
-                      deploymentId={deployment.id}
+                      deploymentId={deployment.id} deploymentStatus={deployment.status}
                     />
                     <Button variant="outline" size="sm"
                       className="h-7 text-[10px] gap-1.5 px-2.5 bg-card/90 backdrop-blur-sm"
