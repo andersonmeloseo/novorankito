@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Globe, Send, CheckCircle2, XCircle, Clock, AlertTriangle,
-  Loader2, ArrowUpDown, ChevronDown,
+  Loader2, ArrowUpDown, DollarSign, TrendingUp, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -17,7 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -35,7 +35,10 @@ interface PageRow {
   isRented: boolean;
   clientName: string | null;
   monthlyValue: number;
+  avgLeadsMonth: number;
+  avgLeadValue: number;
   rrPageId: string | null;
+  indexRequestStatus: string | null;
 }
 
 const INDEXING_BADGE: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
@@ -46,7 +49,14 @@ const INDEXING_BADGE: Record<string, { label: string; icon: React.ElementType; c
   VERDICT_UNSPECIFIED: { label: "Desconhecido", icon: AlertTriangle, cls: "bg-muted text-muted-foreground" },
 };
 
-type SortField = "url" | "clicks" | "impressions" | "ctr" | "position";
+const IDX_REQUEST_BADGE: Record<string, { label: string; cls: string }> = {
+  pending: { label: "Pendente", cls: "bg-warning/10 text-warning" },
+  processing: { label: "Processando", cls: "bg-primary/10 text-primary" },
+  completed: { label: "Enviada", cls: "bg-success/10 text-success" },
+  failed: { label: "Falhou", cls: "bg-destructive/10 text-destructive" },
+};
+
+type SortField = "url" | "clicks" | "impressions" | "ctr" | "position" | "avgLeadsMonth" | "monthlyValue";
 
 export default function RRPagesPage() {
   const { user } = useAuth();
@@ -59,6 +69,7 @@ export default function RRPagesPage() {
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
   const [rentingUrl, setRentingUrl] = useState<string | null>(null);
   const [indexingUrls, setIndexingUrls] = useState<Set<string>>(new Set());
+  const [editingCell, setEditingCell] = useState<{ url: string; field: string } | null>(null);
 
   /* ── Projects ──────────────────── */
   const { data: projects } = useQuery({
@@ -74,7 +85,6 @@ export default function RRPagesPage() {
     enabled: !!user,
   });
 
-  // Auto-select first project
   const projectId = selectedProject || projects?.[0]?.id || "";
 
   /* ── Clients ──────────────────── */
@@ -90,7 +100,7 @@ export default function RRPagesPage() {
     enabled: !!user,
   });
 
-  /* ── Site URLs (from sitemap/GSC) — paginated fetch ── */
+  /* ── Site URLs — paginated fetch ── */
   const { data: siteUrls, isLoading: loadingUrls } = useQuery({
     queryKey: ["rr-site-urls", projectId],
     queryFn: async () => {
@@ -100,11 +110,8 @@ export default function RRPagesPage() {
       let hasMore = true;
       while (hasMore) {
         const { data } = await supabase
-          .from("site_urls")
-          .select("url")
-          .eq("project_id", projectId)
-          .order("url")
-          .range(from, from + PAGE_SIZE - 1);
+          .from("site_urls").select("url").eq("project_id", projectId)
+          .order("url").range(from, from + PAGE_SIZE - 1);
         const rows = data || [];
         allRows = allRows.concat(rows);
         hasMore = rows.length === PAGE_SIZE;
@@ -115,7 +122,7 @@ export default function RRPagesPage() {
     enabled: !!projectId,
   });
 
-  /* ── SEO Metrics (aggregated by page) — paginated ──── */
+  /* ── SEO Metrics — paginated ──── */
   const { data: seoMetrics } = useQuery({
     queryKey: ["rr-seo-metrics", projectId],
     queryFn: async () => {
@@ -125,10 +132,8 @@ export default function RRPagesPage() {
       let hasMore = true;
       while (hasMore) {
         const { data } = await supabase
-          .from("seo_metrics")
-          .select("url, clicks, impressions, ctr, position")
-          .eq("project_id", projectId)
-          .eq("dimension_type", "page")
+          .from("seo_metrics").select("url, clicks, impressions, ctr, position")
+          .eq("project_id", projectId).eq("dimension_type", "page")
           .range(from, from + PAGE_SIZE - 1);
         const rows = data || [];
         allData = allData.concat(rows);
@@ -149,7 +154,7 @@ export default function RRPagesPage() {
     enabled: !!projectId,
   });
 
-  /* ── Index Coverage — paginated ──────────────────── */
+  /* ── Index Coverage — paginated ── */
   const { data: indexCoverage } = useQuery({
     queryKey: ["rr-index-coverage", projectId],
     queryFn: async () => {
@@ -159,10 +164,8 @@ export default function RRPagesPage() {
       let hasMore = true;
       while (hasMore) {
         const { data } = await supabase
-          .from("index_coverage")
-          .select("url, verdict, indexing_state, last_crawl_time")
-          .eq("project_id", projectId)
-          .range(from, from + PAGE_SIZE - 1);
+          .from("index_coverage").select("url, verdict, indexing_state, last_crawl_time")
+          .eq("project_id", projectId).range(from, from + PAGE_SIZE - 1);
         const rows = data || [];
         allData = allData.concat(rows);
         hasMore = rows.length === PAGE_SIZE;
@@ -177,13 +180,41 @@ export default function RRPagesPage() {
     enabled: !!projectId,
   });
 
-  /* ── R&R Pages (rental data) ──────────────────── */
+  /* ── Indexing Requests (status tracking) ── */
+  const { data: indexRequests } = useQuery({
+    queryKey: ["rr-index-requests", projectId],
+    queryFn: async () => {
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await supabase
+          .from("indexing_requests").select("url, status, submitted_at")
+          .eq("project_id", projectId).order("submitted_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        const rows = data || [];
+        allData = allData.concat(rows);
+        hasMore = rows.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+      // Keep only the latest request per URL
+      const map: Record<string, string> = {};
+      allData.forEach((r: any) => {
+        if (!map[r.url]) map[r.url] = r.status;
+      });
+      return map;
+    },
+    enabled: !!projectId,
+  });
+
+  /* ── R&R Pages (rental data) ── */
   const { data: rrPages } = useQuery({
     queryKey: ["rr-pages-rental", projectId],
     queryFn: async () => {
       const { data } = await supabase
         .from("rr_pages")
-        .select("id, url, status, client_id, monthly_value, rr_clients(company_name)")
+        .select("id, url, status, client_id, monthly_value, avg_leads_month, avg_lead_value, rr_clients(company_name)")
         .eq("project_id", projectId);
       const map: Record<string, any> = {};
       data?.forEach((r: any) => { map[r.url] = r; });
@@ -192,13 +223,14 @@ export default function RRPagesPage() {
     enabled: !!projectId,
   });
 
-  /* ── Build unified rows ──────────────────── */
+  /* ── Build unified rows ── */
   const rows = useMemo<PageRow[]>(() => {
     if (!siteUrls) return [];
     return siteUrls.map((su) => {
       const metrics = seoMetrics?.[su.url];
       const coverage = indexCoverage?.[su.url];
       const rental = rrPages?.[su.url];
+      const idxReqStatus = indexRequests?.[su.url] || null;
       return {
         url: su.url,
         clicks: metrics?.clicks || 0,
@@ -211,12 +243,15 @@ export default function RRPagesPage() {
         isRented: rental?.status === "alugada",
         clientName: rental?.rr_clients?.company_name || null,
         monthlyValue: Number(rental?.monthly_value || 0),
+        avgLeadsMonth: Number(rental?.avg_leads_month || 0),
+        avgLeadValue: Number(rental?.avg_lead_value || 0),
         rrPageId: rental?.id || null,
+        indexRequestStatus: idxReqStatus,
       };
     });
-  }, [siteUrls, seoMetrics, indexCoverage, rrPages]);
+  }, [siteUrls, seoMetrics, indexCoverage, rrPages, indexRequests]);
 
-  /* ── Filter & Sort ──────────────────── */
+  /* ── Filter & Sort ── */
   const filtered = useMemo(() => {
     let list = rows;
     if (search) list = list.filter((r) => r.url.toLowerCase().includes(search.toLowerCase()));
@@ -234,7 +269,7 @@ export default function RRPagesPage() {
     return list;
   }, [rows, search, statusFilter, sortField, sortAsc]);
 
-  /* ── Indexing action ──────────────────── */
+  /* ── Indexing action ── */
   const indexMutation = useMutation({
     mutationFn: async (url: string) => {
       setIndexingUrls((prev) => new Set(prev).add(url));
@@ -247,6 +282,7 @@ export default function RRPagesPage() {
     onSuccess: (_, url) => {
       setIndexingUrls((prev) => { const s = new Set(prev); s.delete(url); return s; });
       queryClient.invalidateQueries({ queryKey: ["rr-index-coverage", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["rr-index-requests", projectId] });
       toast.success("URL enviada para indexação!");
     },
     onError: (_, url) => {
@@ -255,25 +291,50 @@ export default function RRPagesPage() {
     },
   });
 
-  /* ── Rent / Unrent page ──────────────────── */
-  const rentMutation = useMutation({
-    mutationFn: async (formData: { url: string; client_id: string; monthly_value: number }) => {
-      const existing = rrPages?.[formData.url];
+  /* ── Inline update rr_pages fields ── */
+  const updateFieldMutation = useMutation({
+    mutationFn: async ({ url, field, value }: { url: string; field: string; value: number }) => {
+      const existing = rrPages?.[url];
       if (existing) {
-        const { error } = await supabase.from("rr_pages").update({
-          status: "alugada",
-          client_id: formData.client_id,
-          monthly_value: formData.monthly_value,
-        }).eq("id", existing.id);
+        const { error } = await supabase.from("rr_pages").update({ [field]: value }).eq("id", existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("rr_pages").insert({
           owner_id: user!.id,
           project_id: projectId,
-          url: formData.url,
-          status: "alugada",
-          client_id: formData.client_id,
+          url,
+          status: "disponivel",
+          [field]: value,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rr-pages-rental", projectId] });
+      setEditingCell(null);
+    },
+    onError: () => toast.error("Erro ao salvar"),
+  });
+
+  /* ── Rent / Unrent page ── */
+  const rentMutation = useMutation({
+    mutationFn: async (formData: { url: string; client_id: string; monthly_value: number; avg_leads_month: number; avg_lead_value: number }) => {
+      const existing = rrPages?.[formData.url];
+      if (existing) {
+        const { error } = await supabase.from("rr_pages").update({
+          status: "alugada", client_id: formData.client_id,
           monthly_value: formData.monthly_value,
+          avg_leads_month: formData.avg_leads_month,
+          avg_lead_value: formData.avg_lead_value,
+        }).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("rr_pages").insert({
+          owner_id: user!.id, project_id: projectId, url: formData.url,
+          status: "alugada", client_id: formData.client_id,
+          monthly_value: formData.monthly_value,
+          avg_leads_month: formData.avg_leads_month,
+          avg_lead_value: formData.avg_lead_value,
         });
         if (error) throw error;
       }
@@ -306,6 +367,8 @@ export default function RRPagesPage() {
       url: rentingUrl,
       client_id: fd.get("client_id") as string,
       monthly_value: Number(fd.get("monthly_value") || 0),
+      avg_leads_month: Number(fd.get("avg_leads_month") || 0),
+      avg_lead_value: Number(fd.get("avg_lead_value") || 0),
     });
   };
 
@@ -314,15 +377,16 @@ export default function RRPagesPage() {
     else { setSortField(field); setSortAsc(false); }
   };
 
-  /* ── KPIs ──────────────────── */
+  /* ── KPIs ── */
   const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
-  const totalImpressions = rows.reduce((s, r) => s + r.impressions, 0);
   const indexedCount = rows.filter((r) => r.verdict === "PASS" || r.indexingStatus === "INDEXING_ALLOWED").length;
   const rentedCount = rows.filter((r) => r.isRented).length;
+  const totalRevenue = rows.reduce((s, r) => s + r.monthlyValue, 0);
+  const totalLeadRevenue = rows.reduce((s, r) => s + (r.avgLeadsMonth * r.avgLeadValue), 0);
 
   const SortHeader = ({ label, field, align }: { label: string; field: SortField; align?: string }) => (
     <th
-      className={`font-medium text-muted-foreground p-3 cursor-pointer select-none hover:text-foreground transition-colors ${align === "right" ? "text-right" : "text-left"}`}
+      className={`font-medium text-muted-foreground p-2 cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap ${align === "right" ? "text-right" : "text-left"}`}
       onClick={() => toggleSort(field)}
     >
       <span className="inline-flex items-center gap-1">
@@ -332,9 +396,51 @@ export default function RRPagesPage() {
     </th>
   );
 
+  /* ── Editable Cell ── */
+  const EditableCell = ({ row, field, value, prefix = "" }: { row: PageRow; field: string; value: number; prefix?: string }) => {
+    const isEditing = editingCell?.url === row.url && editingCell?.field === field;
+    if (isEditing) {
+      return (
+        <Input
+          type="number"
+          step="0.01"
+          defaultValue={value}
+          className="h-6 w-20 text-[10px] p-1"
+          autoFocus
+          onBlur={(e) => {
+            const v = Number(e.target.value);
+            if (v !== value) updateFieldMutation.mutate({ url: row.url, field, value: v });
+            else setEditingCell(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setEditingCell(null);
+          }}
+        />
+      );
+    }
+    return (
+      <span
+        className="cursor-pointer hover:bg-muted/80 rounded px-1 py-0.5 transition-colors"
+        onClick={() => setEditingCell({ url: row.url, field })}
+        title="Clique para editar"
+      >
+        {value > 0 ? `${prefix}${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+      </span>
+    );
+  };
+
+  /* ── ROI calc ── */
+  const calcRoi = (row: PageRow) => {
+    const revenue = row.avgLeadsMonth * row.avgLeadValue;
+    const cost = row.monthlyValue;
+    if (cost <= 0) return null;
+    return ((revenue - cost) / cost) * 100;
+  };
+
   return (
     <>
-      <TopBar title="Páginas" subtitle="Inventário completo de URLs com métricas GSC, indexação e aluguel" />
+      <TopBar title="Páginas" subtitle="Inventário completo de URLs com métricas GSC, indexação, leads e ROI" />
       <div className="p-4 sm:p-6 space-y-5">
         {/* Project Selector */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end justify-between">
@@ -376,11 +482,12 @@ export default function RRPagesPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <KpiCard label="Total URLs" value={rows.length} change={0} />
           <KpiCard label="Cliques (28d)" value={totalClicks} change={0} />
           <KpiCard label="Indexadas" value={indexedCount} change={0} />
           <KpiCard label="Alugadas" value={rentedCount} change={0} />
+          <KpiCard label="Receita Mensal" value={totalRevenue} change={0} />
         </div>
 
         {/* Table */}
@@ -403,12 +510,17 @@ export default function RRPagesPage() {
                     <tr className="border-b border-border">
                       <SortHeader label="URL" field="url" />
                       <SortHeader label="Cliques" field="clicks" align="right" />
-                      <SortHeader label="Impressões" field="impressions" align="right" />
+                      <SortHeader label="Impr." field="impressions" align="right" />
                       <SortHeader label="CTR" field="ctr" align="right" />
-                      <SortHeader label="Posição" field="position" align="right" />
-                      <th className="text-left font-medium text-muted-foreground p-3">Indexação</th>
-                      <th className="text-left font-medium text-muted-foreground p-3">Aluguel</th>
-                      <th className="text-right font-medium text-muted-foreground p-3">Ações</th>
+                      <SortHeader label="Pos." field="position" align="right" />
+                      <th className="text-left font-medium text-muted-foreground p-2 whitespace-nowrap">Indexação</th>
+                      <th className="text-left font-medium text-muted-foreground p-2 whitespace-nowrap">Req. Index</th>
+                      <SortHeader label="Leads/mês" field="avgLeadsMonth" align="right" />
+                      <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap">Vlr Lead</th>
+                      <SortHeader label="Locação" field="monthlyValue" align="right" />
+                      <th className="text-right font-medium text-muted-foreground p-2 whitespace-nowrap">ROI</th>
+                      <th className="text-left font-medium text-muted-foreground p-2 whitespace-nowrap">Status</th>
+                      <th className="text-right font-medium text-muted-foreground p-2">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -417,49 +529,75 @@ export default function RRPagesPage() {
                       const idxBadge = INDEXING_BADGE[idxKey] || INDEXING_BADGE.VERDICT_UNSPECIFIED;
                       const IdxIcon = idxBadge.icon;
                       const isSubmitting = indexingUrls.has(row.url);
+                      const reqStatus = row.indexRequestStatus;
+                      const reqBadge = reqStatus ? IDX_REQUEST_BADGE[reqStatus] : null;
+                      const roi = calcRoi(row);
 
                       return (
                         <motion.tr
                           key={row.url}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          transition={{ delay: Math.min(i * 0.01, 0.5) }}
+                          transition={{ delay: Math.min(i * 0.005, 0.3) }}
                           className="border-b border-border hover:bg-muted/50 transition-colors"
                         >
-                          <td className="p-3 font-medium text-primary truncate max-w-[260px]" title={row.url}>
+                          <td className="p-2 font-medium text-primary truncate max-w-[220px]" title={row.url}>
                             <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                               {row.url.replace(/^https?:\/\/[^/]+/, "")}
                             </a>
                           </td>
-                          <td className="p-3 text-right tabular-nums font-medium">{row.clicks.toLocaleString()}</td>
-                          <td className="p-3 text-right tabular-nums">{row.impressions.toLocaleString()}</td>
-                          <td className="p-3 text-right tabular-nums">{row.ctr.toFixed(1)}%</td>
-                          <td className="p-3 text-right tabular-nums">{row.position > 0 ? row.position.toFixed(1) : "—"}</td>
-                          <td className="p-3">
+                          <td className="p-2 text-right tabular-nums font-medium">{row.clicks.toLocaleString()}</td>
+                          <td className="p-2 text-right tabular-nums">{row.impressions.toLocaleString()}</td>
+                          <td className="p-2 text-right tabular-nums">{row.ctr.toFixed(1)}%</td>
+                          <td className="p-2 text-right tabular-nums">{row.position > 0 ? row.position.toFixed(1) : "—"}</td>
+                          <td className="p-2">
                             <Badge variant="outline" className={`text-[10px] gap-0.5 ${idxBadge.cls}`}>
                               <IdxIcon className="h-2.5 w-2.5" />
                               {idxBadge.label}
                             </Badge>
                           </td>
-                          <td className="p-3">
+                          <td className="p-2">
+                            {reqBadge ? (
+                              <Badge variant="outline" className={`text-[10px] ${reqBadge.cls}`}>
+                                {reqBadge.label}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            <EditableCell row={row} field="avg_leads_month" value={row.avgLeadsMonth} />
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            <EditableCell row={row} field="avg_lead_value" value={row.avgLeadValue} prefix="R$ " />
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            <EditableCell row={row} field="monthly_value" value={row.monthlyValue} prefix="R$ " />
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            {roi !== null ? (
+                              <Badge variant="outline" className={`text-[10px] ${roi >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                                {roi >= 0 ? "+" : ""}{roi.toFixed(0)}%
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="p-2">
                             {row.isRented ? (
                               <div>
                                 <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary">Alugada</Badge>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">{row.clientName}</p>
-                                {row.monthlyValue > 0 && (
-                                  <p className="text-[10px] text-muted-foreground">R$ {row.monthlyValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/mês</p>
-                                )}
+                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[80px]">{row.clientName}</p>
                               </div>
                             ) : (
                               <Badge variant="outline" className="text-[10px] bg-success/10 text-success">Disponível</Badge>
                             )}
                           </td>
-                          <td className="p-3 text-right">
+                          <td className="p-2 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-[10px] gap-1"
+                                variant="ghost" size="sm"
+                                className="h-6 text-[10px] gap-1 px-1.5"
                                 disabled={isSubmitting}
                                 onClick={() => indexMutation.mutate(row.url)}
                                 title="Enviar para indexação"
@@ -468,21 +606,13 @@ export default function RRPagesPage() {
                                 Indexar
                               </Button>
                               {row.isRented ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-[10px]"
-                                  onClick={() => row.rrPageId && unrentMutation.mutate(row.rrPageId)}
-                                >
+                                <Button variant="outline" size="sm" className="h-6 text-[10px] px-1.5"
+                                  onClick={() => row.rrPageId && unrentMutation.mutate(row.rrPageId)}>
                                   Liberar
                                 </Button>
                               ) : (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="h-7 text-[10px]"
-                                  onClick={() => { setRentingUrl(row.url); setRentDialogOpen(true); }}
-                                >
+                                <Button variant="default" size="sm" className="h-6 text-[10px] px-1.5"
+                                  onClick={() => { setRentingUrl(row.url); setRentDialogOpen(true); }}>
                                   Alugar
                                 </Button>
                               )}
@@ -516,8 +646,16 @@ export default function RRPagesPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Valor Mensal (R$)</Label>
+                <Label className="text-xs">Valor Locação/mês (R$)</Label>
                 <Input name="monthly_value" type="number" step="0.01" defaultValue={0} className="h-9 text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Média de Leads/mês</Label>
+                <Input name="avg_leads_month" type="number" step="1" defaultValue={0} className="h-9 text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Valor Médio do Lead (R$)</Label>
+                <Input name="avg_lead_value" type="number" step="0.01" defaultValue={0} className="h-9 text-xs" />
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => { setRentDialogOpen(false); setRentingUrl(null); }}>
