@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Zap, Bot, Mail, GitBranch, Timer, Split as SplitIcon,
   Merge as MergeIcon, Play, Square, Save, Trash2, Plus,
-  Bell, Loader2, FileText, Sparkles, Building2,
+  Bell, Loader2, FileText, Sparkles, Building2, Power, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -294,6 +294,13 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
     toast.success("Workflow excluído");
   }, [currentWorkflowId, projectId]);
 
+  const handleToggleEnabled = useCallback(async (wfId: string, enabled: boolean) => {
+    const { error } = await supabase.from("agent_workflows").update({ enabled }).eq("id", wfId);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["canvas-workflows", projectId] });
+    toast.success(enabled ? "Workflow ativado" : "Workflow desativado");
+  }, [projectId]);
+
   const handleNew = useCallback(() => {
     setNodes(DEFAULT_NODES);
     setEdges([]);
@@ -394,30 +401,57 @@ export function WorkflowCanvasTab({ projectId, initialPreset, onPresetLoaded }: 
 
         {/* Saved workflows list */}
         {savedWorkflows.length > 0 && (
-          <Panel position="bottom-left" className="bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg max-h-48 overflow-y-auto min-w-[220px]">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Workflows Salvos</p>
-            {savedWorkflows.map((wf: any) => (
-              <div
-                key={wf.id}
-                className={cn(
-                  "flex items-center gap-2 w-full px-2 py-1.5 rounded text-left hover:bg-muted/50 transition-colors group",
-                  currentWorkflowId === wf.id && "bg-primary/10"
-                )}
-              >
-                <button onClick={() => loadWorkflow(wf)} className="flex-1 flex items-center gap-2 min-w-0">
-                  <span className="text-xs truncate">{wf.name}</span>
-                  <Badge variant="outline" className="text-[8px] ml-auto shrink-0">
-                    {(wf.steps as any)?.nodes?.length || 0} nós
-                  </Badge>
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteWorkflow(wf.id); }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+          <Panel position="bottom-left" className="bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg max-h-64 overflow-y-auto min-w-[280px]">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Workflows Salvos ({savedWorkflows.length})</p>
+            <div className="space-y-1">
+              {savedWorkflows.map((wf: any) => (
+                <div
+                  key={wf.id}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-2 py-2 rounded-lg text-left transition-colors group border border-transparent",
+                    currentWorkflowId === wf.id ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
+                  )}
                 >
-                  <Trash2 className="h-3 w-3 text-destructive" />
-                </button>
-              </div>
-            ))}
+                  {/* Enable/Disable toggle */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleEnabled(wf.id, !wf.enabled); }}
+                    className="shrink-0"
+                    title={wf.enabled ? "Desativar workflow" : "Ativar workflow"}
+                  >
+                    <Power className={cn("h-3.5 w-3.5 transition-colors", wf.enabled ? "text-emerald-400" : "text-muted-foreground/40")} />
+                  </button>
+
+                  {/* Workflow info - click to load */}
+                  <button onClick={() => loadWorkflow(wf)} className="flex-1 flex items-center gap-2 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-xs truncate block", !wf.enabled && "text-muted-foreground")}>{wf.name}</span>
+                      <span className="text-[9px] text-muted-foreground">{(wf.steps as any)?.nodes?.length || 0} nós</span>
+                    </div>
+                    <Badge variant={wf.enabled ? "default" : "outline"} className={cn("text-[8px] shrink-0", wf.enabled ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "text-muted-foreground")}>
+                      {wf.enabled ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </button>
+
+                  {/* Edit button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); loadWorkflow(wf); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    title="Editar workflow"
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                  </button>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteWorkflow(wf.id); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    title="Excluir workflow"
+                  >
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </Panel>
         )}
       </ReactFlow>
