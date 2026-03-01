@@ -383,6 +383,11 @@ export function UserJourneyTab() {
         case "visitor": return a.visitor_id.localeCompare(b.visitor_id);
         case "device": return a.device.localeCompare(b.device);
         case "city": return a.city.localeCompare(b.city);
+        case "entry": return (a.steps[0]?.page || "/").localeCompare(b.steps[0]?.page || "/");
+        case "exit": return (a.steps[a.steps.length - 1]?.page || "/").localeCompare(b.steps[b.steps.length - 1]?.page || "/");
+        case "browser": return a.browser.localeCompare(b.browser);
+        case "os": return a.os.localeCompare(b.os);
+        case "source": return `${a.source}/${a.medium}`.localeCompare(`${b.source}/${b.medium}`);
         case "conversion": return (b.converted ? b.conversion_value + 1 : 0) - (a.converted ? a.conversion_value + 1 : 0);
         default: return new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
       }
@@ -535,6 +540,10 @@ export function UserJourneyTab() {
         <>
           {/* Filters */}
           <Card className="p-3 sm:p-4">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+              <Search className="h-4 w-4 text-primary" />
+              Filtros
+            </h3>
             <div className="flex flex-wrap items-end gap-2 sm:gap-3">
               <div className="flex-1 min-w-[180px] max-w-[280px] space-y-1">
                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar</label>
@@ -787,13 +796,13 @@ export function UserJourneyTab() {
                         <SortTh label="Início" field="recent" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
                         <SortTh label="Páginas" field="pages" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
                         <SortTh label="Duração" field="duration" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
-                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Entrada</th>
-                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Saída</th>
+                        <SortTh label="Entrada" field="entry" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
+                        <SortTh label="Saída" field="exit" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
                         <SortTh label="Device" field="device" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
-                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Navegador</th>
-                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">OS</th>
+                        <SortTh label="Navegador" field="browser" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="hidden lg:table-cell" />
+                        <SortTh label="OS" field="os" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="hidden lg:table-cell" />
                         <SortTh label="Local" field="city" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} />
-                        <th className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Origem</th>
+                        <SortTh label="Origem" field="source" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="hidden md:table-cell" />
                         <SortTh label="Conversão" field="conversion" current={sortBy} onSort={(f) => { setSortBy(f as any); setPage(1); }} className="text-center" />
                         <th className="px-2 py-2 w-8"></th>
                       </tr>
