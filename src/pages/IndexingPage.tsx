@@ -125,7 +125,7 @@ export default function IndexingPage() {
   });
   const projectId = projects?.[0]?.id;
 
-  const { data: inventoryData, isLoading: invLoading } = useInventory(projectId);
+  const { data: inventoryData, isLoading: invLoading, refetch: refetchInventory } = useInventory(projectId);
   const { data: requests, isLoading: reqLoading } = useIndexingRequests(projectId);
   const submitMutation = useSubmitUrls(projectId);
   const retryMutation = useRetryRequest(projectId);
@@ -1283,14 +1283,13 @@ export default function IndexingPage() {
                     Enviar para Indexação
                   </Button>
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs flex-1" onClick={() => {
-                    inspectMutation.mutate([detailUrl.url], {
-                      onSuccess: () => {
-                        toast("Inspeção concluída — atualizando dados...");
-                        // Refresh inventory to get updated coverage data
-                        setTimeout(() => {
-                          const updated = inventory.find(u => u.url === detailUrl.url);
-                          if (updated) setDetailUrl({ ...updated });
-                        }, 1500);
+                    const targetUrl = detailUrl.url;
+                    inspectMutation.mutate([targetUrl], {
+                      onSuccess: async () => {
+                        toast.success("Inspeção concluída — atualizando dados...");
+                        const { data: freshData } = await refetchInventory();
+                        const updated = freshData?.inventory?.find((u: InventoryUrl) => u.url === targetUrl);
+                        if (updated) setDetailUrl({ ...updated });
                       },
                     });
                   }} disabled={inspectMutation.isPending}>
