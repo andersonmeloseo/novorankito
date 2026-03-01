@@ -183,7 +183,11 @@ export default function Login() {
             </p>
             {isSignup && selectedPlanData && (
               <Badge variant="secondary" className="text-xs mt-1">
-                R$ {Number(selectedPlanData.price).toLocaleString("pt-BR")}/mês
+                R$ {Number(
+                  selectedPlanData.promo_price != null && (!selectedPlanData.promo_ends_at || new Date(selectedPlanData.promo_ends_at) > new Date())
+                    ? selectedPlanData.promo_price
+                    : selectedPlanData.price
+                ).toLocaleString("pt-BR")}/mês
               </Badge>
             )}
           </div>
