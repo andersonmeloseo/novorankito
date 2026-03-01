@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 
 // Routes that DON'T require subscription (but still require login)
 const SUBSCRIPTION_EXEMPT_ROUTES = [
@@ -10,9 +11,10 @@ const SUBSCRIPTION_EXEMPT_ROUTES = [
 
 export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
   const { user, loading, subscription } = useAuth();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -21,6 +23,11 @@ export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  // Admins/owners bypass subscription check entirely
+  if (isAdmin) {
+    return <>{children ?? <Outlet />}</>;
+  }
 
   // Check if this route is exempt from subscription check
   const isExempt = SUBSCRIPTION_EXEMPT_ROUTES.some((r) =>
