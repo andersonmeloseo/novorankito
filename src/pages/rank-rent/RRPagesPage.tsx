@@ -90,32 +90,53 @@ export default function RRPagesPage() {
     enabled: !!user,
   });
 
-  /* ── Site URLs (from sitemap/GSC) ──────────────────── */
+  /* ── Site URLs (from sitemap/GSC) — paginated fetch ── */
   const { data: siteUrls, isLoading: loadingUrls } = useQuery({
     queryKey: ["rr-site-urls", projectId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("site_urls")
-        .select("url")
-        .eq("project_id", projectId)
-        .order("url");
-      return data || [];
+      const PAGE_SIZE = 1000;
+      let allRows: { url: string }[] = [];
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await supabase
+          .from("site_urls")
+          .select("url")
+          .eq("project_id", projectId)
+          .order("url")
+          .range(from, from + PAGE_SIZE - 1);
+        const rows = data || [];
+        allRows = allRows.concat(rows);
+        hasMore = rows.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+      return allRows;
     },
     enabled: !!projectId,
   });
 
-  /* ── SEO Metrics (aggregated by page) ──────────────────── */
+  /* ── SEO Metrics (aggregated by page) — paginated ──── */
   const { data: seoMetrics } = useQuery({
     queryKey: ["rr-seo-metrics", projectId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("seo_metrics")
-        .select("url, clicks, impressions, ctr, position")
-        .eq("project_id", projectId)
-        .eq("dimension_type", "page");
-      // Aggregate by URL
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await supabase
+          .from("seo_metrics")
+          .select("url, clicks, impressions, ctr, position")
+          .eq("project_id", projectId)
+          .eq("dimension_type", "page")
+          .range(from, from + PAGE_SIZE - 1);
+        const rows = data || [];
+        allData = allData.concat(rows);
+        hasMore = rows.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
       const map: Record<string, { clicks: number; impressions: number; ctrSum: number; posSum: number; count: number }> = {};
-      data?.forEach((r: any) => {
+      allData.forEach((r: any) => {
         if (!map[r.url]) map[r.url] = { clicks: 0, impressions: 0, ctrSum: 0, posSum: 0, count: 0 };
         map[r.url].clicks += r.clicks || 0;
         map[r.url].impressions += r.impressions || 0;
@@ -128,16 +149,27 @@ export default function RRPagesPage() {
     enabled: !!projectId,
   });
 
-  /* ── Index Coverage ──────────────────── */
+  /* ── Index Coverage — paginated ──────────────────── */
   const { data: indexCoverage } = useQuery({
     queryKey: ["rr-index-coverage", projectId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("index_coverage")
-        .select("url, verdict, indexing_state, last_crawl_time")
-        .eq("project_id", projectId);
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await supabase
+          .from("index_coverage")
+          .select("url, verdict, indexing_state, last_crawl_time")
+          .eq("project_id", projectId)
+          .range(from, from + PAGE_SIZE - 1);
+        const rows = data || [];
+        allData = allData.concat(rows);
+        hasMore = rows.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
       const map: Record<string, { verdict: string | null; indexingState: string | null; lastCrawl: string | null }> = {};
-      data?.forEach((r: any) => {
+      allData.forEach((r: any) => {
         map[r.url] = { verdict: r.verdict, indexingState: r.indexing_state, lastCrawl: r.last_crawl_time };
       });
       return map;
