@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Globe, Send, CheckCircle2, XCircle, Clock, AlertTriangle,
-  Loader2, ArrowUpDown, DollarSign, TrendingUp, Users,
+  Loader2, ArrowUpDown, DollarSign, TrendingUp, Users, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -70,6 +70,8 @@ export default function RRPagesPage() {
   const [rentingUrl, setRentingUrl] = useState<string | null>(null);
   const [indexingUrls, setIndexingUrls] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ url: string; field: string } | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_TABLE_SIZE = 10;
 
   /* ── Projects ──────────────────── */
   const { data: projects } = useQuery({
@@ -259,6 +261,7 @@ export default function RRPagesPage() {
     if (statusFilter === "not_indexed") list = list.filter((r) => r.verdict && r.verdict !== "PASS" && r.indexingStatus !== "INDEXING_ALLOWED");
     if (statusFilter === "rented") list = list.filter((r) => r.isRented);
     if (statusFilter === "available") list = list.filter((r) => !r.isRented);
+    // Reset page when filters change - handled via useEffect below
 
     list = [...list].sort((a, b) => {
       const av = a[sortField] ?? 0;
@@ -268,6 +271,14 @@ export default function RRPagesPage() {
     });
     return list;
   }, [rows, search, statusFilter, sortField, sortAsc]);
+
+  // Reset page when filters change
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_TABLE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paginated = filtered.slice(safePage * PAGE_TABLE_SIZE, (safePage + 1) * PAGE_TABLE_SIZE);
+
+  // Reset page when filters/sort change
+  useEffect(() => { setPage(0); }, [search, statusFilter, sortField, sortAsc]);
 
   /* ── Indexing action ── */
   const indexMutation = useMutation({
@@ -524,7 +535,7 @@ export default function RRPagesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((row, i) => {
+                    {paginated.map((row, i) => {
                       const idxKey = row.verdict || row.indexingStatus || "VERDICT_UNSPECIFIED";
                       const idxBadge = INDEXING_BADGE[idxKey] || INDEXING_BADGE.VERDICT_UNSPECIFIED;
                       const IdxIcon = idxBadge.icon;
@@ -625,6 +636,35 @@ export default function RRPagesPage() {
                 </table>
               )}
             </div>
+            {/* Pagination */}
+            {filtered.length > 0 && (
+              <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">
+                  {safePage * PAGE_TABLE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_TABLE_SIZE, filtered.length)} de {filtered.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-6 w-6"
+                    disabled={safePage === 0}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground px-1">
+                    {safePage + 1} / {totalPages}
+                  </span>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-6 w-6"
+                    disabled={safePage >= totalPages - 1}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
