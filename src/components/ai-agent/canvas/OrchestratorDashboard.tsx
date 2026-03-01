@@ -230,7 +230,7 @@ export function OrchestratorDashboard({ projectId, onViewCanvas }: OrchestratorD
                         <Badge variant={dep.status === "active" ? "default" : "secondary"} className="text-[9px]">
                           {dep.status === "active" ? "Ativo" : "Pausado"}
                         </Badge>
-                        {lastRun?.status === "running" && (
+                        {lastRun?.status === "running" && dep.status !== "paused" && (
                           <Badge className="text-[9px] bg-primary/20 text-primary border border-primary/30 gap-1">
                             <Loader2 className="h-2.5 w-2.5 animate-spin" /> Em execução
                           </Badge>
