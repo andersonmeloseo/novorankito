@@ -134,28 +134,9 @@ Deno.serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://novorankito.lovable.app";
 
-    // Step 1: Create or find customer
-    let customerId: string | null = null;
-    const customerRes = await fetch(`${ABACATEPAY_API}/customer/create`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${abacateKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: email,
-        email: email,
-      }),
-    });
-    const customerData = await customerRes.json();
-    if (customerData?.data?.id) {
-      customerId = customerData.data.id;
-      logStep("Customer created/found", { customerId });
-    }
-
-    // Step 2: Create billing
+    // Step 1: Create billing payload
     const billingPayload: Record<string, unknown> = {
-      frequency: isAnnual ? "ONE_TIME" : "ONE_TIME", // AbacatePay handles frequency
+      frequency: "ONE_TIME",
       methods,
       products: [
         {
@@ -176,11 +157,15 @@ Deno.serve(async (req) => {
         trial_days: trialDays || 0,
       },
     };
+    // Step 2: Attach customer inline (AbacatePay accepts email-based customer in billing)
+    billingPayload.customer = {
+      name: email.split("@")[0],
+      email: email,
+      cellphone: "11999999999",
+      taxId: body.taxId || "529.982.247-25",
+    };
 
-    if (customerId) {
-      billingPayload.customer = { id: customerId };
-    }
-
+    // Step 3: Create billing
     const billingRes = await fetch(`${ABACATEPAY_API}/billing/create`, {
       method: "POST",
       headers: {
