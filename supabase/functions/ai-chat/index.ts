@@ -195,26 +195,29 @@ REGRA CRÍTICA DE FINALIZAÇÃO:
     const aiMessages = [{ role: "system", content: systemPrompt }, ...messages];
 
     let response: Response;
+    let openaiKey: string | null = null;
+    let keyConfigured = false;
+
     try {
-      const openaiKey = await getOpenAIKey();
+      openaiKey = await getOpenAIKey();
+      keyConfigured = true;
+    } catch (keyErr) {
+      log.info("No OpenAI key configured, will use Lovable AI Gateway", {
+        reason: keyErr instanceof Error ? keyErr.message : "unknown",
+      });
+    }
+
+    if (openaiKey && keyConfigured) {
+      // User has their own OpenAI key — use it directly, do NOT silently fallback
       response = await log.time("openai-call", () => callOpenAI({
-        apiKey: openaiKey,
+        apiKey: openaiKey!,
         messages: aiMessages,
         model: "gpt-4o-mini",
         stream: true,
       }), { project_id: project_id || "NONE" });
-    } catch (openAiErr) {
-      const shouldFallback =
-        !(openAiErr instanceof OpenAIError) ||
-        [401, 402, 403, 429].includes(openAiErr.status);
-
-      if (!shouldFallback) throw openAiErr;
-
-      log.info("Falling back to Lovable AI Gateway", {
-        reason: openAiErr instanceof Error ? openAiErr.message : "unknown",
-        project_id: project_id || "NONE",
-      });
-
+    } else {
+      // No OpenAI key configured — use Lovable AI Gateway
+      log.info("Using Lovable AI Gateway (no OpenAI key)", { project_id: project_id || "NONE" });
       response = await log.time("gateway-call", () => callLovableGateway({
         messages: aiMessages,
         stream: true,
