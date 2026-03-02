@@ -27,14 +27,18 @@ jobs:
             git reset --hard origin/main
 
             echo "📦 Instalando dependências..."
-            npm install
+            npm install --omit=optional
 
             echo "🏗️ Buildando projeto..."
             npm run build
 
-            echo "♻️ Reiniciando aplicação..."
-            pm2 delete rankito || true
-            pm2 start "serve -s dist -l 3005" --name rankito
+            echo "🧹 Removendo processo antigo..."
+            pm2 delete novorankito || true
+
+            echo "🚀 Subindo aplicação..."
+            pm2 start "npx serve -s dist -l 3005" --name novorankito
+
+            echo "💾 Salvando estado do PM2..."
             pm2 save
 
             echo "✅ Deploy concluído com sucesso!"
