@@ -16,6 +16,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
+          timeout: 30m
           script: |
             set -e
 
@@ -27,7 +28,6 @@ jobs:
             git reset --hard origin/main
 
             echo "📦 Instalando dependências..."
-            rm -rf node_modules
             npm install
 
             echo "🏗️ Buildando projeto..."
