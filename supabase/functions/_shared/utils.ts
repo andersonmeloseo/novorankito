@@ -3,6 +3,8 @@
 
 const ALLOWED_ORIGINS = [
   "https://novorankito.lovable.app",
+  "https://rankitocrm.com",
+  "https://www.rankitocrm.com",
   "https://id-preview--c5a9c519-57e7-4f0b-9801-8f7300bce728.lovable.app",
   "http://localhost:5173",
   "http://localhost:3000",
