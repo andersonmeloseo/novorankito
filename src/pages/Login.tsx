@@ -36,8 +36,7 @@ export default function Login() {
   // Redirect already logged-in users
   useEffect(() => {
     if (user && !planFromUrl) {
-      // If subscribed, go to projects. If not, go to billing.
-      navigate(subscription.subscribed ? "/projects" : "/account/billing", { replace: true });
+      navigate("/home", { replace: true });
     }
   }, [user, subscription.subscribed, planFromUrl, navigate]);
 
