@@ -27,7 +27,8 @@ jobs:
             git reset --hard origin/main
 
             echo "📦 Instalando dependências..."
-            npm ci
+            rm -rf node_modules
+            npm install
 
             echo "🏗️ Buildando projeto..."
             npm run build
