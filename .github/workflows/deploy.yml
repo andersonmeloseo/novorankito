@@ -1,45 +1,46 @@
-name: Deploy Novo Rankito
+name: Deploy Rankito
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Upload dist to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "dist/*"
+          target: "/opt/novo-rankito/dist"
+          strip_components: 1
+
+      - name: Adjust permissions & reload nginx
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: 22
-          timeout: 30m
           script: |
-            set -e
-
-            echo "🚀 Iniciando deploy..."
-            cd /opt/novo-rankito
-
-            echo "📥 Atualizando código..."
-            git fetch origin
-            git reset --hard origin/main
-
-            echo "📦 Instalando dependências..."
-            npm install
-
-            echo "🏗️ Buildando projeto..."
-            npm run build
-
-            echo "🧹 Removendo processo antigo..."
-            pm2 delete novorankito || true
-
-            echo "🚀 Subindo aplicação..."
-            pm2 start "npx serve -s dist -l 3005" --name novorankito
-
-            echo "💾 Salvando estado do PM2..."
-            pm2 save
-
-            echo "✅ Deploy concluído com sucesso!"
+            chown -R www-data:www-data /opt/novo-rankito
+            chmod -R 755 /opt/novo-rankito
+            systemctl reload nginx
