@@ -115,7 +115,22 @@ export default function IndexingPage() {
   };
 
   // Get active project from localStorage (set by sidebar project switcher)
-  const storedProjectId = localStorage.getItem("rankito_current_project");
+  const [currentProjectId, setCurrentProjectId] = useState(() => localStorage.getItem("rankito_current_project"));
+
+  // Sync with localStorage changes (e.g. sidebar project switch)
+  useEffect(() => {
+    const syncProject = () => {
+      const stored = localStorage.getItem("rankito_current_project");
+      if (stored !== currentProjectId) setCurrentProjectId(stored);
+    };
+    window.addEventListener("rankito_project_changed", syncProject);
+    window.addEventListener("storage", syncProject);
+    return () => {
+      window.removeEventListener("rankito_project_changed", syncProject);
+      window.removeEventListener("storage", syncProject);
+    };
+  }, [currentProjectId]);
+
   const { data: projects } = useQuery({
     queryKey: ["projects", user?.id],
     queryFn: async () => {
@@ -124,8 +139,8 @@ export default function IndexingPage() {
     },
     enabled: !!user,
   });
-  const projectId = (storedProjectId && projects?.some(p => p.id === storedProjectId))
-    ? storedProjectId
+  const projectId = (currentProjectId && projects?.some(p => p.id === currentProjectId))
+    ? currentProjectId
     : projects?.[0]?.id;
 
   const { data: inventoryData, isLoading: invLoading, refetch: refetchInventory } = useInventory(projectId);
