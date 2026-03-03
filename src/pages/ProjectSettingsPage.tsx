@@ -34,7 +34,7 @@ export default function ProjectSettingsPage() {
   const queryClient = useQueryClient();
   const { hash } = useLocation();
   const navigate = useNavigate();
-  const validTabs = ["general", "integrations", "tracking", "goals", "team", "api", "whitelabel"];
+  const validTabs = ["general", "integrations", "goals", "team", "api", "whitelabel"];
   const hashTab = hash.replace("#", "");
   const tab = validTabs.includes(hashTab) ? hashTab : "general";
 
@@ -148,7 +148,7 @@ export default function ProjectSettingsPage() {
 
   return (
     <>
-      <TopBar title={`Configurações — ${tab === "general" ? "Geral" : tab === "integrations" ? "Integrações" : tab === "tracking" ? "Tracking" : tab === "goals" ? "Metas & Alertas" : tab === "team" ? "Equipe" : tab === "api" ? "API & Webhooks" : "White-Label"}`} subtitle={`Gerencie o projeto ${project.name}`} />
+      <TopBar title={`Configurações — ${tab === "general" ? "Geral" : tab === "integrations" ? "Integrações" : tab === "goals" ? "Metas & Alertas" : tab === "team" ? "Equipe" : tab === "api" ? "API & Webhooks" : "White-Label"}`} subtitle={`Gerencie o projeto ${project.name}`} />
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {tab === "general" && (
           <div className="space-y-4">
@@ -274,35 +274,6 @@ export default function ProjectSettingsPage() {
           </div>
         )}
 
-        {tab === "tracking" && (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
-              <Code2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-foreground">Script de Tracking</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Instale o script universal no seu site para capturar pageviews, cliques, conversões, Core Web Vitals e sessões automaticamente. Basta colar o snippet no {'<head>'} do seu HTML.</p>
-              </div>
-            </div>
-            <Card className="p-5 space-y-4">
-              <h3 className="text-sm font-medium text-foreground">Script de Tracking</h3>
-              <div className="space-y-1.5">
-                <Label className="text-xs">ID do Projeto</Label>
-                <div className="flex items-center gap-2">
-                  <Input value={project.id} className="h-9 text-sm font-mono" readOnly />
-                  <Button variant="outline" size="sm" className="h-9" onClick={() => { navigator.clipboard.writeText(project.id); toast.success("Copiado!"); }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Snippet para instalação</Label>
-                <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground">
-                  {`<script src="https://cdn.rankito.io/track.js" data-key="${project.id}"></script>`}
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
 
         {tab === "goals" && (
           <div className="space-y-4">
