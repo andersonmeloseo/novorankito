@@ -149,7 +149,7 @@ const academyNav = [
   { title: "Academy", url: "/academy", icon: Sparkles },
 ];
 
-function NavItem({ item, end, collapsed }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean; collapsed?: boolean }) {
+function NavItem({ item, end, collapsed, pulse }: { item: { title: string; url: string; icon: React.ElementType; tourId?: string }; end?: boolean; collapsed?: boolean; pulse?: boolean }) {
   const { pathname, hash } = useLocation();
   const navigate = useNavigate();
   const fullPath = pathname + hash;
@@ -204,7 +204,8 @@ function NavItem({ item, end, collapsed }: { item: { title: string; url: string;
             className={cn(
               "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 relative",
               isActive && "sidebar-active-glow",
-              collapsed && "justify-center px-0"
+              collapsed && "justify-center px-0",
+              pulse && !isActive && "animate-pulse-soft"
             )}
             activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           >
@@ -407,7 +408,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end collapsed />
-                <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end collapsed />
+                <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end collapsed pulse />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -425,7 +426,7 @@ export function AppSidebar() {
                   <SidebarMenu>
                     <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end />
                     <div className="h-2" />
-                    <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end />
+                    <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end pulse />
                   </SidebarMenu>
                 </SidebarGroupContent>
               </CollapsibleContent>
