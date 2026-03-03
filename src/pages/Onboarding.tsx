@@ -36,7 +36,6 @@ const STEPS = [
   { label: "Sitemap", icon: FileText, required: false },
   { label: "GSC", icon: Search, required: false },
   { label: "GA4", icon: BarChart3, required: false },
-  { label: "Tracking", icon: MonitorSmartphone, required: false },
   { label: "Ads", icon: Megaphone, required: false },
   { label: "Agente IA", icon: Bot, required: false },
 ];
@@ -338,9 +337,8 @@ export default function Onboarding() {
               {step === 1 && <StepSitemap projectId={projectId} />}
               {step === 2 && <StepGSC projectId={projectId} />}
               {step === 3 && <StepGA4 projectId={projectId} />}
-              {step === 4 && <StepTracking />}
-              {step === 5 && <StepAds />}
-              {step === 6 && <StepAIAgent />}
+              {step === 4 && <StepAds />}
+              {step === 5 && <StepAIAgent />}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -46,7 +46,7 @@ const projectNav = [
 const settingsNav = [
   { title: "Geral", url: "/project-settings#general", icon: Settings },
   { title: "Integrações", url: "/project-settings#integrations", icon: Plug },
-  { title: "Tracking", url: "/project-settings#tracking", icon: Code },
+  
   { title: "Metas & Alertas", url: "/project-settings#goals", icon: Bell },
   { title: "Equipe", url: "/project-settings#team", icon: Users },
   { title: "API & Webhooks", url: "/project-settings#api", icon: Key },
