@@ -77,6 +77,7 @@ const AdminAcademyPage = lazy(() => import("@/pages/admin/AdminAcademyPage"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/CheckoutSuccessPage"));
 const AdminCouponsPage = lazy(() => import("@/pages/admin/AdminCouponsPage"));
 const CommandCenterPage = lazy(() => import("@/pages/CommandCenterPage"));
+const SmartHome = lazy(() => import("@/pages/SmartHome"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +116,7 @@ const App = () => {
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<LandingPage />} />
                 <Route element={<ProtectedRoute />}>
+                  <Route path="/home" element={<SmartHome />} />
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route element={<AppLayout />}>
