@@ -114,16 +114,19 @@ export default function IndexingPage() {
     setInvPage(0);
   };
 
-  // Get active project
+  // Get active project from localStorage (set by sidebar project switcher)
+  const storedProjectId = localStorage.getItem("rankito_current_project");
   const { data: projects } = useQuery({
     queryKey: ["projects", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("*").eq("owner_id", user!.id).limit(1);
+      const { data } = await supabase.from("projects").select("*").eq("owner_id", user!.id);
       return data || [];
     },
     enabled: !!user,
   });
-  const projectId = projects?.[0]?.id;
+  const projectId = (storedProjectId && projects?.some(p => p.id === storedProjectId))
+    ? storedProjectId
+    : projects?.[0]?.id;
 
   const { data: inventoryData, isLoading: invLoading, refetch: refetchInventory } = useInventory(projectId);
   const { data: requests, isLoading: reqLoading } = useIndexingRequests(projectId);
