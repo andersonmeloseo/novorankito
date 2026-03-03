@@ -43,7 +43,17 @@ serve(async (req) => {
       return errorResponse("Envie 'project_id' ou 'credentials'.", cors, 400);
     }
 
-    const accessToken = await getGoogleAccessToken({ client_email: clientEmail, private_key: privateKey }, "https://www.googleapis.com/auth/webmasters.readonly");
+    let accessToken: string;
+    try {
+      accessToken = await getGoogleAccessToken({ client_email: clientEmail, private_key: privateKey }, "https://www.googleapis.com/auth/webmasters.readonly");
+    } catch (tokenErr: unknown) {
+      console.error("Token generation failed:", tokenErr);
+      const msg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
+      if (msg.includes("incorrect length") || msg.includes("PRIVATE KEY") || msg.includes("decode") || msg.includes("ASN")) {
+        return errorResponse("A private_key do JSON está corrompida ou incompleta. Verifique se você copiou o JSON completo da Service Account (todo o conteúdo do arquivo .json baixado do Google Cloud).", cors, 400);
+      }
+      return errorResponse(`Erro ao gerar token de acesso: ${msg}`, cors, 400);
+    }
 
     const sitesRes = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
       headers: { Authorization: `Bearer ${accessToken}` },
