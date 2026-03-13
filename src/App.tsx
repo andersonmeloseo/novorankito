@@ -12,6 +12,8 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import NotFound from "./pages/NotFound";
+const TermsPage = lazy(() => import("@/pages/TermsPage"));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 
 // Lazy-loaded pages
 const Login = lazy(() => import("@/pages/Login"));
