@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldAlert, Phone, Eye, EyeOff } from "lucide-react";
+import { Loader2, ShieldAlert, Phone, Eye, EyeOff, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { checkLeakedPassword } from "@/lib/password-check";
@@ -30,6 +32,7 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [leakedWarning, setLeakedWarning] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
 
@@ -305,10 +308,31 @@ export default function Login() {
               )}
             </div>
 
+            {isSignup && (
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                  Li e concordo com os{" "}
+                  <Link to="/termos" target="_blank" className="text-primary hover:underline font-medium">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline font-medium">
+                    Política de Privacidade
+                  </Link>.
+                </label>
+              </div>
+            )}
+
             <Button
               className="w-full h-12 text-sm font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all"
               type="submit"
-              disabled={loading}
+              disabled={loading || (isSignup && !acceptedTerms)}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {isSignup ? "Continuar ▸" : "Entrar"}
@@ -329,9 +353,9 @@ export default function Login() {
 
           {/* Footer links */}
           <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground pt-2">
-            <a href="#" className="hover:text-foreground transition-colors">Ajuda</a>
-            <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-foreground transition-colors">Termos de uso</a>
+            <a href="mailto:suporte@rankito.com" className="hover:text-foreground transition-colors">Ajuda</a>
+            <Link to="/privacidade" className="hover:text-foreground transition-colors">Privacidade</Link>
+            <Link to="/termos" className="hover:text-foreground transition-colors">Termos de uso</Link>
           </div>
         </div>
       </div>

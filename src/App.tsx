@@ -12,6 +12,8 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import NotFound from "./pages/NotFound";
+const TermsPage = lazy(() => import("@/pages/TermsPage"));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 
 // Lazy-loaded pages
 const Login = lazy(() => import("@/pages/Login"));
@@ -115,6 +117,8 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/termos" element={<TermsPage />} />
+                <Route path="/privacidade" element={<PrivacyPage />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/home" element={<SmartHome />} />
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />
