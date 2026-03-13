@@ -308,10 +308,31 @@ export default function Login() {
               )}
             </div>
 
+            {isSignup && (
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                  Li e concordo com os{" "}
+                  <Link to="/termos" target="_blank" className="text-primary hover:underline font-medium">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline font-medium">
+                    Política de Privacidade
+                  </Link>.
+                </label>
+              </div>
+            )}
+
             <Button
               className="w-full h-12 text-sm font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all"
               type="submit"
-              disabled={loading}
+              disabled={loading || (isSignup && !acceptedTerms)}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {isSignup ? "Continuar ▸" : "Entrar"}
