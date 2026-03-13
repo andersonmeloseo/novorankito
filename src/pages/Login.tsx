@@ -353,9 +353,9 @@ export default function Login() {
 
           {/* Footer links */}
           <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground pt-2">
-            <a href="#" className="hover:text-foreground transition-colors">Ajuda</a>
-            <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-foreground transition-colors">Termos de uso</a>
+            <a href="mailto:suporte@rankito.com" className="hover:text-foreground transition-colors">Ajuda</a>
+            <Link to="/privacidade" className="hover:text-foreground transition-colors">Privacidade</Link>
+            <Link to="/termos" className="hover:text-foreground transition-colors">Termos de uso</Link>
           </div>
         </div>
       </div>

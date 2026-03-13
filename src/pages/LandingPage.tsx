@@ -976,6 +976,8 @@ export default function LandingPage() {
             <a href="/login" className="hover:text-violet-400 transition-colors">Entrar</a>
             <a href="#planos" className="hover:text-violet-400 transition-colors">Planos</a>
             <a href="#faq" className="hover:text-violet-400 transition-colors">FAQ</a>
+            <a href="/termos" className="hover:text-violet-400 transition-colors">Termos</a>
+            <a href="/privacidade" className="hover:text-violet-400 transition-colors">Privacidade</a>
           </div>
         </div>
       </footer>
