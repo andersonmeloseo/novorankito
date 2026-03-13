@@ -117,6 +117,8 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/termos" element={<TermsPage />} />
+                <Route path="/privacidade" element={<PrivacyPage />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/home" element={<SmartHome />} />
                   <Route path="/checkout-success" element={<CheckoutSuccessPage />} />

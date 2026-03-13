@@ -32,6 +32,7 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [leakedWarning, setLeakedWarning] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
 
