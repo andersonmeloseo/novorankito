@@ -35,6 +35,6 @@ export default function SmartHome() {
   // Has projects → projects list
   if (projects && projects.length > 0) return <Navigate to="/projects" replace />;
 
-  // No projects → billing/plans
-  return <Navigate to="/account/billing" replace />;
+  // No projects → onboarding to create first project
+  return <Navigate to="/onboarding" replace />;
 }
