@@ -567,7 +567,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
               {editingAlert ? "Editar Alerta" : "Novo Alerta"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-1.5">
               <Label className="text-xs">Nome do alerta *</Label>
               <Input className="h-9 text-sm" placeholder="Ex: Queda de cliques orgânicos" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
