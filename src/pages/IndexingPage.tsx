@@ -1493,7 +1493,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div data-tour="schedule-form" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* ── Auto Cron Config ── */}
       <Card className="p-5 space-y-4">
         <div className="flex items-center justify-between">
