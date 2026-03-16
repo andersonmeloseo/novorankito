@@ -61,12 +61,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Skip token refresh events — they don't change user state
+      if (event === "TOKEN_REFRESHED") return;
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        setTimeout(() => checkSubscription(), 0);
+        const silent = hasCheckedOnce.current;
+        hasCheckedOnce.current = true;
+        setTimeout(() => checkSubscription(silent), 0);
       } else {
         setSubscription(DEFAULT_SUB);
         setSubLoading(false);
