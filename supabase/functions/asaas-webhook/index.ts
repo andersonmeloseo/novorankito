@@ -97,6 +97,28 @@ Deno.serve(async (req) => {
       await activateSubscription(supabaseAdmin, userId, planSlug, billingInterval, payment);
     }
 
+    // Log to payment_transactions table
+    const resolvedUserId = userId || null;
+    await supabaseAdmin.from("payment_transactions").upsert({
+      gateway: "asaas",
+      gateway_payment_id: payment.id,
+      user_id: resolvedUserId,
+      customer_email: payment.customerEmail || null,
+      customer_name: payment.customerName || null,
+      amount: payment.value || 0,
+      currency: "BRL",
+      status: "paid",
+      plan_slug: planSlug,
+      billing_interval: billingInterval,
+      payment_method: payment.billingType || "PIX",
+      gateway_customer_id: payment.customer || null,
+      metadata: { event, externalReference: payment.externalReference },
+      paid_at: new Date().toISOString(),
+    }, { onConflict: "gateway,gateway_payment_id" }).then(({ error: txErr }) => {
+      if (txErr) log("Error logging transaction", { error: txErr.message });
+      else log("Transaction logged");
+    });
+
     // Audit log
     await supabaseAdmin.from("audit_logs").insert({
       user_id: userId,
