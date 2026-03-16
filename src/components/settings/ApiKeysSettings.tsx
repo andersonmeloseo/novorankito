@@ -199,7 +199,7 @@ export function ApiKeysSettings({ projectId }: ApiKeysSettingsProps) {
               {/* Show generated key */}
               {generatedKey && (
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2">
-                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <p className="text-[11px] font-semibold text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Copie agora — esta chave não será exibida novamente!
                   </p>
