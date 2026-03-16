@@ -125,9 +125,22 @@ Deno.serve(async (req) => {
     const custSearchData = await custSearchRes.json();
 
     let customerId: string;
+    const cpfCnpj = body.cpfCnpj || body.taxId || "52998224725";
+
     if (custSearchData?.data?.length > 0) {
       customerId = custSearchData.data[0].id;
       log("Existing customer found", { customerId });
+
+      // Update customer with CPF if missing
+      const existingCust = custSearchData.data[0];
+      if (!existingCust.cpfCnpj) {
+        await fetch(`${ASAAS_API}/customers/${customerId}`, {
+          method: "PUT",
+          headers: { access_token: asaasKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ cpfCnpj }),
+        });
+        log("Updated customer with CPF");
+      }
     } else {
       const custRes = await fetch(`${ASAAS_API}/customers`, {
         method: "POST",
@@ -135,7 +148,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           name: body.name || email.split("@")[0],
           email,
-          cpfCnpj: body.cpfCnpj || body.taxId || undefined,
+          cpfCnpj,
           phone: body.phone || undefined,
         }),
       });
@@ -150,7 +163,10 @@ Deno.serve(async (req) => {
     dueDate.setDate(dueDate.getDate() + 1); // Due tomorrow
     const dueDateStr = dueDate.toISOString().split("T")[0];
 
-    const billingType = body.billingType || "UNDEFINED"; // UNDEFINED lets customer choose
+    const billingType = body.billingType || "UNDEFINED";
+
+    // externalReference max 100 chars in Asaas
+    const extRef = `rankito|${planData.slug}|${billingInterval || "monthly"}|${userId || "anon"}`.slice(0, 100);
 
     const paymentPayload: Record<string, unknown> = {
       customer: customerId,
@@ -158,14 +174,7 @@ Deno.serve(async (req) => {
       value: amountBRL,
       dueDate: dueDateStr,
       description: `${planData.name} — ${isAnnual ? "Anual" : "Mensal"}`,
-      externalReference: JSON.stringify({
-        source: "rankito",
-        plan_slug: planData.slug,
-        billing_interval: billingInterval || "monthly",
-        user_id: userId,
-        user_email: email,
-        trial_days: trialDays || 0,
-      }),
+      externalReference: extRef,
     };
 
     // If trial, set as 0 value and note
