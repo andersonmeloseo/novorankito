@@ -746,11 +746,21 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de saída registrada" />
                   )}
                 </div>
-                {exitPages.length > 0 && (
-                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
-                    ⚠️ <strong>{exitPages[0]?.page === "/" ? "Home" : exitPages[0]?.page.split("/").pop()}</strong> concentra {totalJourneys > 0 ? ((exitPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das saídas. {exitPages[0]?.page === entryPages[0]?.page ? "Coincide com a entrada — alto bounce. Melhore o conteúdo acima da dobra." : "Revise CTAs e conteúdo dessa página para reduzir abandono."}
-                  </p>
-                )}
+                {exitPages.length > 0 && (() => {
+                  const topExitName = exitPages[0]?.page === "/" ? "Home" : exitPages[0]?.page.split("/").pop();
+                  const topExitPct = totalJourneys > 0 ? ((exitPages[0].count / totalJourneys) * 100).toFixed(0) : "0";
+                  const topExitJourneys = filtered.filter(j => j.steps[j.steps.length - 1]?.page === exitPages[0]?.page);
+                  const avgDurOnExit = topExitJourneys.length > 0 ? Math.round(topExitJourneys.reduce((s, j) => {
+                    const lastStep = j.steps[j.steps.length - 1];
+                    return s + (lastStep?.duration_sec || 0);
+                  }, 0) / topExitJourneys.length) : 0;
+                  const sameAsEntry = exitPages[0]?.page === entryPages[0]?.page;
+                  return (
+                    <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                      ⚠️ <strong>{topExitName}</strong>: {exitPages[0].count} saídas ({topExitPct}%) · Tempo médio na saída: {formatDuration(avgDurOnExit)}{exitPages[1] ? ` · 2ª: "${exitPages[1].page === "/" ? "Home" : exitPages[1].page.split("/").pop()}" (${exitPages[1].count})` : ""}. {sameAsEntry ? `⚠️ Mesma página de entrada — ${bounceRate}% bounce rate. Melhore conteúdo above-the-fold.` : avgDurOnExit < 10 ? "Saída rápida — conteúdo não retém. Revise copy e CTA." : ""}
+                    </p>
+                  );
+                })()}
               </Card>
             </AnimatedContainer>
 
