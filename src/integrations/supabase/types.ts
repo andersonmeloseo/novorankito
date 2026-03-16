@@ -2078,6 +2078,66 @@ export type Database = {
           },
         ]
       }
+      payment_transactions: {
+        Row: {
+          amount: number
+          billing_interval: string | null
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          gateway: string
+          gateway_customer_id: string | null
+          gateway_payment_id: string
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          payment_method: string | null
+          plan_slug: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number
+          billing_interval?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          gateway: string
+          gateway_customer_id?: string | null
+          gateway_payment_id: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          payment_method?: string | null
+          plan_slug?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_interval?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          gateway?: string
+          gateway_customer_id?: string | null
+          gateway_payment_id?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          payment_method?: string | null
+          plan_slug?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       plan_features: {
         Row: {
           created_at: string
