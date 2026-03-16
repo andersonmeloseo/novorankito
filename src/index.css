@@ -389,3 +389,18 @@
   0% { filter: brightness(1) drop-shadow(0 0 4px rgba(0,0,0,0.1)); }
   100% { filter: brightness(1.08) drop-shadow(0 0 12px rgba(0,0,0,0.15)); }
 }
+
+/* Tour blocking — disable sidebar navigation when tour is active */
+body.tour-active [data-sidebar] {
+  pointer-events: none;
+}
+body.tour-active [data-tour-highlight],
+body.tour-active [data-tour] {
+  pointer-events: auto;
+}
+
+/* Tour spotlight pulse */
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.4); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.2), 0 0 20px hsl(var(--primary) / 0.15); }
+}
