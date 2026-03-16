@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Zap, Loader2, ExternalLink, CreditCard, Tag } from "lucide-react";
+import { Check, Zap, Loader2, ExternalLink, CreditCard, Tag, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
