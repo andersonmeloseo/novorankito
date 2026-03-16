@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Zap, Loader2, ExternalLink, CreditCard, Tag } from "lucide-react";
+import { Check, Zap, Loader2, ExternalLink, CreditCard, Tag, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export default function BillingPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent?: number; discount_amount?: number } | null>(null);
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     supabase
@@ -189,6 +190,42 @@ export default function BillingPage() {
     }
   };
 
+  const handleCheckPendingPayment = async () => {
+    setCheckingPayment(true);
+    try {
+      const stored = (() => {
+        try { return JSON.parse(localStorage.getItem("pending_payment") || "{}"); } catch { return {}; }
+      })();
+      
+      if (!stored.paymentId) {
+        toast({ title: "Sem pagamento pendente", description: "Não encontramos um pagamento pendente registrado. Se já pagou, aguarde alguns minutos." });
+        setCheckingPayment(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("check-payment-status", {
+        body: { paymentId: stored.paymentId, gateway: stored.gateway || "asaas" },
+      });
+      if (error) throw error;
+
+      if (data?.paid) {
+        localStorage.removeItem("pending_payment");
+        await checkSubscription();
+        toast({ title: "Pagamento confirmado! 🎉", description: "Sua assinatura foi ativada com sucesso." });
+      } else {
+        toast({ 
+          title: "Pagamento ainda pendente", 
+          description: `Status: ${data?.status || "PENDING"}. Tente novamente em alguns minutos.`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Erro ao verificar pagamento", variant: "destructive" });
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
   return (
     <div className="flex-1 bg-background">
       <header className="border-b p-4 sm:p-6">
@@ -217,7 +254,26 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {/* Coupon input */}
+        {/* Verify pending payment button - show when user is not subscribed */}
+        {!subscription.subscribed && (
+          <Card className="p-4 border-amber-500/30 bg-amber-500/5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-4 w-4 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Já fez um pagamento?</p>
+                  <p className="text-xs text-muted-foreground">Clique para verificar e ativar sua assinatura</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleCheckPendingPayment} disabled={checkingPayment}>
+                {checkingPayment ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Verificar Pagamento
+              </Button>
+            </div>
+          </Card>
+        )}
+
+
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <Tag className="h-4 w-4 text-primary shrink-0" />
