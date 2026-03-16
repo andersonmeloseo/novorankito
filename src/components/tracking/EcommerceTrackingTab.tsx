@@ -15,7 +15,8 @@ import {
   Eye, ArrowDownRight, ExternalLink, ChevronDown, ChevronRight, Tag, BarChart3,
   Clock, Globe, Smartphone, Monitor, ShoppingBag, Receipt, Percent,
   Lightbulb, AlertTriangle, Zap, Users, Repeat, Timer, ArrowUpRight, ArrowDownLeft,
-  Star, Target, TrendingDown, Brain,
+  Star, Target, TrendingDown, Brain, Megaphone, Layers, Activity, Hash, Banknote,
+  Crown, Map, Gift,
 } from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, LineGlowGradient,
