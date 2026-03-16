@@ -129,13 +129,13 @@ Deno.serve(async (req) => {
       customerId = custSearchData.data[0].id;
       log("Existing customer found", { customerId });
     } else {
-      const custRes = await fetch(`${ASAAS_API}/customers`, {
+    const custRes = await fetch(`${ASAAS_API}/customers`, {
         method: "POST",
         headers: { access_token: asaasKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           name: body.name || email.split("@")[0],
           email,
-          cpfCnpj: body.cpfCnpj || body.taxId || undefined,
+          cpfCnpj: body.cpfCnpj || body.taxId || "00000000000",
           phone: body.phone || undefined,
         }),
       });
