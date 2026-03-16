@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
                   <span className="text-muted-foreground">· {format(parseISO(ga4Connection.last_sync_at), "dd/MM HH:mm")}</span>
                 )}
               </div>
-              <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={handleRefresh} disabled={syncing}>
+              <Button data-tour="ga4-sync-button" size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={handleRefresh} disabled={syncing}>
                 {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 Atualizar
               </Button>
