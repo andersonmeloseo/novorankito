@@ -598,7 +598,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Threshold</Label>
+                <Label className="text-xs">Limite</Label>
                 <Input type="number" className="h-9 text-sm" value={form.threshold} onChange={e => setForm(f => ({ ...f, threshold: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
@@ -626,6 +626,27 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
                 ))}
               </div>
             </div>
+            {form.channels.includes("whatsapp") && (
+              <div className="space-y-1.5 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Phone className="h-3 w-3 text-emerald-500" /> Número do WhatsApp para este alerta
+                </Label>
+                <Input
+                  className="h-9 text-sm"
+                  placeholder="+55 47 99999-9999"
+                  value={effectivePhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                />
+                {effectivePhone && (
+                  <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Alertas serão enviados para {effectivePhone}
+                  </p>
+                )}
+                {!effectivePhone && (
+                  <p className="text-[10px] text-destructive">Informe um número para receber alertas via WhatsApp</p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" size="sm" className="text-xs">Cancelar</Button></DialogClose>
