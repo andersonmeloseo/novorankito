@@ -634,7 +634,7 @@ export default function IndexingPage() {
                   </div>
                   <DialogFooter>
                     <DialogClose asChild><Button variant="outline" size="sm">Cancelar</Button></DialogClose>
-                    <Button size="sm" className="gap-1.5" onClick={handleSubmitManual} disabled={submitMutation.isPending || !urlsText.trim()}>
+                    <Button data-tour="urls-manual-submit" size="sm" className="gap-1.5" onClick={handleSubmitManual} disabled={submitMutation.isPending || !urlsText.trim()}>
                       {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                       {submitMutation.isPending ? "Enviando..." : "Enviar"}
                     </Button>
