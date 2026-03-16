@@ -292,7 +292,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
         await supabase.from("notifications").insert({
           user_id: user.id, project_id: projectId,
           title: `⚠️ ${alert.name}`,
-          message: `${alert.description} — Threshold: ${alert.threshold}${alert.unit}`,
+          message: `${alert.description} — Limite: ${alert.threshold}${alert.unit}`,
           type: "alert",
         });
       }
