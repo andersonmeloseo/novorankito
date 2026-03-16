@@ -597,27 +597,42 @@ export function UserJourneyTab() {
           </Card>
 
           {/* KPIs */}
-          <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))" },
-              { label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))" },
-              { label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))" },
-              { label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))" },
-              { label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))" },
-              { label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))" },
-            ].map((kpi, i) => (
-              <Card key={i} className="p-4 sm:p-5 card-hover group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="relative flex flex-col items-center text-center gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
-                  </div>
-                  <span className="text-2xl font-bold text-foreground font-display tracking-tight">{kpi.value}</span>
-                </div>
-              </Card>
-            ))}
-          </StaggeredGrid>
+          {(() => {
+            // Compute insights for each KPI
+            const bounceJourneys = filtered.filter(j => j.steps.length === 1).length;
+            const bounceRate = totalJourneys > 0 ? ((bounceJourneys / totalJourneys) * 100).toFixed(1) : "0";
+            const mobileJourneys = filtered.filter(j => j.device === "mobile").length;
+            const mobilePct = totalJourneys > 0 ? ((mobileJourneys / totalJourneys) * 100).toFixed(0) : "0";
+            const avgConvValue = convertedCount > 0 ? (totalRevenue / convertedCount).toFixed(0) : "0";
+            const ctaPerJourney = totalJourneys > 0 ? (ctaClicks / totalJourneys).toFixed(1) : "0";
+
+            const kpiInsights = [
+              { label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))", insight: `${bounceRate}% são single-page (bounce). ${mobilePct}% vêm de mobile.` },
+              { label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))", insight: Number(avgSteps) >= 3 ? "Boa profundidade — visitantes exploram o site." : "Profundidade baixa — otimize links internos e CTAs para reter navegação." },
+              { label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))", insight: avgDuration >= 120 ? "Engajamento saudável. Visitantes investem tempo no conteúdo." : avgDuration >= 30 ? "Tempo razoável. Teste conteúdo mais rico para aumentar retenção." : "Muito curto — verifique se o conteúdo está respondendo à intenção de busca." },
+              { label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))", insight: Number(conversionRate) >= 3 ? `Excelente! Ticket médio por conversão: R$ ${avgConvValue}.` : Number(conversionRate) > 0 ? `Há espaço para otimizar. Ticket médio: R$ ${avgConvValue}.` : "Nenhuma conversão detectada — revise CTAs e páginas de destino." },
+              { label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))", insight: ctaClicks > 0 ? `Média de ${ctaPerJourney} cliques/jornada. ${Number(ctaPerJourney) < 1 ? "Baixo — destaque melhor seus CTAs." : "Bom engajamento com chamadas para ação."}` : "Nenhum clique CTA registrado — garanta que botões tenham tracking." },
+              { label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))", insight: totalRevenue > 0 ? `${convertedCount} conversões geraram essa receita. RPV: R$ ${totalJourneys > 0 ? (totalRevenue / totalJourneys).toFixed(2) : "0"}/visita.` : "Sem receita — implemente eventos de purchase para rastrear." },
+            ];
+
+            return (
+              <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {kpiInsights.map((kpi, i) => (
+                  <Card key={i} className="p-4 sm:p-5 card-hover group relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative flex flex-col items-center text-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+                      </div>
+                      <span className="text-2xl font-bold text-foreground font-display tracking-tight">{kpi.value}</span>
+                      <p className="text-[9px] leading-snug text-muted-foreground/80 mt-1 line-clamp-3">{kpi.insight}</p>
+                    </div>
+                  </Card>
+                ))}
+              </StaggeredGrid>
+            );
+          })()}
 
           {/* Charts Row 1 */}
           <div className="grid lg:grid-cols-3 gap-4">
