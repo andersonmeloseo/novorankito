@@ -312,11 +312,16 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     }
   };
 
-  const toggleFormChannel = (ch: DeliveryChannel) => {
-    setForm(prev => ({
-      ...prev,
-      channels: prev.channels.includes(ch) ? prev.channels.filter(c => c !== ch) : [...prev.channels, ch],
-    }));
+  const handleChannelCheckedChange = (channel: DeliveryChannel, checked: boolean | "indeterminate") => {
+    setForm((prev) => {
+      const shouldInclude = checked === true;
+      return {
+        ...prev,
+        channels: shouldInclude
+          ? Array.from(new Set([...prev.channels, channel]))
+          : prev.channels.filter((c) => c !== channel),
+      };
+    });
   };
 
   const enabledCount = customAlerts.filter(a => a.enabled).length;
@@ -618,12 +623,22 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
             <div className="space-y-1.5">
               <Label className="text-xs">Canais de entrega</Label>
               <div className="flex items-center gap-4">
-                {(Object.entries(CHANNEL_CONFIG) as [DeliveryChannel, typeof CHANNEL_CONFIG["in_app"]][]).map(([key, ch]) => (
-                  <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox checked={form.channels.includes(key)} onCheckedChange={() => toggleFormChannel(key)} className="h-3.5 w-3.5" />
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">{ch.icon} {ch.label}</span>
-                  </label>
-                ))}
+                {(Object.entries(CHANNEL_CONFIG) as [DeliveryChannel, typeof CHANNEL_CONFIG["in_app"]][]).map(([key, ch]) => {
+                  const checkboxId = `channel-${key}`;
+                  return (
+                    <div key={key} className="flex items-center gap-1.5">
+                      <Checkbox
+                        id={checkboxId}
+                        checked={form.channels.includes(key)}
+                        onCheckedChange={(checked) => handleChannelCheckedChange(key, checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <label htmlFor={checkboxId} className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
+                        {ch.icon} {ch.label}
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
             {form.channels.includes("whatsapp") && (
