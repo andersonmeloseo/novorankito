@@ -409,6 +409,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 <NavItem item={{ title: "Todos os Projetos", url: "/projects", icon: FolderOpen, tourId: "projects" }} end collapsed />
                 <NavItem item={{ title: "Guia de Início", url: "/getting-started", icon: Sparkles }} end collapsed pulse />
+                <NavItem item={{ title: "Onboarding Guiado", url: "/getting-started?restart-tour=1", icon: Compass }} end collapsed />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
