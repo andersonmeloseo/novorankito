@@ -64,6 +64,7 @@ export function HealthScore({
   engagementRate, bounceRate, conversions, totalUsers, newUsers, sessions,
   prevEngagementRate, prevConversions, prevTotalUsers, showComparison,
 }: HealthScoreProps) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const score = calculateScore(engagementRate, bounceRate, conversions, totalUsers, newUsers, sessions);
 
   const metrics = [
