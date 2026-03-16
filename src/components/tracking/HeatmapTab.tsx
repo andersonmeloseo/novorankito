@@ -307,7 +307,7 @@ export function HeatmapTab() {
           key={r.value}
           size="sm"
           variant={dateRange === r.value ? "default" : "ghost"}
-          className={`h-7 text-[10px] px-2.5 ${dateRange === r.value ? "" : "text-muted-foreground hover:text-foreground"}`}
+          className={`h-7 text-[10px] px-2.5 ${dateRange === r.value ? "" : "text-muted-foreground hover:bg-primary hover:text-primary-foreground"}`}
           onClick={() => { setDateRange(r.value); setListPage(0); }}
         >
           {r.label}
