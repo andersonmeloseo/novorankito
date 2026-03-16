@@ -392,46 +392,103 @@ console.log("Posição média:", overview.data.avg_position);`}</pre>
                     </div>
                     <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
                       <pre>{`// Google Apps Script - Cole no Apps Script do Google Sheets
+// ⚠️ Substitua as 2 variáveis abaixo antes de rodar!
+
+var API_URL = "${API_BASE_URL}";
+var API_KEY = "rk_cole_sua_chave_aqui";
+var ANON   = "${ANON_KEY}";
+
 function atualizarSEO() {
-  const API = "${API_BASE_URL}";
-  const KEY = "rk_sua_chave";
-  
-  const options = {
-    method: "GET",
-    headers: { "X-API-Key": KEY }
+  var options = {
+    method: "get",
+    headers: {
+      "X-API-Key": API_KEY,
+      "apikey": ANON,
+      "Authorization": "Bearer " + ANON
+    },
+    muteHttpExceptions: true
   };
-  
-  // Buscar overview
-  const res = UrlFetchApp.fetch(API + "?action=overview", options);
-  const data = JSON.parse(res.getContentText()).data;
-  
-  const sheet = SpreadsheetApp.getActiveSheet();
-  sheet.getRange("A1").setValue("Cliques Totais");
-  sheet.getRange("B1").setValue(data.total_clicks);
-  sheet.getRange("A2").setValue("Impressões");
-  sheet.getRange("B2").setValue(data.total_impressions);
-  sheet.getRange("A3").setValue("Posição Média");
-  sheet.getRange("B3").setValue(data.avg_position);
-  sheet.getRange("A4").setValue("CTR Médio (%)");
-  sheet.getRange("B4").setValue(data.avg_ctr);
-  sheet.getRange("A5").setValue("Última atualização");
-  sheet.getRange("B5").setValue(new Date().toLocaleString("pt-BR"));
-  
-  // Buscar métricas diárias
-  const metricsRes = UrlFetchApp.fetch(API + "?action=metrics&days=7", options);
-  const metrics = JSON.parse(metricsRes.getContentText()).data;
-  
-  // Preencher a partir da linha 7
-  sheet.getRange("A7").setValue("Data");
-  sheet.getRange("B7").setValue("Cliques");
-  sheet.getRange("C7").setValue("Impressões");
-  
-  metrics.forEach((m, i) => {
-    sheet.getRange("A" + (8 + i)).setValue(m.metric_date);
-    sheet.getRange("B" + (8 + i)).setValue(m.clicks);
-    sheet.getRange("C" + (8 + i)).setValue(m.impressions);
-  });
-}`}</pre>
+
+  // 1) Overview
+  var res = UrlFetchApp.fetch(API_URL + "?action=overview", options);
+  if (res.getResponseCode() !== 200) {
+    SpreadsheetApp.getUi().alert(
+      "Erro " + res.getResponseCode() + ": " + res.getContentText()
+    );
+    return;
+  }
+  var json = JSON.parse(res.getContentText());
+  var data = json.data || {};
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("SEO") || SpreadsheetApp.getActiveSheet();
+
+  // Cabeçalho
+  sheet.getRange("A1:B1").setValues([["Métrica", "Valor"]]);
+  sheet.getRange("A1:B1").setFontWeight("bold");
+
+  var kpis = [
+    ["Cliques Totais", data.total_clicks || 0],
+    ["Impressões", data.total_impressions || 0],
+    ["Posição Média", data.avg_position || 0],
+    ["CTR Médio (%)", data.avg_ctr || 0],
+    ["Total de URLs", data.total_urls || 0],
+    ["Total de Queries", data.total_queries || 0],
+    ["Indexadas", (data.indexing || {}).indexed || 0],
+    ["Erros de indexação", (data.indexing || {}).failed || 0],
+    ["Última atualização", new Date().toLocaleString("pt-BR")]
+  ];
+  sheet.getRange(2, 1, kpis.length, 2).setValues(kpis);
+
+  // 2) Métricas diárias (7 dias)
+  var mRes = UrlFetchApp.fetch(
+    API_URL + "?action=metrics&days=7", options
+  );
+  if (mRes.getResponseCode() === 200) {
+    var metrics = JSON.parse(mRes.getContentText()).data || [];
+    var startRow = kpis.length + 4;
+    sheet.getRange(startRow, 1, 1, 4)
+      .setValues([["Data", "Cliques", "Impressões", "Posição"]])
+      .setFontWeight("bold");
+
+    if (metrics.length > 0) {
+      var rows = metrics.map(function(m) {
+        return [
+          m.metric_date || "",
+          m.clicks || 0,
+          m.impressions || 0,
+          m.position || 0
+        ];
+      });
+      sheet.getRange(startRow + 1, 1, rows.length, 4).setValues(rows);
+    }
+  }
+
+  // 3) Top páginas
+  var uRes = UrlFetchApp.fetch(
+    API_URL + "?action=urls", options
+  );
+  if (uRes.getResponseCode() === 200) {
+    var urls = JSON.parse(uRes.getContentText()).data || [];
+    var urlSheet = SpreadsheetApp.getActiveSpreadsheet()
+      .getSheetByName("URLs") 
+      || SpreadsheetApp.getActiveSpreadsheet().insertSheet("URLs");
+    urlSheet.getRange("A1:D1")
+      .setValues([["URL", "Status", "Grupo", "Título"]])
+      .setFontWeight("bold");
+    if (urls.length > 0) {
+      var uRows = urls.slice(0, 100).map(function(u) {
+        return [u.url||"", u.status||"", u.url_group||"", u.meta_title||""];
+      });
+      urlSheet.getRange(2, 1, uRows.length, 4).setValues(uRows);
+    }
+  }
+
+  SpreadsheetApp.getUi().alert("✅ Dados atualizados com sucesso!");
+}
+
+// Adicione um trigger: Extensões > Apps Script > Acionadores
+// Escolha: atualizarSEO | Baseado em tempo | Diário | 8h-9h`}</pre>
                     </div>
                   </div>
                 </details>
