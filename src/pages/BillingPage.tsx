@@ -159,11 +159,31 @@ export default function BillingPage() {
   const handleManageSubscription = async () => {
     setLoadingPortal(true);
     try {
+      // Check if user has a Stripe customer (for Stripe-based plans)
       const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
+      if (error) {
+        // If no Stripe customer, show info toast for Asaas/other gateway users
+        const errMsg = typeof data?.error === "string" ? data.error : error.message;
+        if (errMsg?.includes("No Stripe customer")) {
+          toast({
+            title: "Assinatura via Asaas",
+            description: "Sua assinatura é gerenciada via Asaas. Para cancelar ou alterar, entre em contato com o suporte.",
+          });
+          return;
+        }
+        throw error;
+      }
       if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
-      toast({ title: "Erro", description: err.message || "Erro ao abrir portal", variant: "destructive" });
+      const msg = err?.message || "";
+      if (msg.includes("No Stripe customer") || msg.includes("STRIPE")) {
+        toast({
+          title: "Assinatura via Asaas",
+          description: "Sua assinatura é gerenciada via Asaas. Para cancelar ou alterar, entre em contato com o suporte.",
+        });
+      } else {
+        toast({ title: "Erro", description: msg || "Erro ao abrir portal", variant: "destructive" });
+      }
     } finally {
       setLoadingPortal(false);
     }
