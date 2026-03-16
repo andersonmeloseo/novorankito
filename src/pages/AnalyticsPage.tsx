@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
   const { data: ecommerceData, isLoading: loadingEcommerce } = useGA4Report(acqReady ? projectId : undefined, "ecommerce", startDate, endDate, filters);
 
   const [syncing, setSyncing] = useState(false);
-  const handleRefresh = async () => { setSyncing(true); await refetchOverview(); setSyncing(false); };
+  const handleRefresh = async () => { setSyncing(true); await refetchOverview(); setSyncing(false); window.dispatchEvent(new CustomEvent('tour-action-complete')); };
 
   const totals = overviewData?.totals || {};
   const trend = overviewData?.trend || [];
