@@ -2170,6 +2170,7 @@ export type Database = {
           members_limit: number
           name: string
           orchestrator_executions_limit: number
+          payment_gateway: string
           payment_methods: string[] | null
           pixel_tracking_enabled: boolean
           price: number
@@ -2208,6 +2209,7 @@ export type Database = {
           members_limit?: number
           name: string
           orchestrator_executions_limit?: number
+          payment_gateway?: string
           payment_methods?: string[] | null
           pixel_tracking_enabled?: boolean
           price?: number
@@ -2246,6 +2248,7 @@ export type Database = {
           members_limit?: number
           name?: string
           orchestrator_executions_limit?: number
+          payment_gateway?: string
           payment_methods?: string[] | null
           pixel_tracking_enabled?: boolean
           price?: number
