@@ -705,6 +705,7 @@ export function UserJourneyTab() {
                     📊 {depthFunnel[1]?.value > 0 ? `${((depthFunnel[1].value / depthFunnel[0].value) * 100).toFixed(0)}% visitam 2+ páginas` : "Maioria não passa da primeira página"}. {depthFunnel[2]?.value > 0 ? `${((depthFunnel[2].value / depthFunnel[0].value) * 100).toFixed(0)}% chegam a 3+.` : ""} {((depthFunnel[1]?.value || 0) / depthFunnel[0].value) < 0.5 ? "Baixa retenção — melhore navegação interna." : "Boa retenção entre páginas."}
                   </p>
                 )}
+              </Card>
             </AnimatedContainer>
           </div>
 
