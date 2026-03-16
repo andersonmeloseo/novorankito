@@ -895,6 +895,7 @@ export default function IndexingPage() {
                   {/* Sitemap Actions Bar */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
+                      data-tour="select-all-sitemaps"
                       size="sm"
                       variant={selectedSmUrls.size === sitemaps.length ? "secondary" : "outline"}
                       className="gap-1.5 text-xs"
