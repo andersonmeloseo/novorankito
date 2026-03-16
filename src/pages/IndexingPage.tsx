@@ -921,6 +921,7 @@ export default function IndexingPage() {
                     {selectedSmUrls.size > 0 && (
                       <>
                         <Button
+                          data-tour="submit-sitemaps"
                           size="sm"
                           variant="default"
                           className="gap-1.5 text-xs"
