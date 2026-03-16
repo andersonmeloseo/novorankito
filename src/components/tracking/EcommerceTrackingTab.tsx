@@ -413,6 +413,112 @@ export function EcommerceTrackingTab() {
     return hours.map((count, hour) => ({ hour: `${String(hour).padStart(2, "0")}h`, count }));
   }, [ecomEvents]);
 
+  /* ── Source/Channel Attribution for purchases ── */
+  const sourceAttribution = useMemo(() => {
+    const map: Record<string, { source: string; purchases: number; revenue: number; views: number; cartAdds: number }> = {};
+    ecomEvents.forEach(e => {
+      const src = e.utm_source || e.referrer || "(direto)";
+      if (!map[src]) map[src] = { source: src, purchases: 0, revenue: 0, views: 0, cartAdds: 0 };
+      if (e.event_type === "view_item") map[src].views++;
+      if (e.event_type === "add_to_cart") map[src].cartAdds++;
+      if (e.event_type === "purchase") {
+        map[src].purchases++;
+        map[src].revenue += e.cart_value || e.product_price || 0;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [ecomEvents]);
+
+  /* ── Cart Value Distribution (histogram buckets) ── */
+  const cartValueDistribution = useMemo(() => {
+    const purchases = ecomEvents.filter(e => e.event_type === "purchase" && (e.cart_value || e.product_price));
+    if (purchases.length === 0) return [];
+    const values = purchases.map(e => e.cart_value || e.product_price || 0);
+    const maxVal = Math.max(...values);
+    const bucketSize = maxVal <= 100 ? 20 : maxVal <= 500 ? 50 : maxVal <= 2000 ? 200 : 500;
+    const buckets: Record<string, number> = {};
+    values.forEach(v => {
+      const bucket = Math.floor(v / bucketSize) * bucketSize;
+      const label = `R$${bucket}–${bucket + bucketSize}`;
+      buckets[label] = (buckets[label] || 0) + 1;
+    });
+    return Object.entries(buckets).map(([range, count]) => ({ range, count }));
+  }, [ecomEvents]);
+
+  /* ── Detailed Checkout Step Abandonment ── */
+  const checkoutSteps = useMemo(() => {
+    const viewCart = ecomEvents.filter(e => e.event_type === "view_cart").length;
+    const beginCheckout = totalCheckout;
+    const addShipping = ecomEvents.filter(e => e.event_type === "add_shipping_info").length;
+    const addPayment = ecomEvents.filter(e => e.event_type === "add_payment_info").length;
+    const purchase = totalPurchases;
+    const steps = [
+      { step: "Carrinho Aberto", count: viewCart || totalAddToCart, color: "hsl(var(--primary))" },
+      { step: "Início Checkout", count: beginCheckout, color: "hsl(var(--chart-5))" },
+      { step: "Frete Informado", count: addShipping, color: "hsl(var(--chart-7))" },
+      { step: "Pagamento Informado", count: addPayment, color: "hsl(var(--chart-8))" },
+      { step: "Compra Concluída", count: purchase, color: "hsl(var(--success))" },
+    ].filter(s => s.count > 0 || s.step === "Compra Concluída");
+    return steps;
+  }, [ecomEvents, totalCheckout, totalPurchases, totalAddToCart]);
+
+  /* ── Weekly Cohort Matrix ── */
+  const cohortMatrix = useMemo(() => {
+    if (buyerMetrics.totalBuyers < 2) return [];
+    const purchasesByVisitor: Record<string, Date[]> = {};
+    ecomEvents.filter(e => e.event_type === "purchase" && e.visitor_id).forEach(e => {
+      if (!purchasesByVisitor[e.visitor_id!]) purchasesByVisitor[e.visitor_id!] = [];
+      purchasesByVisitor[e.visitor_id!].push(new Date(e.created_at));
+    });
+    const getWeekKey = (d: Date) => {
+      const start = new Date(d);
+      start.setDate(start.getDate() - start.getDay());
+      return `${String(start.getDate()).padStart(2, "0")}/${String(start.getMonth() + 1).padStart(2, "0")}`;
+    };
+    const cohorts: Record<string, { week: string; total: number; retained: number[] }> = {};
+    Object.entries(purchasesByVisitor).forEach(([vid, dates]) => {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      const firstWeek = getWeekKey(dates[0]);
+      if (!cohorts[firstWeek]) cohorts[firstWeek] = { week: firstWeek, total: 0, retained: [0, 0, 0, 0] };
+      cohorts[firstWeek].total++;
+      const firstTime = dates[0].getTime();
+      dates.forEach(d => {
+        const weekDiff = Math.floor((d.getTime() - firstTime) / (7 * 86400000));
+        if (weekDiff > 0 && weekDiff <= 4) {
+          cohorts[firstWeek].retained[weekDiff - 1]++;
+        }
+      });
+    });
+    return Object.values(cohorts).sort((a, b) => a.week.localeCompare(b.week)).slice(-6);
+  }, [ecomEvents, buyerMetrics.totalBuyers]);
+
+  /* ── Promotion effectiveness ── */
+  const promotionData = useMemo(() => {
+    const promoViews = ecomEvents.filter(e => e.event_type === "view_promotion").length;
+    const promoSelects = ecomEvents.filter(e => e.event_type === "select_promotion").length;
+    const promoNames: Record<string, { views: number; selects: number }> = {};
+    ecomEvents.filter(e => ["view_promotion", "select_promotion"].includes(e.event_type)).forEach(e => {
+      const name = e.product_name || e.cta_text || "(sem nome)";
+      if (!promoNames[name]) promoNames[name] = { views: 0, selects: 0 };
+      if (e.event_type === "view_promotion") promoNames[name].views++;
+      if (e.event_type === "select_promotion") promoNames[name].selects++;
+    });
+    return {
+      totalViews: promoViews,
+      totalSelects: promoSelects,
+      ctr: promoViews > 0 ? (promoSelects / promoViews) * 100 : 0,
+      items: Object.entries(promoNames).map(([name, v]) => ({ name, ...v, ctr: v.views > 0 ? (v.selects / v.views) * 100 : 0 })).sort((a, b) => b.views - a.views),
+    };
+  }, [ecomEvents]);
+
+  /* ── LTV & Revenue per Visitor ── */
+  const ltvMetrics = useMemo(() => {
+    const rpv = buyerMetrics.uniqueVisitors > 0 ? totalRevenue / buyerMetrics.uniqueVisitors : 0;
+    const avgPurchasesPerBuyer = buyerMetrics.totalBuyers > 0 ? totalPurchases / buyerMetrics.totalBuyers : 0;
+    const estimatedLtv = avgTicket * avgPurchasesPerBuyer * (1 + buyerMetrics.repeatRate / 100);
+    return { rpv, avgPurchasesPerBuyer, estimatedLtv };
+  }, [totalRevenue, buyerMetrics, totalPurchases, avgTicket]);
+
   /* ── Recent events log ── */
   const recentEvents = ecomEvents.slice(0, 30);
 
