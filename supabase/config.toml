@@ -71,3 +71,9 @@ verify_jwt = false
 
 [functions.abacatepay-webhook]
 verify_jwt = false
+
+[functions.asaas-checkout]
+verify_jwt = false
+
+[functions.check-payment-status]
+verify_jwt = false

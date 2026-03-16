@@ -623,8 +623,46 @@ export function PlanEditor({ plan, subscriberCount, subscribers, onDeleted }: Pl
             {/* ──── PAYMENT ──── */}
             <TabsContent value="payment" className="mt-0 space-y-5">
               <p className="text-xs text-muted-foreground">
-                Configure a integração de pagamento para este plano. Conecte com Stripe ou outras plataformas.
+                Configure a integração de pagamento para este plano. Escolha o gateway e configure os dados necessários.
               </p>
+
+              {/* Gateway Selector */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Gateway de Pagamento</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { key: "asaas", label: "Asaas", icon: "🏦", desc: "PIX, Boleto, Cartão" },
+                    { key: "abacatepay", label: "Abacate Pay", icon: "🥑", desc: "PIX, Cartão" },
+                    { key: "stripe", label: "Stripe", icon: "💳", desc: "Cartão Internacional" },
+                  ].map(gw => {
+                    const current = (getValue("payment_gateway") as string) || "asaas";
+                    const isSelected = current === gw.key;
+                    return (
+                      <button
+                        key={gw.key}
+                        type="button"
+                        onClick={() => setValue("payment_gateway", gw.key)}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 rounded-xl border p-4 transition-all text-center",
+                          isSelected
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-sm"
+                            : "border-border hover:border-primary/20 hover:bg-muted/30"
+                        )}
+                      >
+                        <span className="text-2xl">{gw.icon}</span>
+                        <span className="text-xs font-semibold">{gw.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{gw.desc}</span>
+                        {isSelected && (
+                          <Badge className="text-[8px] mt-1">Ativo</Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  O gateway determina para qual provedor de pagamento o checkout será direcionado.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
