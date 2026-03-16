@@ -598,21 +598,74 @@ export function UserJourneyTab() {
 
           {/* KPIs */}
           {(() => {
-            // Compute insights for each KPI
             const bounceJourneys = filtered.filter(j => j.steps.length === 1).length;
             const bounceRate = totalJourneys > 0 ? ((bounceJourneys / totalJourneys) * 100).toFixed(1) : "0";
-            const mobileJourneys = filtered.filter(j => j.device === "mobile").length;
-            const mobilePct = totalJourneys > 0 ? ((mobileJourneys / totalJourneys) * 100).toFixed(0) : "0";
+            const mobileJ = filtered.filter(j => j.device === "mobile");
+            const desktopJ = filtered.filter(j => j.device === "desktop");
+            const mobilePct = totalJourneys > 0 ? ((mobileJ.length / totalJourneys) * 100).toFixed(0) : "0";
+            const desktopPct = totalJourneys > 0 ? ((desktopJ.length / totalJourneys) * 100).toFixed(0) : "0";
+            const mobileConvRate = mobileJ.length > 0 ? ((mobileJ.filter(j => j.converted).length / mobileJ.length) * 100).toFixed(1) : "0";
+            const desktopConvRate = desktopJ.length > 0 ? ((desktopJ.filter(j => j.converted).length / desktopJ.length) * 100).toFixed(1) : "0";
+
             const avgConvValue = convertedCount > 0 ? (totalRevenue / convertedCount).toFixed(0) : "0";
-            const ctaPerJourney = totalJourneys > 0 ? (ctaClicks / totalJourneys).toFixed(1) : "0";
+            const ctaPerJourney = totalJourneys > 0 ? (ctaClicks / totalJourneys).toFixed(2) : "0";
+            const rpv = totalJourneys > 0 ? (totalRevenue / totalJourneys).toFixed(2) : "0";
+
+            // Median duration
+            const durations = [...filtered].map(j => j.total_duration_sec).sort((a, b) => a - b);
+            const medianDur = durations.length > 0 ? durations[Math.floor(durations.length / 2)] : 0;
+
+            // Avg scroll depth across all steps
+            const allSteps = filtered.flatMap(j => j.steps);
+            const avgScroll = allSteps.length > 0 ? Math.round(allSteps.reduce((s, st) => s + st.scroll_depth, 0) / allSteps.length) : 0;
+
+            // Top converting source
+            const sourceConvMap: Record<string, { total: number; conv: number; rev: number }> = {};
+            filtered.forEach(j => {
+              const src = j.source;
+              if (!sourceConvMap[src]) sourceConvMap[src] = { total: 0, conv: 0, rev: 0 };
+              sourceConvMap[src].total++;
+              if (j.converted) { sourceConvMap[src].conv++; sourceConvMap[src].rev += j.conversion_value; }
+            });
+            const topConvSource = Object.entries(sourceConvMap)
+              .filter(([, v]) => v.conv > 0)
+              .sort(([, a], [, b]) => (b.conv / b.total) - (a.conv / a.total))[0];
+
+            // Longest journey
+            const longestJ = filtered.reduce((best, j) => j.steps.length > best.steps.length ? j : best, filtered[0]);
+            // Top exit page for non-converted
+            const nonConvExits: Record<string, number> = {};
+            filtered.filter(j => !j.converted).forEach(j => {
+              const p = j.steps[j.steps.length - 1]?.page || "/";
+              nonConvExits[p] = (nonConvExits[p] || 0) + 1;
+            });
+            const topLeakPage = Object.entries(nonConvExits).sort(([, a], [, b]) => b - a)[0];
 
             const kpiInsights = [
-              { label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))", insight: `${bounceRate}% são single-page (bounce). ${mobilePct}% vêm de mobile.` },
-              { label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))", insight: Number(avgSteps) >= 3 ? "Boa profundidade — visitantes exploram o site." : "Profundidade baixa — otimize links internos e CTAs para reter navegação." },
-              { label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))", insight: avgDuration >= 120 ? "Engajamento saudável. Visitantes investem tempo no conteúdo." : avgDuration >= 30 ? "Tempo razoável. Teste conteúdo mais rico para aumentar retenção." : "Muito curto — verifique se o conteúdo está respondendo à intenção de busca." },
-              { label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))", insight: Number(conversionRate) >= 3 ? `Excelente! Ticket médio por conversão: R$ ${avgConvValue}.` : Number(conversionRate) > 0 ? `Há espaço para otimizar. Ticket médio: R$ ${avgConvValue}.` : "Nenhuma conversão detectada — revise CTAs e páginas de destino." },
-              { label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))", insight: ctaClicks > 0 ? `Média de ${ctaPerJourney} cliques/jornada. ${Number(ctaPerJourney) < 1 ? "Baixo — destaque melhor seus CTAs." : "Bom engajamento com chamadas para ação."}` : "Nenhum clique CTA registrado — garanta que botões tenham tracking." },
-              { label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))", insight: totalRevenue > 0 ? `${convertedCount} conversões geraram essa receita. RPV: R$ ${totalJourneys > 0 ? (totalRevenue / totalJourneys).toFixed(2) : "0"}/visita.` : "Sem receita — implemente eventos de purchase para rastrear." },
+              {
+                label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))",
+                insight: `${bounceJourneys} bounce (${bounceRate}%) · ${mobileJ.length} mobile (${mobilePct}%) · ${desktopJ.length} desktop (${desktopPct}%) · Scroll médio: ${avgScroll}%`,
+              },
+              {
+                label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))",
+                insight: `Jornada mais longa: ${longestJ ? longestJ.steps.length : 0} págs (${longestJ ? (longestJ.steps[0]?.page === "/" ? "Home" : longestJ.steps[0]?.page.split("/").pop()) : "—"}). ${Number(avgSteps) < 2 ? "⚠️ Maioria não passa de 1 página — revise links internos." : Number(avgSteps) >= 4 ? "✅ Excelente profundidade de navegação." : "Profundidade média — CTAs intermediários podem ajudar."}`,
+              },
+              {
+                label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))",
+                insight: `Mediana: ${formatDuration(medianDur)} · Desktop: ${formatDuration(desktopJ.length > 0 ? Math.round(desktopJ.reduce((s, j) => s + j.total_duration_sec, 0) / desktopJ.length) : 0)} · Mobile: ${formatDuration(mobileJ.length > 0 ? Math.round(mobileJ.reduce((s, j) => s + j.total_duration_sec, 0) / mobileJ.length) : 0)}. ${medianDur < avgDuration * 0.5 ? "⚠️ Mediana muito abaixo da média — poucos outliers inflam o número." : ""}`,
+              },
+              {
+                label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))",
+                insight: `${convertedCount}/${totalJourneys} converteram · Desktop: ${desktopConvRate}% · Mobile: ${mobileConvRate}% · Ticket médio: R$ ${avgConvValue}${topConvSource ? ` · Melhor fonte: "${topConvSource[0]}" (${((topConvSource[1].conv / topConvSource[1].total) * 100).toFixed(0)}%)` : ""}`,
+              },
+              {
+                label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))",
+                insight: `${ctaPerJourney} cliques/jornada · ${ctaData.length > 0 ? `Top CTA: "${ctaData[0].cta}" (${ctaData[0].count}x)` : "Nenhum CTA rastreado"}${ctaData.length >= 2 ? ` · 2º: "${ctaData[1].cta}" (${ctaData[1].count}x)` : ""}. ${Number(ctaPerJourney) < 0.5 ? "⚠️ Baixa interação — destaque CTAs." : ""}`,
+              },
+              {
+                label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))",
+                insight: `RPV: R$ ${rpv}/visita · ${convertedCount} conversões${topLeakPage ? ` · Maior vazamento: "${topLeakPage[0] === "/" ? "Home" : topLeakPage[0].split("/").pop()}" (${topLeakPage[1]} saídas sem conversão)` : ""}${topConvSource ? ` · Fonte com mais receita: "${topConvSource[0]}" (R$ ${topConvSource[1].rev.toFixed(0)})` : ""}`,
+              },
             ];
 
             return (
@@ -626,7 +679,7 @@ export function UserJourneyTab() {
                         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
                       </div>
                       <span className="text-2xl font-bold text-foreground font-display tracking-tight">{kpi.value}</span>
-                      <p className="text-[9px] leading-snug text-muted-foreground/80 mt-1 line-clamp-3">{kpi.insight}</p>
+                      <p className="text-[9px] leading-snug text-muted-foreground/80 mt-1">{kpi.insight}</p>
                     </div>
                   </Card>
                 ))}
