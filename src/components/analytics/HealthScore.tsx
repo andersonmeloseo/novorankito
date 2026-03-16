@@ -77,9 +77,33 @@ export function HealthScore({
     <Card className={cn("p-5 bg-gradient-to-br border-0", getScoreBg(score))}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">Score de Saúde</h3>
-        <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full bg-background/50", getScoreColor(score))}>
-          {getScoreLabel(score)}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setShowBreakdown(v => !v)}
+                  className="p-0.5 rounded-full hover:bg-background/40 transition-colors"
+                >
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] text-xs">
+                <p className="font-medium mb-1">Como o score é calculado:</p>
+                <ul className="space-y-0.5 text-muted-foreground">
+                  <li>• <strong>Engajamento</strong> (0-30): taxa de engajamento GA4</li>
+                  <li>• <strong>Crescimento</strong> (0-25): proporção de novos usuários</li>
+                  <li>• <strong>Conversões</strong> (0-25): taxa de conversão por sessão</li>
+                  <li>• <strong>Retenção</strong> (0-20): inverso da taxa de rejeição</li>
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full bg-background/50", getScoreColor(score))}>
+            {getScoreLabel(score)}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <div className={cn("text-5xl font-bold font-display tracking-tight", getScoreColor(score))}>
