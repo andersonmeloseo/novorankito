@@ -446,11 +446,11 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
               <Input
                 className="h-9 text-sm"
                 placeholder="+55 47 99999-9999"
-                value={savedPhone}
+                value={effectivePhone}
                 onChange={(e) => setWhatsappPhone(e.target.value)}
               />
             </div>
-            {savedPhone && (
+            {effectivePhone && (
               <Badge variant="outline" className="h-9 px-3 text-[10px] flex items-center gap-1 text-emerald-500 border-emerald-500/30">
                 <CheckCircle2 className="h-3 w-3" />
                 Conectado
