@@ -671,11 +671,20 @@ export function HeatmapTab() {
                   { value: "desktop", icon: Monitor, label: "Desktop" },
                   { value: "tablet", icon: Tablet, label: "Tablet" },
                   { value: "mobile", icon: Smartphone, label: "Mobile" },
-                ].map((d) => (
-                  <Button key={d.value} size="sm" variant={deviceFilter === d.value ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => setDeviceFilter(d.value)}>
-                    <d.icon className="h-3.5 w-3.5" />{d.label}
-                  </Button>
-                ))}
+                ].map((d) => {
+                  const isActive = deviceFilter === d.value;
+                  return (
+                    <Button
+                      key={d.value}
+                      size="sm"
+                      variant={isActive ? "default" : "outline"}
+                      className={`h-9 gap-1.5 text-[10px] ${!isActive ? "hover:bg-primary hover:text-primary-foreground hover:border-primary" : ""}`}
+                      onClick={() => setDeviceFilter(d.value)}
+                    >
+                      <d.icon className="h-3.5 w-3.5" />{d.label}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
 
@@ -683,9 +692,9 @@ export function HeatmapTab() {
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Tipo</label>
               <Tabs value={heatmapMode} onValueChange={(v) => setHeatmapMode(v as any)}>
                 <TabsList className="h-9">
-                  <TabsTrigger value="click" className="text-[10px] gap-1.5 h-7"><MousePointer2 className="h-3.5 w-3.5" /> Cliques</TabsTrigger>
-                  <TabsTrigger value="move" className="text-[10px] gap-1.5 h-7"><Move className="h-3.5 w-3.5" /> Movimento</TabsTrigger>
-                  <TabsTrigger value="scroll" className="text-[10px] gap-1.5 h-7"><ArrowDownFromLine className="h-3.5 w-3.5" /> Scroll</TabsTrigger>
+                  <TabsTrigger value="click" className="text-[10px] gap-1.5 h-7 hover:bg-primary hover:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><MousePointer2 className="h-3.5 w-3.5" /> Cliques</TabsTrigger>
+                  <TabsTrigger value="move" className="text-[10px] gap-1.5 h-7 hover:bg-primary hover:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Move className="h-3.5 w-3.5" /> Movimento</TabsTrigger>
+                  <TabsTrigger value="scroll" className="text-[10px] gap-1.5 h-7 hover:bg-primary hover:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ArrowDownFromLine className="h-3.5 w-3.5" /> Scroll</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
