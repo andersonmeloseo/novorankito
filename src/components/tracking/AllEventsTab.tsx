@@ -287,6 +287,19 @@ export function AllEventsTab() {
               ))}
             </div>
           </div>
+          {/* Peak highlight */}
+          {peakInfo.count > 0 && (
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+              <Flame className="h-5 w-5 text-warning shrink-0" />
+              <div className="text-sm">
+                <span className="font-semibold text-foreground">Pico de atividade:</span>{" "}
+                <span className="text-muted-foreground">
+                  <strong className="text-foreground">{peakInfo.label}</strong> com{" "}
+                  <strong className="text-foreground">{peakInfo.count} evento{peakInfo.count !== 1 ? "s" : ""}</strong>
+                </span>
+              </div>
+            </div>
+          )}
         </Card>
       </AnimatedContainer>
 
