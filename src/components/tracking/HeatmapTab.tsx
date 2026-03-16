@@ -429,11 +429,20 @@ export function HeatmapTab() {
                     { value: "desktop", icon: Monitor, label: "Desktop" },
                     { value: "tablet", icon: Tablet, label: "Tablet" },
                     { value: "mobile", icon: Smartphone, label: "Mobile" },
-                  ].map((d) => (
-                    <Button key={d.value} size="sm" variant={listDeviceFilter === d.value ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => setListDeviceFilter(d.value)}>
-                      <d.icon className="h-3.5 w-3.5" />{d.label}
-                    </Button>
-                  ))}
+                  ].map((d) => {
+                    const isActive = listDeviceFilter === d.value;
+                    return (
+                      <Button
+                        key={d.value}
+                        size="sm"
+                        variant={isActive ? "default" : "outline"}
+                        className={`h-9 gap-1.5 text-[10px] ${!isActive ? "hover:bg-primary hover:text-primary-foreground hover:border-primary" : ""}`}
+                        onClick={() => setListDeviceFilter(d.value)}
+                      >
+                        <d.icon className="h-3.5 w-3.5" />{d.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
               <div>
@@ -444,11 +453,20 @@ export function HeatmapTab() {
                     { value: "clicks" as const, icon: MousePointer2, label: "Com Cliques" },
                     { value: "scroll" as const, icon: ArrowDownFromLine, label: "Com Scroll" },
                     { value: "mouse" as const, icon: Move, label: "Com Trilhas" },
-                  ].map((d) => (
-                    <Button key={d.value} size="sm" variant={listDataFilter === d.value ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => { setListDataFilter(d.value); setListPage(0); }}>
-                      <d.icon className="h-3.5 w-3.5" />{d.label}
-                    </Button>
-                  ))}
+                  ].map((d) => {
+                    const isActive = listDataFilter === d.value;
+                    return (
+                      <Button
+                        key={d.value}
+                        size="sm"
+                        variant={isActive ? "default" : "outline"}
+                        className={`h-9 gap-1.5 text-[10px] ${!isActive ? "hover:bg-primary hover:text-primary-foreground hover:border-primary" : ""}`}
+                        onClick={() => { setListDataFilter(d.value); setListPage(0); }}
+                      >
+                        <d.icon className="h-3.5 w-3.5" />{d.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
