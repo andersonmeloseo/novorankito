@@ -1,12 +1,26 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { QuickActionFab } from "./QuickActionFab";
-import { GuidedTour } from "@/components/onboarding/GuidedTour";
+import { OnboardingTour } from "@/components/onboarding/tour/OnboardingTour";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 
 export function AppLayout() {
   const { pathname } = useLocation();
+  const [projectId, setProjectId] = useState<string | undefined>(
+    () => localStorage.getItem("rankito_current_project") || undefined
+  );
+
+  useEffect(() => {
+    const sync = () => setProjectId(localStorage.getItem("rankito_current_project") || undefined);
+    window.addEventListener("storage", sync);
+    window.addEventListener("rankito_project_changed", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("rankito_project_changed", sync);
+    };
+  }, []);
 
   return (
     <SidebarProvider>
@@ -27,7 +41,7 @@ export function AppLayout() {
           </AnimatePresence>
         </main>
         <QuickActionFab />
-        <GuidedTour />
+        <OnboardingTour projectId={projectId} />
       </div>
     </SidebarProvider>
   );
