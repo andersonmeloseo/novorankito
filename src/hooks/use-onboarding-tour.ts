@@ -32,6 +32,8 @@ export function useOnboardingTour(projectId: string | undefined) {
 
     const load = async () => {
       setLoading(true);
+
+      // Check if this project already has a progress record
       const { data, error } = await supabase
         .from("onboarding_progress")
         .select("*")
@@ -46,19 +48,41 @@ export function useOnboardingTour(projectId: string | undefined) {
       }
 
       if (data) {
+        // Existing record — use it (if completed, tour won't show)
         setProgress(data as any);
         setStepIndex(data.current_step || 0);
       } else {
-        // Create new progress record
-        const { data: newProgress, error: insertError } = await supabase
+        // No record for this project — check if user already completed onboarding for ANY project
+        const { data: anyCompleted } = await supabase
           .from("onboarding_progress")
-          .insert({ user_id: user.id, project_id: projectId, current_step: 0, completed: false })
-          .select()
-          .single();
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("completed", true)
+          .limit(1)
+          .maybeSingle();
 
-        if (!insertError && newProgress) {
-          setProgress(newProgress as any);
-          setStepIndex(0);
+        if (anyCompleted) {
+          // User already did onboarding before — create a completed record (skip tour)
+          const { data: newProgress } = await supabase
+            .from("onboarding_progress")
+            .insert({ user_id: user.id, project_id: projectId, current_step: 0, completed: true, completed_at: new Date().toISOString() })
+            .select()
+            .single();
+          if (newProgress) {
+            setProgress(newProgress as any);
+          }
+        } else {
+          // First time ever — start the tour
+          const { data: newProgress, error: insertError } = await supabase
+            .from("onboarding_progress")
+            .insert({ user_id: user.id, project_id: projectId, current_step: 0, completed: false })
+            .select()
+            .single();
+
+          if (!insertError && newProgress) {
+            setProgress(newProgress as any);
+            setStepIndex(0);
+          }
         }
       }
       setLoading(false);
