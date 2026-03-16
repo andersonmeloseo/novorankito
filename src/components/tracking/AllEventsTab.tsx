@@ -379,6 +379,20 @@ export function AllEventsTab() {
                 <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={allEventFunnel[0].value} color={step.color} index={i} />
               ))}
             </div>
+            {(() => {
+              const top = allEventFunnel[0];
+              const topPct = totalEvents > 0 ? Math.round((top.value / totalEvents) * 100) : 0;
+              const conversionEvents = allEventFunnel.filter(e => EVENT_CATEGORIES.conversions.some(c => (EVENT_LABELS[c] || c) === e.label));
+              const convTotal = conversionEvents.reduce((s, e) => s + e.value, 0);
+              const convPct = totalEvents > 0 ? Math.round((convTotal / totalEvents) * 100) : 0;
+              return (
+                <div className="mt-4 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">{top.label}</strong> lidera com <strong className="text-foreground">{topPct}%</strong> do total ({top.value} eventos).
+                  {convTotal > 0 && <> Eventos de conversão representam <strong className="text-foreground">{convPct}%</strong> do total.</>}
+                  {convPct < 5 ? " Taxa de conversão baixa — revise CTAs, formulários e ofertas para aumentar ações de valor." : convPct > 20 ? " Ótima proporção de conversões — continue otimizando o funil." : " Proporção razoável — teste variações de CTA para melhorar."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
       )}
