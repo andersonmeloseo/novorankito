@@ -656,6 +656,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de entrada registrada" />
                   )}
                 </div>
+                {entryPages.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    💡 <strong>{entryPages[0]?.page === "/" ? "Home" : entryPages[0]?.page.split("/").pop()}</strong> é a principal porta de entrada ({entryPages.length > 0 && totalJourneys > 0 ? ((entryPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das jornadas). {entryPages.length >= 2 ? `Seguida por "${entryPages[1]?.page === "/" ? "Home" : entryPages[1]?.page.split("/").pop()}".` : ""} Otimize essas páginas com CTAs claros.
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
