@@ -2130,7 +2130,7 @@ function AccountsTabContent({ projectId, user, connections, isLoading }: {
           <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowTutorial(true)}>
             <BookOpen className="h-3 w-3" /> Tutorial GSC
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
+          <Button data-tour="add-account" size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
             <Plus className="h-3 w-3" /> Adicionar Conta GSC
           </Button>
         </div>
