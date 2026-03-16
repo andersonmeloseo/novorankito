@@ -26,7 +26,6 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isWaiting, setIsWaiting] = useState(false);
-  const listenerRef = useRef<(() => void) | null>(null);
 
   // Use refs to hold latest values for the delegated click handler
   const stepRef = useRef(currentStep);
@@ -96,7 +95,7 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
     };
   }, [isActive, stepIndex, currentStep]);
 
-  // Auto-navigate for steps with navigateTo
+  // Auto-navigate for steps with navigateTo + auto-advance when route objective is already reached
   useEffect(() => {
     if (!isActive || !currentStep.navigateTo) return;
 
@@ -106,12 +105,28 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
 
     if (path && currentPath !== path) {
       navigate(currentStep.navigateTo);
-    } else if (hash && currentHash !== hash) {
-      window.history.replaceState(null, '', `${location.pathname}#${hash}`);
-      // Trigger hash change detection
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      return;
     }
-  }, [isActive, stepIndex]);
+
+    if (hash && currentHash !== hash) {
+      window.history.replaceState(null, '', `${location.pathname}#${hash}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      return;
+    }
+
+    const reachedNavigationGoal =
+      currentStep.requiresAction &&
+      currentStep.action === 'click' &&
+      (!!path ? currentPath === path : true) &&
+      (!!hash ? currentHash === hash : true);
+
+    if (reachedNavigationGoal) {
+      const autoAdvanceTimer = window.setTimeout(() => {
+        advanceStep();
+      }, 250);
+      return () => window.clearTimeout(autoAdvanceTimer);
+    }
+  }, [isActive, stepIndex, currentStep, location.pathname, location.hash, navigate, advanceStep]);
 
   // Block navigation while tour is active (add CSS class)
   useEffect(() => {

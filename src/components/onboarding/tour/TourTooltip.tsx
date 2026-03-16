@@ -144,10 +144,15 @@ export function TourTooltip({ step, stepIndex, totalSteps, onAdvance, onChoice, 
             </Button>
           )}
 
-          {/* Hint for action steps */}
+          {/* Hint + manual fallback for action steps */}
           {step.requiresAction && !isWaiting && step.action !== 'choice' && (
-            <div className="text-[10px] text-muted-foreground text-center italic">
-              👆 Clique no elemento destacado para continuar
+            <div className="space-y-2">
+              <div className="text-[10px] text-muted-foreground text-center italic">
+                👆 Clique no elemento destacado para continuar
+              </div>
+              <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={onAdvance}>
+                Já concluí, continuar
+              </Button>
             </div>
           )}
 
