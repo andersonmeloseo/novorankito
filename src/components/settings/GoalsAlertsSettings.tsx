@@ -240,14 +240,13 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
 
   // Hydrate state from DB when data loads
   useEffect(() => {
-    if (!savedSettings || loaded) return;
+    if (!savedSettings) return;
     setFocus(savedSettings.focus || "seo_growth");
     setClicksGoal(String(savedSettings.clicks_goal || 30000));
     setImpressionsGoal(String(savedSettings.impressions_goal || 500000));
     setPositionGoal(String(savedSettings.position_goal || 8));
     setWhatsappPhone(savedSettings.whatsapp_phone || "");
     if (savedSettings.alerts && Array.isArray(savedSettings.alerts) && savedSettings.alerts.length > 0) {
-      // Merge saved alert settings with defaults (to pick up new alerts added later)
       setAlerts(DEFAULT_ALERTS.map(def => {
         const saved = (savedSettings.alerts as any[]).find((s: any) => s.id === def.id);
         if (saved) {
@@ -256,8 +255,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
         return def;
       }));
     }
-    setLoaded(true);
-  }, [savedSettings, loaded]);
+  }, [savedSettings]);
 
   // Check if WhatsApp is configured (agent has whatsapp_number)
   const { data: agentConfig } = useQuery({
@@ -288,7 +286,8 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     enabled: !!projectId,
   });
 
-  const savedPhone = whatsappPhone || agentConfig?.whatsapp_number || "";
+  // Effective phone: local state (from DB or user input) → agent fallback
+  const effectivePhone = whatsappPhone || agentConfig?.whatsapp_number || "";
 
   const toggleAlert = (id: string) => {
     setAlerts((prev) =>
