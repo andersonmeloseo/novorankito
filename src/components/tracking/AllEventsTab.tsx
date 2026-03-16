@@ -304,7 +304,13 @@ export function AllEventsTab() {
       </AnimatedContainer>
 
       {/* Volume over time */}
-      {allEventsByDay.length > 0 && (
+      {allEventsByDay.length > 0 && (() => {
+        const peakDay = allEventsByDay.reduce((best, d) => {
+          const total = d.tracking + d.conversions + d.ecommerce;
+          return total > (best.tracking + best.conversions + best.ecommerce) ? d : best;
+        }, allEventsByDay[0]);
+        const peakTotal = peakDay.tracking + peakDay.conversions + peakDay.ecommerce;
+        return (
         <AnimatedContainer>
           <Card className="p-5">
             <ChartHeader title="Volume de Eventos ao Longo do Tempo" subtitle="Acompanhe a evolução diária de tracking, conversões e e-commerce" />
@@ -327,8 +333,41 @@ export function AllEventsTab() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+
+            {/* Peak day highlight */}
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+              <Activity className="h-5 w-5 text-primary shrink-0" />
+              <div className="text-sm">
+                <span className="font-semibold text-foreground">Dia de pico:</span>{" "}
+                <strong className="text-foreground">{peakDay.date}</strong>{" "}
+                <span className="text-muted-foreground">com <strong className="text-foreground">{peakTotal} evento{peakTotal !== 1 ? "s" : ""}</strong></span>
+                <span className="text-muted-foreground"> — </span>
+                <span className="text-info font-medium">{peakDay.tracking} tracking</span>
+                <span className="text-muted-foreground"> · </span>
+                <span className="text-success font-medium">{peakDay.conversions} conversões</span>
+                <span className="text-muted-foreground"> · </span>
+                <span className="text-warning font-medium">{peakDay.ecommerce} e-commerce</span>
+              </div>
+            </div>
+
+            {/* Legend explanation */}
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
+              <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+                <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-info shrink-0" />
+                <span><strong className="text-foreground">Tracking:</strong> Navegação geral — page views, scrolls, cliques, downloads e tempo na página.</span>
+              </div>
+              <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+                <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-success shrink-0" />
+                <span><strong className="text-foreground">Conversões:</strong> Ações de valor — cliques em WhatsApp, telefone, envios de formulário, leads e sign-ups.</span>
+              </div>
+              <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+                <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-warning shrink-0" />
+                <span><strong className="text-foreground">E-commerce:</strong> Funil de compra — visualização de produto, carrinho, checkout e compra.</span>
+              </div>
+            </div>
           </Card>
-        </AnimatedContainer>
+        </AnimatedContainer>);
+      })()}
       )}
 
       {/* Event type ranking */}
