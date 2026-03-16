@@ -218,7 +218,26 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {/* Coupon input */}
+        {/* Verify pending payment button - show when user is not subscribed */}
+        {!subscription.subscribed && (
+          <Card className="p-4 border-amber-500/30 bg-amber-500/5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-4 w-4 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Já fez um pagamento?</p>
+                  <p className="text-xs text-muted-foreground">Clique para verificar e ativar sua assinatura</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleCheckPendingPayment} disabled={checkingPayment}>
+                {checkingPayment ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Verificar Pagamento
+              </Button>
+            </div>
+          </Card>
+        )}
+
+
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <Tag className="h-4 w-4 text-primary shrink-0" />
