@@ -730,6 +730,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Clock} title="Sem dados" description="Nenhum dado de tempo por página" />
                   )}
                 </div>
+                {pageTimeData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    ⏱️ <strong>{pageTimeData[0]?.page}</strong> é a página com mais visitas ({pageTimeData[0]?.visits}). {pageTimeData[0]?.avgTime >= 60 ? "Tempo alto — conteúdo engaja bem." : "Tempo curto — considere enriquecer o conteúdo."} {pageTimeData.length >= 2 ? `"${pageTimeData[1]?.page}" tem ${pageTimeData[1]?.avgTime}s de média.` : ""}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
