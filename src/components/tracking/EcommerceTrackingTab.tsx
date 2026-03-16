@@ -160,7 +160,7 @@ export function EcommerceTrackingTab() {
 
   /* ── Buyer behavior metrics ── */
   const buyerMetrics = useMemo(() => {
-    const buyerVisitors = new Map<string, { purchases: number; firstPurchase: number; sessions: Set<string> }>();
+    const buyerVisitors = new Map() as Map<string, { purchases: number; firstPurchase: number; sessions: Set<string> }>;
     ecomEvents.filter(e => e.event_type === "purchase" && e.visitor_id).forEach(e => {
       const entry = buyerVisitors.get(e.visitor_id!) || { purchases: 0, firstPurchase: Infinity, sessions: new Set() };
       entry.purchases++;
