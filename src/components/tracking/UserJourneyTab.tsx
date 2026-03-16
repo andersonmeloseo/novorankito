@@ -597,27 +597,42 @@ export function UserJourneyTab() {
           </Card>
 
           {/* KPIs */}
-          <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))" },
-              { label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))" },
-              { label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))" },
-              { label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))" },
-              { label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))" },
-              { label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))" },
-            ].map((kpi, i) => (
-              <Card key={i} className="p-4 sm:p-5 card-hover group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="relative flex flex-col items-center text-center gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
-                  </div>
-                  <span className="text-2xl font-bold text-foreground font-display tracking-tight">{kpi.value}</span>
-                </div>
-              </Card>
-            ))}
-          </StaggeredGrid>
+          {(() => {
+            // Compute insights for each KPI
+            const bounceJourneys = filtered.filter(j => j.steps.length === 1).length;
+            const bounceRate = totalJourneys > 0 ? ((bounceJourneys / totalJourneys) * 100).toFixed(1) : "0";
+            const mobileJourneys = filtered.filter(j => j.device === "mobile").length;
+            const mobilePct = totalJourneys > 0 ? ((mobileJourneys / totalJourneys) * 100).toFixed(0) : "0";
+            const avgConvValue = convertedCount > 0 ? (totalRevenue / convertedCount).toFixed(0) : "0";
+            const ctaPerJourney = totalJourneys > 0 ? (ctaClicks / totalJourneys).toFixed(1) : "0";
+
+            const kpiInsights = [
+              { label: "Total Jornadas", value: totalJourneys, icon: Footprints, color: "hsl(var(--primary))", insight: `${bounceRate}% são single-page (bounce). ${mobilePct}% vêm de mobile.` },
+              { label: "Páginas/Jornada", value: avgSteps, icon: Route, color: "hsl(var(--info))", insight: Number(avgSteps) >= 3 ? "Boa profundidade — visitantes exploram o site." : "Profundidade baixa — otimize links internos e CTAs para reter navegação." },
+              { label: "Tempo Médio", value: formatDuration(avgDuration), icon: Clock, color: "hsl(var(--warning))", insight: avgDuration >= 120 ? "Engajamento saudável. Visitantes investem tempo no conteúdo." : avgDuration >= 30 ? "Tempo razoável. Teste conteúdo mais rico para aumentar retenção." : "Muito curto — verifique se o conteúdo está respondendo à intenção de busca." },
+              { label: "Taxa Conversão", value: `${conversionRate}%`, icon: Target, color: "hsl(var(--success))", insight: Number(conversionRate) >= 3 ? `Excelente! Ticket médio por conversão: R$ ${avgConvValue}.` : Number(conversionRate) > 0 ? `Há espaço para otimizar. Ticket médio: R$ ${avgConvValue}.` : "Nenhuma conversão detectada — revise CTAs e páginas de destino." },
+              { label: "Cliques CTA", value: ctaClicks, icon: MousePointerClick, color: "hsl(var(--chart-5))", insight: ctaClicks > 0 ? `Média de ${ctaPerJourney} cliques/jornada. ${Number(ctaPerJourney) < 1 ? "Baixo — destaque melhor seus CTAs." : "Bom engajamento com chamadas para ação."}` : "Nenhum clique CTA registrado — garanta que botões tenham tracking." },
+              { label: "Receita Total", value: `R$ ${totalRevenue.toFixed(0)}`, icon: TrendingUp, color: "hsl(var(--success))", insight: totalRevenue > 0 ? `${convertedCount} conversões geraram essa receita. RPV: R$ ${totalJourneys > 0 ? (totalRevenue / totalJourneys).toFixed(2) : "0"}/visita.` : "Sem receita — implemente eventos de purchase para rastrear." },
+            ];
+
+            return (
+              <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {kpiInsights.map((kpi, i) => (
+                  <Card key={i} className="p-4 sm:p-5 card-hover group relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative flex flex-col items-center text-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+                      </div>
+                      <span className="text-2xl font-bold text-foreground font-display tracking-tight">{kpi.value}</span>
+                      <p className="text-[9px] leading-snug text-muted-foreground/80 mt-1 line-clamp-3">{kpi.insight}</p>
+                    </div>
+                  </Card>
+                ))}
+              </StaggeredGrid>
+            );
+          })()}
 
           {/* Charts Row 1 */}
           <div className="grid lg:grid-cols-3 gap-4">
@@ -641,6 +656,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de entrada registrada" />
                   )}
                 </div>
+                {entryPages.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    💡 <strong>{entryPages[0]?.page === "/" ? "Home" : entryPages[0]?.page.split("/").pop()}</strong> é a principal porta de entrada ({entryPages.length > 0 && totalJourneys > 0 ? ((entryPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das jornadas). {entryPages.length >= 2 ? `Seguida por "${entryPages[1]?.page === "/" ? "Home" : entryPages[1]?.page.split("/").pop()}".` : ""} Otimize essas páginas com CTAs claros.
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
@@ -664,6 +684,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de saída registrada" />
                   )}
                 </div>
+                {exitPages.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    ⚠️ <strong>{exitPages[0]?.page === "/" ? "Home" : exitPages[0]?.page.split("/").pop()}</strong> concentra {totalJourneys > 0 ? ((exitPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das saídas. {exitPages[0]?.page === entryPages[0]?.page ? "Coincide com a entrada — alto bounce. Melhore o conteúdo acima da dobra." : "Revise CTAs e conteúdo dessa página para reduzir abandono."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
@@ -675,6 +700,11 @@ export function UserJourneyTab() {
                     <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={depthFunnel[0].value} color={step.color} index={i} />
                   ))}
                 </div>
+                {depthFunnel[0]?.value > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    📊 {depthFunnel[1]?.value > 0 ? `${((depthFunnel[1].value / depthFunnel[0].value) * 100).toFixed(0)}% visitam 2+ páginas` : "Maioria não passa da primeira página"}. {depthFunnel[2]?.value > 0 ? `${((depthFunnel[2].value / depthFunnel[0].value) * 100).toFixed(0)}% chegam a 3+.` : ""} {((depthFunnel[1]?.value || 0) / depthFunnel[0].value) < 0.5 ? "Baixa retenção — melhore navegação interna." : "Boa retenção entre páginas."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
           </div>
@@ -700,6 +730,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Clock} title="Sem dados" description="Nenhum dado de tempo por página" />
                   )}
                 </div>
+                {pageTimeData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    ⏱️ <strong>{pageTimeData[0]?.page}</strong> é a página com mais visitas ({pageTimeData[0]?.visits}). {pageTimeData[0]?.avgTime >= 60 ? "Tempo alto — conteúdo engaja bem." : "Tempo curto — considere enriquecer o conteúdo."} {pageTimeData.length >= 2 ? `"${pageTimeData[1]?.page}" tem ${pageTimeData[1]?.avgTime}s de média.` : ""}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
@@ -738,6 +773,11 @@ export function UserJourneyTab() {
                 ) : (
                   <EmptyState icon={MousePointerClick} title="Sem cliques CTA" description="Nenhum CTA registrado" />
                 )}
+                {ctaData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    🎯 <strong>"{ctaData[0]?.cta}"</strong> lidera com {ctaData[0]?.count} cliques. {ctaData.length >= 2 ? `"${ctaData[1]?.cta}" vem em segundo com ${ctaData[1]?.count}.` : ""} {ctaData[0]?.count > 10 ? "Bom volume — considere testar variações A/B." : "Volume baixo — revise posicionamento e copy dos CTAs."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
@@ -773,6 +813,11 @@ export function UserJourneyTab() {
                     </div>
                   ))}
                 </div>
+                {sourceData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    🔍 <strong>{sourceData[0]?.name}</strong> domina com {totalSourceEvents > 0 ? ((sourceData[0].value / totalSourceEvents) * 100).toFixed(0) : 0}% do tráfego. {sourceData.length >= 2 ? `"${sourceData[1]?.name}" representa ${totalSourceEvents > 0 ? ((sourceData[1].value / totalSourceEvents) * 100).toFixed(0) : 0}%.` : ""} {sourceData[0]?.name === "direct" ? "Alto tráfego direto — bom branding, mas diversifique canais." : "Diversifique fontes para reduzir dependência."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
           </div>
