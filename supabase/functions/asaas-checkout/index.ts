@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
 
     // Step 3: Get payment link / invoice URL
     const paymentId = payData.id;
-    const invoiceUrl = payData.invoiceUrl || `${ASAAS_API.replace("/api/v3", "").replace("/v3", "")}/i/${paymentId}`;
+    const invoiceUrl = payData.invoiceUrl || payData.bankSlipUrl || `https://www.asaas.com/i/${paymentId}`;
 
     // Log audit
     await supabaseAdmin.from("audit_logs").insert({
