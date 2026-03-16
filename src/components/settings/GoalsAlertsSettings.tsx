@@ -668,10 +668,10 @@ Cliques orgânicos caíram 20%
               },
               {
                 name: "WhatsApp",
-                desc: savedPhone ? `Enviando para ${savedPhone}` : "Configure um número acima",
+                desc: effectivePhone ? `Enviando para ${effectivePhone}` : "Configure um número acima",
                 count: whatsappAlerts,
                 icon: <MessageCircle className="h-4 w-4 text-emerald-500" />,
-                status: savedPhone ? "configurado" : "pendente",
+                status: effectivePhone ? "configurado" : "pendente",
               },
               {
                 name: "Webhook",
