@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
+        hasCheckedOnce.current = false;
         checkSubscription();
       } else {
         setSubLoading(false);
