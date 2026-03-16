@@ -509,9 +509,6 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" onClick={() => handleTestAlert(alert)} disabled={testing === alert.id}>
-                        {testing === alert.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                      </Button>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(alert)}>
                         <Pencil className="h-3 w-3" />
                       </Button>

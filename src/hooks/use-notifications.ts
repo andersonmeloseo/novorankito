@@ -23,6 +23,24 @@ export function useNotifications() {
     enabled: !!user,
   });
 
+  const prevCountRef = useRef(0);
+
+  // Play sound when new notifications arrive
+  useEffect(() => {
+    if (notifications.length > prevCountRef.current && prevCountRef.current > 0) {
+      const newest = notifications[0];
+      if (newest && !newest.is_read) {
+        const type = newest.type as string;
+        if (type === "error" || type === "warning" || type === "alert") {
+          playAlertSound();
+        } else {
+          playBellSound();
+        }
+      }
+    }
+    prevCountRef.current = notifications.length;
+  }, [notifications]);
+
   // Realtime subscription
   useEffect(() => {
     if (!user) return;

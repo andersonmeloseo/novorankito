@@ -6,6 +6,7 @@ import { TourTooltip } from "./TourTooltip";
 import { TourProgressBar } from "./TourProgressBar";
 import { useOnboardingTour } from "@/hooks/use-onboarding-tour";
 import { TOUR_STEPS } from "./tour-steps";
+import confetti from "canvas-confetti";
 
 interface OnboardingTourProps {
   projectId: string | undefined;
