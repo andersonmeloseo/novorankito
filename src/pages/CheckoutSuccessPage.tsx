@@ -14,8 +14,15 @@ export default function CheckoutSuccessPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [pollStatus, setPollStatus] = useState<string>("checking");
 
-  const paymentId = searchParams.get("paymentId");
-  const gateway = searchParams.get("gateway") || "asaas";
+  const paramPaymentId = searchParams.get("paymentId");
+  const paramGateway = searchParams.get("gateway");
+
+  // Fallback to localStorage if URL params missing
+  const stored = (() => {
+    try { return JSON.parse(localStorage.getItem("pending_payment") || "{}"); } catch { return {}; }
+  })();
+  const paymentId = paramPaymentId || stored.paymentId;
+  const gateway = paramGateway || stored.gateway || "asaas";
 
   // Set grace flag immediately so ProtectedRoute allows onboarding access
   useEffect(() => {
