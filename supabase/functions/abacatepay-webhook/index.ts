@@ -132,6 +132,27 @@ Deno.serve(async (req) => {
       } else {
         console.warn("Could not resolve user for payment", { customerEmail, billingId });
       }
+
+      // Log to payment_transactions table
+      const finalAmount = amount ? Math.round(amount / 100) : 0;
+      await supabase.from("payment_transactions").upsert({
+        gateway: "abacatepay",
+        gateway_payment_id: billingId || `abp_${Date.now()}`,
+        user_id: resolvedUserId || null,
+        customer_email: customerEmail || null,
+        customer_name: metadata?.user_name || null,
+        amount: finalAmount,
+        currency: "BRL",
+        status: "paid",
+        plan_slug: planSlug || null,
+        billing_interval: billingInterval,
+        payment_method: "PIX",
+        metadata: { event, billing_id: billingId },
+        paid_at: new Date().toISOString(),
+      }, { onConflict: "gateway,gateway_payment_id" }).then(({ error: txErr }) => {
+        if (txErr) console.error("Error logging transaction:", txErr.message);
+        else console.log("Transaction logged to payment_transactions");
+      });
     }
 
     return new Response(JSON.stringify({ received: true }), {

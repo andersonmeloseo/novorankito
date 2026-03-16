@@ -64,6 +64,14 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
   });
   const [loadingSales, setLoadingSales] = useState(true);
 
+  // ── Gateway Sales Data (Asaas + AbacatePay) ──
+  interface GatewaySales {
+    today: number; week: number; month: number; total_transactions: number; transactions: any[];
+  }
+  const [asaasSales, setAsaasSales] = useState<GatewaySales>({ today: 0, week: 0, month: 0, total_transactions: 0, transactions: [] });
+  const [abacateSales, setAbacateSales] = useState<GatewaySales>({ today: 0, week: 0, month: 0, total_transactions: 0, transactions: [] });
+  const [loadingGateways, setLoadingGateways] = useState(true);
+
   useEffect(() => {
     (async () => {
       try {
@@ -83,6 +91,50 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
         console.error("Failed to load sales", e);
       } finally {
         setLoadingSales(false);
+      }
+    })();
+  }, []);
+
+  // Fetch gateway transactions from payment_transactions table
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: txs, error } = await supabase
+          .from("payment_transactions")
+          .select("*")
+          .order("paid_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfDay);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const calcSales = (gateway: string): GatewaySales => {
+          const filtered = (txs || []).filter((t: any) => t.gateway === gateway && t.status === "paid");
+          let today = 0, week = 0, month = 0;
+          for (const tx of filtered) {
+            const d = new Date(tx.paid_at || tx.created_at);
+            const amt = Number(tx.amount);
+            if (d >= startOfMonth) month += amt;
+            if (d >= startOfWeek) week += amt;
+            if (d >= startOfDay) today += amt;
+          }
+          return {
+            today, week, month,
+            total_transactions: filtered.length,
+            transactions: filtered.slice(0, 5),
+          };
+        };
+
+        setAsaasSales(calcSales("asaas"));
+        setAbacateSales(calcSales("abacatepay"));
+      } catch (e) {
+        console.error("Failed to load gateway sales", e);
+      } finally {
+        setLoadingGateways(false);
       }
     })();
   }, []);
@@ -235,7 +287,125 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
         </Card>
       </AnimatedContainer>
 
-      {/* ── Health Score + Risks & Wins ── */}
+      {/* ── Vendas Asaas + AbacatePay ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Asaas Card */}
+        <AnimatedContainer delay={0.05}>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <ChartHeader title="🟢 Vendas — Asaas" subtitle="Pagamentos processados via Asaas (PIX, Boleto, Cartão)" />
+              {loadingGateways && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-success/10 border border-success/20">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Hoje</div>
+                <div className="text-lg font-bold text-success font-display">R$ {asaasSales.today.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Semana</div>
+                <div className="text-lg font-bold text-primary font-display">R$ {asaasSales.week.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: "hsl(var(--chart-9) / 0.1)", borderColor: "hsl(var(--chart-9) / 0.2)", border: "1px solid" }}>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Mês</div>
+                <div className="text-lg font-bold font-display" style={{ color: "hsl(var(--chart-9))" }}>R$ {asaasSales.month.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Transações</div>
+                <div className="text-lg font-bold text-foreground font-display">{asaasSales.total_transactions}</div>
+              </div>
+            </div>
+            {asaasSales.transactions.length > 0 && (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      {["Data/Hora", "Plano", "Valor", "Método"].map(col => (
+                        <th key={col} className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {asaasSales.transactions.map((tx: any) => (
+                      <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap font-mono">
+                          {(() => { try { return format(new Date(tx.paid_at || tx.created_at), "dd/MM/yy HH:mm", { locale: ptBR }); } catch { return "—"; } })()}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-foreground">{tx.plan_slug || "—"}</td>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">R$ {Number(tx.amount).toFixed(2)}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant="secondary" className="text-[10px]">{tx.payment_method || "PIX"}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!loadingGateways && asaasSales.transactions.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma transação Asaas registrada</p>
+            )}
+          </Card>
+        </AnimatedContainer>
+
+        {/* AbacatePay Card */}
+        <AnimatedContainer delay={0.1}>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <ChartHeader title="🥑 Vendas — AbacatePay" subtitle="Pagamentos processados via AbacatePay (PIX)" />
+              {loadingGateways && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-success/10 border border-success/20">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Hoje</div>
+                <div className="text-lg font-bold text-success font-display">R$ {abacateSales.today.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Semana</div>
+                <div className="text-lg font-bold text-primary font-display">R$ {abacateSales.week.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: "hsl(var(--chart-9) / 0.1)", borderColor: "hsl(var(--chart-9) / 0.2)", border: "1px solid" }}>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Mês</div>
+                <div className="text-lg font-bold font-display" style={{ color: "hsl(var(--chart-9))" }}>R$ {abacateSales.month.toFixed(2)}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Transações</div>
+                <div className="text-lg font-bold text-foreground font-display">{abacateSales.total_transactions}</div>
+              </div>
+            </div>
+            {abacateSales.transactions.length > 0 && (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      {["Data/Hora", "Plano", "Valor", "Método"].map(col => (
+                        <th key={col} className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {abacateSales.transactions.map((tx: any) => (
+                      <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap font-mono">
+                          {(() => { try { return format(new Date(tx.paid_at || tx.created_at), "dd/MM/yy HH:mm", { locale: ptBR }); } catch { return "—"; } })()}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-foreground">{tx.plan_slug || "—"}</td>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">R$ {Number(tx.amount).toFixed(2)}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant="secondary" className="text-[10px]">{tx.payment_method || "PIX"}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!loadingGateways && abacateSales.transactions.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma transação AbacatePay registrada</p>
+            )}
+          </Card>
+        </AnimatedContainer>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Health Score Gauge */}
         <AnimatedContainer>
