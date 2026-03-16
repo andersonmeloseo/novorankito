@@ -709,11 +709,20 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de entrada registrada" />
                   )}
                 </div>
-                {entryPages.length > 0 && (
-                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
-                    💡 <strong>{entryPages[0]?.page === "/" ? "Home" : entryPages[0]?.page.split("/").pop()}</strong> é a principal porta de entrada ({entryPages.length > 0 && totalJourneys > 0 ? ((entryPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das jornadas). {entryPages.length >= 2 ? `Seguida por "${entryPages[1]?.page === "/" ? "Home" : entryPages[1]?.page.split("/").pop()}".` : ""} Otimize essas páginas com CTAs claros.
-                  </p>
-                )}
+                {entryPages.length > 0 && (() => {
+                  const topEntryPct = totalJourneys > 0 ? ((entryPages[0].count / totalJourneys) * 100).toFixed(0) : "0";
+                  const topEntryName = entryPages[0]?.page === "/" ? "Home" : entryPages[0]?.page.split("/").pop();
+                  // Conversion rate for top entry
+                  const topEntryJourneys = filtered.filter(j => j.steps[0]?.page === entryPages[0]?.page);
+                  const topEntryConv = topEntryJourneys.filter(j => j.converted).length;
+                  const topEntryConvRate = topEntryJourneys.length > 0 ? ((topEntryConv / topEntryJourneys.length) * 100).toFixed(1) : "0";
+                  const secondName = entryPages[1] ? (entryPages[1].page === "/" ? "Home" : entryPages[1].page.split("/").pop()) : null;
+                  return (
+                    <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                      💡 <strong>{topEntryName}</strong>: {entryPages[0].count} entradas ({topEntryPct}%) · Conv: {topEntryConvRate}%{secondName ? ` · 2ª: "${secondName}" (${entryPages[1].count} entradas)` : ""}. {Number(topEntryConvRate) < 1 ? "⚠️ Taxa de conversão baixa nessa landing — revise headline e CTA above-the-fold." : "✅ Boa taxa de conversão na entrada principal."}
+                    </p>
+                  );
+                })()}
               </Card>
             </AnimatedContainer>
 
