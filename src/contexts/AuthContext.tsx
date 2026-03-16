@@ -32,9 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<SubscriptionInfo>(DEFAULT_SUB);
   const [subLoading, setSubLoading] = useState(true);
 
-  const checkSubscription = useCallback(async () => {
+  const hasCheckedOnce = useRef(false);
+
+  const checkSubscription = useCallback(async (silent = false) => {
     try {
-      setSubLoading(true);
+      if (!silent) setSubLoading(true);
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) {
         const msg = typeof error === "object" && error !== null && "message" in error ? (error as any).message : String(error);
