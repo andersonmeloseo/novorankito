@@ -63,48 +63,49 @@ export function TourOverlay({ targetSelector, active, onOverlayClick }: TourOver
 
   return (
     <>
-      {/* Overlay with spotlight cutout using box-shadow */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9998] pointer-events-auto"
-        onClick={onOverlayClick}
-      >
-        {rect && (
+      {/* Top overlay */}
+      {rect && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          {/* Four panels around the spotlight to create the cutout */}
+          <div className="fixed inset-0 z-[9998] pointer-events-none">
+            {/* Top */}
+            <div
+              className="absolute left-0 right-0 top-0 bg-black/70 pointer-events-auto"
+              style={{ height: rect.top }}
+              onClick={onOverlayClick}
+            />
+            {/* Bottom */}
+            <div
+              className="absolute left-0 right-0 bottom-0 bg-black/70 pointer-events-auto"
+              style={{ top: rect.top + rect.height }}
+              onClick={onOverlayClick}
+            />
+            {/* Left */}
+            <div
+              className="absolute left-0 bg-black/70 pointer-events-auto"
+              style={{ top: rect.top, height: rect.height, width: rect.left }}
+              onClick={onOverlayClick}
+            />
+            {/* Right */}
+            <div
+              className="absolute right-0 bg-black/70 pointer-events-auto"
+              style={{ top: rect.top, height: rect.height, left: rect.left + rect.width }}
+              onClick={onOverlayClick}
+            />
+          </div>
+
+          {/* Pulse ring around spotlight - pointer-events none so clicks go to target */}
           <div
-            className="absolute transition-all duration-300 ease-out rounded-lg"
+            className="fixed z-[9998] rounded-lg animate-pulse pointer-events-none"
             style={{
               top: rect.top,
               left: rect.left,
               width: rect.width,
               height: rect.height,
-              boxShadow: "0 0 0 9999px rgba(0,0,0,0.7)",
-              pointerEvents: "none",
+              boxShadow: "0 0 0 3px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--primary) / 0.3)",
             }}
-          >
-            {/* Pulse ring */}
-            <div
-              className="absolute inset-0 rounded-lg animate-pulse"
-              style={{
-                boxShadow: "0 0 0 3px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--primary) / 0.3)",
-              }}
-            />
-          </div>
-        )}
-      </motion.div>
-
-      {/* Allow clicks on the target element */}
-      {rect && (
-        <div
-          className="fixed z-[9999] pointer-events-none"
-          style={{
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-          }}
-        />
+          />
+        </motion.div>
       )}
     </>
   );
