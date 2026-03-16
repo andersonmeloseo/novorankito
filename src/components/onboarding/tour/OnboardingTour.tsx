@@ -95,7 +95,7 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
     };
   }, [isActive, stepIndex, currentStep]);
 
-  // Handle route-driven steps
+  // Handle route-driven steps: navigate AND auto-advance once destination is reached
   useEffect(() => {
     if (!isActive || !currentStep.navigateTo) return;
 
@@ -106,18 +106,16 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
       (!!path ? currentPath === path : true) &&
       (!!hash ? currentHash === hash : true);
 
-    // For navigation-click steps, never force navigation: just advance when user reached the route.
-    if (currentStep.requiresAction && currentStep.action === 'click') {
-      if (reachedNavigationGoal) {
-        const autoAdvanceTimer = window.setTimeout(() => {
-          advanceStep();
-        }, 250);
-        return () => window.clearTimeout(autoAdvanceTimer);
+    if (reachedNavigationGoal) {
+      // Already at the target — auto-advance for click-navigation steps
+      if (currentStep.requiresAction && currentStep.action === 'click') {
+        const t = window.setTimeout(() => advanceStep(), 300);
+        return () => window.clearTimeout(t);
       }
-      return;
+      return; // non-click steps stay on current step
     }
 
-    // For all other steps, keep automatic navigation behavior.
+    // Not at target yet — navigate there
     if (path && currentPath !== path) {
       navigate(currentStep.navigateTo);
     } else if (hash && currentHash !== hash) {
