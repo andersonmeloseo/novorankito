@@ -63,13 +63,13 @@ Deno.serve(async (req) => {
       paid = ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(status);
 
       if (paid && userId) {
-        // Parse externalReference to get plan info
+        // Parse externalReference: "rankito|slug|interval|userId"
         let planSlug = "start";
         let billingInterval = "monthly";
         try {
-          const ref = JSON.parse(data.externalReference || "{}");
-          planSlug = ref.plan_slug || "start";
-          billingInterval = ref.billing_interval || "monthly";
+          const parts = (data.externalReference || "").split("|");
+          planSlug = parts[1] || "start";
+          billingInterval = parts[2] || "monthly";
         } catch {}
 
         // Activate subscription
