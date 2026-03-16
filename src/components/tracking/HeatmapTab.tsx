@@ -62,6 +62,7 @@ export function HeatmapTab() {
   const [heatmapMode, setHeatmapMode] = useState<"click" | "scroll" | "move">("click");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
   const [listDeviceFilter, setListDeviceFilter] = useState<string>("all");
+  const [listDataFilter, setListDataFilter] = useState<"all" | "clicks" | "scroll" | "mouse">("all");
   const [listSortBy, setListSortBy] = useState<string>("relevance");
   const [listSearch, setListSearch] = useState("");
   const [listPage, setListPage] = useState(0);
@@ -435,6 +436,21 @@ export function HeatmapTab() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">Tipo de Dados</label>
+                <div className="flex gap-1">
+                  {[
+                    { value: "all" as const, icon: Layers, label: "Todos" },
+                    { value: "clicks" as const, icon: MousePointer2, label: "Com Cliques" },
+                    { value: "scroll" as const, icon: ArrowDownFromLine, label: "Com Scroll" },
+                    { value: "mouse" as const, icon: Move, label: "Com Trilhas" },
+                  ].map((d) => (
+                    <Button key={d.value} size="sm" variant={listDataFilter === d.value ? "default" : "outline"} className="h-9 gap-1.5 text-[10px]" onClick={() => { setListDataFilter(d.value); setListPage(0); }}>
+                      <d.icon className="h-3.5 w-3.5" />{d.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
         </AnimatedContainer>
@@ -444,6 +460,9 @@ export function HeatmapTab() {
           let filtered = urlOptions.filter((opt) => {
             if (listSearch && !opt.url.toLowerCase().includes(listSearch.toLowerCase())) return false;
             if (listDeviceFilter !== "all" && !opt.devices.includes(listDeviceFilter)) return false;
+            if (listDataFilter === "clicks" && opt.clicks === 0) return false;
+            if (listDataFilter === "scroll" && opt.avgScroll === 0) return false;
+            if (listDataFilter === "mouse" && opt.moveCount === 0) return false;
             return true;
           });
           const sortField = listSortBy.replace(/^-/, "");
