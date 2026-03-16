@@ -222,7 +222,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [testing, setTesting] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  
 
   // Load saved settings from DB
   const { data: savedSettings } = useQuery({
@@ -240,14 +240,13 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
 
   // Hydrate state from DB when data loads
   useEffect(() => {
-    if (!savedSettings || loaded) return;
+    if (!savedSettings) return;
     setFocus(savedSettings.focus || "seo_growth");
     setClicksGoal(String(savedSettings.clicks_goal || 30000));
     setImpressionsGoal(String(savedSettings.impressions_goal || 500000));
     setPositionGoal(String(savedSettings.position_goal || 8));
     setWhatsappPhone(savedSettings.whatsapp_phone || "");
     if (savedSettings.alerts && Array.isArray(savedSettings.alerts) && savedSettings.alerts.length > 0) {
-      // Merge saved alert settings with defaults (to pick up new alerts added later)
       setAlerts(DEFAULT_ALERTS.map(def => {
         const saved = (savedSettings.alerts as any[]).find((s: any) => s.id === def.id);
         if (saved) {
@@ -256,8 +255,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
         return def;
       }));
     }
-    setLoaded(true);
-  }, [savedSettings, loaded]);
+  }, [savedSettings]);
 
   // Check if WhatsApp is configured (agent has whatsapp_number)
   const { data: agentConfig } = useQuery({
@@ -288,7 +286,8 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     enabled: !!projectId,
   });
 
-  const savedPhone = whatsappPhone || agentConfig?.whatsapp_number || "";
+  // Effective phone: local state (from DB or user input) → agent fallback
+  const effectivePhone = whatsappPhone || agentConfig?.whatsapp_number || "";
 
   const toggleAlert = (id: string) => {
     setAlerts((prev) =>
@@ -328,7 +327,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
         clicks_goal: parseInt(clicksGoal) || 30000,
         impressions_goal: parseInt(impressionsGoal) || 500000,
         position_goal: parseInt(positionGoal) || 8,
-        whatsapp_phone: savedPhone,
+        whatsapp_phone: effectivePhone,
         alerts: alertsToSave,
       };
 
@@ -347,7 +346,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   };
 
   const handleTestAlert = async (alert: AlertRule) => {
-    if (!savedPhone && alert.channels.includes("whatsapp")) {
+    if (!effectivePhone && alert.channels.includes("whatsapp")) {
       toast({ title: "Configure o WhatsApp", description: "Informe um número para receber alertas.", variant: "destructive" });
       return;
     }
@@ -376,12 +375,12 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
       }
 
       // Send WhatsApp via existing function
-      if (alert.channels.includes("whatsapp") && savedPhone) {
+      if (alert.channels.includes("whatsapp") && effectivePhone) {
         await supabase.functions.invoke("send-workflow-notification", {
           body: {
             direct_send: {
               project_id: projectId,
-              phones: [savedPhone],
+              phones: [effectivePhone],
             },
             report: alertMessage,
             workflow_name: `Alerta: ${alert.label}`,
@@ -447,11 +446,11 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
               <Input
                 className="h-9 text-sm"
                 placeholder="+55 47 99999-9999"
-                value={savedPhone}
+                value={effectivePhone}
                 onChange={(e) => setWhatsappPhone(e.target.value)}
               />
             </div>
-            {savedPhone && (
+            {effectivePhone && (
               <Badge variant="outline" className="h-9 px-3 text-[10px] flex items-center gap-1 text-emerald-500 border-emerald-500/30">
                 <CheckCircle2 className="h-3 w-3" />
                 Conectado
@@ -669,10 +668,10 @@ Cliques orgânicos caíram 20%
               },
               {
                 name: "WhatsApp",
-                desc: savedPhone ? `Enviando para ${savedPhone}` : "Configure um número acima",
+                desc: effectivePhone ? `Enviando para ${effectivePhone}` : "Configure um número acima",
                 count: whatsappAlerts,
                 icon: <MessageCircle className="h-4 w-4 text-emerald-500" />,
-                status: savedPhone ? "configurado" : "pendente",
+                status: effectivePhone ? "configurado" : "pendente",
               },
               {
                 name: "Webhook",
