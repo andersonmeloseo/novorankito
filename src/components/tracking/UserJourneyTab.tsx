@@ -759,7 +759,7 @@ export function UserJourneyTab() {
                   const sameAsEntry = exitPages[0]?.page === entryPages[0]?.page;
                   return (
                     <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
-                      ⚠️ <strong>{topExitName}</strong>: {exitPages[0].count} saídas ({topExitPct}%) · Tempo médio na saída: {formatDuration(avgDurOnExit)}{exitPages[1] ? ` · 2ª: "${exitPages[1].page === "/" ? "Home" : exitPages[1].page.split("/").pop()}" (${exitPages[1].count})` : ""}. {sameAsEntry ? `⚠️ Mesma página de entrada — ${bounceRate}% bounce rate. Melhore conteúdo above-the-fold.` : avgDurOnExit < 10 ? "Saída rápida — conteúdo não retém. Revise copy e CTA." : ""}
+                      ⚠️ <strong>{topExitName}</strong>: {exitPages[0].count} saídas ({topExitPct}%) · Tempo médio na saída: {formatDuration(avgDurOnExit)}{exitPages[1] ? ` · 2ª: "${exitPages[1].page === "/" ? "Home" : exitPages[1].page.split("/").pop()}" (${exitPages[1].count})` : ""}. {sameAsEntry ? `⚠️ Mesma página de entrada — ${bounceRateGlobal}% bounce rate. Melhore conteúdo above-the-fold.` : avgDurOnExit < 10 ? "Saída rápida — conteúdo não retém. Revise copy e CTA." : ""}
                     </p>
                   );
                 })()}
