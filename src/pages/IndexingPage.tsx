@@ -694,6 +694,7 @@ export default function IndexingPage() {
                             <TooltipTrigger asChild>
                               <div>
                                 <Checkbox
+                                  data-tour="urls-select-all"
                                   checked={paginatedInventory.length > 0 && paginatedInventory.every(u => selectedUrls.has(u.url))}
                                   onCheckedChange={togglePage}
                                 />
