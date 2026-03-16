@@ -28,62 +28,70 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
   const [isWaiting, setIsWaiting] = useState(false);
   const listenerRef = useRef<(() => void) | null>(null);
 
-  // Listen for click on target element for requiresAction steps
+  // Use refs to hold latest values for the delegated click handler
+  const stepRef = useRef(currentStep);
+  const advanceRef = useRef(advanceStep);
+  stepRef.current = currentStep;
+  advanceRef.current = advanceStep;
+
+  // Listen for clicks via event delegation (robust against React re-renders)
   useEffect(() => {
     if (!isActive || !currentStep.requiresAction || currentStep.action === 'choice') return;
 
     const selector = currentStep.targetSelector;
     if (!selector) return;
 
-    // Wait for element to appear
-    const checkInterval = setInterval(() => {
-      const el = document.querySelector(selector);
-      if (!el) return;
+    let handled = false;
 
-      clearInterval(checkInterval);
+    // Elevate matching element when found
+    const elevateInterval = setInterval(() => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (el) {
+        el.style.position = 'relative';
+        el.style.zIndex = '10000';
+        el.style.pointerEvents = 'auto';
+      }
+    }, 300);
 
-      const handler = () => {
-        if (currentStep.action === 'click') {
-          // For simple click, advance after a small delay
-          setTimeout(() => advanceStep(), 300);
-        } else if (currentStep.action === 'click_and_wait') {
-          setIsWaiting(true);
-          // We'll listen for custom events dispatched by the app
-          const waitHandler = () => {
-            setIsWaiting(false);
-            advanceStep();
-            window.removeEventListener('tour-action-complete', waitHandler);
-          };
-          window.addEventListener('tour-action-complete', waitHandler);
+    const handler = (e: MouseEvent) => {
+      if (handled) return;
+      const target = e.target as HTMLElement;
+      const matched = target.closest(selector);
+      if (!matched) return;
 
-          // Timeout fallback — 30s
-          setTimeout(() => {
-            setIsWaiting(false);
-            advanceStep();
-            window.removeEventListener('tour-action-complete', waitHandler);
-          }, 30000);
-        }
-      };
+      handled = true;
+      const step = stepRef.current;
 
-      // Make the target element clickable above overlay
-      const htmlEl = el as HTMLElement;
-      htmlEl.style.position = 'relative';
-      htmlEl.style.zIndex = '10000';
-      htmlEl.style.pointerEvents = 'auto';
-      el.addEventListener('click', handler, { once: true });
+      if (step.action === 'click') {
+        setTimeout(() => advanceRef.current(), 300);
+      } else if (step.action === 'click_and_wait') {
+        setIsWaiting(true);
+        const waitHandler = () => {
+          setIsWaiting(false);
+          advanceRef.current();
+          window.removeEventListener('tour-action-complete', waitHandler);
+        };
+        window.addEventListener('tour-action-complete', waitHandler);
 
-      listenerRef.current = () => {
-        el.removeEventListener('click', handler);
-        htmlEl.style.zIndex = '';
-        htmlEl.style.pointerEvents = '';
-      };
-    }, 200);
+        // Timeout fallback — 30s
+        setTimeout(() => {
+          setIsWaiting(false);
+          advanceRef.current();
+          window.removeEventListener('tour-action-complete', waitHandler);
+        }, 30000);
+      }
+    };
+
+    document.addEventListener('click', handler, true); // capture phase
 
     return () => {
-      clearInterval(checkInterval);
-      if (listenerRef.current) {
-        listenerRef.current();
-        listenerRef.current = null;
+      clearInterval(elevateInterval);
+      document.removeEventListener('click', handler, true);
+      // Reset elevated elements
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (el) {
+        el.style.zIndex = '';
+        el.style.pointerEvents = '';
       }
     };
   }, [isActive, stepIndex, currentStep]);
