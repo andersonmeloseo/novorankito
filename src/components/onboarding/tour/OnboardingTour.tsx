@@ -26,7 +26,6 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isWaiting, setIsWaiting] = useState(false);
-  const listenerRef = useRef<(() => void) | null>(null);
 
   // Use refs to hold latest values for the delegated click handler
   const stepRef = useRef(currentStep);
@@ -96,22 +95,36 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
     };
   }, [isActive, stepIndex, currentStep]);
 
-  // Auto-navigate for steps with navigateTo
+  // Handle route-driven steps
   useEffect(() => {
     if (!isActive || !currentStep.navigateTo) return;
 
     const [path, hash] = currentStep.navigateTo.split('#');
     const currentPath = location.pathname;
     const currentHash = location.hash.replace('#', '');
+    const reachedNavigationGoal =
+      (!!path ? currentPath === path : true) &&
+      (!!hash ? currentHash === hash : true);
 
+    // For navigation-click steps, never force navigation: just advance when user reached the route.
+    if (currentStep.requiresAction && currentStep.action === 'click') {
+      if (reachedNavigationGoal) {
+        const autoAdvanceTimer = window.setTimeout(() => {
+          advanceStep();
+        }, 250);
+        return () => window.clearTimeout(autoAdvanceTimer);
+      }
+      return;
+    }
+
+    // For all other steps, keep automatic navigation behavior.
     if (path && currentPath !== path) {
       navigate(currentStep.navigateTo);
     } else if (hash && currentHash !== hash) {
       window.history.replaceState(null, '', `${location.pathname}#${hash}`);
-      // Trigger hash change detection
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
-  }, [isActive, stepIndex]);
+  }, [isActive, stepIndex, currentStep, location.pathname, location.hash, navigate, advanceStep]);
 
   // Block navigation while tour is active (add CSS class)
   useEffect(() => {
