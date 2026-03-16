@@ -564,7 +564,7 @@ export default function IndexingPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gap-1.5 text-xs">
+                  <Button data-tour="urls-manual-open" size="sm" className="gap-1.5 text-xs">
                     <Send className="h-3 w-3" /> Enviar URLs Manualmente
                   </Button>
                 </DialogTrigger>
