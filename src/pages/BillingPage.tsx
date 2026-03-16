@@ -135,7 +135,19 @@ export default function BillingPage() {
         },
       });
       if (error) throw error;
-      if (data?.url) window.location.href = data.url;
+      if (data?.url) {
+        // If Asaas, store paymentId for polling
+        if (data.paymentId) {
+          const sep = data.url.includes("?") ? "&" : "?";
+          const successUrl = `/checkout-success?plan=${plan.slug}&interval=${billingInterval}&gateway=${data.gateway || "asaas"}&paymentId=${data.paymentId}`;
+          localStorage.setItem("pending_payment", JSON.stringify({
+            paymentId: data.paymentId,
+            gateway: data.gateway || "asaas",
+            planSlug: plan.slug,
+          }));
+        }
+        window.location.href = data.url;
+      }
       else throw new Error("URL de checkout não retornada");
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao iniciar checkout", variant: "destructive" });

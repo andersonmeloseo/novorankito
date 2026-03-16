@@ -38,6 +38,7 @@ export interface Plan {
   trial_days: number;
   promo_price: number | null;
   promo_ends_at: string | null;
+  payment_gateway: string;
   created_at: string;
   updated_at: string;
 }

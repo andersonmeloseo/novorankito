@@ -6,8 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ABACATEPAY_API = "https://api.abacatepay.com/v1";
-
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -19,10 +17,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    logStep("Function started");
-
-    const abacateKey = Deno.env.get("ABACATEPAY_API_KEY");
-    if (!abacateKey) throw new Error("ABACATEPAY_API_KEY is not set");
+    logStep("Gateway router started");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,27 +25,10 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // Get user from auth
-    let email: string | null = null;
-    let userId: string | null = null;
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader && authHeader !== "Bearer ") {
-      const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: `Bearer ${authHeader.replace("Bearer ", "")}` } },
-      });
-      const { data } = await anonClient.auth.getUser();
-      email = data.user?.email ?? null;
-      userId = data.user?.id ?? null;
-    }
-
     const body = await req.json();
     const { planSlug, billingInterval, trialDays, couponCode } = body;
 
-    if (!email && body.email) email = body.email;
-    if (!email) throw new Error("Email is required — authenticate or pass in body");
-    logStep("User identified", { email, userId, planSlug, billingInterval });
-
-    // Resolve plan from DB
+    // Resolve plan to determine gateway
     let planData: any = null;
     if (planSlug) {
       const { data } = await supabaseAdmin
@@ -62,7 +40,6 @@ Deno.serve(async (req) => {
     }
 
     if (!planData && body.priceId) {
-      // Fallback: find plan by stripe_price_id for backward compat
       const { data } = await supabaseAdmin
         .from("plans")
         .select("*")
@@ -73,136 +50,62 @@ Deno.serve(async (req) => {
     }
 
     if (!planData) throw new Error("Plano não encontrado");
-    logStep("Plan resolved", { name: planData.name, slug: planData.slug });
 
-    // Calculate amount in cents
-    const isAnnual = billingInterval === "annual";
-    let amountCents: number;
+    const gateway = body.gateway || planData.payment_gateway || "asaas";
+    logStep("Routing to gateway", { gateway, plan: planData.slug });
 
-    if (isAnnual) {
-      const annualTotal = planData.annual_price != null && planData.annual_price > 0
-        ? planData.annual_price
-        : planData.price * 10;
-      amountCents = Math.round(annualTotal * 100);
-    } else {
-      // Check promo
-      const hasPromo = planData.promo_price != null &&
-        (!planData.promo_ends_at || new Date(planData.promo_ends_at) > new Date());
-      const price = hasPromo ? planData.promo_price : planData.price;
-      amountCents = Math.round(price * 100);
+    // Route to the appropriate gateway function
+    const functionUrl = `${supabaseUrl}/functions/v1`;
+    let targetFunction: string;
+
+    switch (gateway) {
+      case "asaas":
+        targetFunction = "asaas-checkout";
+        break;
+      case "abacatepay":
+        targetFunction = "abacatepay-create-billing";
+        break;
+      case "stripe":
+        // For Stripe, use direct checkout URL if available
+        const isAnnual = billingInterval === "annual";
+        const stripeUrl = isAnnual
+          ? planData.stripe_annual_checkout_url
+          : planData.stripe_checkout_url;
+        if (stripeUrl) {
+          return new Response(JSON.stringify({ url: stripeUrl, gateway: "stripe" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Fallback to sync-plan-stripe flow
+        throw new Error("Stripe checkout URL not configured for this plan. Configure it in the admin panel.");
+      default:
+        throw new Error(`Unknown gateway: ${gateway}`);
     }
 
-    // Apply coupon discount
-    let couponDiscount = 0;
-    if (couponCode) {
-      const { data: coupon } = await supabaseAdmin
-        .from("coupons")
-        .select("*")
-        .eq("code", couponCode.toUpperCase().trim())
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (coupon) {
-        if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
-          throw new Error("Cupom expirado");
-        }
-        if (coupon.max_uses && coupon.uses_count >= coupon.max_uses) {
-          throw new Error("Cupom esgotado");
-        }
-        if (coupon.discount_percent) {
-          couponDiscount = Math.round(amountCents * (coupon.discount_percent / 100));
-        } else if (coupon.discount_amount) {
-          couponDiscount = Math.round(coupon.discount_amount * 100);
-        }
-        // Increment uses
-        await supabaseAdmin
-          .from("coupons")
-          .update({ uses_count: coupon.uses_count + 1 })
-          .eq("id", coupon.id);
-        logStep("Coupon applied", { code: coupon.code, discount: couponDiscount });
-      }
-    }
-
-    amountCents = Math.max(amountCents - couponDiscount, 100); // min 1 BRL
-
-    logStep("Creating AbacatePay billing", { amountCents, isAnnual });
-
-    // Determine payment methods from plan
-    const methods = (planData.payment_methods && planData.payment_methods.length > 0)
-      ? planData.payment_methods.map((m: string) => m.toUpperCase())
-      : ["PIX"];
-
-    const origin = req.headers.get("origin") || "https://novorankito.lovable.app";
-
-    // Step 1: Create billing payload
-    const billingPayload: Record<string, unknown> = {
-      frequency: "ONE_TIME",
-      methods,
-      products: [
-        {
-          externalId: `rankito_${planData.slug}_${isAnnual ? "annual" : "monthly"}_${userId || "anon"}`,
-          name: `${planData.name} — ${isAnnual ? "Anual" : "Mensal"}`,
-          quantity: 1,
-          price: amountCents,
-        },
-      ],
-      returnUrl: `${origin}/checkout-success?plan=${planData.slug}&interval=${billingInterval || "monthly"}`,
-      completionUrl: `${origin}/checkout-success?plan=${planData.slug}&interval=${billingInterval || "monthly"}&paid=true`,
-      metadata: {
-        source: "rankito",
-        plan_slug: planData.slug,
-        billing_interval: billingInterval || "monthly",
-        user_id: userId,
-        user_email: email,
-        trial_days: trialDays || 0,
-      },
-    };
-    // Step 2: Attach customer inline (AbacatePay accepts email-based customer in billing)
-    billingPayload.customer = {
-      name: email.split("@")[0],
-      email: email,
-      cellphone: "11999999999",
-      taxId: body.taxId || "529.982.247-25",
+    // Forward the request to the target function
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: req.headers.get("Authorization") || "",
+      apikey: Deno.env.get("SUPABASE_ANON_KEY") || "",
     };
 
-    // Step 3: Create billing
-    const billingRes = await fetch(`${ABACATEPAY_API}/billing/create`, {
+    const targetRes = await fetch(`${functionUrl}/${targetFunction}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${abacateKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(billingPayload),
+      headers,
+      body: JSON.stringify(body),
     });
 
-    const billingData = await billingRes.json();
-    logStep("AbacatePay response", { status: billingRes.status, data: billingData });
+    const targetData = await targetRes.json();
+    logStep("Gateway response", { gateway, status: targetRes.status });
 
-    if (!billingRes.ok) {
-      throw new Error(`AbacatePay error: ${JSON.stringify(billingData)}`);
+    // Add gateway info to response
+    if (targetData && !targetData.error) {
+      targetData.gateway = gateway;
     }
 
-    const checkoutUrl = billingData?.data?.url;
-    if (!checkoutUrl) throw new Error("AbacatePay did not return a checkout URL");
-
-    // Log
-    await supabaseAdmin.from("audit_logs").insert({
-      user_id: userId,
-      action: "abacatepay_checkout_created",
-      entity_type: "billing",
-      entity_id: billingData?.data?.id,
-      detail: JSON.stringify({
-        plan: planData.slug,
-        amount: amountCents,
-        interval: billingInterval,
-        billing_id: billingData?.data?.id,
-      }),
-      status: "success",
-    });
-
-    return new Response(JSON.stringify({ url: checkoutUrl }), {
+    return new Response(JSON.stringify(targetData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: targetRes.status,
     });
   } catch (error: any) {
     logStep("ERROR", { message: error.message });
