@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -213,6 +213,7 @@ const CHANNEL_CONFIG: Record<DeliveryChannel, { label: string; icon: React.React
 export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [focus, setFocus] = useState("seo_growth");
   const [clicksGoal, setClicksGoal] = useState("30000");
   const [impressionsGoal, setImpressionsGoal] = useState("500000");
@@ -221,6 +222,42 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [testing, setTesting] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load saved settings from DB
+  const { data: savedSettings } = useQuery({
+    queryKey: ["project-goals-alerts", projectId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("project_goals_alerts")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  // Hydrate state from DB when data loads
+  useEffect(() => {
+    if (!savedSettings || loaded) return;
+    setFocus(savedSettings.focus || "seo_growth");
+    setClicksGoal(String(savedSettings.clicks_goal || 30000));
+    setImpressionsGoal(String(savedSettings.impressions_goal || 500000));
+    setPositionGoal(String(savedSettings.position_goal || 8));
+    setWhatsappPhone(savedSettings.whatsapp_phone || "");
+    if (savedSettings.alerts && Array.isArray(savedSettings.alerts) && savedSettings.alerts.length > 0) {
+      // Merge saved alert settings with defaults (to pick up new alerts added later)
+      setAlerts(DEFAULT_ALERTS.map(def => {
+        const saved = (savedSettings.alerts as any[]).find((s: any) => s.id === def.id);
+        if (saved) {
+          return { ...def, enabled: saved.enabled, threshold: saved.threshold, channels: saved.channels || def.channels };
+        }
+        return def;
+      }));
+    }
+    setLoaded(true);
+  }, [savedSettings, loaded]);
 
   // Check if WhatsApp is configured (agent has whatsapp_number)
   const { data: agentConfig } = useQuery({
@@ -278,10 +315,35 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   };
 
   const handleSave = async () => {
+    if (!user || !projectId) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    toast({ title: "Configurações salvas!", description: "Metas e alertas atualizados com sucesso." });
+    try {
+      const alertsToSave = alerts.map(a => ({
+        id: a.id, enabled: a.enabled, threshold: a.threshold, channels: a.channels,
+      }));
+      const payload = {
+        project_id: projectId,
+        owner_id: user.id,
+        focus,
+        clicks_goal: parseInt(clicksGoal) || 30000,
+        impressions_goal: parseInt(impressionsGoal) || 500000,
+        position_goal: parseInt(positionGoal) || 8,
+        whatsapp_phone: savedPhone,
+        alerts: alertsToSave,
+      };
+
+      const { error } = await (supabase as any)
+        .from("project_goals_alerts")
+        .upsert(payload, { onConflict: "project_id" });
+
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["project-goals-alerts", projectId] });
+      toast({ title: "Configurações salvas!", description: "Metas e alertas atualizados com sucesso." });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleTestAlert = async (alert: AlertRule) => {

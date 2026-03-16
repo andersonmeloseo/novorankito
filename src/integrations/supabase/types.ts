@@ -2238,6 +2238,56 @@ export type Database = {
         }
         Relationships: []
       }
+      project_goals_alerts: {
+        Row: {
+          alerts: Json
+          clicks_goal: number
+          created_at: string
+          focus: string
+          id: string
+          impressions_goal: number
+          owner_id: string
+          position_goal: number
+          project_id: string
+          updated_at: string
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          alerts?: Json
+          clicks_goal?: number
+          created_at?: string
+          focus?: string
+          id?: string
+          impressions_goal?: number
+          owner_id: string
+          position_goal?: number
+          project_id: string
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          alerts?: Json
+          clicks_goal?: number
+          created_at?: string
+          focus?: string
+          id?: string
+          impressions_goal?: number
+          owner_id?: string
+          position_goal?: number
+          project_id?: string
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_goals_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           created_at: string
