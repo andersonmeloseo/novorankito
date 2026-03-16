@@ -406,6 +406,8 @@ export function UserJourneyTab() {
   const conversionRate = totalJourneys > 0 ? ((convertedCount / totalJourneys) * 100).toFixed(1) : "0";
   const totalRevenue = filtered.reduce((s, j) => s + j.conversion_value, 0);
   const ctaClicks = filtered.reduce((s, j) => s + j.steps.filter(st => st.cta_clicked).length, 0);
+  const bounceJourneysCount = filtered.filter(j => j.steps.length === 1).length;
+  const bounceRateGlobal = totalJourneys > 0 ? ((bounceJourneysCount / totalJourneys) * 100).toFixed(1) : "0";
 
   const entryPages = useMemo(() => {
     const map = new Map<string, number>();
