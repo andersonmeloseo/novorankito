@@ -902,6 +902,65 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_alerts: {
+        Row: {
+          channels: string[]
+          condition: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          metric: string
+          name: string
+          owner_id: string
+          project_id: string
+          severity: string
+          threshold: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          channels?: string[]
+          condition?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          metric?: string
+          name: string
+          owner_id: string
+          project_id: string
+          severity?: string
+          threshold?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          channels?: string[]
+          condition?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          metric?: string
+          name?: string
+          owner_id?: string
+          project_id?: string
+          severity?: string
+          threshold?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_event_configs: {
         Row: {
           conditions: Json
