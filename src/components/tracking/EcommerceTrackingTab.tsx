@@ -15,7 +15,8 @@ import {
   Eye, ArrowDownRight, ExternalLink, ChevronDown, ChevronRight, Tag, BarChart3,
   Clock, Globe, Smartphone, Monitor, ShoppingBag, Receipt, Percent,
   Lightbulb, AlertTriangle, Zap, Users, Repeat, Timer, ArrowUpRight, ArrowDownLeft,
-  Star, Target, TrendingDown, Brain,
+  Star, Target, TrendingDown, Brain, Megaphone, Layers, Activity, Hash, Banknote,
+  Crown, Gift,
 } from "lucide-react";
 import {
   CHART_TOOLTIP_STYLE, CHART_COLORS, LineGlowGradient,
@@ -54,10 +55,10 @@ function InsightItem({ icon: Icon, type, title, description }: {
   icon: React.ElementType; type: "success" | "warning" | "info" | "danger"; title: string; description: string;
 }) {
   const colorMap = {
-    success: { bg: "bg-success/10", border: "border-success/30", icon: "text-success", badge: "bg-success/15 text-success border-success/30" },
-    warning: { bg: "bg-warning/10", border: "border-warning/30", icon: "text-warning", badge: "bg-warning/15 text-warning border-warning/30" },
-    info: { bg: "bg-info/10", border: "border-info/30", icon: "text-info", badge: "bg-info/15 text-info border-info/30" },
-    danger: { bg: "bg-destructive/10", border: "border-destructive/30", icon: "text-destructive", badge: "bg-destructive/15 text-destructive border-destructive/30" },
+    success: { bg: "bg-success/10", border: "border-success/30", icon: "text-success" },
+    warning: { bg: "bg-warning/10", border: "border-warning/30", icon: "text-warning" },
+    info: { bg: "bg-info/10", border: "border-info/30", icon: "text-info" },
+    danger: { bg: "bg-destructive/10", border: "border-destructive/30", icon: "text-destructive" },
   };
   const c = colorMap[type];
   return (
@@ -159,32 +160,31 @@ export function EcommerceTrackingTab() {
 
   /* ── Buyer behavior metrics ── */
   const buyerMetrics = useMemo(() => {
-    const buyerVisitors = new Map<string, { purchases: number; firstPurchase: number; sessions: Set<string> }>();
+    const buyerVisitors: Record<string, { purchases: number; firstPurchase: number; sessions: string[] }> = {};
     ecomEvents.filter(e => e.event_type === "purchase" && e.visitor_id).forEach(e => {
-      const entry = buyerVisitors.get(e.visitor_id!) || { purchases: 0, firstPurchase: Infinity, sessions: new Set() };
+      const entry = buyerVisitors[e.visitor_id!] || { purchases: 0, firstPurchase: Infinity, sessions: [] };
       entry.purchases++;
       entry.firstPurchase = Math.min(entry.firstPurchase, new Date(e.created_at).getTime());
-      if (e.session_id) entry.sessions.add(e.session_id);
-      buyerVisitors.set(e.visitor_id!, entry);
+      if (e.session_id && !entry.sessions.includes(e.session_id)) entry.sessions.push(e.session_id);
+      buyerVisitors[e.visitor_id!] = entry;
     });
-    const totalBuyers = buyerVisitors.size;
-    const repeatBuyers = Array.from(buyerVisitors.values()).filter(b => b.purchases > 1).length;
+    const totalBuyers = Object.keys(buyerVisitors).length;
+    const repeatBuyers = Object.values(buyerVisitors).filter(b => b.purchases > 1).length;
     const repeatRate = totalBuyers > 0 ? (repeatBuyers / totalBuyers) * 100 : 0;
 
-    // Avg time from first view to purchase per visitor
     const viewToPurchaseTimes: number[] = [];
-    const viewerFirstSeen = new Map<string, number>();
+    const viewerFirstSeen: Record<string, number> = {};
     ecomEvents.forEach(e => {
       if (!e.visitor_id) return;
       if (e.event_type === "view_item") {
         const t = new Date(e.created_at).getTime();
-        if (!viewerFirstSeen.has(e.visitor_id) || t < viewerFirstSeen.get(e.visitor_id)!) {
-          viewerFirstSeen.set(e.visitor_id, t);
+        if (!viewerFirstSeen[e.visitor_id] || t < viewerFirstSeen[e.visitor_id]) {
+          viewerFirstSeen[e.visitor_id] = t;
         }
       }
     });
-    buyerVisitors.forEach((v, vid) => {
-      const firstView = viewerFirstSeen.get(vid);
+    Object.entries(buyerVisitors).forEach(([vid, v]) => {
+      const firstView = viewerFirstSeen[vid];
       if (firstView && v.firstPurchase > firstView) {
         viewToPurchaseTimes.push(v.firstPurchase - firstView);
       }
@@ -192,19 +192,20 @@ export function EcommerceTrackingTab() {
     const avgTimeToPurchaseMs = viewToPurchaseTimes.length > 0 ? viewToPurchaseTimes.reduce((a, b) => a + b, 0) / viewToPurchaseTimes.length : 0;
     const avgTimeToPurchaseHrs = avgTimeToPurchaseMs / (1000 * 60 * 60);
 
-    // Unique visitors total
-    const uniqueVisitors = new Set(ecomEvents.map(e => e.visitor_id).filter(Boolean)).size;
+    const uniqueVisitorSet: Record<string, boolean> = {};
+    ecomEvents.forEach(e => { if (e.visitor_id) uniqueVisitorSet[e.visitor_id] = true; });
+    const uniqueVisitors = Object.keys(uniqueVisitorSet).length;
 
     return { totalBuyers, repeatBuyers, repeatRate, avgTimeToPurchaseHrs, uniqueVisitors };
   }, [ecomEvents]);
 
   /* ── Top removed products (cart removals) ── */
   const topRemovedProducts = useMemo(() => {
-    const map = new Map<string, number>();
+    const map: Record<string, number> = {};
     ecomEvents.filter(e => e.event_type === "remove_from_cart" && e.product_name).forEach(e => {
-      map.set(e.product_name!, (map.get(e.product_name!) || 0) + 1);
+      map[e.product_name!] = (map[e.product_name!] || 0) + 1;
     });
-    return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+    return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
   }, [ecomEvents]);
 
   /* ── Automated Insights ── */
@@ -282,17 +283,17 @@ export function EcommerceTrackingTab() {
 
   const heatmapMax = useMemo(() => Math.max(...heatmapData.flatMap(d => d.hours.map(h => h.value)), 1), [heatmapData]);
 
-  /* ── Session-level heatmap (unique sessions per hour) ── */
+  /* ── Session-level heatmap ── */
   const sessionHeatmapData = useMemo(() => {
     const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-    const grid: Set<string>[][] = DAYS.map(() => Array.from({ length: 24 }, () => new Set<string>()));
+    const grid: Record<string, boolean>[][] = DAYS.map(() => Array.from({ length: 24 }, () => ({})));
     ecomEvents.forEach(e => {
       if (!e.session_id) return;
       const d = new Date(e.created_at);
       const dayIdx = (d.getDay() + 6) % 7;
-      grid[dayIdx][d.getHours()].add(e.session_id);
+      grid[dayIdx][d.getHours()][e.session_id] = true;
     });
-    return DAYS.map((day, i) => ({ day, hours: grid[i].map((set, hour) => ({ hour, value: set.size })) }));
+    return DAYS.map((day, i) => ({ day, hours: grid[i].map((obj, hour) => ({ hour, value: Object.keys(obj).length })) }));
   }, [ecomEvents]);
 
   const sessionHeatmapMax = useMemo(() => Math.max(...sessionHeatmapData.flatMap(d => d.hours.map(h => h.value)), 1), [sessionHeatmapData]);
@@ -306,10 +307,10 @@ export function EcommerceTrackingTab() {
 
   /* ── Product performance ── */
   const productPerformance = useMemo(() => {
-    const map = new Map<string, { views: number; addToCart: number; purchases: number; revenue: number; lastPrice: number; removals: number }>();
+    const map: Record<string, { views: number; addToCart: number; purchases: number; revenue: number; lastPrice: number; removals: number }> = {};
     ecomEvents.forEach(e => {
       const name = e.product_name || "Desconhecido";
-      const entry = map.get(name) || { views: 0, addToCart: 0, purchases: 0, revenue: 0, lastPrice: 0, removals: 0 };
+      const entry = map[name] || { views: 0, addToCart: 0, purchases: 0, revenue: 0, lastPrice: 0, removals: 0 };
       if (e.event_type === "view_item") entry.views++;
       if (e.event_type === "add_to_cart") entry.addToCart++;
       if (e.event_type === "remove_from_cart") entry.removals++;
@@ -318,9 +319,9 @@ export function EcommerceTrackingTab() {
         entry.revenue += e.cart_value || e.product_price || 0;
       }
       if (e.product_price) entry.lastPrice = e.product_price;
-      map.set(name, entry);
+      map[name] = entry;
     });
-    return Array.from(map.entries()).map(([name, v]) => ({
+    return Object.entries(map).map(([name, v]) => ({
       name, ...v,
       conversionRate: v.views > 0 ? Number(((v.purchases / v.views) * 100).toFixed(1)) : 0,
       cartToSaleRate: v.addToCart > 0 ? Number(((v.purchases / v.addToCart) * 100).toFixed(1)) : 0,
@@ -329,14 +330,14 @@ export function EcommerceTrackingTab() {
 
   /* ── URL-level analytics ── */
   const urlAnalytics = useMemo(() => {
-    const map = new Map<string, {
+    const map: Record<string, {
       url: string; totalEvents: number; views: number; addToCart: number;
       checkout: number; purchases: number; revenue: number; searches: number;
       events: TrackingEvent[];
-    }>();
+    }> = {};
     ecomEvents.forEach(e => {
       const url = e.page_url || "(sem URL)";
-      const entry = map.get(url) || { url, totalEvents: 0, views: 0, addToCart: 0, checkout: 0, purchases: 0, revenue: 0, searches: 0, events: [] };
+      const entry = map[url] || { url, totalEvents: 0, views: 0, addToCart: 0, checkout: 0, purchases: 0, revenue: 0, searches: 0, events: [] };
       entry.totalEvents++;
       entry.events.push(e);
       if (e.event_type === "view_item") entry.views++;
@@ -344,16 +345,16 @@ export function EcommerceTrackingTab() {
       if (e.event_type === "begin_checkout") entry.checkout++;
       if (e.event_type === "purchase") { entry.purchases++; entry.revenue += e.cart_value || e.product_price || 0; }
       if (e.event_type === "search") entry.searches++;
-      map.set(url, entry);
+      map[url] = entry;
     });
-    return Array.from(map.values()).sort((a, b) => b.totalEvents - a.totalEvents);
+    return Object.values(map).sort((a, b) => b.totalEvents - a.totalEvents);
   }, [ecomEvents]);
 
   /* ── Search terms ── */
   const searchTerms = useMemo(() => {
-    const map = new Map<string, number>();
-    ecomEvents.filter(e => e.event_type === "search" && e.cta_text).forEach(e => map.set(e.cta_text!, (map.get(e.cta_text!) || 0) + 1));
-    return Array.from(map.entries()).map(([term, count]) => ({ term, count })).sort((a, b) => b.count - a.count);
+    const map: Record<string, number> = {};
+    ecomEvents.filter(e => e.event_type === "search" && e.cta_text).forEach(e => { map[e.cta_text!] = (map[e.cta_text!] || 0) + 1; });
+    return Object.entries(map).map(([term, count]) => ({ term, count })).sort((a, b) => b.count - a.count);
   }, [ecomEvents]);
 
   /* ── Revenue donut ── */
@@ -367,40 +368,40 @@ export function EcommerceTrackingTab() {
 
   /* ── Events by day ── */
   const ecommerceFunnelByDay = useMemo(() => {
-    const map = new Map<string, Record<string, number>>();
+    const map: Record<string, Record<string, number>> = {};
     ecomEvents.forEach(e => {
       const day = new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-      const entry = map.get(day) || { view_item: 0, add_to_cart: 0, begin_checkout: 0, purchase: 0 };
+      const entry = map[day] || { view_item: 0, add_to_cart: 0, begin_checkout: 0, purchase: 0 };
       if (entry[e.event_type] !== undefined) entry[e.event_type]++;
-      map.set(day, entry);
+      map[day] = entry;
     });
-    return Array.from(map.entries()).map(([date, v]) => ({ date, ...v }));
+    return Object.entries(map).map(([date, v]) => ({ date, ...v }));
   }, [ecomEvents]);
 
   /* ── Revenue by day ── */
   const revenueByDay = useMemo(() => {
-    const map = new Map<string, { date: string; revenue: number; purchases: number; avgTicket: number }>();
+    const map: Record<string, { date: string; revenue: number; purchases: number; avgTicket: number }> = {};
     ecomEvents.filter(e => e.event_type === "purchase").forEach(e => {
       const day = new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-      const entry = map.get(day) || { date: day, revenue: 0, purchases: 0, avgTicket: 0 };
+      const entry = map[day] || { date: day, revenue: 0, purchases: 0, avgTicket: 0 };
       entry.revenue += e.cart_value || e.product_price || 0;
       entry.purchases++;
-      map.set(day, entry);
+      map[day] = entry;
     });
-    return Array.from(map.values()).map(d => ({ ...d, avgTicket: d.purchases > 0 ? d.revenue / d.purchases : 0 }));
+    return Object.values(map).map(d => ({ ...d, avgTicket: d.purchases > 0 ? d.revenue / d.purchases : 0 }));
   }, [ecomEvents]);
 
   /* ── Device breakdown ── */
   const deviceBreakdown = useMemo(() => {
-    const map = new Map<string, { count: number; revenue: number }>();
+    const map: Record<string, { count: number; revenue: number }> = {};
     ecomEvents.filter(e => e.event_type === "purchase").forEach(e => {
       const device = e.device || "Desconhecido";
-      const entry = map.get(device) || { count: 0, revenue: 0 };
+      const entry = map[device] || { count: 0, revenue: 0 };
       entry.count++;
       entry.revenue += e.cart_value || e.product_price || 0;
-      map.set(device, entry);
+      map[device] = entry;
     });
-    return Array.from(map.entries()).map(([name, v]) => ({ name, value: v.count, revenue: v.revenue })).sort((a, b) => b.value - a.value);
+    return Object.entries(map).map(([name, v]) => ({ name, value: v.count, revenue: v.revenue })).sort((a, b) => b.value - a.value);
   }, [ecomEvents]);
 
   /* ── Hourly purchase distribution ── */
@@ -411,6 +412,111 @@ export function EcommerceTrackingTab() {
     });
     return hours.map((count, hour) => ({ hour: `${String(hour).padStart(2, "0")}h`, count }));
   }, [ecomEvents]);
+
+  /* ── Source/Channel Attribution ── */
+  const sourceAttribution = useMemo(() => {
+    const map: Record<string, { source: string; purchases: number; revenue: number; views: number; cartAdds: number }> = {};
+    ecomEvents.forEach(e => {
+      const src = e.utm_source || e.referrer || "(direto)";
+      if (!map[src]) map[src] = { source: src, purchases: 0, revenue: 0, views: 0, cartAdds: 0 };
+      if (e.event_type === "view_item") map[src].views++;
+      if (e.event_type === "add_to_cart") map[src].cartAdds++;
+      if (e.event_type === "purchase") {
+        map[src].purchases++;
+        map[src].revenue += e.cart_value || e.product_price || 0;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [ecomEvents]);
+
+  /* ── Cart Value Distribution ── */
+  const cartValueDistribution = useMemo(() => {
+    const purchases = ecomEvents.filter(e => e.event_type === "purchase" && (e.cart_value || e.product_price));
+    if (purchases.length === 0) return [];
+    const values = purchases.map(e => e.cart_value || e.product_price || 0);
+    const maxVal = Math.max(...values);
+    const bucketSize = maxVal <= 100 ? 20 : maxVal <= 500 ? 50 : maxVal <= 2000 ? 200 : 500;
+    const buckets: Record<string, number> = {};
+    values.forEach(v => {
+      const bucket = Math.floor(v / bucketSize) * bucketSize;
+      const label = `R$${bucket}–${bucket + bucketSize}`;
+      buckets[label] = (buckets[label] || 0) + 1;
+    });
+    return Object.entries(buckets).map(([range, count]) => ({ range, count }));
+  }, [ecomEvents]);
+
+  /* ── Detailed Checkout Step Abandonment ── */
+  const checkoutSteps = useMemo(() => {
+    const viewCart = ecomEvents.filter(e => e.event_type === "view_cart").length;
+    const beginCheckout = totalCheckout;
+    const addShipping = ecomEvents.filter(e => e.event_type === "add_shipping_info").length;
+    const addPayment = ecomEvents.filter(e => e.event_type === "add_payment_info").length;
+    const purchase = totalPurchases;
+    return [
+      { step: "Carrinho Aberto", count: viewCart || totalAddToCart, color: "hsl(var(--primary))" },
+      { step: "Início Checkout", count: beginCheckout, color: "hsl(var(--chart-5))" },
+      { step: "Frete Informado", count: addShipping, color: "hsl(var(--chart-7))" },
+      { step: "Pagamento Informado", count: addPayment, color: "hsl(var(--chart-8))" },
+      { step: "Compra Concluída", count: purchase, color: "hsl(var(--success))" },
+    ].filter(s => s.count > 0 || s.step === "Compra Concluída");
+  }, [ecomEvents, totalCheckout, totalPurchases, totalAddToCart]);
+
+  /* ── Weekly Cohort Matrix ── */
+  const cohortMatrix = useMemo(() => {
+    if (buyerMetrics.totalBuyers < 2) return [];
+    const purchasesByVisitor: Record<string, Date[]> = {};
+    ecomEvents.filter(e => e.event_type === "purchase" && e.visitor_id).forEach(e => {
+      if (!purchasesByVisitor[e.visitor_id!]) purchasesByVisitor[e.visitor_id!] = [];
+      purchasesByVisitor[e.visitor_id!].push(new Date(e.created_at));
+    });
+    const getWeekKey = (d: Date) => {
+      const start = new Date(d);
+      start.setDate(start.getDate() - start.getDay());
+      return `${String(start.getDate()).padStart(2, "0")}/${String(start.getMonth() + 1).padStart(2, "0")}`;
+    };
+    const cohorts: Record<string, { week: string; total: number; retained: number[] }> = {};
+    Object.entries(purchasesByVisitor).forEach(([, dates]) => {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      const firstWeek = getWeekKey(dates[0]);
+      if (!cohorts[firstWeek]) cohorts[firstWeek] = { week: firstWeek, total: 0, retained: [0, 0, 0, 0] };
+      cohorts[firstWeek].total++;
+      const firstTime = dates[0].getTime();
+      dates.forEach(d => {
+        const weekDiff = Math.floor((d.getTime() - firstTime) / (7 * 86400000));
+        if (weekDiff > 0 && weekDiff <= 4) {
+          cohorts[firstWeek].retained[weekDiff - 1]++;
+        }
+      });
+    });
+    return Object.values(cohorts).sort((a, b) => a.week.localeCompare(b.week)).slice(-6);
+  }, [ecomEvents, buyerMetrics.totalBuyers]);
+
+  /* ── Promotion effectiveness ── */
+  const promotionData = useMemo(() => {
+    const promoViews = ecomEvents.filter(e => e.event_type === "view_promotion").length;
+    const promoSelects = ecomEvents.filter(e => e.event_type === "select_promotion").length;
+    const promoNames: Record<string, { views: number; selects: number }> = {};
+    ecomEvents.filter(e => ["view_promotion", "select_promotion"].includes(e.event_type)).forEach(e => {
+      const name = e.product_name || e.cta_text || "(sem nome)";
+      if (!promoNames[name]) promoNames[name] = { views: 0, selects: 0 };
+      if (e.event_type === "view_promotion") promoNames[name].views++;
+      if (e.event_type === "select_promotion") promoNames[name].selects++;
+    });
+    return {
+      totalViews: promoViews,
+      totalSelects: promoSelects,
+      ctr: promoViews > 0 ? (promoSelects / promoViews) * 100 : 0,
+      items: Object.entries(promoNames).map(([name, v]) => ({ name, ...v, ctr: v.views > 0 ? (v.selects / v.views) * 100 : 0 })).sort((a, b) => b.views - a.views),
+    };
+  }, [ecomEvents]);
+
+  /* ── LTV & Revenue per Visitor ── */
+  const ltvMetrics = useMemo(() => {
+    const rpv = buyerMetrics.uniqueVisitors > 0 ? totalRevenue / buyerMetrics.uniqueVisitors : 0;
+    const avgPurchasesPerBuyer = buyerMetrics.totalBuyers > 0 ? totalPurchases / buyerMetrics.totalBuyers : 0;
+    const estimatedLtv = avgTicket * avgPurchasesPerBuyer * (1 + buyerMetrics.repeatRate / 100);
+    return { rpv, avgPurchasesPerBuyer, estimatedLtv };
+  }, [totalRevenue, buyerMetrics, totalPurchases, avgTicket]);
 
   /* ── Recent events log ── */
   const recentEvents = ecomEvents.slice(0, 30);
@@ -448,12 +554,14 @@ export function EcommerceTrackingTab() {
         <SparkKpi label="Checkout→Compra" value={checkoutToPurchase.toFixed(1)} suffix="%" color="hsl(var(--success))" icon={TrendingUp} />
       </StaggeredGrid>
 
-      {/* ── Buyer Behavior Metrics ── */}
-      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ── Buyer Behavior + LTV Metrics ── */}
+      <StaggeredGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <SparkKpi label="Compradores Únicos" value={fmt(buyerMetrics.totalBuyers)} color="hsl(var(--primary))" icon={Users} />
-        <SparkKpi label="Compradores Recorrentes" value={fmt(buyerMetrics.repeatBuyers)} color="hsl(var(--success))" icon={Repeat} suffix={buyerMetrics.totalBuyers > 0 ? ` (${buyerMetrics.repeatRate.toFixed(0)}%)` : ""} />
-        <SparkKpi label="Tempo Médio p/ Compra" value={buyerMetrics.avgTimeToPurchaseHrs > 0 ? (buyerMetrics.avgTimeToPurchaseHrs < 1 ? `${(buyerMetrics.avgTimeToPurchaseHrs * 60).toFixed(0)}min` : `${buyerMetrics.avgTimeToPurchaseHrs.toFixed(1)}h`) : "—"} color="hsl(var(--info))" icon={Timer} />
+        <SparkKpi label="Recorrentes" value={fmt(buyerMetrics.repeatBuyers)} color="hsl(var(--success))" icon={Repeat} suffix={buyerMetrics.totalBuyers > 0 ? ` (${buyerMetrics.repeatRate.toFixed(0)}%)` : ""} />
+        <SparkKpi label="Tempo p/ Compra" value={buyerMetrics.avgTimeToPurchaseHrs > 0 ? (buyerMetrics.avgTimeToPurchaseHrs < 1 ? `${(buyerMetrics.avgTimeToPurchaseHrs * 60).toFixed(0)}min` : `${buyerMetrics.avgTimeToPurchaseHrs.toFixed(1)}h`) : "—"} color="hsl(var(--info))" icon={Timer} />
         <SparkKpi label="Reembolsos" value={fmt(totalRefunds)} color="hsl(var(--destructive))" icon={ArrowDownLeft} suffix={refundRate > 0 ? ` (${refundRate.toFixed(1)}%)` : ""} />
+        <SparkKpi label="Receita/Visitante" value={fmtCurrency(ltvMetrics.rpv)} color="hsl(var(--chart-9))" icon={Banknote} />
+        <SparkKpi label="LTV Estimado" value={fmtCurrency(ltvMetrics.estimatedLtv)} color="hsl(var(--chart-4))" icon={Crown} />
       </StaggeredGrid>
 
       {/* ── AI Insights Panel ── */}
@@ -474,7 +582,7 @@ export function EcommerceTrackingTab() {
         </AnimatedContainer>
       )}
 
-      {/* ── Visual Funnel (polished trapezoid) ── */}
+      {/* ── Visual Funnel ── */}
       <AnimatedContainer>
         <Card className="p-5">
           <ChartHeader title="Funil de Conversão E-commerce" subtitle="Pipeline completo: Visualização → Carrinho → Checkout → Compra" />
@@ -496,7 +604,6 @@ export function EcommerceTrackingTab() {
               const bottomW = i < ecommerceFunnelTotals.length - 1 ? ecommerceFunnelTotals[i + 1].width : step.width - 6;
               const topInset = ((100 - topW) / 2).toFixed(1);
               const botInset = ((100 - bottomW) / 2).toFixed(1);
-
               return (
                 <div key={step.label} className="flex flex-col items-center w-full">
                   {i > 0 && (
@@ -534,6 +641,207 @@ export function EcommerceTrackingTab() {
           {!hasData && <p className="text-center text-xs text-muted-foreground mt-2">Instale o Pixel Rankito para começar a capturar dados do funil.</p>}
         </Card>
       </AnimatedContainer>
+
+      {/* ── NEW: Detailed Checkout Step Abandonment ── */}
+      {checkoutSteps.length > 2 && (
+        <AnimatedContainer>
+          <Card className="p-5">
+            <ChartHeader title="Abandono por Etapa do Checkout" subtitle="Identifique exatamente onde os clientes desistem no processo de compra" />
+            <div className="space-y-3 mt-3">
+              {checkoutSteps.map((s, i) => {
+                const prevCount = i > 0 ? checkoutSteps[i - 1].count : s.count;
+                const dropRate = prevCount > 0 && i > 0 ? (((prevCount - s.count) / prevCount) * 100) : 0;
+                const maxCount = checkoutSteps[0]?.count || 1;
+                return (
+                  <div key={s.step}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-foreground">{s.step}</span>
+                        <Badge variant="secondary" className="text-[9px]">{fmt(s.count)}</Badge>
+                      </div>
+                      {dropRate > 0 && (
+                        <span className="text-[10px] font-semibold text-destructive">−{dropRate.toFixed(1)}% drop</span>
+                      )}
+                    </div>
+                    <div className="h-3 rounded-full bg-muted/30 overflow-hidden relative">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${(s.count / maxCount) * 100}%`,
+                          background: `linear-gradient(90deg, ${s.color}, ${s.color}aa)`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </AnimatedContainer>
+      )}
+
+      {/* ── NEW: Source/Channel Attribution ── */}
+      {sourceAttribution.length > 0 && (
+        <AnimatedContainer>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <ChartHeader title="Atribuição por Canal / Fonte" subtitle="Quais fontes de tráfego geram mais receita e conversões" />
+              </div>
+              <Badge variant="secondary" className="text-[9px]">{sourceAttribution.length} fontes</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase">Fonte</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Views</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Carrinho</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Compras</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Receita</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">Conv.</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-medium text-muted-foreground uppercase">% Receita</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceAttribution.slice(0, 10).map(s => {
+                    const conv = s.views > 0 ? ((s.purchases / s.views) * 100).toFixed(1) : "0.0";
+                    const revPct = totalRevenue > 0 ? ((s.revenue / totalRevenue) * 100).toFixed(1) : "0.0";
+                    return (
+                      <tr key={s.source} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-2.5 text-xs font-medium text-foreground max-w-[200px] truncate">{s.source}</td>
+                        <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(s.views)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right text-muted-foreground">{fmt(s.cartAdds)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right font-medium text-success">{fmt(s.purchases)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right font-semibold text-foreground">{fmtCurrency(s.revenue)}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <Badge variant={Number(conv) > 2 ? "default" : "secondary"} className="text-[9px]">{conv}%</Badge>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <div className="w-12 h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                              <div className="h-full rounded-full bg-primary" style={{ width: `${revPct}%` }} />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{revPct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </AnimatedContainer>
+      )}
+
+      {/* ── NEW: Cart Value Distribution + Cohort Matrix ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {cartValueDistribution.length > 0 && (
+          <AnimatedContainer>
+            <Card className="p-5">
+              <ChartHeader title="Distribuição de Valor dos Pedidos" subtitle="Entenda a faixa de preço mais comum entre seus compradores" />
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={cartValueDistribution}>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <XAxis dataKey="range" {...AXIS_STYLE} tick={{ fontSize: 9 }} />
+                    <YAxis {...AXIS_STYLE} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                    <Bar dataKey="count" name="Pedidos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </AnimatedContainer>
+        )}
+
+        {cohortMatrix.length > 0 && (
+          <AnimatedContainer>
+            <Card className="p-5">
+              <ChartHeader title="Cohort de Recompra Semanal" subtitle="Retenção de compradores por semana de aquisição" />
+              <div className="overflow-x-auto mt-3">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground">Semana</th>
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground">Novos</th>
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground">Sem +1</th>
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground">Sem +2</th>
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground">Sem +3</th>
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground">Sem +4</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cohortMatrix.map(c => (
+                      <tr key={c.week} className="border-b border-border/50">
+                        <td className="px-3 py-2 text-xs font-medium text-foreground">{c.week}</td>
+                        <td className="px-3 py-2 text-center text-xs font-semibold text-foreground">{c.total}</td>
+                        {c.retained.map((r, i) => {
+                          const pct = c.total > 0 ? (r / c.total) * 100 : 0;
+                          return (
+                            <td key={i} className="px-3 py-2 text-center">
+                              <span
+                                className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold"
+                                style={{
+                                  backgroundColor: pct > 0 ? `color-mix(in srgb, hsl(var(--success)) ${Math.min(pct * 3, 80)}%, transparent)` : "hsl(var(--muted)/0.2)",
+                                  color: pct > 0 ? "hsl(var(--success))" : "hsl(var(--muted-foreground))",
+                                }}
+                              >
+                                {r > 0 ? `${pct.toFixed(0)}%` : "—"}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </AnimatedContainer>
+        )}
+      </div>
+
+      {/* ── NEW: Promotion Effectiveness ── */}
+      {(promotionData.totalViews > 0 || promotionData.totalSelects > 0) && (
+        <AnimatedContainer>
+          <Card className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Gift className="h-5 w-5 text-chart-5" />
+              <h3 className="text-sm font-semibold text-foreground">Efetividade de Promoções</h3>
+              <Badge className="text-[9px] bg-chart-5/15 text-chart-5 border-chart-5/30">
+                CTR geral: {promotionData.ctr.toFixed(1)}%
+              </Badge>
+            </div>
+            <StaggeredGrid className="grid grid-cols-3 gap-3 mb-4">
+              <SparkKpi label="Visualizações" value={fmt(promotionData.totalViews)} color="hsl(var(--info))" icon={Eye} />
+              <SparkKpi label="Cliques" value={fmt(promotionData.totalSelects)} color="hsl(var(--primary))" icon={Megaphone} />
+              <SparkKpi label="CTR" value={promotionData.ctr.toFixed(1)} suffix="%" color="hsl(var(--success))" icon={Target} />
+            </StaggeredGrid>
+            {promotionData.items.length > 0 && (
+              <div className="space-y-2">
+                {promotionData.items.slice(0, 6).map((p, i) => (
+                  <div key={p.name} className="flex items-center gap-3">
+                    <span className="text-[11px] font-medium text-foreground w-[160px] truncate" title={p.name}>{p.name}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${promotionData.items[0].views > 0 ? (p.views / promotionData.items[0].views) * 100 : 0}%`,
+                          background: CHART_COLORS[i % CHART_COLORS.length],
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{p.views} views</span>
+                    <Badge variant={p.ctr > 5 ? "default" : "secondary"} className="text-[9px] shrink-0">{p.ctr.toFixed(1)}% CTR</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </AnimatedContainer>
+      )}
 
       {/* ── Heatmaps: Events + Sessions ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -632,70 +940,70 @@ export function EcommerceTrackingTab() {
         <AnimatedContainer delay={0.05}>
           <Card className="p-5">
             <ChartHeader title="Receita ao Longo do Tempo" subtitle="Evolução diária de receita e ticket médio" />
-            <div className="h-[280px]">
-              {revenueByDay.length > 0 ? (
+            <div className="h-[250px]">
+              {revenueByDay.length > 1 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueByDay}>
                     <defs>
-                      <LineGlowGradient id="revTrend" color="hsl(var(--success))" />
-                      <LineGlowGradient id="ticketTrend" color="hsl(var(--chart-7))" />
+                      <LineGlowGradient id="revGlow" color="hsl(var(--success))" />
                     </defs>
                     <CartesianGrid {...GRID_STYLE} />
                     <XAxis dataKey="date" {...AXIS_STYLE} />
-                    <YAxis {...AXIS_STYLE} />
-                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [fmtCurrency(v), name === "revenue" ? "Receita" : "Ticket Médio"]} />
+                    <YAxis {...AXIS_STYLE} width={55} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmtCurrency(v)} />
                     <Legend {...LEGEND_STYLE} />
-                    <Area type="monotone" dataKey="revenue" name="Receita" stroke="hsl(var(--success))" fill="url(#revTrend)" strokeWidth={2.5} dot={{ r: 2.5, fill: "hsl(var(--success))" }} />
-                    <Area type="monotone" dataKey="avgTicket" name="Ticket Médio" stroke="hsl(var(--chart-7))" fill="url(#ticketTrend)" strokeWidth={1.5} dot={{ r: 2, fill: "hsl(var(--chart-7))" }} />
+                    <Area type="monotone" dataKey="revenue" name="Receita" stroke="hsl(var(--success))" fill="url(#revGlow)" strokeWidth={2.5} dot={{ r: 2.5, fill: "hsl(var(--success))" }} />
+                    <Area type="monotone" dataKey="avgTicket" name="Ticket Médio" stroke="hsl(var(--chart-7))" fill="transparent" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem dados de receita ainda</div>
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Dados insuficientes para gráfico de tendência</div>
               )}
             </div>
           </Card>
         </AnimatedContainer>
 
-        <AnimatedContainer delay={0.1}>
+        <AnimatedContainer delay={0.06}>
           <Card className="p-5">
-            <ChartHeader title="Eventos E-commerce por Dia" subtitle="Composição por tipo de evento ao longo do tempo" />
-            <div className="h-[280px]">
-              {ecommerceFunnelByDay.length > 0 ? (
+            <ChartHeader title="Funil por Dia" subtitle="Evolução diária de cada etapa do funil de e-commerce" />
+            <div className="h-[250px]">
+              {ecommerceFunnelByDay.length > 1 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={ecommerceFunnelByDay}>
                     <defs>
-                      {Object.entries(ECOM_COLORS).map(([key, color]) => (
-                        <LineGlowGradient key={key} id={`ecom-${key}`} color={color} />
-                      ))}
+                      <LineGlowGradient id="funnelView" color="hsl(var(--info))" />
+                      <LineGlowGradient id="funnelCart" color="hsl(var(--primary))" />
+                      <LineGlowGradient id="funnelCheckout" color="hsl(var(--chart-5))" />
+                      <LineGlowGradient id="funnelPurchase" color="hsl(var(--success))" />
                     </defs>
                     <CartesianGrid {...GRID_STYLE} />
                     <XAxis dataKey="date" {...AXIS_STYLE} />
-                    <YAxis {...AXIS_STYLE} />
+                    <YAxis {...AXIS_STYLE} width={35} />
                     <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                     <Legend {...LEGEND_STYLE} />
-                    <Area type="monotone" dataKey="view_item" stackId="1" stroke={ECOM_COLORS.view_item} fill="url(#ecom-view_item)" strokeWidth={1.5} name="View Item" />
-                    <Area type="monotone" dataKey="add_to_cart" stackId="1" stroke={ECOM_COLORS.add_to_cart} fill="url(#ecom-add_to_cart)" strokeWidth={1.5} name="Add Carrinho" />
-                    <Area type="monotone" dataKey="begin_checkout" stackId="1" stroke={ECOM_COLORS.begin_checkout} fill="url(#ecom-begin_checkout)" strokeWidth={1.5} name="Checkout" />
-                    <Area type="monotone" dataKey="purchase" stackId="1" stroke={ECOM_COLORS.purchase} fill="url(#ecom-purchase)" strokeWidth={1.5} name="Compra" />
+                    <Area type="monotone" dataKey="view_item" name="Views" stroke="hsl(var(--info))" fill="url(#funnelView)" strokeWidth={2} dot={false} />
+                    <Area type="monotone" dataKey="add_to_cart" name="Carrinho" stroke="hsl(var(--primary))" fill="url(#funnelCart)" strokeWidth={2} dot={false} />
+                    <Area type="monotone" dataKey="begin_checkout" name="Checkout" stroke="hsl(var(--chart-5))" fill="url(#funnelCheckout)" strokeWidth={1.5} dot={false} />
+                    <Area type="monotone" dataKey="purchase" name="Compra" stroke="hsl(var(--success))" fill="url(#funnelPurchase)" strokeWidth={2} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Sem dados de eventos ainda</div>
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">Dados insuficientes para gráfico</div>
               )}
             </div>
           </Card>
         </AnimatedContainer>
       </div>
 
-      {/* ── Product Performance Table (enhanced) ── */}
-      <AnimatedContainer delay={0.15}>
+      {/* ── Product Performance Table ── */}
+      <AnimatedContainer delay={0.1}>
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4 text-primary" /> Performance por Produto
+                <Package className="h-4 w-4 text-primary" /> Performance de Produtos
               </h3>
-              <p className="text-[10px] text-muted-foreground">Conversão, receita, remoções e métricas por produto rastreado</p>
+              <p className="text-[10px] text-muted-foreground">Análise completa de visualização → carrinho → conversão por produto</p>
             </div>
             <Badge variant="secondary" className="text-[9px]">{productPerformance.length} produtos</Badge>
           </div>
@@ -847,7 +1155,7 @@ export function EcommerceTrackingTab() {
               <div>
                 <ChartHeader title="Mais Removidos do Carrinho" subtitle="Produtos que os usuários mais desistem" />
                 <div className="space-y-2 mt-3">
-                  {topRemovedProducts.map((p, i) => (
+                  {topRemovedProducts.map((p) => (
                     <div key={p.name} className="flex items-center gap-2">
                       <ArrowDownRight className="h-3 w-3 text-warning shrink-0" />
                       <div className="flex-1">
@@ -929,8 +1237,8 @@ export function EcommerceTrackingTab() {
                   const isExpanded = expandedUrl === u.url;
                   const convRate = u.views > 0 ? ((u.purchases / u.views) * 100).toFixed(1) : "0.0";
                   return (
-                    <>
-                      <tr key={u.url} className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setExpandedUrl(isExpanded ? null : u.url)}>
+                    <tbody key={u.url}>
+                      <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setExpandedUrl(isExpanded ? null : u.url)}>
                         <td className="px-4 py-2.5 text-muted-foreground">
                           {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </td>
@@ -954,8 +1262,8 @@ export function EcommerceTrackingTab() {
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${u.url}-detail`}>
-                          <td colSpan={99} className="bg-muted/10 px-6 py-3 border-b border-border/50">
+                        <tr>
+                          <td colSpan={8} className="bg-muted/10 px-6 py-3 border-b border-border/50">
                             <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-2">Últimos eventos nesta URL</p>
                             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                               {u.events.slice(0, 15).map(ev => (
@@ -980,7 +1288,7 @@ export function EcommerceTrackingTab() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </tbody>
                   );
                 }) : (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma URL com eventos de e-commerce registrada.</td></tr>
