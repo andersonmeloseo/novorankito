@@ -312,11 +312,16 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     }
   };
 
-  const toggleFormChannel = (ch: DeliveryChannel) => {
-    setForm(prev => ({
-      ...prev,
-      channels: prev.channels.includes(ch) ? prev.channels.filter(c => c !== ch) : [...prev.channels, ch],
-    }));
+  const handleChannelCheckedChange = (channel: DeliveryChannel, checked: boolean | "indeterminate") => {
+    setForm((prev) => {
+      const shouldInclude = checked === true;
+      return {
+        ...prev,
+        channels: shouldInclude
+          ? Array.from(new Set([...prev.channels, channel]))
+          : prev.channels.filter((c) => c !== channel),
+      };
+    });
   };
 
   const enabledCount = customAlerts.filter(a => a.enabled).length;
