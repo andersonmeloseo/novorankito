@@ -281,19 +281,18 @@ export function ApiKeysSettings({ projectId }: ApiKeysSettingsProps) {
             </TabsContent>
 
             {/* ── TAB: Como Usar ── */}
-            <TabsContent value="howto" className="space-y-4 mt-4">
+            <TabsContent value="howto" className="space-y-5 mt-4">
+              {/* What is an API Key */}
               <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
                 <p className="text-[11px] font-semibold text-foreground">📌 O que é uma API Key?</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Uma API Key é como uma <strong>senha especial</strong> que permite que outros sistemas (como Power BI, n8n, Zapier ou seu próprio site) 
-                  acessem os dados do seu projeto de forma segura e automática, sem precisar fazer login. É a mesma lógica de um "token de acesso" que você 
-                  cria em outros serviços como Google, Facebook ou Stripe.
+                  Uma API Key é como uma <strong>senha especial</strong> que permite que outros sistemas acessem os dados do seu projeto de forma segura e automática, sem precisar fazer login. É a mesma lógica de um "token de acesso" que você cria em serviços como Google, Facebook ou Stripe.
                 </p>
               </div>
 
-              {/* Step by step */}
+              {/* Step by step to create */}
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-foreground">Passo a passo:</p>
+                <p className="text-[11px] font-semibold text-foreground">🔑 Passo a passo para criar sua chave:</p>
                 {STEP_BY_STEP.map((s, idx) => (
                   <div key={s.step} className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -313,71 +312,366 @@ export function ApiKeysSettings({ projectId }: ApiKeysSettingsProps) {
                 ))}
               </div>
 
-              {/* Quick example */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
-                  <Terminal className="h-3.5 w-3.5" />
-                  Exemplo prático rápido
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Após criar sua chave, teste no terminal do computador ou em qualquer ferramenta HTTP (Postman, Insomnia, etc.):
-                </p>
-                <div className="relative bg-background rounded-lg p-3 border font-mono text-[10px] text-foreground overflow-x-auto">
-                  <pre className="whitespace-pre-wrap">{`curl -H "X-API-Key: rk_sua_chave_aqui" \\
-  "${API_BASE_URL}?action=overview"`}</pre>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1 right-1 h-6 text-[9px]"
-                    onClick={() => copyToClipboard(`curl -H "X-API-Key: SUA_CHAVE" "${API_BASE_URL}?action=overview"`)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  A resposta será um JSON com os dados do seu projeto (cliques, impressões, posição média, etc.).
-                </p>
-              </div>
+              {/* ══════════ PRACTICAL USE CASES ══════════ */}
+              <div className="border-t border-border pt-4 space-y-4">
+                <p className="text-xs font-bold text-foreground">🚀 Casos de uso práticos com passo a passo</p>
 
-              {/* Integration examples */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-foreground">Exemplos por ferramenta:</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 space-y-1">
-                    <p className="text-[10px] font-semibold text-foreground">⚡ n8n / Make (Integromat)</p>
-                    <p className="text-[10px] text-muted-foreground">Use o nó "HTTP Request" → Método GET → URL: a URL base + ?action=overview → Adicione header "X-API-Key" com o valor da sua chave.</p>
+                {/* Use Case 1: SEO Dashboard */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">📊</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Dashboard de SEO completo para seu cliente</p>
+                      <p className="text-[10px] text-muted-foreground">Monte um painel visual com cliques, impressões, posição e top páginas</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      <strong>Objetivo:</strong> Criar um dashboard white-label que puxa dados de SEO automaticamente para apresentar ao seu cliente, sem precisar dar acesso ao Rankito.
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold text-foreground">Passo a passo:</p>
+                      <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                        <p>1️⃣ Crie uma API Key com nome "Dashboard Cliente X"</p>
+                        <p>2️⃣ Faça GET <code className="bg-background px-1 rounded">?action=overview</code> para obter KPIs gerais (cliques, impressões, posição média, CTR)</p>
+                        <p>3️⃣ Faça GET <code className="bg-background px-1 rounded">?action=metrics&days=30</code> para dados diários de tendência</p>
+                        <p>4️⃣ Faça GET <code className="bg-background px-1 rounded">?action=urls</code> para listar as top páginas monitoradas</p>
+                        <p>5️⃣ Faça GET <code className="bg-background px-1 rounded">?action=indexing</code> para mostrar status de indexação</p>
+                        <p>6️⃣ Renderize tudo num HTML/React com gráficos (Chart.js, Recharts, etc.)</p>
+                      </div>
+                    </div>
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`// Dashboard completo em JavaScript
+const API = "${API_BASE_URL}";
+const KEY = "rk_sua_chave";
+const headers = { "X-API-Key": KEY };
+
+// 1. KPIs gerais
+const overview = await fetch(\`\${API}?action=overview\`, { headers }).then(r => r.json());
+// overview.data → { total_clicks, total_impressions, avg_position, avg_ctr, top_pages, top_queries }
+
+// 2. Tendência diária (últimos 30 dias)
+const metrics = await fetch(\`\${API}?action=metrics&days=30\`, { headers }).then(r => r.json());
+// metrics.data → array de { metric_date, clicks, impressions, position, ctr, query, url }
+
+// 3. URLs monitoradas
+const urls = await fetch(\`\${API}?action=urls\`, { headers }).then(r => r.json());
+// urls.data → array de { url, status, meta_title, meta_description }
+
+// 4. Status de indexação
+const indexing = await fetch(\`\${API}?action=indexing\`, { headers }).then(r => r.json());
+// indexing.data → array de { url, status, submitted_at, completed_at }
+
+// Agora renderize no seu dashboard!
+console.log("Cliques totais:", overview.data.total_clicks);
+console.log("Posição média:", overview.data.avg_position);`}</pre>
+                    </div>
+                    <div className="p-2 rounded bg-muted/30 text-[10px] text-muted-foreground">
+                      💡 <strong>Dica:</strong> Agende a atualização a cada 6 horas com um cron job ou setInterval para manter o dashboard sempre atualizado.
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 space-y-1">
-                    <p className="text-[10px] font-semibold text-foreground">📊 Power BI</p>
-                    <p className="text-[10px] text-muted-foreground">Use "Obter Dados" → "Da Web" → Avançado → Cole a URL com ?action=metrics → Adicione o header X-API-Key nas opções de requisição.</p>
+                </details>
+
+                {/* Use Case 2: Google Sheets report */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">📑</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Relatório automático no Google Sheets</p>
+                      <p className="text-[10px] text-muted-foreground">Atualize uma planilha automaticamente com dados de SEO do projeto</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                      <p>1️⃣ Abra o Google Sheets e vá em <strong>Extensões → Apps Script</strong></p>
+                      <p>2️⃣ Cole o script abaixo e substitua a chave</p>
+                      <p>3️⃣ Adicione um trigger de tempo (ex: diário às 8h) para atualizar automaticamente</p>
+                      <p>4️⃣ Compartilhe a planilha com seu cliente — ele verá os dados sempre atualizados</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`// Google Apps Script - Cole no Apps Script do Google Sheets
+function atualizarSEO() {
+  const API = "${API_BASE_URL}";
+  const KEY = "rk_sua_chave";
+  
+  const options = {
+    method: "GET",
+    headers: { "X-API-Key": KEY }
+  };
+  
+  // Buscar overview
+  const res = UrlFetchApp.fetch(API + "?action=overview", options);
+  const data = JSON.parse(res.getContentText()).data;
+  
+  const sheet = SpreadsheetApp.getActiveSheet();
+  sheet.getRange("A1").setValue("Cliques Totais");
+  sheet.getRange("B1").setValue(data.total_clicks);
+  sheet.getRange("A2").setValue("Impressões");
+  sheet.getRange("B2").setValue(data.total_impressions);
+  sheet.getRange("A3").setValue("Posição Média");
+  sheet.getRange("B3").setValue(data.avg_position);
+  sheet.getRange("A4").setValue("CTR Médio (%)");
+  sheet.getRange("B4").setValue(data.avg_ctr);
+  sheet.getRange("A5").setValue("Última atualização");
+  sheet.getRange("B5").setValue(new Date().toLocaleString("pt-BR"));
+  
+  // Buscar métricas diárias
+  const metricsRes = UrlFetchApp.fetch(API + "?action=metrics&days=7", options);
+  const metrics = JSON.parse(metricsRes.getContentText()).data;
+  
+  // Preencher a partir da linha 7
+  sheet.getRange("A7").setValue("Data");
+  sheet.getRange("B7").setValue("Cliques");
+  sheet.getRange("C7").setValue("Impressões");
+  
+  metrics.forEach((m, i) => {
+    sheet.getRange("A" + (8 + i)).setValue(m.metric_date);
+    sheet.getRange("B" + (8 + i)).setValue(m.clicks);
+    sheet.getRange("C" + (8 + i)).setValue(m.impressions);
+  });
+}`}</pre>
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 space-y-1">
-                    <p className="text-[10px] font-semibold text-foreground">🔗 Zapier</p>
-                    <p className="text-[10px] text-muted-foreground">Use a ação "Webhooks by Zapier" → GET → Cole a URL → Em "Headers", adicione "X-API-Key" com sua chave.</p>
+                </details>
+
+                {/* Use Case 3: n8n automation */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">⚡</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Automação com n8n: alerta de queda de posição</p>
+                      <p className="text-[10px] text-muted-foreground">Receba notificação no WhatsApp/Slack quando a posição média cair</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                      <p>1️⃣ No n8n, crie um workflow com trigger <strong>Schedule (Cron)</strong> → ex: a cada 6 horas</p>
+                      <p>2️⃣ Adicione nó <strong>HTTP Request</strong>:</p>
+                      <p className="pl-4">• Método: GET</p>
+                      <p className="pl-4">• URL: <code className="bg-background px-1 rounded">{API_BASE_URL}?action=overview</code></p>
+                      <p className="pl-4">• Header: <code className="bg-background px-1 rounded">X-API-Key: rk_sua_chave</code></p>
+                      <p>3️⃣ Adicione nó <strong>IF</strong> → condição: <code className="bg-background px-1 rounded">{"{{$json.data.avg_position}}"} {">"} 15</code></p>
+                      <p>4️⃣ Se verdadeiro → nó <strong>Slack/WhatsApp/Email</strong> com mensagem:</p>
+                      <p className="pl-4 italic">"⚠️ Alerta SEO: posição média caiu para {"{{$json.data.avg_position}}"}. Verifique o projeto!"</p>
+                      <p>5️⃣ Ative o workflow — ele roda sozinho a cada 6h</p>
+                    </div>
+                    <div className="p-2 rounded bg-muted/30 text-[10px] text-muted-foreground">
+                      💡 <strong>Outras ideias para n8n:</strong> Alerta quando indexação falha, relatório semanal por email, sync de conversões com CRM
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 space-y-1">
-                    <p className="text-[10px] font-semibold text-foreground">💻 JavaScript / Fetch</p>
-                    <div className="bg-background rounded p-2 font-mono text-[10px] overflow-x-auto mt-1">
-                      <pre>{`const res = await fetch("${API_BASE_URL}?action=overview", {
-  headers: { "X-API-Key": "rk_sua_chave" }
+                </details>
+
+                {/* Use Case 4: CRM lead sync */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">🔗</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Sincronizar leads do formulário com o Rankito</p>
+                      <p className="text-[10px] text-muted-foreground">Envie conversões do seu site/CRM direto para o painel de conversões</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      <strong>Cenário:</strong> Seu site tem um formulário de contato. Cada vez que alguém preenche, você quer registrar como conversão no Rankito para acompanhar no painel.
+                    </p>
+                    <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                      <p>1️⃣ Crie uma API Key com escopo "write" (ou use a padrão "read" — POST conversions funciona com read)</p>
+                      <p>2️⃣ No backend do seu site, após salvar o lead, faça um POST para a API</p>
+                      <p>3️⃣ O lead aparecerá automaticamente no painel de Conversões do Rankito</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`// No backend do seu site (Node.js, PHP, Python, etc.)
+// Exemplo em JavaScript:
+
+const response = await fetch("${API_BASE_URL}?action=conversions", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "rk_sua_chave",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    event_type: "lead",
+    lead_name: "Maria Silva",
+    lead_email: "maria@email.com",
+    lead_phone: "11987654321",
+    value: 200.00,
+    source: "google",
+    medium: "organic",
+    campaign: "blog-seo",
+    page: "/contato"
+  })
 });
-const data = await res.json();
-console.log(data);`}</pre>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 space-y-1">
-                    <p className="text-[10px] font-semibold text-foreground">🐍 Python</p>
-                    <div className="bg-background rounded p-2 font-mono text-[10px] overflow-x-auto mt-1">
-                      <pre>{`import requests
 
-resp = requests.get(
-    "${API_BASE_URL}?action=overview",
-    headers={"X-API-Key": "rk_sua_chave"}
-)
-print(resp.json())`}</pre>
+// Resposta: { ok: true, created: 1 }`}</pre>
+                    </div>
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`# Python (Flask/Django)
+import requests
+
+requests.post(
+    "${API_BASE_URL}?action=conversions",
+    headers={
+        "X-API-Key": "rk_sua_chave",
+        "Content-Type": "application/json"
+    },
+    json={
+        "event_type": "lead",
+        "lead_name": form.name,
+        "lead_email": form.email,
+        "lead_phone": form.phone,
+        "value": 150.00,
+        "source": "google",
+        "medium": "cpc"
+    }
+)`}</pre>
+                    </div>
+                    <div className="p-2 rounded bg-muted/30 text-[10px] text-muted-foreground">
+                      💡 Você pode enviar até <strong>50 conversões por vez</strong> passando um array no body.
                     </div>
                   </div>
-                </div>
+                </details>
+
+                {/* Use Case 5: Power BI */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">📈</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Power BI: Dashboard de SEO profissional</p>
+                      <p className="text-[10px] text-muted-foreground">Conecte o Power BI à API para gráficos interativos de desempenho</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                      <p>1️⃣ Abra o Power BI Desktop → <strong>Obter Dados → Da Web → Avançado</strong></p>
+                      <p>2️⃣ Em "Partes da URL", cole:</p>
+                      <p className="pl-4"><code className="bg-background px-1 rounded text-[9px]">{API_BASE_URL}?action=metrics&days=90</code></p>
+                      <p>3️⃣ Em "Parâmetros de cabeçalho HTTP", adicione:</p>
+                      <p className="pl-4">Nome: <code className="bg-background px-1 rounded">X-API-Key</code> | Valor: <code className="bg-background px-1 rounded">rk_sua_chave</code></p>
+                      <p>4️⃣ Clique em OK → o Power BI vai carregar os dados como JSON</p>
+                      <p>5️⃣ No Power Query, expanda o campo "data" → converta em tabela</p>
+                      <p>6️⃣ Crie visuais: gráfico de linha (cliques por dia), cartão (posição média), tabela (top queries)</p>
+                      <p>7️⃣ Configure <strong>atualização agendada</strong> para manter os dados atualizados</p>
+                    </div>
+                    <div className="p-2 rounded bg-muted/30 text-[10px] text-muted-foreground">
+                      💡 <strong>Dica Pro:</strong> Crie múltiplas fontes de dados (overview + metrics + urls) e relacione pelo project_id para um dashboard completo.
+                    </div>
+                  </div>
+                </details>
+
+                {/* Use Case 6: Zapier */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">⚙️</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Zapier: Relatório semanal por email</p>
+                      <p className="text-[10px] text-muted-foreground">Envie um resumo de SEO por email toda segunda-feira de manhã</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                      <p>1️⃣ No Zapier, crie um Zap com trigger <strong>Schedule by Zapier</strong> → toda segunda às 8h</p>
+                      <p>2️⃣ Ação: <strong>Webhooks by Zapier → GET</strong></p>
+                      <p className="pl-4">URL: <code className="bg-background px-1 rounded">{API_BASE_URL}?action=overview</code></p>
+                      <p className="pl-4">Headers: <code className="bg-background px-1 rounded">X-API-Key | rk_sua_chave</code></p>
+                      <p>3️⃣ Ação: <strong>Gmail → Send Email</strong></p>
+                      <p className="pl-4">Para: cliente@email.com</p>
+                      <p className="pl-4">Assunto: "📊 Relatório SEO Semanal"</p>
+                      <p className="pl-4">Corpo: Use os campos do step 2 para montar o texto:</p>
+                      <p className="pl-6 italic">"Cliques: {"{{data__total_clicks}}"} | Impressões: {"{{data__total_impressions}}"} | Posição: {"{{data__avg_position}}"}"</p>
+                      <p>4️⃣ Ative o Zap — seu cliente recebe o relatório toda segunda automaticamente! 🎉</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Use Case 7: WordPress widget */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">🌐</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Widget de SEO no seu site WordPress</p>
+                      <p className="text-[10px] text-muted-foreground">Exiba estatísticas de SEO em tempo real no seu site</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Cole este snippet em um bloco HTML personalizado no WordPress para exibir KPIs do projeto:
+                    </p>
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`<div id="seo-stats" style="font-family:sans-serif; padding:20px; background:#f8f9fa; border-radius:12px;">
+  <h3>📊 Desempenho SEO</h3>
+  <p>Carregando...</p>
+</div>
+<script>
+fetch("${API_BASE_URL}?action=overview", {
+  headers: { "X-API-Key": "rk_sua_chave" }
+})
+.then(r => r.json())
+.then(({ data }) => {
+  document.getElementById("seo-stats").innerHTML = \`
+    <h3>📊 Desempenho SEO</h3>
+    <p><strong>\${data.total_clicks.toLocaleString()}</strong> cliques</p>
+    <p><strong>\${data.total_impressions.toLocaleString()}</strong> impressões</p>
+    <p>Posição média: <strong>\${data.avg_position}</strong></p>
+    <p>CTR: <strong>\${data.avg_ctr}%</strong></p>
+    <p style="font-size:11px;color:#888;">Atualizado: \${new Date().toLocaleDateString("pt-BR")}</p>
+  \`;
+});
+</script>`}</pre>
+                    </div>
+                    <div className="p-2 rounded bg-muted/30 text-[10px] text-muted-foreground">
+                      ⚠️ <strong>Atenção:</strong> Este método expõe a chave no frontend. Para produção, use um proxy no backend (ex: via functions do WordPress ou Cloudflare Worker) para proteger a chave.
+                    </div>
+                  </div>
+                </details>
+
+                {/* Use Case 8: Monitoring bot */}
+                <details className="rounded-lg border border-border overflow-hidden group">
+                  <summary className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <span className="text-base">🤖</span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">Bot de monitoramento no Discord/Telegram</p>
+                      <p className="text-[10px] text-muted-foreground">Crie um bot que posta atualizações de SEO no canal da equipe</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="px-3 py-3 space-y-3 border-t border-border/50">
+                    <div className="bg-background rounded-lg p-3 font-mono text-[10px] border overflow-x-auto">
+                      <pre>{`# Bot Python simples para Telegram/Discord
+import requests
+import schedule, time
+
+API = "${API_BASE_URL}"
+KEY = "rk_sua_chave"
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/SEU_WEBHOOK"
+
+def report():
+    data = requests.get(f"{API}?action=overview",
+        headers={"X-API-Key": KEY}).json()["data"]
+    
+    msg = f"""📊 **Relatório SEO Diário**
+🖱️ Cliques: **{data['total_clicks']:,}**
+👁️ Impressões: **{data['total_impressions']:,}**
+📍 Posição média: **{data['avg_position']}**
+📈 CTR: **{data['avg_ctr']}%**
+🔗 URLs indexadas: **{data['indexing']['indexed']}/{data['indexing']['submitted']}**"""
+    
+    requests.post(DISCORD_WEBHOOK,
+        json={"content": msg})
+
+schedule.every().day.at("09:00").do(report)
+while True:
+    schedule.run_pending()
+    time.sleep(60)`}</pre>
+                    </div>
+                  </div>
+                </details>
               </div>
             </TabsContent>
 
