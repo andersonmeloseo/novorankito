@@ -293,10 +293,9 @@ export function AllEventsTab() {
               <Flame className="h-5 w-5 text-warning shrink-0" />
               <div className="text-sm">
                 <span className="font-semibold text-foreground">Pico de atividade:</span>{" "}
-                <span className="text-muted-foreground">
-                  <strong className="text-foreground">{peakInfo.label}</strong> com{" "}
-                  <strong className="text-foreground">{peakInfo.count} evento{peakInfo.count !== 1 ? "s" : ""}</strong>
-                </span>
+                <strong className="text-foreground">{peakInfo.label}</strong> com{" "}
+                <strong className="text-foreground">{peakInfo.count} evento{peakInfo.count !== 1 ? "s" : ""}</strong>.
+                {" "}Concentre campanhas e publicações nesse horário para maximizar alcance.
               </div>
             </div>
           )}
