@@ -75,7 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) checkSubscription();
+      if (session?.user) {
+        checkSubscription();
+      } else {
+        setSubLoading(false);
+      }
     });
 
     return () => authSub.unsubscribe();
