@@ -26,7 +26,16 @@ serve(async (req) => {
 
     const results: Record<string, number> = {};
 
-    // 1. tracking_events > 90 days
+    // 1a. heatmap_click events > 30 days
+    const { count: heatmapCount, error: e0 } = await supabase
+      .from("tracking_events")
+      .delete({ count: "exact" })
+      .eq("event_type", "heatmap_click")
+      .lt("created_at", new Date(Date.now() - 30 * 86400000).toISOString());
+    if (e0) log.error("heatmap cleanup failed", { error: e0.message });
+    results.heatmap_events = heatmapCount || 0;
+
+    // 1b. tracking_events > 90 days
     const { count: eventsCount, error: e1 } = await supabase
       .from("tracking_events")
       .delete({ count: "exact" })
