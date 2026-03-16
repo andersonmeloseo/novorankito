@@ -10,11 +10,11 @@ const SUBSCRIPTION_EXEMPT_ROUTES = [
 ];
 
 export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
-  const { user, loading, subscription } = useAuth();
+  const { user, loading, subLoading, subscription } = useAuth();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const location = useLocation();
 
-  if (loading || adminLoading) {
+  if (loading || adminLoading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />

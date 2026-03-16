@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function SmartHome() {
-  const { user, loading, subscription } = useAuth();
+  const { user, loading, subLoading, subscription } = useAuth();
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["user-projects-count", user?.id],
@@ -19,7 +19,7 @@ export default function SmartHome() {
     enabled: !!user && subscription.subscribed,
   });
 
-  if (loading || isLoading) {
+  if (loading || isLoading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
