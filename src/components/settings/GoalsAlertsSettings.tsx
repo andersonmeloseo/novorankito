@@ -16,7 +16,7 @@ import {
   Target, Bell, TrendingDown, TrendingUp, AlertTriangle, Search,
   BarChart3, MousePointerClick, Eye, FileWarning, Zap, Bot,
   Save, Loader2, MessageCircle, BellRing, Webhook, Phone,
-  CheckCircle2, Send, Plus, Pencil, Trash2,
+  CheckCircle2, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
