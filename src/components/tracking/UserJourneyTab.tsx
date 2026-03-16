@@ -773,6 +773,11 @@ export function UserJourneyTab() {
                 ) : (
                   <EmptyState icon={MousePointerClick} title="Sem cliques CTA" description="Nenhum CTA registrado" />
                 )}
+                {ctaData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    🎯 <strong>"{ctaData[0]?.cta}"</strong> lidera com {ctaData[0]?.count} cliques. {ctaData.length >= 2 ? `"${ctaData[1]?.cta}" vem em segundo com ${ctaData[1]?.count}.` : ""} {ctaData[0]?.count > 10 ? "Bom volume — considere testar variações A/B." : "Volume baixo — revise posicionamento e copy dos CTAs."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
