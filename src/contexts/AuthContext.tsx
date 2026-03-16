@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionInfo>(DEFAULT_SUB);
+  const [subLoading, setSubLoading] = useState(true);
 
   const checkSubscription = useCallback(async () => {
     try {
