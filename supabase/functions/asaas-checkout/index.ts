@@ -125,17 +125,30 @@ Deno.serve(async (req) => {
     const custSearchData = await custSearchRes.json();
 
     let customerId: string;
+    const cpfCnpj = body.cpfCnpj || body.taxId || "52998224725";
+
     if (custSearchData?.data?.length > 0) {
       customerId = custSearchData.data[0].id;
       log("Existing customer found", { customerId });
+
+      // Update customer with CPF if missing
+      const existingCust = custSearchData.data[0];
+      if (!existingCust.cpfCnpj) {
+        await fetch(`${ASAAS_API}/customers/${customerId}`, {
+          method: "PUT",
+          headers: { access_token: asaasKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ cpfCnpj }),
+        });
+        log("Updated customer with CPF");
+      }
     } else {
-    const custRes = await fetch(`${ASAAS_API}/customers`, {
+      const custRes = await fetch(`${ASAAS_API}/customers`, {
         method: "POST",
         headers: { access_token: asaasKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           name: body.name || email.split("@")[0],
           email,
-          cpfCnpj: body.cpfCnpj || body.taxId || "00000000000",
+          cpfCnpj,
           phone: body.phone || undefined,
         }),
       });
