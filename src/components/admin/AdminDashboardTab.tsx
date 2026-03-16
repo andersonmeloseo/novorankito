@@ -64,6 +64,14 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
   });
   const [loadingSales, setLoadingSales] = useState(true);
 
+  // ── Gateway Sales Data (Asaas + AbacatePay) ──
+  interface GatewaySales {
+    today: number; week: number; month: number; total_transactions: number; transactions: any[];
+  }
+  const [asaasSales, setAsaasSales] = useState<GatewaySales>({ today: 0, week: 0, month: 0, total_transactions: 0, transactions: [] });
+  const [abacateSales, setAbacateSales] = useState<GatewaySales>({ today: 0, week: 0, month: 0, total_transactions: 0, transactions: [] });
+  const [loadingGateways, setLoadingGateways] = useState(true);
+
   useEffect(() => {
     (async () => {
       try {
@@ -83,6 +91,50 @@ export function AdminDashboardTab({ stats, profiles, projects, billing, logs }: 
         console.error("Failed to load sales", e);
       } finally {
         setLoadingSales(false);
+      }
+    })();
+  }, []);
+
+  // Fetch gateway transactions from payment_transactions table
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: txs, error } = await supabase
+          .from("payment_transactions")
+          .select("*")
+          .order("paid_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfDay);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const calcSales = (gateway: string): GatewaySales => {
+          const filtered = (txs || []).filter((t: any) => t.gateway === gateway && t.status === "paid");
+          let today = 0, week = 0, month = 0;
+          for (const tx of filtered) {
+            const d = new Date(tx.paid_at || tx.created_at);
+            const amt = Number(tx.amount);
+            if (d >= startOfMonth) month += amt;
+            if (d >= startOfWeek) week += amt;
+            if (d >= startOfDay) today += amt;
+          }
+          return {
+            today, week, month,
+            total_transactions: filtered.length,
+            transactions: filtered.slice(0, 5),
+          };
+        };
+
+        setAsaasSales(calcSales("asaas"));
+        setAbacateSales(calcSales("abacatepay"));
+      } catch (e) {
+        console.error("Failed to load gateway sales", e);
+      } finally {
+        setLoadingGateways(false);
       }
     })();
   }, []);
