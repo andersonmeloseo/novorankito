@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function SmartHome() {
-  const { user, loading, subscription } = useAuth();
+  const { user, loading, subLoading, subscription } = useAuth();
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["user-projects-count", user?.id],
