@@ -379,7 +379,10 @@ export default function IndexingPage() {
   const handleSubmitSelected = () => {
     if (selectedUrls.size === 0) { toast.warning("Selecione ao menos uma URL"); return; }
     submitMutation.mutate({ urls: Array.from(selectedUrls), requestType: "URL_UPDATED" }, {
-      onSuccess: () => setSelectedUrls(new Set()),
+      onSuccess: () => {
+        setSelectedUrls(new Set());
+        window.dispatchEvent(new CustomEvent('tour-action-complete'));
+      },
     });
   };
 
