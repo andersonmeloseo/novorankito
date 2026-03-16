@@ -327,7 +327,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
         clicks_goal: parseInt(clicksGoal) || 30000,
         impressions_goal: parseInt(impressionsGoal) || 500000,
         position_goal: parseInt(positionGoal) || 8,
-        whatsapp_phone: savedPhone,
+        whatsapp_phone: effectivePhone,
         alerts: alertsToSave,
       };
 
