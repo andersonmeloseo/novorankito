@@ -368,7 +368,6 @@ export function AllEventsTab() {
           </Card>
         </AnimatedContainer>);
       })()}
-      )}
 
       {/* Event type ranking */}
       {allEventFunnel.length > 0 && (
