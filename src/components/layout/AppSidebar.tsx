@@ -77,15 +77,15 @@ const ga4Nav = [
 
 const indexingNav = [
   { title: "Dashboard", url: "/indexing#dashboard", icon: LayoutDashboard },
-  { title: "URLs", url: "/indexing#inventory", icon: Layers },
-  { title: "Sitemap", url: "/indexing#sitemap", icon: Map },
+  { title: "URLs", url: "/indexing#inventory", icon: Layers, tourId: "indexing-urls" },
+  { title: "Sitemap", url: "/indexing#sitemap", icon: Map, tourId: "indexing-sitemap" },
   { title: "Histórico", url: "/indexing#history", icon: History },
-  { title: "Agendar Indexação", url: "/indexing#schedule", icon: CalendarClock },
-  { title: "Contas", url: "/indexing#accounts", icon: Wifi },
+  { title: "Agendar Indexação", url: "/indexing#schedule", icon: CalendarClock, tourId: "indexing-schedule" },
+  { title: "Contas", url: "/indexing#accounts", icon: Wifi, tourId: "indexing-accounts" },
 ];
 
 const seoNav = [
-  { title: "Consultas", url: "/seo#queries", icon: Search },
+  { title: "Consultas", url: "/seo#queries", icon: Search, tourId: "seo" },
   { title: "Páginas", url: "/seo#pages", icon: FileText },
   { title: "Países", url: "/seo#countries", icon: Globe },
   { title: "Dispositivos", url: "/seo#devices", icon: Monitor },

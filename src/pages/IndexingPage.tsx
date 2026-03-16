@@ -379,7 +379,10 @@ export default function IndexingPage() {
   const handleSubmitSelected = () => {
     if (selectedUrls.size === 0) { toast.warning("Selecione ao menos uma URL"); return; }
     submitMutation.mutate({ urls: Array.from(selectedUrls), requestType: "URL_UPDATED" }, {
-      onSuccess: () => setSelectedUrls(new Set()),
+      onSuccess: () => {
+        setSelectedUrls(new Set());
+        window.dispatchEvent(new CustomEvent('tour-action-complete'));
+      },
     });
   };
 
@@ -664,7 +667,7 @@ export default function IndexingPage() {
 
               {selectedUrls.size > 0 && (
                 <>
-                  <Button size="sm" variant="default" className="gap-1.5 text-xs" onClick={handleSubmitSelected} disabled={submitMutation.isPending}>
+                  <Button data-tour="index-selected" size="sm" variant="default" className="gap-1.5 text-xs" onClick={handleSubmitSelected} disabled={submitMutation.isPending}>
                     <Send className="h-3 w-3" /> Indexar {selectedUrls.size} selecionada(s)
                   </Button>
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleInspectSelected} disabled={inspectMutation.isPending}>
@@ -694,6 +697,7 @@ export default function IndexingPage() {
                             <TooltipTrigger asChild>
                               <div>
                                 <Checkbox
+                                  data-tour="urls-select-all"
                                   checked={paginatedInventory.length > 0 && paginatedInventory.every(u => selectedUrls.has(u.url))}
                                   onCheckedChange={togglePage}
                                 />
@@ -894,6 +898,7 @@ export default function IndexingPage() {
                   {/* Sitemap Actions Bar */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
+                      data-tour="select-all-sitemaps"
                       size="sm"
                       variant={selectedSmUrls.size === sitemaps.length ? "secondary" : "outline"}
                       className="gap-1.5 text-xs"
@@ -919,6 +924,7 @@ export default function IndexingPage() {
                     {selectedSmUrls.size > 0 && (
                       <>
                         <Button
+                          data-tour="submit-sitemaps"
                           size="sm"
                           variant="default"
                           className="gap-1.5 text-xs"
@@ -938,6 +944,7 @@ export default function IndexingPage() {
                               });
                               setSelectedSmUrls(new Set());
                               queryClient.invalidateQueries({ queryKey: ["gsc-sitemaps-list", projectId] });
+                              window.dispatchEvent(new CustomEvent('tour-action-complete'));
                             } catch (err: any) {
                               toast.error(`Erro ao enviar sitemaps: ${err.message}`);
                             }
@@ -1490,7 +1497,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div data-tour="schedule-form" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* ── Auto Cron Config ── */}
       <Card className="p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -2127,7 +2134,7 @@ function AccountsTabContent({ projectId, user, connections, isLoading }: {
           <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowTutorial(true)}>
             <BookOpen className="h-3 w-3" /> Tutorial GSC
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
+          <Button data-tour="add-account" size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAdding(true)}>
             <Plus className="h-3 w-3" /> Adicionar Conta GSC
           </Button>
         </div>

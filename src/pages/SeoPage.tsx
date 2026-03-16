@@ -104,6 +104,7 @@ export default function SeoPage() {
       queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
       toast({ title: `Sincronização concluída!`, description: `${data?.inserted?.toLocaleString() || 0} métricas importadas do GSC.` });
+      window.dispatchEvent(new CustomEvent('tour-action-complete'));
     } catch (e: any) {
       toast({ title: "Erro ao sincronizar GSC", description: e.message, variant: "destructive" });
     } finally {
@@ -514,7 +515,7 @@ export default function SeoPage() {
                   </span>
                 )}
               </div>
-              <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={syncGscData} disabled={syncing}>
+              <Button data-tour="gsc-sync-button" size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={syncGscData} disabled={syncing}>
                 {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 {syncing ? "Sincronizando..." : "Sincronizar dados"}
               </Button>
