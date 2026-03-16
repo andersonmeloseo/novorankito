@@ -1,0 +1,1 @@
+ALTER TABLE public.billing_subscriptions ADD CONSTRAINT billing_subscriptions_user_id_key UNIQUE (user_id);
