@@ -101,7 +101,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<CustomAlert | null>(null);
   const [form, setForm] = useState(EMPTY_ALERT);
-  const [testing, setTesting] = useState<string | null>(null);
+  
 
   // Load goals from DB
   const { data: savedGoals } = useQuery({
