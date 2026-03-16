@@ -684,6 +684,11 @@ export function UserJourneyTab() {
                     <EmptyState icon={Globe} title="Sem dados" description="Nenhuma página de saída registrada" />
                   )}
                 </div>
+                {exitPages.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    ⚠️ <strong>{exitPages[0]?.page === "/" ? "Home" : exitPages[0]?.page.split("/").pop()}</strong> concentra {totalJourneys > 0 ? ((exitPages[0].count / totalJourneys) * 100).toFixed(0) : 0}% das saídas. {exitPages[0]?.page === entryPages[0]?.page ? "Coincide com a entrada — alto bounce. Melhore o conteúdo acima da dobra." : "Revise CTAs e conteúdo dessa página para reduzir abandono."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
 
@@ -695,7 +700,11 @@ export function UserJourneyTab() {
                     <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={depthFunnel[0].value} color={step.color} index={i} />
                   ))}
                 </div>
-              </Card>
+                {depthFunnel[0]?.value > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    📊 {depthFunnel[1]?.value > 0 ? `${((depthFunnel[1].value / depthFunnel[0].value) * 100).toFixed(0)}% visitam 2+ páginas` : "Maioria não passa da primeira página"}. {depthFunnel[2]?.value > 0 ? `${((depthFunnel[2].value / depthFunnel[0].value) * 100).toFixed(0)}% chegam a 3+.` : ""} {((depthFunnel[1]?.value || 0) / depthFunnel[0].value) < 0.5 ? "Baixa retenção — melhore navegação interna." : "Boa retenção entre páginas."}
+                  </p>
+                )}
             </AnimatedContainer>
           </div>
 
