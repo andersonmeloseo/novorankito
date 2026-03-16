@@ -350,6 +350,20 @@ export default function IndexingPage() {
     }
   };
 
+  const togglePage = () => {
+    const pageUrls = paginatedInventory.map(u => u.url);
+    const allPageSelected = pageUrls.every(u => selectedUrls.has(u));
+    setSelectedUrls(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        pageUrls.forEach(u => next.delete(u));
+      } else {
+        pageUrls.forEach(u => next.add(u));
+      }
+      return next;
+    });
+  };
+
   // ─── Submit ───
   const handleSubmitManual = () => {
     // Parse URLs from text — supports newlines, commas, tabs, semicolons, and quoted values
