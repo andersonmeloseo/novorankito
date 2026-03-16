@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,12 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Target, Bell, TrendingDown, TrendingUp, AlertTriangle, Search,
   BarChart3, MousePointerClick, Eye, FileWarning, Zap, Bot,
   Save, Loader2, MessageCircle, BellRing, Webhook, Phone,
-  CheckCircle2, Send,
+  CheckCircle2, Send, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -25,180 +26,48 @@ interface GoalsAlertsSettingsProps {
 
 type DeliveryChannel = "in_app" | "whatsapp" | "webhook";
 
-interface AlertRule {
+interface CustomAlert {
   id: string;
-  label: string;
+  name: string;
   description: string;
   metric: string;
-  condition: "drop" | "rise" | "below" | "above";
+  condition: string;
   threshold: number;
   unit: string;
+  severity: string;
   enabled: boolean;
-  icon: React.ReactNode;
-  severity: "warning" | "critical" | "info";
   channels: DeliveryChannel[];
+  project_id: string;
+  owner_id: string;
 }
 
-const DEFAULT_ALERTS: AlertRule[] = [
-  {
-    id: "clicks_drop",
-    label: "Queda de cliques",
-    description: "Notificar quando cliques orgânicos caírem significativamente",
-    metric: "clicks",
-    condition: "drop",
-    threshold: 20,
-    unit: "%",
-    enabled: true,
-    icon: <TrendingDown className="h-4 w-4" />,
-    severity: "critical",
-    channels: ["in_app", "whatsapp"],
-  },
-  {
-    id: "position_rise",
-    label: "Perda de posição",
-    description: "Notificar quando posição média subir (piorar)",
-    metric: "position",
-    condition: "rise",
-    threshold: 5,
-    unit: "posições",
-    enabled: true,
-    icon: <TrendingUp className="h-4 w-4" />,
-    severity: "warning",
-    channels: ["in_app"],
-  },
-  {
-    id: "impressions_drop",
-    label: "Queda de impressões",
-    description: "Notificar quando impressões caírem abaixo do esperado",
-    metric: "impressions",
-    condition: "drop",
-    threshold: 30,
-    unit: "%",
-    enabled: false,
-    icon: <Eye className="h-4 w-4" />,
-    severity: "warning",
-    channels: ["in_app"],
-  },
-  {
-    id: "indexing_errors",
-    label: "Falhas de indexação",
-    description: "Notificar quando houver falhas consecutivas na fila de indexação",
-    metric: "indexing_errors",
-    condition: "above",
-    threshold: 3,
-    unit: "falhas seguidas",
-    enabled: true,
-    icon: <FileWarning className="h-4 w-4" />,
-    severity: "critical",
-    channels: ["in_app", "whatsapp"],
-  },
-  {
-    id: "ctr_drop",
-    label: "Queda de CTR",
-    description: "Notificar quando CTR médio cair abaixo do threshold",
-    metric: "ctr",
-    condition: "below",
-    threshold: 2,
-    unit: "%",
-    enabled: false,
-    icon: <MousePointerClick className="h-4 w-4" />,
-    severity: "info",
-    channels: ["in_app"],
-  },
-  {
-    id: "new_keywords",
-    label: "Novas keywords rankando",
-    description: "Notificar quando novas palavras-chave entrarem no top 10",
-    metric: "keywords",
-    condition: "above",
-    threshold: 5,
-    unit: "novas keywords",
-    enabled: false,
-    icon: <Search className="h-4 w-4" />,
-    severity: "info",
-    channels: ["in_app"],
-  },
-  {
-    id: "traffic_spike",
-    label: "Pico de tráfego",
-    description: "Notificar quando tráfego subir acima do normal (possível viralização)",
-    metric: "traffic",
-    condition: "above",
-    threshold: 50,
-    unit: "% acima da média",
-    enabled: false,
-    icon: <Zap className="h-4 w-4" />,
-    severity: "info",
-    channels: ["in_app"],
-  },
-  {
-    id: "page_deindexed",
-    label: "Página desindexada",
-    description: "Notificar quando uma página importante sair do índice do Google",
-    metric: "indexed_pages",
-    condition: "drop",
-    threshold: 1,
-    unit: "página(s)",
-    enabled: true,
-    icon: <AlertTriangle className="h-4 w-4" />,
-    severity: "critical",
-    channels: ["in_app", "whatsapp"],
-  },
-  {
-    id: "bounce_rate_rise",
-    label: "Aumento de bounce rate",
-    description: "Notificar quando taxa de rejeição subir significativamente",
-    metric: "bounce_rate",
-    condition: "rise",
-    threshold: 15,
-    unit: "%",
-    enabled: false,
-    icon: <BarChart3 className="h-4 w-4" />,
-    severity: "warning",
-    channels: ["in_app"],
-  },
-  {
-    id: "conversion_drop",
-    label: "Queda de conversões",
-    description: "Notificar quando conversões caírem em relação ao período anterior",
-    metric: "conversions",
-    condition: "drop",
-    threshold: 25,
-    unit: "%",
-    enabled: false,
-    icon: <Target className="h-4 w-4" />,
-    severity: "critical",
-    channels: ["in_app"],
-  },
-  {
-    id: "crawl_budget_waste",
-    label: "Desperdício de crawl budget",
-    description: "Notificar quando páginas de baixo valor consumirem crawl excessivo",
-    metric: "crawl_waste",
-    condition: "above",
-    threshold: 40,
-    unit: "% do budget",
-    enabled: false,
-    icon: <Bot className="h-4 w-4" />,
-    severity: "warning",
-    channels: ["in_app"],
-  },
-  {
-    id: "core_web_vitals",
-    label: "Core Web Vitals degradados",
-    description: "Notificar quando métricas de performance (LCP, CLS, INP) piorarem",
-    metric: "web_vitals",
-    condition: "below",
-    threshold: 75,
-    unit: "score",
-    enabled: false,
-    icon: <Zap className="h-4 w-4" />,
-    severity: "warning",
-    channels: ["in_app"],
-  },
+const METRIC_OPTIONS = [
+  { value: "clicks", label: "Cliques", icon: MousePointerClick },
+  { value: "impressions", label: "Impressões", icon: Eye },
+  { value: "position", label: "Posição média", icon: TrendingUp },
+  { value: "ctr", label: "CTR", icon: BarChart3 },
+  { value: "indexing_errors", label: "Falhas de indexação", icon: FileWarning },
+  { value: "keywords", label: "Keywords", icon: Search },
+  { value: "traffic", label: "Tráfego", icon: Zap },
+  { value: "conversions", label: "Conversões", icon: Target },
+  { value: "bounce_rate", label: "Bounce rate", icon: BarChart3 },
+  { value: "indexed_pages", label: "Páginas indexadas", icon: AlertTriangle },
 ];
 
-const SEVERITY_CONFIG = {
+const CONDITION_OPTIONS = [
+  { value: "drop", label: "Cair mais que" },
+  { value: "rise", label: "Subir mais que" },
+  { value: "below", label: "Ficar abaixo de" },
+  { value: "above", label: "Ficar acima de" },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: "critical", label: "Crítico", color: "text-destructive" },
+  { value: "warning", label: "Aviso", color: "text-amber-500" },
+  { value: "info", label: "Info", color: "text-primary" },
+];
+
+const SEVERITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   critical: { label: "Crítico", color: "text-destructive", bg: "bg-destructive/10 border-destructive/20" },
   warning: { label: "Aviso", color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" },
   info: { label: "Info", color: "text-primary", bg: "bg-primary/10 border-primary/20" },
@@ -210,22 +79,32 @@ const CHANNEL_CONFIG: Record<DeliveryChannel, { label: string; icon: React.React
   webhook: { label: "Webhook", icon: <Webhook className="h-3.5 w-3.5" />, desc: "Disparo HTTP" },
 };
 
+const EMPTY_ALERT = {
+  name: "", description: "", metric: "clicks", condition: "drop",
+  threshold: 20, unit: "%", severity: "warning", channels: ["in_app"] as DeliveryChannel[],
+};
+
 export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Goals state
   const [focus, setFocus] = useState("seo_growth");
   const [clicksGoal, setClicksGoal] = useState("30000");
   const [impressionsGoal, setImpressionsGoal] = useState("500000");
   const [positionGoal, setPositionGoal] = useState("8");
-  const [alerts, setAlerts] = useState<AlertRule[]>(DEFAULT_ALERTS);
-  const [saving, setSaving] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState("");
-  const [testing, setTesting] = useState<string | null>(null);
-  
+  const [savingGoals, setSavingGoals] = useState(false);
 
-  // Load saved settings from DB
-  const { data: savedSettings } = useQuery({
+  // Alert dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<CustomAlert | null>(null);
+  const [form, setForm] = useState(EMPTY_ALERT);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  // Load goals from DB
+  const { data: savedGoals } = useQuery({
     queryKey: ["project-goals-alerts", projectId],
     queryFn: async () => {
       const { data } = await (supabase as any)
@@ -238,26 +117,30 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     enabled: !!projectId,
   });
 
-  // Hydrate state from DB when data loads
-  useEffect(() => {
-    if (!savedSettings) return;
-    setFocus(savedSettings.focus || "seo_growth");
-    setClicksGoal(String(savedSettings.clicks_goal || 30000));
-    setImpressionsGoal(String(savedSettings.impressions_goal || 500000));
-    setPositionGoal(String(savedSettings.position_goal || 8));
-    setWhatsappPhone(savedSettings.whatsapp_phone || "");
-    if (savedSettings.alerts && Array.isArray(savedSettings.alerts) && savedSettings.alerts.length > 0) {
-      setAlerts(DEFAULT_ALERTS.map(def => {
-        const saved = (savedSettings.alerts as any[]).find((s: any) => s.id === def.id);
-        if (saved) {
-          return { ...def, enabled: saved.enabled, threshold: saved.threshold, channels: saved.channels || def.channels };
-        }
-        return def;
-      }));
-    }
-  }, [savedSettings]);
+  // Load custom alerts from DB
+  const { data: customAlerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ["custom-alerts", projectId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("custom_alerts")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true });
+      return (data || []) as CustomAlert[];
+    },
+    enabled: !!projectId,
+  });
 
-  // Check if WhatsApp is configured (agent has whatsapp_number)
+  // Hydrate goals from DB
+  useEffect(() => {
+    if (!savedGoals) return;
+    setFocus(savedGoals.focus || "seo_growth");
+    setClicksGoal(String(savedGoals.clicks_goal || 30000));
+    setImpressionsGoal(String(savedGoals.impressions_goal || 500000));
+    setPositionGoal(String(savedGoals.position_goal || 8));
+    setWhatsappPhone(savedGoals.whatsapp_phone || "");
+  }, [savedGoals]);
+
   const { data: agentConfig } = useQuery({
     queryKey: ["agent-whatsapp-config", projectId],
     queryFn: async () => {
@@ -272,7 +155,6 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     enabled: !!projectId,
   });
 
-  // Get project name for alert messages
   const { data: project } = useQuery({
     queryKey: ["project-name-alerts", projectId],
     queryFn: async () => {
@@ -286,108 +168,142 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     enabled: !!projectId,
   });
 
-  // Effective phone: local state (from DB or user input) → agent fallback
   const effectivePhone = whatsappPhone || agentConfig?.whatsapp_number || "";
 
-  const toggleAlert = (id: string) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
-    );
-  };
-
-  const updateThreshold = (id: string, value: number) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, threshold: value } : a))
-    );
-  };
-
-  const toggleChannel = (alertId: string, channel: DeliveryChannel) => {
-    setAlerts((prev) =>
-      prev.map((a) => {
-        if (a.id !== alertId) return a;
-        const channels = a.channels.includes(channel)
-          ? a.channels.filter((c) => c !== channel)
-          : [...a.channels, channel];
-        return { ...a, channels };
-      })
-    );
-  };
-
-  const handleSave = async () => {
+  // Save goals
+  const handleSaveGoals = async () => {
     if (!user || !projectId) return;
-    setSaving(true);
+    setSavingGoals(true);
     try {
-      const alertsToSave = alerts.map(a => ({
-        id: a.id, enabled: a.enabled, threshold: a.threshold, channels: a.channels,
-      }));
-      const payload = {
-        project_id: projectId,
-        owner_id: user.id,
-        focus,
-        clicks_goal: parseInt(clicksGoal) || 30000,
-        impressions_goal: parseInt(impressionsGoal) || 500000,
-        position_goal: parseInt(positionGoal) || 8,
-        whatsapp_phone: effectivePhone,
-        alerts: alertsToSave,
-      };
-
       const { error } = await (supabase as any)
         .from("project_goals_alerts")
-        .upsert(payload, { onConflict: "project_id" });
-
+        .upsert({
+          project_id: projectId, owner_id: user.id, focus,
+          clicks_goal: parseInt(clicksGoal) || 30000,
+          impressions_goal: parseInt(impressionsGoal) || 500000,
+          position_goal: parseInt(positionGoal) || 8,
+          whatsapp_phone: effectivePhone,
+          alerts: [],
+        }, { onConflict: "project_id" });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["project-goals-alerts", projectId] });
-      toast({ title: "Configurações salvas!", description: "Metas e alertas atualizados com sucesso." });
+      toast({ title: "Metas salvas!", description: "Configurações de metas e WhatsApp atualizadas." });
     } catch (err: any) {
       toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     } finally {
-      setSaving(false);
+      setSavingGoals(false);
     }
   };
 
-  const handleTestAlert = async (alert: AlertRule) => {
+  // CRUD mutations for alerts
+  const saveMutation = useMutation({
+    mutationFn: async (alert: typeof EMPTY_ALERT & { id?: string }) => {
+      if (!user) throw new Error("Não autenticado");
+      if (!alert.name.trim()) throw new Error("Nome do alerta é obrigatório");
+      
+      if (alert.id) {
+        // Update
+        const { error } = await (supabase as any)
+          .from("custom_alerts")
+          .update({
+            name: alert.name, description: alert.description, metric: alert.metric,
+            condition: alert.condition, threshold: alert.threshold, unit: alert.unit,
+            severity: alert.severity, channels: alert.channels,
+          })
+          .eq("id", alert.id);
+        if (error) throw error;
+      } else {
+        // Insert
+        const { error } = await (supabase as any)
+          .from("custom_alerts")
+          .insert({
+            project_id: projectId, owner_id: user.id,
+            name: alert.name, description: alert.description, metric: alert.metric,
+            condition: alert.condition, threshold: alert.threshold, unit: alert.unit,
+            severity: alert.severity, channels: alert.channels, enabled: true,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-alerts", projectId] });
+      setDialogOpen(false);
+      setEditingAlert(null);
+      setForm(EMPTY_ALERT);
+      toast({ title: editingAlert ? "Alerta atualizado!" : "Alerta criado!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      const { error } = await (supabase as any)
+        .from("custom_alerts")
+        .update({ enabled })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["custom-alerts", projectId] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("custom_alerts")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-alerts", projectId] });
+      toast({ title: "Alerta excluído" });
+    },
+  });
+
+  const openCreate = () => {
+    setEditingAlert(null);
+    setForm(EMPTY_ALERT);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (alert: CustomAlert) => {
+    setEditingAlert(alert);
+    setForm({
+      name: alert.name, description: alert.description || "", metric: alert.metric,
+      condition: alert.condition, threshold: alert.threshold, unit: alert.unit,
+      severity: alert.severity, channels: (alert.channels || ["in_app"]) as DeliveryChannel[],
+    });
+    setDialogOpen(true);
+  };
+
+  const handleTestAlert = async (alert: CustomAlert) => {
     if (!effectivePhone && alert.channels.includes("whatsapp")) {
       toast({ title: "Configure o WhatsApp", description: "Informe um número para receber alertas.", variant: "destructive" });
       return;
     }
-
     setTesting(alert.id);
     try {
       const conditionText = alert.condition === "drop" ? "caiu" : alert.condition === "rise" ? "subiu" : alert.condition === "below" ? "está abaixo de" : "está acima de";
-      const alertMessage = `🚨 *ALERTA — ${project?.name || "Projeto"}*\n\n` +
-        `⚠️ *${alert.label}*\n` +
-        `${alert.description}\n\n` +
-        `📊 Métrica: ${alert.metric} ${conditionText} ${alert.threshold}${alert.unit}\n` +
-        `🌐 Projeto: ${project?.name || projectId}\n` +
-        `🔗 Domínio: ${project?.domain || "—"}\n` +
-        `⏰ ${new Date().toLocaleString("pt-BR")}\n\n` +
-        `_Este é um alerta de teste._`;
+      const alertMessage = `🚨 *ALERTA — ${project?.name || "Projeto"}*\n\n⚠️ *${alert.name}*\n${alert.description}\n\n📊 Métrica: ${alert.metric} ${conditionText} ${alert.threshold}${alert.unit}\n🌐 Projeto: ${project?.name || projectId}\n🔗 Domínio: ${project?.domain || "—"}\n⏰ ${new Date().toLocaleString("pt-BR")}\n\n_Este é um alerta de teste._`;
 
-      // Send in-app notification
       if (alert.channels.includes("in_app") && user) {
         await supabase.from("notifications").insert({
-          user_id: user.id,
-          project_id: projectId,
-          title: `⚠️ ${alert.label}`,
+          user_id: user.id, project_id: projectId,
+          title: `⚠️ ${alert.name}`,
           message: `${alert.description} — Threshold: ${alert.threshold}${alert.unit}`,
           type: "alert",
         });
       }
-
-      // Send WhatsApp via existing function
       if (alert.channels.includes("whatsapp") && effectivePhone) {
         await supabase.functions.invoke("send-workflow-notification", {
           body: {
-            direct_send: {
-              project_id: projectId,
-              phones: [effectivePhone],
-            },
-            report: alertMessage,
-            workflow_name: `Alerta: ${alert.label}`,
+            direct_send: { project_id: projectId, phones: [effectivePhone] },
+            report: alertMessage, workflow_name: `Alerta: ${alert.name}`,
           },
         });
       }
-
       toast({ title: "Alerta de teste enviado!", description: `Enviado para: ${alert.channels.join(", ")}` });
     } catch (err: any) {
       toast({ title: "Erro no teste", description: err.message, variant: "destructive" });
@@ -396,16 +312,30 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     }
   };
 
-  const enabledCount = alerts.filter((a) => a.enabled).length;
-  const criticalCount = alerts.filter((a) => a.enabled && a.severity === "critical").length;
-  const whatsappAlerts = alerts.filter((a) => a.enabled && a.channels.includes("whatsapp")).length;
+  const toggleFormChannel = (ch: DeliveryChannel) => {
+    setForm(prev => ({
+      ...prev,
+      channels: prev.channels.includes(ch) ? prev.channels.filter(c => c !== ch) : [...prev.channels, ch],
+    }));
+  };
+
+  const enabledCount = customAlerts.filter(a => a.enabled).length;
+  const criticalCount = customAlerts.filter(a => a.enabled && a.severity === "critical").length;
+  const whatsappAlerts = customAlerts.filter(a => a.enabled && a.channels?.includes("whatsapp")).length;
+
+  const getMetricIcon = (metric: string) => {
+    const m = METRIC_OPTIONS.find(o => o.value === metric);
+    if (!m) return <Bell className="h-4 w-4" />;
+    const Icon = m.icon;
+    return <Icon className="h-4 w-4" />;
+  };
 
   return (
     <div className="space-y-4">
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Alertas ativos", value: enabledCount, total: alerts.length, icon: <Bell className="h-4 w-4 text-primary" /> },
+          { label: "Alertas ativos", value: enabledCount, total: customAlerts.length, icon: <Bell className="h-4 w-4 text-primary" /> },
           { label: "Críticos", value: criticalCount, icon: <AlertTriangle className="h-4 w-4 text-destructive" /> },
           { label: "Via WhatsApp", value: whatsappAlerts, icon: <MessageCircle className="h-4 w-4 text-emerald-500" /> },
           { label: "Meta posição", value: `Top ${positionGoal}`, icon: <Target className="h-4 w-4 text-primary" /> },
@@ -433,48 +363,22 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
             WhatsApp para Alertas
           </CardTitle>
           <CardDescription className="text-xs">
-            Receba alertas críticos diretamente no WhatsApp — mensagens com nome do projeto, métrica e threshold
+            Receba alertas críticos diretamente no WhatsApp
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2 items-end">
             <div className="flex-1 space-y-1.5">
               <Label className="text-xs flex items-center gap-1.5">
-                <Phone className="h-3 w-3" />
-                Número do WhatsApp
+                <Phone className="h-3 w-3" /> Número do WhatsApp
               </Label>
-              <Input
-                className="h-9 text-sm"
-                placeholder="+55 47 99999-9999"
-                value={effectivePhone}
-                onChange={(e) => setWhatsappPhone(e.target.value)}
-              />
+              <Input className="h-9 text-sm" placeholder="+55 47 99999-9999" value={effectivePhone} onChange={(e) => setWhatsappPhone(e.target.value)} />
             </div>
             {effectivePhone && (
               <Badge variant="outline" className="h-9 px-3 text-[10px] flex items-center gap-1 text-emerald-500 border-emerald-500/30">
-                <CheckCircle2 className="h-3 w-3" />
-                Conectado
+                <CheckCircle2 className="h-3 w-3" /> Configurado
               </Badge>
             )}
-          </div>
-
-          {/* Preview of WhatsApp message */}
-          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-            <p className="text-[10px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
-              <MessageCircle className="h-3 w-3 text-emerald-500" />
-              Preview da mensagem no WhatsApp:
-            </p>
-            <div className="bg-background rounded-lg p-2.5 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-line border border-border/50">
-              {`🚨 *ALERTA — ${project?.name || "Seu Projeto"}*
-
-⚠️ *Queda de cliques*
-Cliques orgânicos caíram 20%
-
-📊 Métrica: clicks caiu 20%
-🌐 Projeto: ${project?.name || "Seu Projeto"}
-🔗 Domínio: ${project?.domain || "seudominio.com"}
-⏰ ${new Date().toLocaleString("pt-BR")}`}
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -483,8 +387,7 @@ Cliques orgânicos caíram 20%
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Metas do Projeto
+            <Target className="h-4 w-4" /> Metas do Projeto
           </CardTitle>
           <CardDescription className="text-xs">
             Defina objetivos que orientam o agente IA e geram alertas automáticos
@@ -493,14 +396,9 @@ Cliques orgânicos caíram 20%
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5">
-                <Bot className="h-3 w-3 text-primary" />
-                Foco do agente IA
-              </Label>
+              <Label className="text-xs flex items-center gap-1.5"><Bot className="h-3 w-3 text-primary" /> Foco do agente IA</Label>
               <Select value={focus} onValueChange={setFocus}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="seo_growth">SEO Growth</SelectItem>
                   <SelectItem value="lead_gen">Geração de Leads</SelectItem>
@@ -512,139 +410,119 @@ Cliques orgânicos caíram 20%
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5">
-                <MousePointerClick className="h-3 w-3 text-primary" />
-                Meta de cliques / mês
-              </Label>
+              <Label className="text-xs flex items-center gap-1.5"><MousePointerClick className="h-3 w-3 text-primary" /> Meta de cliques / mês</Label>
               <Input type="number" className="h-9 text-sm" value={clicksGoal} onChange={(e) => setClicksGoal(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5">
-                <Eye className="h-3 w-3 text-primary" />
-                Meta de impressões / mês
-              </Label>
+              <Label className="text-xs flex items-center gap-1.5"><Eye className="h-3 w-3 text-primary" /> Meta de impressões / mês</Label>
               <Input type="number" className="h-9 text-sm" value={impressionsGoal} onChange={(e) => setImpressionsGoal(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5">
-                <BarChart3 className="h-3 w-3 text-primary" />
-                Meta de posição média
-              </Label>
+              <Label className="text-xs flex items-center gap-1.5"><BarChart3 className="h-3 w-3 text-primary" /> Meta de posição média</Label>
               <Input type="number" className="h-9 text-sm" value={positionGoal} onChange={(e) => setPositionGoal(e.target.value)} min={1} max={100} />
             </div>
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" className="text-xs gap-1.5" onClick={handleSaveGoals} disabled={savingGoals}>
+              {savingGoals ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Salvar metas
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Alerts with delivery channels */}
+      {/* Alerts CRUD */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Alertas automáticos
+                <Bell className="h-4 w-4" /> Alertas
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Configure alertas e escolha onde receber: no painel, WhatsApp ou webhook
+                Crie, edite e gerencie seus alertas personalizados
               </CardDescription>
             </div>
-            <Badge variant="outline" className="text-[10px]">
-              {enabledCount} ativo{enabledCount !== 1 ? "s" : ""}
-            </Badge>
+            <Button size="sm" className="text-xs gap-1.5" onClick={openCreate}>
+              <Plus className="h-3 w-3" /> Novo Alerta
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {alerts.map((alert, idx) => {
-            const sev = SEVERITY_CONFIG[alert.severity];
-            return (
-              <motion.div
-                key={alert.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
-                className={`p-3 rounded-xl border transition-all ${
-                  alert.enabled ? sev.bg : "bg-muted/20 border-border/50 opacity-60"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                    <div className={`mt-0.5 ${alert.enabled ? sev.color : "text-muted-foreground"}`}>
-                      {alert.icon}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-foreground">{alert.label}</span>
-                          <Badge variant="outline" className={`text-[9px] ${alert.enabled ? sev.color : ""}`}>
-                            {sev.label}
-                          </Badge>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{alert.description}</p>
+          {alertsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : customAlerts.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <Bell className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-xs text-muted-foreground">Nenhum alerta criado ainda</p>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={openCreate}>
+                <Plus className="h-3 w-3" /> Criar primeiro alerta
+              </Button>
+            </div>
+          ) : (
+            customAlerts.map((alert, idx) => {
+              const sev = SEVERITY_CONFIG[alert.severity] || SEVERITY_CONFIG.info;
+              return (
+                <motion.div
+                  key={alert.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  className={`p-3 rounded-xl border transition-all ${alert.enabled ? sev.bg : "bg-muted/20 border-border/50 opacity-60"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <div className={`mt-0.5 ${alert.enabled ? sev.color : "text-muted-foreground"}`}>
+                        {getMetricIcon(alert.metric)}
                       </div>
-
-                      {alert.enabled && (
-                        <>
-                          {/* Threshold */}
-                          <div className="flex items-center gap-2">
-                            <Label className="text-[10px] text-muted-foreground shrink-0">Threshold:</Label>
-                            <Input
-                              type="number"
-                              className="h-6 w-16 text-[11px] px-2"
-                              value={alert.threshold}
-                              onChange={(e) => updateThreshold(alert.id, Number(e.target.value))}
-                            />
-                            <span className="text-[10px] text-muted-foreground">{alert.unit}</span>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-semibold text-foreground">{alert.name}</span>
+                            <Badge variant="outline" className={`text-[9px] ${alert.enabled ? sev.color : ""}`}>{sev.label}</Badge>
+                            <span className="text-[9px] text-muted-foreground">
+                              {CONDITION_OPTIONS.find(c => c.value === alert.condition)?.label} {alert.threshold}{alert.unit}
+                            </span>
                           </div>
+                          {alert.description && <p className="text-[10px] text-muted-foreground mt-0.5">{alert.description}</p>}
+                        </div>
 
-                          {/* Delivery Channels */}
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <Label className="text-[10px] text-muted-foreground shrink-0">Enviar para:</Label>
-                            {(Object.entries(CHANNEL_CONFIG) as [DeliveryChannel, typeof CHANNEL_CONFIG["in_app"]][]).map(([key, ch]) => (
-                              <label
-                                key={key}
-                                className="flex items-center gap-1.5 cursor-pointer group"
-                              >
-                                <Checkbox
-                                  checked={alert.channels.includes(key)}
-                                  onCheckedChange={() => toggleChannel(alert.id, key)}
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-                                  {ch.icon}
-                                  {ch.label}
-                                </span>
-                              </label>
-                            ))}
-
-                            {/* Test button */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 px-2 text-[9px] gap-1 ml-auto text-primary"
-                              onClick={() => handleTestAlert(alert)}
-                              disabled={testing === alert.id}
-                            >
-                              {testing === alert.id ? (
-                                <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                              ) : (
-                                <Send className="h-2.5 w-2.5" />
-                              )}
-                              Testar
-                            </Button>
+                        {alert.enabled && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(alert.channels || []).map(ch => {
+                              const cfg = CHANNEL_CONFIG[ch as DeliveryChannel];
+                              return cfg ? (
+                                <Badge key={ch} variant="secondary" className="text-[8px] gap-1 h-5">
+                                  {cfg.icon} {cfg.label}
+                                </Badge>
+                              ) : null;
+                            })}
                           </div>
-                        </>
-                      )}
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" onClick={() => handleTestAlert(alert)} disabled={testing === alert.id}>
+                        {testing === alert.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(alert)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => deleteMutation.mutate(alert.id)} disabled={deleteMutation.isPending}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                      <Switch
+                        checked={alert.enabled}
+                        onCheckedChange={(checked) => toggleMutation.mutate({ id: alert.id, enabled: checked })}
+                      />
                     </div>
                   </div>
-                  <Switch
-                    checked={alert.enabled}
-                    onCheckedChange={() => toggleAlert(alert.id)}
-                  />
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
@@ -652,35 +530,16 @@ Cliques orgânicos caíram 20%
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" />
-            Resumo dos canais
+            <Zap className="h-3.5 w-3.5" /> Resumo dos canais
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
-              {
-                name: "In-app",
-                desc: "Notificações no sino do painel",
-                count: alerts.filter((a) => a.enabled && a.channels.includes("in_app")).length,
-                icon: <BellRing className="h-4 w-4 text-primary" />,
-                status: "sempre ativo",
-              },
-              {
-                name: "WhatsApp",
-                desc: effectivePhone ? `Enviando para ${effectivePhone}` : "Configure um número acima",
-                count: whatsappAlerts,
-                icon: <MessageCircle className="h-4 w-4 text-emerald-500" />,
-                status: effectivePhone ? "configurado" : "pendente",
-              },
-              {
-                name: "Webhook",
-                desc: "Configure na aba API & Webhooks",
-                count: alerts.filter((a) => a.enabled && a.channels.includes("webhook")).length,
-                icon: <Webhook className="h-4 w-4 text-primary" />,
-                status: "configurável",
-              },
-            ].map((ch) => (
+              { name: "In-app", desc: "Notificações no sino do painel", count: customAlerts.filter(a => a.enabled && a.channels?.includes("in_app")).length, icon: <BellRing className="h-4 w-4 text-primary" />, status: "sempre ativo" },
+              { name: "WhatsApp", desc: effectivePhone ? `Enviando para ${effectivePhone}` : "Configure um número acima", count: whatsappAlerts, icon: <MessageCircle className="h-4 w-4 text-emerald-500" />, status: effectivePhone ? "configurado" : "pendente" },
+              { name: "Webhook", desc: "Configure na aba API & Webhooks", count: customAlerts.filter(a => a.enabled && a.channels?.includes("webhook")).length, icon: <Webhook className="h-4 w-4 text-primary" />, status: "configurável" },
+            ].map(ch => (
               <div key={ch.name} className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-1.5">
                 <div className="flex items-center gap-2">
                   {ch.icon}
@@ -699,13 +558,84 @@ Cliques orgânicos caíram 20%
         </CardContent>
       </Card>
 
-      {/* Save */}
-      <div className="flex justify-end">
-        <Button size="sm" className="text-xs gap-1.5" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-          Salvar configurações
-        </Button>
-      </div>
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              {editingAlert ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {editingAlert ? "Editar Alerta" : "Novo Alerta"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome do alerta *</Label>
+              <Input className="h-9 text-sm" placeholder="Ex: Queda de cliques orgânicos" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Descrição</Label>
+              <Input className="h-9 text-sm" placeholder="Descrição opcional" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Métrica</Label>
+                <Select value={form.metric} onValueChange={v => setForm(f => ({ ...f, metric: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {METRIC_OPTIONS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Condição</Label>
+                <Select value={form.condition} onValueChange={v => setForm(f => ({ ...f, condition: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CONDITION_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Threshold</Label>
+                <Input type="number" className="h-9 text-sm" value={form.threshold} onChange={e => setForm(f => ({ ...f, threshold: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Unidade</Label>
+                <Input className="h-9 text-sm" placeholder="%" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Severidade</Label>
+                <Select value={form.severity} onValueChange={v => setForm(f => ({ ...f, severity: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SEVERITY_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Canais de entrega</Label>
+              <div className="flex items-center gap-4">
+                {(Object.entries(CHANNEL_CONFIG) as [DeliveryChannel, typeof CHANNEL_CONFIG["in_app"]][]).map(([key, ch]) => (
+                  <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox checked={form.channels.includes(key)} onCheckedChange={() => toggleFormChannel(key)} className="h-3.5 w-3.5" />
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">{ch.icon} {ch.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" size="sm" className="text-xs">Cancelar</Button></DialogClose>
+            <Button size="sm" className="text-xs gap-1.5" onClick={() => saveMutation.mutate({ ...form, id: editingAlert?.id })} disabled={saveMutation.isPending || !form.name.trim()}>
+              {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {editingAlert ? "Salvar" : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
