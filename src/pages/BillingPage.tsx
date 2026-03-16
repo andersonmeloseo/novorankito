@@ -73,6 +73,7 @@ export default function BillingPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent?: number; discount_amount?: number } | null>(null);
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     supabase
