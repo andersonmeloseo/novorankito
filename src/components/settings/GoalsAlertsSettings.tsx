@@ -375,12 +375,12 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
       }
 
       // Send WhatsApp via existing function
-      if (alert.channels.includes("whatsapp") && savedPhone) {
+      if (alert.channels.includes("whatsapp") && effectivePhone) {
         await supabase.functions.invoke("send-workflow-notification", {
           body: {
             direct_send: {
               project_id: projectId,
-              phones: [savedPhone],
+              phones: [effectivePhone],
             },
             report: alertMessage,
             workflow_name: `Alerta: ${alert.label}`,
