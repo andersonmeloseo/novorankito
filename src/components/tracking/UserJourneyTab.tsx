@@ -813,6 +813,11 @@ export function UserJourneyTab() {
                     </div>
                   ))}
                 </div>
+                {sourceData.length > 0 && (
+                  <p className="text-[9px] text-muted-foreground/80 mt-2 leading-snug border-t border-border/30 pt-2">
+                    🔍 <strong>{sourceData[0]?.name}</strong> domina com {totalSourceEvents > 0 ? ((sourceData[0].value / totalSourceEvents) * 100).toFixed(0) : 0}% do tráfego. {sourceData.length >= 2 ? `"${sourceData[1]?.name}" representa ${totalSourceEvents > 0 ? ((sourceData[1].value / totalSourceEvents) * 100).toFixed(0) : 0}%.` : ""} {sourceData[0]?.name === "direct" ? "Alto tráfego direto — bom branding, mas diversifique canais." : "Diversifique fontes para reduzir dependência."}
+                  </p>
+                )}
               </Card>
             </AnimatedContainer>
           </div>
