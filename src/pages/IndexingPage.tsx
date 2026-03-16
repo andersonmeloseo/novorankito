@@ -372,7 +372,11 @@ export default function IndexingPage() {
     const urls = [...new Set(found)].slice(0, 50);
     if (urls.length === 0) { toast.warning("Nenhuma URL válida detectada"); return; }
     submitMutation.mutate({ urls, requestType }, {
-      onSuccess: () => { setSubmitOpen(false); setUrlsText(""); },
+      onSuccess: () => {
+        setSubmitOpen(false);
+        setUrlsText("");
+        window.dispatchEvent(new CustomEvent('tour-action-complete'));
+      },
     });
   };
 
