@@ -16,7 +16,7 @@ import {
   Target, Bell, TrendingDown, TrendingUp, AlertTriangle, Search,
   BarChart3, MousePointerClick, Eye, FileWarning, Zap, Bot,
   Save, Loader2, MessageCircle, BellRing, Webhook, Phone,
-  CheckCircle2, Send, Plus, Pencil, Trash2,
+  CheckCircle2, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -101,7 +101,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<CustomAlert | null>(null);
   const [form, setForm] = useState(EMPTY_ALERT);
-  const [testing, setTesting] = useState<string | null>(null);
+  
 
   // Load goals from DB
   const { data: savedGoals } = useQuery({
@@ -278,39 +278,6 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     setDialogOpen(true);
   };
 
-  const handleTestAlert = async (alert: CustomAlert) => {
-    if (!effectivePhone && alert.channels.includes("whatsapp")) {
-      toast({ title: "Configure o WhatsApp", description: "Informe um número para receber alertas.", variant: "destructive" });
-      return;
-    }
-    setTesting(alert.id);
-    try {
-      const conditionText = alert.condition === "drop" ? "caiu" : alert.condition === "rise" ? "subiu" : alert.condition === "below" ? "está abaixo de" : "está acima de";
-      const alertMessage = `🚨 *ALERTA — ${project?.name || "Projeto"}*\n\n⚠️ *${alert.name}*\n${alert.description}\n\n📊 Métrica: ${alert.metric} ${conditionText} ${alert.threshold}${alert.unit}\n🌐 Projeto: ${project?.name || projectId}\n🔗 Domínio: ${project?.domain || "—"}\n⏰ ${new Date().toLocaleString("pt-BR")}\n\n_Este é um alerta de teste._`;
-
-      if (alert.channels.includes("in_app") && user) {
-        await supabase.from("notifications").insert({
-          user_id: user.id, project_id: projectId,
-          title: `⚠️ ${alert.name}`,
-          message: `${alert.description} — Limite: ${alert.threshold}${alert.unit}`,
-          type: "alert",
-        });
-      }
-      if (alert.channels.includes("whatsapp") && effectivePhone) {
-        await supabase.functions.invoke("send-workflow-notification", {
-          body: {
-            direct_send: { project_id: projectId, phones: [effectivePhone] },
-            report: alertMessage, workflow_name: `Alerta: ${alert.name}`,
-          },
-        });
-      }
-      toast({ title: "Alerta de teste enviado!", description: `Enviado para: ${alert.channels.join(", ")}` });
-    } catch (err: any) {
-      toast({ title: "Erro no teste", description: err.message, variant: "destructive" });
-    } finally {
-      setTesting(null);
-    }
-  };
 
   const handleChannelCheckedChange = (channel: DeliveryChannel, checked: boolean | "indeterminate") => {
     setForm((prev) => {
@@ -509,9 +476,6 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" onClick={() => handleTestAlert(alert)} disabled={testing === alert.id}>
-                        {testing === alert.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                      </Button>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(alert)}>
                         <Pencil className="h-3 w-3" />
                       </Button>
