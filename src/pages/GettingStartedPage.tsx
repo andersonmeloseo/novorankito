@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,10 +35,41 @@ const categories = {
 export default function GettingStartedPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [completed, setCompleted] = useState<Set<string>>(() => {
     const saved = localStorage.getItem("rankito_onboarding_steps");
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+
+  // Handle restart-tour param
+  useEffect(() => {
+    if (!searchParams.has("restart-tour") || !user?.id) return;
+
+    const restartTour = async () => {
+      // Get the user's active project
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("owner_id", user.id)
+        .limit(1);
+
+      const projectId = projects?.[0]?.id;
+      if (!projectId) return;
+
+      // Reset onboarding progress for this project
+      await supabase
+        .from("onboarding_progress")
+        .update({ current_step: 0, completed: false, completed_at: null, skipped_ga4: false })
+        .eq("user_id", user.id)
+        .eq("project_id", projectId);
+
+      // Remove the param and navigate to overview to trigger tour
+      setSearchParams({});
+      navigate("/overview");
+    };
+
+    restartTour();
+  }, [searchParams, user?.id]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["getting-started-projects", user?.id],
