@@ -690,7 +690,17 @@ export default function IndexingPage() {
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-3 py-3 w-10">
-                          <Checkbox checked={selectedUrls.size === filteredInventory.length && filteredInventory.length > 0} onCheckedChange={toggleAll} />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={paginatedInventory.length > 0 && paginatedInventory.every(u => selectedUrls.has(u.url))}
+                                  onCheckedChange={togglePage}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Selecionar todas desta página</TooltipContent>
+                          </Tooltip>
                         </th>
                         {[
                           { key: "url", label: "URL" },
