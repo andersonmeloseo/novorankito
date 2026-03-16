@@ -150,7 +150,10 @@ Deno.serve(async (req) => {
     dueDate.setDate(dueDate.getDate() + 1); // Due tomorrow
     const dueDateStr = dueDate.toISOString().split("T")[0];
 
-    const billingType = body.billingType || "UNDEFINED"; // UNDEFINED lets customer choose
+    const billingType = body.billingType || "UNDEFINED";
+
+    // externalReference max 100 chars in Asaas
+    const extRef = `rankito|${planData.slug}|${billingInterval || "monthly"}|${userId || "anon"}`.slice(0, 100);
 
     const paymentPayload: Record<string, unknown> = {
       customer: customerId,
@@ -158,14 +161,7 @@ Deno.serve(async (req) => {
       value: amountBRL,
       dueDate: dueDateStr,
       description: `${planData.name} — ${isAnnual ? "Anual" : "Mensal"}`,
-      externalReference: JSON.stringify({
-        source: "rankito",
-        plan_slug: planData.slug,
-        billing_interval: billingInterval || "monthly",
-        user_id: userId,
-        user_email: email,
-        trial_days: trialDays || 0,
-      }),
+      externalReference: extRef,
     };
 
     // If trial, set as 0 value and note
