@@ -222,7 +222,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [testing, setTesting] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  
 
   // Load saved settings from DB
   const { data: savedSettings } = useQuery({
