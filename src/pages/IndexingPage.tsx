@@ -941,6 +941,7 @@ export default function IndexingPage() {
                               });
                               setSelectedSmUrls(new Set());
                               queryClient.invalidateQueries({ queryKey: ["gsc-sitemaps-list", projectId] });
+                              window.dispatchEvent(new CustomEvent('tour-action-complete'));
                             } catch (err: any) {
                               toast.error(`Erro ao enviar sitemaps: ${err.message}`);
                             }
