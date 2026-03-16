@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTimeout(() => checkSubscription(), 0);
       } else {
         setSubscription(DEFAULT_SUB);
+        setSubLoading(false);
       }
     });
 
