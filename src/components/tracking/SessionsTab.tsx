@@ -357,6 +357,17 @@ export function SessionsTab() {
               ))}
             </div>
           </div>
+          {peakInfo.count > 0 && (
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+              <Flame className="h-5 w-5 text-warning shrink-0" />
+              <div className="text-sm">
+                <span className="font-semibold text-foreground">Pico de tráfego:</span>{" "}
+                <strong className="text-foreground">{peakInfo.label}</strong> com{" "}
+                <strong className="text-foreground">{peakInfo.count} sessões</strong>.
+                {" "}Concentre campanhas e publicações nesse horário para maximizar alcance.
+              </div>
+            </div>
+          )}
         </Card>
       </AnimatedContainer>
 
@@ -381,7 +392,17 @@ export function SessionsTab() {
                   <Area type="monotone" dataKey="bounceRate" stroke="hsl(var(--warning))" fill="url(#bounceGlow)" strokeWidth={2.5} name="Rejeição %" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
+             </div>
+            {(() => {
+              const avgEng = sessionsByDay.length > 0 ? Math.round(sessionsByDay.reduce((s, d) => s + d.engagementRate, 0) / sessionsByDay.length) : 0;
+              const avgBounce = sessionsByDay.length > 0 ? Math.round(sessionsByDay.reduce((s, d) => s + d.bounceRate, 0) / sessionsByDay.length) : 0;
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  Engajamento médio: <strong className="text-foreground">{avgEng}%</strong> · Rejeição média: <strong className="text-foreground">{avgBounce}%</strong>.
+                  {avgBounce > 60 ? " Taxa de rejeição alta — melhore a velocidade de carregamento, relevância do conteúdo e CTAs acima da dobra." : avgBounce > 40 ? " Rejeição moderada — teste títulos, imagens e ofertas na landing page." : " Excelente retenção! Continue monitorando para manter esse nível."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
       )}
@@ -395,6 +416,17 @@ export function SessionsTab() {
               <FunnelStep key={step.label} label={step.label} value={step.value} maxValue={sessionFunnel[0].value} color={step.color} index={i} />
             ))}
           </div>
+          {(() => {
+            const total = sessionFunnel[0]?.value || 1;
+            const engPct = Math.round(((sessionFunnel[1]?.value || 0) / total) * 100);
+            const longPct = Math.round(((sessionFunnel[3]?.value || 0) / total) * 100);
+            return (
+              <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <strong className="text-foreground">{engPct}%</strong> das sessões são engajadas e <strong className="text-foreground">{longPct}%</strong> duram mais de 1 min.
+                {engPct < 40 ? " Baixo engajamento — revise a experiência da landing page e a relevância do tráfego." : longPct < 10 ? " Poucas sessões longas — adicione conteúdo aprofundado para reter visitantes." : " Boa qualidade de sessões — otimize o funil de conversão."}
+              </div>
+            );
+          })()}
         </Card>
       </AnimatedContainer>
 
@@ -417,6 +449,16 @@ export function SessionsTab() {
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
+              {(() => {
+                const best = qualityByDevice.reduce((a, b) => a.engagementRate > b.engagementRate ? a : b, qualityByDevice[0]);
+                const worst = qualityByDevice.reduce((a, b) => a.engagementRate < b.engagementRate ? a : b, qualityByDevice[0]);
+                return (
+                  <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <strong className="text-foreground">{best.device}</strong> tem o melhor engajamento (<strong className="text-foreground">{best.engagementRate}%</strong>, {best.pagesPerSession} págs/sessão).
+                    {qualityByDevice.length > 1 && best.device !== worst.device && <> <strong className="text-foreground">{worst.device}</strong> precisa de atenção ({worst.engagementRate}%). Otimize a experiência nesse dispositivo.</>}
+                  </div>
+                );
+              })()}
             </Card>
           </AnimatedContainer>
         )}
@@ -437,6 +479,17 @@ export function SessionsTab() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              {(() => {
+                const top = sourcePieData[0];
+                const totalS = sourcePieData.reduce((s, d) => s + d.value, 0);
+                const pct = totalS > 0 ? Math.round((top.value / totalS) * 100) : 0;
+                return (
+                  <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <strong className="text-foreground">{top.name}</strong> é a principal fonte com <strong className="text-foreground">{pct}%</strong> das sessões.
+                    {pct > 70 ? " Dependência alta de um único canal — diversifique com SEO, redes sociais ou ads para reduzir risco." : sourcePieData.length <= 2 ? " Poucos canais ativos — explore novos canais de aquisição." : " Boa diversificação de canais de tráfego."}
+                  </div>
+                );
+              })()}
             </Card>
           </AnimatedContainer>
         )}
@@ -460,6 +513,17 @@ export function SessionsTab() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {(() => {
+              const top = sessionsByCity[0];
+              const totalC = sessionsByCity.reduce((s, c) => s + c.count, 0);
+              const pct = totalC > 0 ? Math.round((top.count / totalC) * 100) : 0;
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">{top.city}</strong> lidera com <strong className="text-foreground">{pct}%</strong> das sessões ({top.count}).
+                  {sessionsByCity.length >= 5 ? " Público geograficamente distribuído — considere conteúdo ou ofertas regionalizadas." : " Concentração geográfica — ideal para campanhas locais segmentadas."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
       )}
