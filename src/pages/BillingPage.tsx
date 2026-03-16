@@ -190,6 +190,42 @@ export default function BillingPage() {
     }
   };
 
+  const handleCheckPendingPayment = async () => {
+    setCheckingPayment(true);
+    try {
+      const stored = (() => {
+        try { return JSON.parse(localStorage.getItem("pending_payment") || "{}"); } catch { return {}; }
+      })();
+      
+      if (!stored.paymentId) {
+        toast({ title: "Sem pagamento pendente", description: "Não encontramos um pagamento pendente registrado. Se já pagou, aguarde alguns minutos." });
+        setCheckingPayment(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("check-payment-status", {
+        body: { paymentId: stored.paymentId, gateway: stored.gateway || "asaas" },
+      });
+      if (error) throw error;
+
+      if (data?.paid) {
+        localStorage.removeItem("pending_payment");
+        await checkSubscription();
+        toast({ title: "Pagamento confirmado! 🎉", description: "Sua assinatura foi ativada com sucesso." });
+      } else {
+        toast({ 
+          title: "Pagamento ainda pendente", 
+          description: `Status: ${data?.status || "PENDING"}. Tente novamente em alguns minutos.`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Erro ao verificar pagamento", variant: "destructive" });
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
   return (
     <div className="flex-1 bg-background">
       <header className="border-b p-4 sm:p-6">
