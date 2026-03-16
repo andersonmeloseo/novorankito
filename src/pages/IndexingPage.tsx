@@ -664,7 +664,7 @@ export default function IndexingPage() {
 
               {selectedUrls.size > 0 && (
                 <>
-                  <Button size="sm" variant="default" className="gap-1.5 text-xs" onClick={handleSubmitSelected} disabled={submitMutation.isPending}>
+                  <Button data-tour="index-selected" size="sm" variant="default" className="gap-1.5 text-xs" onClick={handleSubmitSelected} disabled={submitMutation.isPending}>
                     <Send className="h-3 w-3" /> Indexar {selectedUrls.size} selecionada(s)
                   </Button>
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleInspectSelected} disabled={inspectMutation.isPending}>
