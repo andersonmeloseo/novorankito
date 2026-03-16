@@ -2351,22 +2351,31 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invited_email: string | null
+          permissions: Json
           project_id: string
           role: Database["public"]["Enums"]["app_role"]
+          status: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          invited_email?: string | null
+          permissions?: Json
           project_id: string
           role?: Database["public"]["Enums"]["app_role"]
+          status?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          invited_email?: string | null
+          permissions?: Json
           project_id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          status?: string
           user_id?: string
         }
         Relationships: [
