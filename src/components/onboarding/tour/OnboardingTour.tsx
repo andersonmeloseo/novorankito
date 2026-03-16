@@ -66,13 +66,16 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
       };
 
       // Make the target element clickable above overlay
-      (el as HTMLElement).style.position = 'relative';
-      (el as HTMLElement).style.zIndex = '9999';
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.position = 'relative';
+      htmlEl.style.zIndex = '10000';
+      htmlEl.style.pointerEvents = 'auto';
       el.addEventListener('click', handler, { once: true });
 
       listenerRef.current = () => {
         el.removeEventListener('click', handler);
-        (el as HTMLElement).style.zIndex = '';
+        htmlEl.style.zIndex = '';
+        htmlEl.style.pointerEvents = '';
       };
     }, 200);
 
