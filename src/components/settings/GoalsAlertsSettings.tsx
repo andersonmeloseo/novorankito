@@ -346,7 +346,7 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
   };
 
   const handleTestAlert = async (alert: AlertRule) => {
-    if (!savedPhone && alert.channels.includes("whatsapp")) {
+    if (!effectivePhone && alert.channels.includes("whatsapp")) {
       toast({ title: "Configure o WhatsApp", description: "Informe um número para receber alertas.", variant: "destructive" });
       return;
     }
