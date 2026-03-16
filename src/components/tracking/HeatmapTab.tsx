@@ -62,6 +62,7 @@ export function HeatmapTab() {
   const [heatmapMode, setHeatmapMode] = useState<"click" | "scroll" | "move">("click");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
   const [listDeviceFilter, setListDeviceFilter] = useState<string>("all");
+  const [listDataFilter, setListDataFilter] = useState<"all" | "clicks" | "scroll" | "mouse">("all");
   const [listSortBy, setListSortBy] = useState<string>("relevance");
   const [listSearch, setListSearch] = useState("");
   const [listPage, setListPage] = useState(0);
