@@ -107,6 +107,7 @@ export default function SeoPage() {
       window.dispatchEvent(new CustomEvent('tour-action-complete'));
     } catch (e: any) {
       toast({ title: "Erro ao sincronizar GSC", description: e.message, variant: "destructive" });
+      window.dispatchEvent(new CustomEvent('tour-action-complete'));
     } finally {
       setSyncing(false);
     }
