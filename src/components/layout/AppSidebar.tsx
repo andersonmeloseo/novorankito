@@ -85,7 +85,7 @@ const indexingNav = [
 ];
 
 const seoNav = [
-  { title: "Consultas", url: "/seo#queries", icon: Search },
+  { title: "Consultas", url: "/seo#queries", icon: Search, tourId: "seo" },
   { title: "Páginas", url: "/seo#pages", icon: FileText },
   { title: "Países", url: "/seo#countries", icon: Globe },
   { title: "Dispositivos", url: "/seo#devices", icon: Monitor },
