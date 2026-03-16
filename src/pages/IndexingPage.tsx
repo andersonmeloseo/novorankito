@@ -372,7 +372,11 @@ export default function IndexingPage() {
     const urls = [...new Set(found)].slice(0, 50);
     if (urls.length === 0) { toast.warning("Nenhuma URL válida detectada"); return; }
     submitMutation.mutate({ urls, requestType }, {
-      onSuccess: () => { setSubmitOpen(false); setUrlsText(""); },
+      onSuccess: () => {
+        setSubmitOpen(false);
+        setUrlsText("");
+        window.dispatchEvent(new CustomEvent('tour-action-complete'));
+      },
     });
   };
 
@@ -560,7 +564,7 @@ export default function IndexingPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gap-1.5 text-xs">
+                  <Button data-tour="urls-manual-open" size="sm" className="gap-1.5 text-xs">
                     <Send className="h-3 w-3" /> Enviar URLs Manualmente
                   </Button>
                 </DialogTrigger>
@@ -630,7 +634,7 @@ export default function IndexingPage() {
                   </div>
                   <DialogFooter>
                     <DialogClose asChild><Button variant="outline" size="sm">Cancelar</Button></DialogClose>
-                    <Button size="sm" className="gap-1.5" onClick={handleSubmitManual} disabled={submitMutation.isPending || !urlsText.trim()}>
+                    <Button data-tour="urls-manual-submit" size="sm" className="gap-1.5" onClick={handleSubmitManual} disabled={submitMutation.isPending || !urlsText.trim()}>
                       {submitMutation.isPending ? <RotateCcw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                       {submitMutation.isPending ? "Enviando..." : "Enviar"}
                     </Button>

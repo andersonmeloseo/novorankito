@@ -119,11 +119,8 @@ export function useOnboardingTour(projectId: string | undefined) {
       const currentPath = location.pathname;
       const currentHash = location.hash.replace('#', '');
 
-      if (path && currentPath !== path) {
+      if ((path && currentPath !== path) || (hash && currentHash !== hash)) {
         navigate(nextStep.navigateTo);
-      } else if (hash && currentHash !== hash) {
-        window.history.replaceState(null, '', `#${hash}`);
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
       }
     }
   }, [stepIndex, currentStep, saveStep, navigate, location]);

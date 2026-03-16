@@ -122,9 +122,9 @@ export const TOUR_STEPS: TourStep[] = [
   // STEP 9 — SELECIONAR TODAS AS URLs
   {
     id: 'select_all_urls',
-    title: 'Selecione todas as URLs',
-    description: 'Clique no checkbox do cabeçalho da tabela para selecionar todas as URLs de uma vez.',
-    targetSelector: '[data-tour="urls-select-all"]',
+    title: 'Selecione as URLs para envio',
+    description: 'Você pode selecionar em massa pelo checkbox do cabeçalho ou clicar em "Enviar URLs Manualmente".',
+    targetSelector: '[data-tour="urls-select-all"], [data-tour="urls-manual-open"]',
     action: 'click',
     navigateTo: null,
     requiresAction: true,
@@ -133,9 +133,9 @@ export const TOUR_STEPS: TourStep[] = [
   // STEP 10 — INDEXAR SELECIONADAS
   {
     id: 'index_selected',
-    title: 'Indexe as URLs selecionadas',
-    description: 'Clique em "Indexar selecionada(s)" para enviar todas as URLs marcadas para indexação no Google.',
-    targetSelector: '[data-tour="index-selected"]',
+    title: 'Envie as URLs para Indexação',
+    description: 'Clique em "Indexar selecionada(s)" ou, no modal manual, em "Enviar" para iniciar o envio ao Google.',
+    targetSelector: '[data-tour="index-selected"], [data-tour="urls-manual-submit"]',
     action: 'click_and_wait',
     navigateTo: null,
     requiresAction: true,

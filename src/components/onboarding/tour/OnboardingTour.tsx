@@ -115,12 +115,9 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
       return; // non-click steps stay on current step
     }
 
-    // Not at target yet — navigate there
-    if (path && currentPath !== path) {
+    // Not at target yet — navigate there (including hash-only changes)
+    if ((path && currentPath !== path) || (hash && currentHash !== hash)) {
       navigate(currentStep.navigateTo);
-    } else if (hash && currentHash !== hash) {
-      window.history.replaceState(null, '', `${location.pathname}#${hash}`);
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
   }, [isActive, stepIndex, currentStep, location.pathname, location.hash, navigate, advanceStep]);
 
