@@ -386,7 +386,7 @@ export function AllEventsTab() {
       {/* Platform + Device + Browser */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <AnimatedContainer delay={0.1}>
-          <Card className="p-5">
+          <Card className="p-5 flex flex-col">
             <ChartHeader title="Detecção de Plataforma" subtitle="Qual tecnologia gera mais eventos" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -400,11 +400,21 @@ export function AllEventsTab() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {platformDistribution.length > 0 && (() => {
+              const top = platformDistribution[0];
+              const pct = totalEvents > 0 ? Math.round((top.value / totalEvents) * 100) : 0;
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">{top.name}</strong> domina com <strong className="text-foreground">{pct}%</strong> dos eventos.
+                  {pct > 80 ? " Concentração muito alta — verifique se o tracking está instalado em todas as plataformas." : " Distribuição saudável entre plataformas."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
 
         <AnimatedContainer delay={0.15}>
-          <Card className="p-5">
+          <Card className="p-5 flex flex-col">
             <ChartHeader title="Eventos por Dispositivo" subtitle="Distribuição mobile vs desktop vs tablet" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -417,11 +427,22 @@ export function AllEventsTab() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {eventsByDevice.length > 0 && (() => {
+              const top = eventsByDevice[0];
+              const pct = totalEvents > 0 ? Math.round((top.value / totalEvents) * 100) : 0;
+              const isMobile = top.name.toLowerCase() === "mobile";
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">{pct}%</strong> dos acessos vêm de <strong className="text-foreground">{top.name}</strong>.
+                  {isMobile ? " Priorize otimização mobile: velocidade, botões grandes e formulários simples." : " Desktop lidera — garanta que a experiência mobile não está sendo prejudicada."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
 
         <AnimatedContainer delay={0.2}>
-          <Card className="p-5">
+          <Card className="p-5 flex flex-col">
             <ChartHeader title="Eventos por Browser" subtitle="Compatibilidade entre navegadores" />
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -436,6 +457,17 @@ export function AllEventsTab() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {eventsByBrowser.length > 0 && (() => {
+              const top = eventsByBrowser[0];
+              const totalB = eventsByBrowser.reduce((s, b) => s + b.count, 0);
+              const pct = totalB > 0 ? Math.round((top.count / totalB) * 100) : 0;
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">{top.browser}</strong> responde por <strong className="text-foreground">{pct}%</strong> dos eventos.
+                  {eventsByBrowser.length <= 2 ? " Poucos browsers detectados — teste seu site nos principais navegadores." : " Teste a compatibilidade nos navegadores secundários para evitar perda de conversões."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
       </div>
@@ -443,7 +475,7 @@ export function AllEventsTab() {
       {/* Treemap + Cohort */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <AnimatedContainer delay={0.25} className="lg:col-span-3">
-          <Card className="p-5 h-full">
+          <Card className="p-5 h-full flex flex-col">
             <ChartHeader title="Treemap de Páginas" subtitle="Quais páginas concentram mais atividade" />
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -455,6 +487,17 @@ export function AllEventsTab() {
                 </Treemap>
               </ResponsiveContainer>
             </div>
+            {topPagesTreemap.length > 0 && (() => {
+              const top = topPagesTreemap[0];
+              const totalP = topPagesTreemap.reduce((s, p) => s + p.size, 0);
+              const pct = totalP > 0 ? Math.round((top.size / totalP) * 100) : 0;
+              return (
+                <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">/{top.name || "home"}</strong> concentra <strong className="text-foreground">{pct}%</strong> dos eventos ({top.size}).
+                  {pct > 60 ? " Alta concentração — distribua CTAs e conteúdo para engajar visitantes em mais páginas." : " Tráfego bem distribuído entre as páginas."}
+                </div>
+              );
+            })()}
           </Card>
         </AnimatedContainer>
 
@@ -471,6 +514,18 @@ export function AllEventsTab() {
                   hue={210}
                 />
               </div>
+              {(() => {
+                let maxVal = 0, maxEvt = "", maxDev = "";
+                cohortData.data.forEach((row, ri) => row.forEach((val, ci) => {
+                  if (val > maxVal) { maxVal = val; maxEvt = cohortData.yLabels[ri]; maxDev = cohortData.xLabels[ci]; }
+                }));
+                return maxVal > 0 ? (
+                  <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    Combinação mais frequente: <strong className="text-foreground">{maxEvt}</strong> em <strong className="text-foreground">{maxDev}</strong> ({maxVal}x).
+                    {" "}Otimize essa experiência específica para maximizar resultados.
+                  </div>
+                ) : null;
+              })()}
             </Card>
           </AnimatedContainer>
         )}
