@@ -136,6 +136,14 @@ export function OnboardingTour({ projectId }: OnboardingTourProps) {
   const handleAdvance = useCallback(() => {
     if (stepIndex >= totalSteps - 1) {
       completeTour();
+      // Fire confetti celebration 🎉
+      const duration = 3000;
+      const end = Date.now() + duration;
+      const fire = () => {
+        confetti({ particleCount: 80, spread: 100, origin: { x: Math.random(), y: Math.random() * 0.6 } });
+        if (Date.now() < end) requestAnimationFrame(fire);
+      };
+      fire();
     } else {
       advanceStep();
     }
