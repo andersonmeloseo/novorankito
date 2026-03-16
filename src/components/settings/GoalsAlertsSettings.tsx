@@ -278,39 +278,6 @@ export function GoalsAlertsSettings({ projectId }: GoalsAlertsSettingsProps) {
     setDialogOpen(true);
   };
 
-  const handleTestAlert = async (alert: CustomAlert) => {
-    if (!effectivePhone && alert.channels.includes("whatsapp")) {
-      toast({ title: "Configure o WhatsApp", description: "Informe um número para receber alertas.", variant: "destructive" });
-      return;
-    }
-    setTesting(alert.id);
-    try {
-      const conditionText = alert.condition === "drop" ? "caiu" : alert.condition === "rise" ? "subiu" : alert.condition === "below" ? "está abaixo de" : "está acima de";
-      const alertMessage = `🚨 *ALERTA — ${project?.name || "Projeto"}*\n\n⚠️ *${alert.name}*\n${alert.description}\n\n📊 Métrica: ${alert.metric} ${conditionText} ${alert.threshold}${alert.unit}\n🌐 Projeto: ${project?.name || projectId}\n🔗 Domínio: ${project?.domain || "—"}\n⏰ ${new Date().toLocaleString("pt-BR")}\n\n_Este é um alerta de teste._`;
-
-      if (alert.channels.includes("in_app") && user) {
-        await supabase.from("notifications").insert({
-          user_id: user.id, project_id: projectId,
-          title: `⚠️ ${alert.name}`,
-          message: `${alert.description} — Limite: ${alert.threshold}${alert.unit}`,
-          type: "alert",
-        });
-      }
-      if (alert.channels.includes("whatsapp") && effectivePhone) {
-        await supabase.functions.invoke("send-workflow-notification", {
-          body: {
-            direct_send: { project_id: projectId, phones: [effectivePhone] },
-            report: alertMessage, workflow_name: `Alerta: ${alert.name}`,
-          },
-        });
-      }
-      toast({ title: "Alerta de teste enviado!", description: `Enviado para: ${alert.channels.join(", ")}` });
-    } catch (err: any) {
-      toast({ title: "Erro no teste", description: err.message, variant: "destructive" });
-    } finally {
-      setTesting(null);
-    }
-  };
 
   const handleChannelCheckedChange = (channel: DeliveryChannel, checked: boolean | "indeterminate") => {
     setForm((prev) => {
