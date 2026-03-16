@@ -104,6 +104,7 @@ export default function SeoPage() {
       queryClient.invalidateQueries({ queryKey: ["seo-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["gsc-connection"] });
       toast({ title: `Sincronização concluída!`, description: `${data?.inserted?.toLocaleString() || 0} métricas importadas do GSC.` });
+      window.dispatchEvent(new CustomEvent('tour-action-complete'));
     } catch (e: any) {
       toast({ title: "Erro ao sincronizar GSC", description: e.message, variant: "destructive" });
     } finally {
