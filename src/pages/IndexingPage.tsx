@@ -1511,6 +1511,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
     setEditMaxUrls(s.max_urls || 200);
     setEditActions(s.actions || []);
     setEditEnabled(s.enabled);
+    setEditTargetUrls((s.target_urls || []).join("\n"));
     if (s.schedule_type === "manual" && s.scheduled_at) {
       const d = new Date(s.scheduled_at);
       setEditDate(d.toISOString().slice(0, 10));
