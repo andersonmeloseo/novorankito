@@ -1420,7 +1420,64 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [specificDays, setSpecificDays] = useState<Set<string>>(new Set(WEEKDAYS.map(d => d.key)));
   const [savingSpecific, setSavingSpecific] = useState(false);
 
-  const queryClient = useQueryClient();
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
+  };
+
+  const toggleSpecificDay = (day: string) => {
+    setSpecificDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
+  };
+
+  const handleSaveAuto = () => {
+    const actions: ("indexing" | "inspection")[] = [];
+    if (autoIndexing) actions.push("indexing");
+    if (autoInspection) actions.push("inspection");
+    if (actions.length === 0 && autoEnabled) { toast.warning("Selecione pelo menos uma ação"); return; }
+    if (selectedDays.size === 0 && autoEnabled) { toast.warning("Selecione pelo menos um dia"); return; }
+    onToggleAutoCron(autoEnabled, { enabled: autoEnabled, time: autoTime, actions, maxUrls: autoMaxUrls, days: Array.from(selectedDays) });
+    toast.success(autoEnabled ? "Agendamento automático salvo!" : "Agendamento desativado");
+  };
+
+  const handleScheduleManual = () => {
+    if (!manualDate) { toast.warning("Selecione uma data"); return; }
+    onScheduleManual({ type: manualType, scheduledAt: `${manualDate}T${manualTime}:00`, urlCount: manualCount });
+    toast.success(`Agendamento criado para ${manualDate} às ${manualTime}`);
+    setManualDate("");
+  };
+
+  const parseUrlsFromText = (text: string): string[] => {
+    const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+    return [...new Set(text.match(urlRegex) || [])];
+  };
+
+  const handleSaveSpecificUrls = async () => {
+    if (!projectId || !user) return;
+    const urls = parseUrlsFromText(specificUrlsText);
+    if (urls.length === 0) { toast.warning("Nenhuma URL válida detectada"); return; }
+    if (specificDays.size === 0) { toast.warning("Selecione pelo menos um dia"); return; }
+    setSavingSpecific(true);
+    try {
+      await supabase.from("indexing_schedules").insert({
+        project_id: projectId,
+        owner_id: user.id,
+        schedule_type: "cron",
+        enabled: true,
+        cron_time: specificTime,
+        actions: ["indexing"],
+        max_urls: urls.length,
+        target_urls: urls,
+        label: specificLabel || `Lista de ${urls.length} URLs`,
+        status: "active",
+      } as any);
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+      toast.success(`Agendamento criado com ${urls.length} URLs específicas!`);
+      setSpecificUrlsText("");
+      setSpecificLabel("");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingSpecific(false); }
+  };
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
   const [editMaxUrls, setEditMaxUrls] = useState(200);
