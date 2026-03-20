@@ -251,16 +251,6 @@ export default function Overview() {
                   Aqui está o resumo completo do projeto <strong>{project?.name}</strong> ({project?.domain}).
                 </p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                <Badge className={cn("text-[10px] backdrop-blur-sm border", gscConn ? "bg-white/10 text-white border-white/15" : "bg-white/5 text-white/50 border-white/10")}>
-                  {gscConn ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <WifiOff className="h-2.5 w-2.5 mr-1" />}
-                  GSC {gscConn ? "✓" : "—"}
-                </Badge>
-                <Badge className={cn("text-[10px] backdrop-blur-sm border", ga4Conn ? "bg-white/10 text-white border-white/15" : "bg-white/5 text-white/50 border-white/10")}>
-                  {ga4Conn ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <WifiOff className="h-2.5 w-2.5 mr-1" />}
-                  GA4 {ga4Conn ? "✓" : "—"}
-                </Badge>
-              </div>
             </div>
           </div>
         </AnimatedContainer>
