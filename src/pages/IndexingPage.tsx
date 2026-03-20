@@ -1525,6 +1525,10 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const handleSaveEdit = async () => {
     if (!editingSchedule) return;
     const payload: any = { max_urls: editMaxUrls, actions: editActions, enabled: editEnabled };
+    // Parse target URLs from edit textarea
+    const editUrlsParsed = parseUrlsFromText(editTargetUrls);
+    payload.target_urls = editUrlsParsed;
+    if (editUrlsParsed.length > 0) payload.max_urls = editUrlsParsed.length;
     if (editingSchedule.schedule_type === "cron") {
       payload.cron_time = editTime;
     } else if (editDate) {
