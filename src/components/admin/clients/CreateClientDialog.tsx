@@ -17,7 +17,7 @@ interface CreateClientDialogProps {
 export function CreateClientDialog({ open, onOpenChange, onCreated }: CreateClientDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [plan, setPlan] = useState("free");
+  const [plan, setPlan] = useState("start");
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
