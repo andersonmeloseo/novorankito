@@ -1421,6 +1421,8 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [savingSpecific, setSavingSpecific] = useState(false);
 
   const queryClient = useQueryClient();
+
+  const toggleDay = (day: string) => {
     setSelectedDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
   };
 
