@@ -1658,7 +1658,124 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
         </div>
       </Card>
 
-      {/* ── Schedules List ── */}
+      {/* ── URLs Específicas — Recurring Schedule ── */}
+      <Card className="p-5 space-y-4 lg:col-span-2">
+        <div className="flex items-center gap-2">
+          <Link2 className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Agendar URLs Específicas</h3>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Cole ou importe uma lista de URLs específicas que serão enviadas para indexação automaticamente nos dias e horários definidos. Ideal para páginas estratégicas que precisam de reindexação frequente.
+        </p>
+
+        <div className="space-y-3">
+          {/* Label */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nome da lista (opcional)</Label>
+            <Input
+              placeholder="Ex: Páginas de produto, Blog posts prioritários..."
+              value={specificLabel}
+              onChange={e => setSpecificLabel(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
+
+          {/* URLs textarea */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">URLs para indexação recorrente</Label>
+            <Textarea
+              placeholder={"Cole as URLs (uma por linha):\nhttps://seusite.com/produto-1\nhttps://seusite.com/produto-2\n\nOu importe de um arquivo CSV/TXT."}
+              value={specificUrlsText}
+              onChange={e => setSpecificUrlsText(e.target.value)}
+              rows={6}
+              className="font-mono text-xs"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">
+                {parseUrlsFromText(specificUrlsText).length} URL(s) detectada(s)
+              </p>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".csv,.txt,.tsv,.xlsx"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target?.result as string;
+                      if (!text) return;
+                      const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+                      const found = text.match(urlRegex) || [];
+                      const unique = [...new Set(found)];
+                      setSpecificUrlsText(prev => {
+                        const existing = prev.trim();
+                        return existing ? existing + "\n" + unique.join("\n") : unique.join("\n");
+                      });
+                      toast.success(`${unique.length} URL(s) importada(s) do arquivo`);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium cursor-pointer">
+                  <Upload className="h-3 w-3" /> Importar CSV/TXT
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Days */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Dias da semana</Label>
+            <div className="flex gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day.key}
+                  onClick={() => toggleSpecificDay(day.key)}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all border ${
+                    specificDays.has(day.key)
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/30 text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Horário de envio</Label>
+            <Input type="time" value={specificTime} onChange={e => setSpecificTime(e.target.value)} className="w-32 h-8 text-xs" />
+          </div>
+
+          <Card className="p-3 bg-muted/30 border-dashed">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="text-[11px] text-muted-foreground">
+                As <strong className="text-foreground">{parseUrlsFromText(specificUrlsText).length}</strong> URLs serão enviadas para indexação
+                às <strong className="text-foreground">{specificTime}</strong> nos dias selecionados.
+                Cada execução consome quota da API do Google (~200/dia).
+              </div>
+            </div>
+          </Card>
+
+          <Button
+            size="sm"
+            className="w-full text-xs gap-1.5"
+            onClick={handleSaveSpecificUrls}
+            disabled={savingSpecific || !specificUrlsText.trim()}
+          >
+            {savingSpecific ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Criar Agendamento com URLs Específicas
+          </Button>
+        </div>
+      </Card>
+
+
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
