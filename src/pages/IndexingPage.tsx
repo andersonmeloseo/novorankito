@@ -211,9 +211,11 @@ export default function IndexingPage() {
       status: "active" as const,
     };
     if (scheduleData?.id) {
-      await supabase.from("indexing_schedules").update(payload).eq("id", scheduleData.id);
+      const { error } = await supabase.from("indexing_schedules").update(payload).eq("id", scheduleData.id);
+      if (error) { toast.error("Erro ao salvar: " + error.message); return; }
     } else {
-      await supabase.from("indexing_schedules").insert(payload);
+      const { error } = await supabase.from("indexing_schedules").insert(payload);
+      if (error) { toast.error("Erro ao criar: " + error.message); return; }
     }
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
     queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
