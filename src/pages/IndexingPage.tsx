@@ -1413,26 +1413,12 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [manualTime, setManualTime] = useState("08:00");
   const [manualCount, setManualCount] = useState(50);
 
-  const toggleDay = (day: string) => {
-    setSelectedDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
-  };
-
-  const handleSaveAuto = () => {
-    const actions: ("indexing" | "inspection")[] = [];
-    if (autoIndexing) actions.push("indexing");
-    if (autoInspection) actions.push("inspection");
-    if (actions.length === 0 && autoEnabled) { toast.warning("Selecione pelo menos uma ação"); return; }
-    if (selectedDays.size === 0 && autoEnabled) { toast.warning("Selecione pelo menos um dia"); return; }
-    onToggleAutoCron(autoEnabled, { enabled: autoEnabled, time: autoTime, actions, maxUrls: autoMaxUrls, days: Array.from(selectedDays) });
-    toast.success(autoEnabled ? "Agendamento automático salvo!" : "Agendamento desativado");
-  };
-
-  const handleScheduleManual = () => {
-    if (!manualDate) { toast.warning("Selecione uma data"); return; }
-    onScheduleManual({ type: manualType, scheduledAt: `${manualDate}T${manualTime}:00`, urlCount: manualCount });
-    toast.success(`Agendamento criado para ${manualDate} às ${manualTime}`);
-    setManualDate("");
-  };
+  // Specific URLs schedule
+  const [specificUrlsText, setSpecificUrlsText] = useState("");
+  const [specificLabel, setSpecificLabel] = useState("");
+  const [specificTime, setSpecificTime] = useState("06:00");
+  const [specificDays, setSpecificDays] = useState<Set<string>>(new Set(WEEKDAYS.map(d => d.key)));
+  const [savingSpecific, setSavingSpecific] = useState(false);
 
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1442,6 +1428,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editEnabled, setEditEnabled] = useState(true);
+  const [editTargetUrls, setEditTargetUrls] = useState("");
 
   const handleDeleteSchedule = async (id: string) => {
     setDeletingId(id);
