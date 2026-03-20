@@ -2,9 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Send, Sparkles, User, Trash2, Loader2, Bot, Database, CheckCircle2, XCircle, BarChart3, Search } from "lucide-react";
+import { Send, Sparkles, User, Trash2, Loader2, Bot, Database, BarChart3, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAiChat } from "@/hooks/use-ai-chat";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,77 +110,6 @@ function useDataSources(projectId?: string) {
     enabled: !!projectId,
     staleTime: 60_000,
   });
-}
-
-/* ─── Data Sources Row (compact) ─── */
-function DataSourcesBadges({ sources }: { sources: NonNullable<ReturnType<typeof useDataSources>["data"]> }) {
-  return (
-    <TooltipProvider delayDuration={200}>
-      <div className="flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              variant={sources.gsc ? "default" : "outline"}
-              className={cn(
-                "text-[10px] px-2 py-1 gap-1.5 cursor-default font-medium",
-                sources.gsc ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20" : "text-muted-foreground"
-              )}
-            >
-              <Search className="h-3 w-3" />
-              GSC
-              {sources.gsc ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs max-w-xs">
-            {sources.gsc ? (
-              <div className="space-y-1">
-                <p className="font-semibold">Google Search Console ✅</p>
-                <p className="text-muted-foreground">{sources.gsc.site_url}</p>
-                <p className="text-muted-foreground">{sources.seoCount.toLocaleString()} métricas SEO • {sources.urlsCount.toLocaleString()} URLs</p>
-              </div>
-            ) : <p>GSC não conectado</p>}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              variant={sources.ga4 ? "default" : "outline"}
-              className={cn(
-                "text-[10px] px-2 py-1 gap-1.5 cursor-default font-medium",
-                sources.ga4 ? "bg-blue-500/15 text-blue-600 border-blue-500/30 hover:bg-blue-500/20" : "text-muted-foreground"
-              )}
-            >
-              <BarChart3 className="h-3 w-3" />
-              GA4
-              {sources.ga4 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs max-w-xs">
-            {sources.ga4 ? (
-              <div className="space-y-1">
-                <p className="font-semibold">Google Analytics 4 ✅</p>
-                <p className="text-muted-foreground">{sources.ga4.property_name}</p>
-                <p className="text-muted-foreground">{sources.sessionsCount.toLocaleString()} sessões</p>
-              </div>
-            ) : <p>GA4 não conectado</p>}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline" className="text-[10px] px-2 py-1 gap-1.5 cursor-default text-muted-foreground font-medium">
-              <Database className="h-3 w-3" />
-              {((sources.seoCount || 0) + (sources.urlsCount || 0) + (sources.sessionsCount || 0)).toLocaleString()} registros
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Total de registros disponíveis para a IA
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </TooltipProvider>
-  );
 }
 
 /* ─── Empty State ─── */
@@ -351,7 +278,6 @@ export function AgentChatTab({ agentName, agentInstructions, agentSpeciality, pr
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {projectId && sources && <DataSourcesBadges sources={sources} />}
           {messages.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clearMessages} className="text-xs gap-1.5 text-muted-foreground hover:text-destructive h-9">
               <Trash2 className="h-3.5 w-3.5" /> Limpar
