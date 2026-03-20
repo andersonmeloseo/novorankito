@@ -3096,6 +3096,53 @@ export type Database = {
           },
         ]
       }
+      seo_annotations: {
+        Row: {
+          annotation_date: string
+          category: string
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          owner_id: string
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          annotation_date: string
+          category?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id: string
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          annotation_date?: string
+          category?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_annotations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_metrics: {
         Row: {
           clicks: number
