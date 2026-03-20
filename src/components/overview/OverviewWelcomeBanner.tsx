@@ -38,23 +38,6 @@ export function OverviewWelcomeBanner({ user, project, overview, hasGscLive, has
               {project ? `${project.name} — Últimos 28 dias de performance` : "Crie um projeto para começar a monitorar."}
             </p>
           </div>
-          <div className="hidden sm:flex flex-col items-end gap-1.5">
-            {totalMetrics > 0 && (
-              <Badge className="bg-white/10 text-white border-white/15 text-[10px] backdrop-blur-sm">
-                <Search className="h-3 w-3 mr-1 opacity-70" /> {formatCompact(totalMetrics)} registros
-              </Badge>
-            )}
-            {hasGa4 && (
-              <Badge className="bg-white/10 text-white border-white/15 text-[10px] backdrop-blur-sm">
-                <Activity className="h-3 w-3 mr-1 opacity-70" /> GA4
-              </Badge>
-            )}
-            {hasGscLive && (
-              <Badge className="bg-white/10 text-white border-white/15 text-[10px] backdrop-blur-sm">
-                <TrendingUp className="h-3 w-3 mr-1 opacity-70" /> Ao vivo
-              </Badge>
-            )}
-          </div>
         </div>
       </div>
     </AnimatedContainer>
