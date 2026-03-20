@@ -278,7 +278,6 @@ export function AgentChatTab({ agentName, agentInstructions, agentSpeciality, pr
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {projectId && sources && <DataSourcesBadges sources={sources} />}
           {messages.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clearMessages} className="text-xs gap-1.5 text-muted-foreground hover:text-destructive h-9">
               <Trash2 className="h-3.5 w-3.5" /> Limpar
