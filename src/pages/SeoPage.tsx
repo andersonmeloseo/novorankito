@@ -24,7 +24,7 @@ import {
   Search, Download, ArrowUpDown, ChevronLeft, ChevronRight,
   Calendar, Filter, TrendingUp, Globe, Monitor, FileText, RefreshCw, Loader2, ArrowLeft,
   Link2, MapPin, Compass, ScanSearch, Sparkles, Target, TrendingDown, Copy, Shield,
-  History, FolderTree,
+  History, FolderTree, StickyNote,
 } from "lucide-react";
 import { FeatureBanner } from "@/components/tracking/FeatureBanner";
 import { UrlInspectionTab } from "@/components/seo/UrlInspectionTab";
