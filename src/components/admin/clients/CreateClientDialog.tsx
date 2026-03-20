@@ -17,7 +17,7 @@ interface CreateClientDialogProps {
 export function CreateClientDialog({ open, onOpenChange, onCreated }: CreateClientDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [plan, setPlan] = useState("free");
+  const [plan, setPlan] = useState("start");
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
@@ -52,7 +52,7 @@ export function CreateClientDialog({ open, onOpenChange, onCreated }: CreateClie
       toast({ title: "Cliente criado", description: `"${name}" adicionado com sucesso` });
       setName("");
       setEmail("");
-      setPlan("free");
+      setPlan("start");
       onOpenChange(false);
       onCreated();
     } catch (e: any) {
@@ -93,10 +93,10 @@ export function CreateClientDialog({ open, onOpenChange, onCreated }: CreateClie
             <Select value={plan} onValueChange={setPlan}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="free">Gratuito</SelectItem>
-                <SelectItem value="starter">Starter</SelectItem>
-                <SelectItem value="pro">Pro</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
+                <SelectItem value="start">Start</SelectItem>
+                <SelectItem value="growth">Growth</SelectItem>
+                <SelectItem value="agency">Agency</SelectItem>
+                <SelectItem value="unlimited">Unlimited</SelectItem>
               </SelectContent>
             </Select>
           </div>
