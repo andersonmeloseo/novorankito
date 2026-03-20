@@ -52,7 +52,7 @@ export function CreateClientDialog({ open, onOpenChange, onCreated }: CreateClie
       toast({ title: "Cliente criado", description: `"${name}" adicionado com sucesso` });
       setName("");
       setEmail("");
-      setPlan("free");
+      setPlan("start");
       onOpenChange(false);
       onCreated();
     } catch (e: any) {
