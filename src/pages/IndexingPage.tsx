@@ -1809,9 +1809,15 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                   return (
                     <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-2.5">
-                        <Badge variant="secondary" className="text-[10px]">
-                          {s.schedule_type === "cron" ? "Automático" : "Manual"}
-                        </Badge>
+                        <div className="flex flex-col gap-0.5">
+                          <Badge variant="secondary" className="text-[10px] w-fit">
+                            {s.target_urls?.length > 0 ? "URLs Específicas" : s.schedule_type === "cron" ? "Automático" : "Manual"}
+                          </Badge>
+                          {s.label && <span className="text-[9px] text-muted-foreground truncate max-w-[140px]">{s.label}</span>}
+                          {s.target_urls?.length > 0 && (
+                            <span className="text-[9px] text-primary font-medium">{s.target_urls.length} URL(s)</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1">
