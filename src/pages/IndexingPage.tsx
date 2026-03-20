@@ -2057,10 +2057,29 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Máx. URLs</Label>
-                <Input type="number" min={1} max={500} value={editMaxUrls} onChange={e => setEditMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
-              </div>
+              {/* Target URLs */}
+              {(editingSchedule.target_urls?.length > 0 || editTargetUrls.trim()) && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">URLs Específicas</Label>
+                  <Textarea
+                    placeholder="Uma URL por linha..."
+                    value={editTargetUrls}
+                    onChange={e => setEditTargetUrls(e.target.value)}
+                    rows={5}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {parseUrlsFromText(editTargetUrls).length} URL(s) detectada(s)
+                  </p>
+                </div>
+              )}
+
+              {!editingSchedule.target_urls?.length && !editTargetUrls.trim() && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Máx. URLs</Label>
+                  <Input type="number" min={1} max={500} value={editMaxUrls} onChange={e => setEditMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
+                </div>
+              )}
 
               <DialogFooter>
                 <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditingSchedule(null)}>Cancelar</Button>
