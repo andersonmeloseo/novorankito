@@ -211,9 +211,11 @@ export default function IndexingPage() {
       status: "active" as const,
     };
     if (scheduleData?.id) {
-      await supabase.from("indexing_schedules").update(payload).eq("id", scheduleData.id);
+      const { error } = await supabase.from("indexing_schedules").update(payload).eq("id", scheduleData.id);
+      if (error) { toast.error("Erro ao salvar: " + error.message); return; }
     } else {
-      await supabase.from("indexing_schedules").insert(payload);
+      const { error } = await supabase.from("indexing_schedules").insert(payload);
+      if (error) { toast.error("Erro ao criar: " + error.message); return; }
     }
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
     queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
@@ -221,7 +223,7 @@ export default function IndexingPage() {
 
   const handleScheduleManual = async (config: ManualSchedule) => {
     if (!projectId || !user) return;
-    await supabase.from("indexing_schedules").insert({
+    const { error } = await supabase.from("indexing_schedules").insert({
       project_id: projectId,
       owner_id: user.id,
       schedule_type: "manual",
@@ -231,6 +233,7 @@ export default function IndexingPage() {
       scheduled_at: config.scheduledAt,
       status: "pending",
     });
+    if (error) { toast.error("Erro ao agendar: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
     queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
   };
@@ -1459,7 +1462,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
     if (specificDays.size === 0) { toast.warning("Selecione pelo menos um dia"); return; }
     setSavingSpecific(true);
     try {
-      await supabase.from("indexing_schedules").insert({
+      const { error } = await supabase.from("indexing_schedules").insert({
         project_id: projectId,
         owner_id: user.id,
         schedule_type: "cron",
@@ -1471,6 +1474,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
         label: specificLabel || `Lista de ${urls.length} URLs`,
         status: "active",
       } as any);
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
       queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
       toast.success(`Agendamento criado com ${urls.length} URLs específicas!`);
