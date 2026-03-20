@@ -223,7 +223,7 @@ export default function IndexingPage() {
 
   const handleScheduleManual = async (config: ManualSchedule) => {
     if (!projectId || !user) return;
-    await supabase.from("indexing_schedules").insert({
+    const { error } = await supabase.from("indexing_schedules").insert({
       project_id: projectId,
       owner_id: user.id,
       schedule_type: "manual",
@@ -233,6 +233,7 @@ export default function IndexingPage() {
       scheduled_at: config.scheduledAt,
       status: "pending",
     });
+    if (error) { toast.error("Erro ao agendar: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
     queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
   };
