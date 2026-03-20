@@ -1325,6 +1325,7 @@ export type Database = {
           cron_time: string | null
           enabled: boolean
           id: string
+          label: string | null
           last_run_at: string | null
           last_run_result: Json | null
           max_urls: number
@@ -1333,6 +1334,7 @@ export type Database = {
           schedule_type: string
           scheduled_at: string | null
           status: string
+          target_urls: string[] | null
           updated_at: string
         }
         Insert: {
@@ -1341,6 +1343,7 @@ export type Database = {
           cron_time?: string | null
           enabled?: boolean
           id?: string
+          label?: string | null
           last_run_at?: string | null
           last_run_result?: Json | null
           max_urls?: number
@@ -1349,6 +1352,7 @@ export type Database = {
           schedule_type?: string
           scheduled_at?: string | null
           status?: string
+          target_urls?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -1357,6 +1361,7 @@ export type Database = {
           cron_time?: string | null
           enabled?: boolean
           id?: string
+          label?: string | null
           last_run_at?: string | null
           last_run_result?: Json | null
           max_urls?: number
@@ -1365,6 +1370,7 @@ export type Database = {
           schedule_type?: string
           scheduled_at?: string | null
           status?: string
+          target_urls?: string[] | null
           updated_at?: string
         }
         Relationships: [

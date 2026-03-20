@@ -1413,8 +1413,19 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [manualTime, setManualTime] = useState("08:00");
   const [manualCount, setManualCount] = useState(50);
 
-  const toggleDay = (day: string) => {
+  // Specific URLs schedule
+  const [specificUrlsText, setSpecificUrlsText] = useState("");
+  const [specificLabel, setSpecificLabel] = useState("");
+  const [specificTime, setSpecificTime] = useState("06:00");
+  const [specificDays, setSpecificDays] = useState<Set<string>>(new Set(WEEKDAYS.map(d => d.key)));
+  const [savingSpecific, setSavingSpecific] = useState(false);
+
+  const queryClient = useQueryClient();
     setSelectedDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
+  };
+
+  const toggleSpecificDay = (day: string) => {
+    setSpecificDays(prev => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
   };
 
   const handleSaveAuto = () => {
@@ -1434,7 +1445,39 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
     setManualDate("");
   };
 
-  const queryClient = useQueryClient();
+  const parseUrlsFromText = (text: string): string[] => {
+    const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+    return [...new Set(text.match(urlRegex) || [])];
+  };
+
+  const handleSaveSpecificUrls = async () => {
+    if (!projectId || !user) return;
+    const urls = parseUrlsFromText(specificUrlsText);
+    if (urls.length === 0) { toast.warning("Nenhuma URL válida detectada"); return; }
+    if (specificDays.size === 0) { toast.warning("Selecione pelo menos um dia"); return; }
+    setSavingSpecific(true);
+    try {
+      await supabase.from("indexing_schedules").insert({
+        project_id: projectId,
+        owner_id: user.id,
+        schedule_type: "cron",
+        enabled: true,
+        cron_time: specificTime,
+        actions: ["indexing"],
+        max_urls: urls.length,
+        target_urls: urls,
+        label: specificLabel || `Lista de ${urls.length} URLs`,
+        status: "active",
+      } as any);
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedules-all", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["indexing-schedule", projectId] });
+      toast.success(`Agendamento criado com ${urls.length} URLs específicas!`);
+      setSpecificUrlsText("");
+      setSpecificLabel("");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingSpecific(false); }
+  };
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
   const [editMaxUrls, setEditMaxUrls] = useState(200);
@@ -1442,6 +1485,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editEnabled, setEditEnabled] = useState(true);
+  const [editTargetUrls, setEditTargetUrls] = useState("");
 
   const handleDeleteSchedule = async (id: string) => {
     setDeletingId(id);
@@ -1467,6 +1511,7 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
     setEditMaxUrls(s.max_urls || 200);
     setEditActions(s.actions || []);
     setEditEnabled(s.enabled);
+    setEditTargetUrls((s.target_urls || []).join("\n"));
     if (s.schedule_type === "manual" && s.scheduled_at) {
       const d = new Date(s.scheduled_at);
       setEditDate(d.toISOString().slice(0, 10));
@@ -1480,6 +1525,10 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
   const handleSaveEdit = async () => {
     if (!editingSchedule) return;
     const payload: any = { max_urls: editMaxUrls, actions: editActions, enabled: editEnabled };
+    // Parse target URLs from edit textarea
+    const editUrlsParsed = parseUrlsFromText(editTargetUrls);
+    payload.target_urls = editUrlsParsed;
+    if (editUrlsParsed.length > 0) payload.max_urls = editUrlsParsed.length;
     if (editingSchedule.schedule_type === "cron") {
       payload.cron_time = editTime;
     } else if (editDate) {
@@ -1614,7 +1663,124 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
         </div>
       </Card>
 
-      {/* ── Schedules List ── */}
+      {/* ── URLs Específicas — Recurring Schedule ── */}
+      <Card className="p-5 space-y-4 lg:col-span-2">
+        <div className="flex items-center gap-2">
+          <Link2 className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Agendar URLs Específicas</h3>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Cole ou importe uma lista de URLs específicas que serão enviadas para indexação automaticamente nos dias e horários definidos. Ideal para páginas estratégicas que precisam de reindexação frequente.
+        </p>
+
+        <div className="space-y-3">
+          {/* Label */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nome da lista (opcional)</Label>
+            <Input
+              placeholder="Ex: Páginas de produto, Blog posts prioritários..."
+              value={specificLabel}
+              onChange={e => setSpecificLabel(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
+
+          {/* URLs textarea */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">URLs para indexação recorrente</Label>
+            <Textarea
+              placeholder={"Cole as URLs (uma por linha):\nhttps://seusite.com/produto-1\nhttps://seusite.com/produto-2\n\nOu importe de um arquivo CSV/TXT."}
+              value={specificUrlsText}
+              onChange={e => setSpecificUrlsText(e.target.value)}
+              rows={6}
+              className="font-mono text-xs"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">
+                {parseUrlsFromText(specificUrlsText).length} URL(s) detectada(s)
+              </p>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".csv,.txt,.tsv,.xlsx"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target?.result as string;
+                      if (!text) return;
+                      const urlRegex = /https?:\/\/[^\s,"'\t;]+/g;
+                      const found = text.match(urlRegex) || [];
+                      const unique = [...new Set(found)];
+                      setSpecificUrlsText(prev => {
+                        const existing = prev.trim();
+                        return existing ? existing + "\n" + unique.join("\n") : unique.join("\n");
+                      });
+                      toast.success(`${unique.length} URL(s) importada(s) do arquivo`);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium cursor-pointer">
+                  <Upload className="h-3 w-3" /> Importar CSV/TXT
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Days */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Dias da semana</Label>
+            <div className="flex gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day.key}
+                  onClick={() => toggleSpecificDay(day.key)}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all border ${
+                    specificDays.has(day.key)
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/30 text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Horário de envio</Label>
+            <Input type="time" value={specificTime} onChange={e => setSpecificTime(e.target.value)} className="w-32 h-8 text-xs" />
+          </div>
+
+          <Card className="p-3 bg-muted/30 border-dashed">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="text-[11px] text-muted-foreground">
+                As <strong className="text-foreground">{parseUrlsFromText(specificUrlsText).length}</strong> URLs serão enviadas para indexação
+                às <strong className="text-foreground">{specificTime}</strong> nos dias selecionados.
+                Cada execução consome quota da API do Google (~200/dia).
+              </div>
+            </div>
+          </Card>
+
+          <Button
+            size="sm"
+            className="w-full text-xs gap-1.5"
+            onClick={handleSaveSpecificUrls}
+            disabled={savingSpecific || !specificUrlsText.trim()}
+          >
+            {savingSpecific ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Criar Agendamento com URLs Específicas
+          </Button>
+        </div>
+      </Card>
+
+
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -1648,9 +1814,15 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                   return (
                     <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-2.5">
-                        <Badge variant="secondary" className="text-[10px]">
-                          {s.schedule_type === "cron" ? "Automático" : "Manual"}
-                        </Badge>
+                        <div className="flex flex-col gap-0.5">
+                          <Badge variant="secondary" className="text-[10px] w-fit">
+                            {s.target_urls?.length > 0 ? "URLs Específicas" : s.schedule_type === "cron" ? "Automático" : "Manual"}
+                          </Badge>
+                          {s.label && <span className="text-[9px] text-muted-foreground truncate max-w-[140px]">{s.label}</span>}
+                          {s.target_urls?.length > 0 && (
+                            <span className="text-[9px] text-primary font-medium">{s.target_urls.length} URL(s)</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1">
@@ -1885,10 +2057,29 @@ function ScheduleTabContent({ projectId, user, cronConfig, scheduleData, allSche
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Máx. URLs</Label>
-                <Input type="number" min={1} max={500} value={editMaxUrls} onChange={e => setEditMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
-              </div>
+              {/* Target URLs */}
+              {(editingSchedule.target_urls?.length > 0 || editTargetUrls.trim()) && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">URLs Específicas</Label>
+                  <Textarea
+                    placeholder="Uma URL por linha..."
+                    value={editTargetUrls}
+                    onChange={e => setEditTargetUrls(e.target.value)}
+                    rows={5}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {parseUrlsFromText(editTargetUrls).length} URL(s) detectada(s)
+                  </p>
+                </div>
+              )}
+
+              {!editingSchedule.target_urls?.length && !editTargetUrls.trim() && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Máx. URLs</Label>
+                  <Input type="number" min={1} max={500} value={editMaxUrls} onChange={e => setEditMaxUrls(Number(e.target.value))} className="w-32 h-8 text-xs" />
+                </div>
+              )}
 
               <DialogFooter>
                 <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditingSchedule(null)}>Cancelar</Button>
