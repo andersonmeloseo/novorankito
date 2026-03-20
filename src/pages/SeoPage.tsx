@@ -650,29 +650,67 @@ export default function SeoPage() {
                         <TrendingUp className="h-4 w-4 text-primary" />
                         Tendência de Performance
                       </h3>
-                      <div className="flex gap-1">
-                        {[
-                          { key: "clicks", label: "Cliques", color: "hsl(var(--chart-1))" },
-                          { key: "impressions", label: "Impressões", color: "hsl(var(--chart-2))" },
-                          { key: "ctr", label: "CTR", color: "hsl(var(--chart-3))" },
-                          { key: "position", label: "Posição", color: "hsl(var(--chart-4))" },
-                        ].map(item => (
-                          <Button
-                            key={item.key}
-                            variant={activeMetrics.includes(item.key) ? "default" : "outline"}
-                            size="sm"
-                            className="text-[10px] h-7 px-2"
-                            onClick={() => toggleMetric(item.key)}
-                          >
-                            <span className="w-2 h-2 rounded-full mr-1" style={{ background: item.color }} />
-                            {item.label}
-                          </Button>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] h-7 px-2 gap-1"
+                          onClick={() => {
+                            const today = new Date().toISOString().split("T")[0];
+                            setAnnotationDate(today);
+                            setAnnotationDialogOpen(true);
+                          }}
+                        >
+                          <StickyNote className="h-3 w-3" />
+                          Adicionar nota
+                        </Button>
+                        <div className="flex gap-1">
+                          {[
+                            { key: "clicks", label: "Cliques", color: "hsl(var(--chart-1))" },
+                            { key: "impressions", label: "Impressões", color: "hsl(var(--chart-2))" },
+                            { key: "ctr", label: "CTR", color: "hsl(var(--chart-3))" },
+                            { key: "position", label: "Posição", color: "hsl(var(--chart-4))" },
+                          ].map(item => (
+                            <Button
+                              key={item.key}
+                              variant={activeMetrics.includes(item.key) ? "default" : "outline"}
+                              size="sm"
+                              className="text-[10px] h-7 px-2"
+                              onClick={() => toggleMetric(item.key)}
+                            >
+                              <span className="w-2 h-2 rounded-full mr-1" style={{ background: item.color }} />
+                              {item.label}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    {annotations.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {annotations.filter(a => trendData.some(t => t.rawDate === a.annotation_date)).map(a => (
+                          <button
+                            key={a.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
+                            onClick={() => { setAnnotationDate(a.annotation_date); setAnnotationDialogOpen(true); }}
+                          >
+                            <StickyNote className="h-2.5 w-2.5" />
+                            {a.title.length > 30 ? a.title.slice(0, 30) + "…" : a.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className="h-[400px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trendData}>
+                        <AreaChart
+                          data={trendData}
+                          onClick={(e: any) => {
+                            if (e?.activePayload?.[0]?.payload?.rawDate) {
+                              setAnnotationDate(e.activePayload[0].payload.rawDate);
+                              setAnnotationDialogOpen(true);
+                            }
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
                           <defs>
                             <linearGradient id="clicksGradSeo" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.15} />
@@ -697,9 +735,49 @@ export default function SeoPage() {
                               borderRadius: "8px",
                               fontSize: 12,
                             }}
+                            content={({ active, payload, label }) => {
+                              if (!active || !payload?.length) return null;
+                              const rawDate = payload[0]?.payload?.rawDate;
+                              const dayNotes = annotations.filter(a => a.annotation_date === rawDate);
+                              return (
+                                <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-xs">
+                                  <p className="font-medium text-foreground mb-1">{label}</p>
+                                  {payload.map((p: any, i: number) => (
+                                    <p key={i} style={{ color: p.color }}>{p.name}: {typeof p.value === 'number' ? p.value.toLocaleString() : p.value}</p>
+                                  ))}
+                                  {dayNotes.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-border">
+                                      {dayNotes.map(n => (
+                                        <p key={n.id} className="text-primary flex items-center gap-1">
+                                          <StickyNote className="h-3 w-3 shrink-0" />
+                                          <span className="font-medium">{n.title}</span>
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="text-muted-foreground mt-1 text-[10px]">Clique para adicionar nota</p>
+                                </div>
+                              );
+                            }}
                           />
+                          {/* Annotation reference lines */}
+                          {annotations.map(a => {
+                            const matchingPoint = trendData.find(t => t.rawDate === a.annotation_date);
+                            if (!matchingPoint) return null;
+                            return (
+                              <ReferenceLine
+                                key={a.id}
+                                x={matchingPoint.date}
+                                stroke="hsl(var(--primary))"
+                                strokeDasharray="3 3"
+                                strokeOpacity={0.5}
+                              />
+                            );
+                          })}
                           {activeMetrics.includes("clicks") && (
-                            <Area type="monotone" dataKey="clicks" name="Cliques" stroke="hsl(var(--chart-1))" fill="url(#clicksGradSeo)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="clicks" name="Cliques" stroke="hsl(var(--chart-1))" fill="url(#clicksGradSeo)" strokeWidth={2}
+                              dot={(props: any) => <AnnotationDot {...props} annotations={annotations} />}
+                            />
                           )}
                           {activeMetrics.includes("clicks") && compareMode !== "none" && (
                             <Area type="monotone" dataKey="prevClicks" name="Cliques (anterior)" stroke="hsl(var(--chart-1))" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.4} dot={false} />
@@ -727,6 +805,17 @@ export default function SeoPage() {
                     </div>
                   </Card>
                 </AnimatedContainer>
+
+                {/* Annotations History */}
+                <AnnotationsHistory projectId={projectId} />
+
+                {/* Annotation Dialog */}
+                <AnnotationDialog
+                  open={annotationDialogOpen}
+                  onOpenChange={setAnnotationDialogOpen}
+                  projectId={projectId}
+                  date={annotationDate}
+                />
 
                 {/* Device distribution + Top queries side by side */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
