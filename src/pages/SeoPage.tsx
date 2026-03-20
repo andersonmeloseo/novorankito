@@ -156,6 +156,11 @@ export default function SeoPage() {
   const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
   
+  // Annotations
+  const { data: annotations = [] } = useAnnotations(projectId);
+  const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false);
+  const [annotationDate, setAnnotationDate] = useState("");
+  
   // Choose the right data source based on active filters
   const baseMetrics = useMemo(() => {
     if (deviceFilter !== "all" && dateDeviceMetrics.length > 0) {
