@@ -57,15 +57,21 @@ serve(async (req) => {
       const runResult: any = { actions: [], errors: [] };
 
       try {
+        // If schedule has target_urls, use "submit" action with those specific URLs
+        const hasTargetUrls = schedule.target_urls && Array.isArray(schedule.target_urls) && schedule.target_urls.length > 0;
+
         for (const action of actions) {
           if (action === "indexing") {
-            const { data, error } = await supabase.functions.invoke("gsc-indexing", {
-              body: {
-                project_id: schedule.project_id,
-                action: "submit_auto",
-                max_urls: maxUrls,
-              },
-            });
+            const body: any = { project_id: schedule.project_id };
+            if (hasTargetUrls) {
+              body.action = "submit";
+              body.urls = schedule.target_urls;
+              body.request_type = "URL_UPDATED";
+            } else {
+              body.action = "submit_auto";
+              body.max_urls = maxUrls;
+            }
+            const { data, error } = await supabase.functions.invoke("gsc-indexing", { body });
             if (error) runResult.errors.push(`indexing: ${error.message}`);
             else runResult.actions.push({ type: "indexing", result: data });
           }
