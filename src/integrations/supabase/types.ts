@@ -1147,6 +1147,65 @@ export type Database = {
           },
         ]
       }
+      google_ads_connections: {
+        Row: {
+          account_name: string
+          auto_connected: boolean
+          client_id: string | null
+          client_secret: string | null
+          created_at: string
+          customer_id: string
+          developer_token: string | null
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          owner_id: string
+          project_id: string
+          refresh_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string
+          auto_connected?: boolean
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          customer_id: string
+          developer_token?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          owner_id: string
+          project_id: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          auto_connected?: boolean
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          customer_id?: string
+          developer_token?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          owner_id?: string
+          project_id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_ads_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gsc_connections: {
         Row: {
           client_email: string
@@ -1588,6 +1647,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "mcp_sync_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_ads_connections: {
+        Row: {
+          access_token: string | null
+          account_name: string
+          auto_connected: boolean
+          created_at: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          owner_id: string
+          pixel_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_name?: string
+          auto_connected?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          owner_id: string
+          pixel_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          account_name?: string
+          auto_connected?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          owner_id?: string
+          pixel_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ads_connections_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

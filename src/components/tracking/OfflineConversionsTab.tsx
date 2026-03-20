@@ -1052,7 +1052,7 @@ export function OfflineConversionsTab() {
       )}
 
       {/* Credentials */}
-      <AdsPlatformCredentials />
+      <AdsPlatformCredentials projectId={projectId || undefined} />
 
       {projectId && (
         <NewConversionDialog
