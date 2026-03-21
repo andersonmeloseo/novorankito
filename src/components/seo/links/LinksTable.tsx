@@ -35,7 +35,7 @@ function extractDomain(url: string) {
   }
 }
 
-export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, showProgressBar }: Props) {
+export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, showProgressBar, onRowClick, rowClickTooltip }: Props) {
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: columns[1]?.key || "clicks", dir: "desc" });
   const [page, setPage] = useState(1);
 
