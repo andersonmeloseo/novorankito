@@ -143,11 +143,19 @@ export function IndexCoverageTab({ projectId }: Props) {
 
   const toggleSchedule = useMutation({
     mutationFn: async (enable: boolean) => {
-      if (scheduledScan) {
+      // Re-fetch to avoid stale cache causing duplicate insert
+      const { data: existing } = await supabase
+        .from("indexing_schedules")
+        .select("id")
+        .eq("project_id", projectId!)
+        .contains("actions", ["coverage_scan"])
+        .maybeSingle();
+
+      if (existing) {
         const { error } = await supabase
           .from("indexing_schedules")
           .update({ enabled: enable, updated_at: new Date().toISOString() })
-          .eq("id", scheduledScan.id);
+          .eq("id", existing.id);
         if (error) throw error;
       } else if (enable) {
         const { error } = await supabase
