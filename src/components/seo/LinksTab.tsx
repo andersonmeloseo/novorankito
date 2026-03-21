@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,12 @@ interface Props {
 
 export function LinksTab({ projectId }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("top-pages");
+
+  const handlePageClick = useCallback((row: any) => {
+    setSearchTerm(row.page);
+    setActiveTab("coverage");
+  }, []);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["gsc-links", projectId],
@@ -162,13 +168,13 @@ export function LinksTab({ projectId }: Props) {
 
       {/* Tabs */}
       <AnimatedContainer delay={0.2}>
-        <Tabs defaultValue="top-pages">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 bg-muted/50">
-            <TabsTrigger value="top-pages" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="top-pages" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-foreground">
               <TrendingUp className="h-3.5 w-3.5" />
               Top Páginas
             </TabsTrigger>
-            <TabsTrigger value="coverage" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="coverage" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-foreground">
               <Hash className="h-3.5 w-3.5" />
               Cobertura de Queries
             </TabsTrigger>
@@ -182,6 +188,8 @@ export function LinksTab({ projectId }: Props) {
               linkKey="page"
               showDomainBadge
               showProgressBar="clicks"
+              onRowClick={handlePageClick}
+              rowClickTooltip="Clique para ver queries desta página"
             />
           </TabsContent>
 

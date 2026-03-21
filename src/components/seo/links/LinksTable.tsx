@@ -22,7 +22,9 @@ interface Props {
   onExport: () => void;
   linkKey?: string;
   showDomainBadge?: boolean;
-  showProgressBar?: string; // key for the progress bar relative metric
+  showProgressBar?: string;
+  onRowClick?: (row: any) => void;
+  rowClickTooltip?: string;
 }
 
 function extractDomain(url: string) {
@@ -33,7 +35,7 @@ function extractDomain(url: string) {
   }
 }
 
-export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, showProgressBar }: Props) {
+export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, showProgressBar, onRowClick, rowClickTooltip }: Props) {
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: columns[1]?.key || "clicks", dir: "desc" });
   const [page, setPage] = useState(1);
 
@@ -108,7 +110,12 @@ export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, 
               </tr>
             ) : (
               paginated.map((row, i) => (
-                <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors group">
+                <tr
+                  key={i}
+                  className={`border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors group ${onRowClick ? "cursor-pointer" : ""}`}
+                  onClick={() => onRowClick?.(row)}
+                  title={rowClickTooltip}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3">
                       {col.key === linkKey ? (
