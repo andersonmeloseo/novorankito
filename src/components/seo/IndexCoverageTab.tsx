@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Shield, Loader2, ArrowUpDown, ChevronLeft, ChevronRight,
   Search, Play, CheckCircle, XCircle, AlertTriangle, MinusCircle, RefreshCw,
-  Info, Clock, Zap, Users, CalendarClock,
+  Info, Clock, Zap, Users, CalendarClock, Send,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -107,6 +107,7 @@ export function IndexCoverageTab({ projectId }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [scanning, setScanning] = useState(false);
+  const [sendingUrls, setSendingUrls] = useState<Set<string>>(new Set());
 
   // Fetch GSC connections count for this project
   const { data: gscConnections } = useQuery({
@@ -285,7 +286,26 @@ export function IndexCoverageTab({ projectId }: Props) {
     { key: "crawled_as", label: "Rastreado como" },
     { key: "last_crawl_time", label: "Último Rastreio" },
     { key: "inspected_at", label: "Inspecionado em" },
+    { key: "_action", label: "Ação" },
   ];
+
+  const sendToIndex = async (url: string) => {
+    setSendingUrls(prev => new Set(prev).add(url));
+    try {
+      const { data, error } = await supabase.functions.invoke("gsc-indexing", {
+        body: { project_id: projectId, action: "submit", urls: [url], request_type: "URL_UPDATED" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Enviada para indexação", description: url });
+      queryClient.invalidateQueries({ queryKey: ["indexing-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["indexing-requests"] });
+    } catch (e: any) {
+      toast({ title: "Erro ao enviar", description: e.message, variant: "destructive" });
+    } finally {
+      setSendingUrls(prev => { const n = new Set(prev); n.delete(url); return n; });
+    }
+  };
 
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
   const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -466,6 +486,28 @@ export function IndexCoverageTab({ projectId }: Props) {
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {row.inspected_at ? format(parseISO(row.inspected_at), "dd/MM/yyyy HH:mm") : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.verdict !== "PASS" ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-primary hover:text-primary"
+                                disabled={sendingUrls.has(row.url)}
+                                onClick={() => sendToIndex(row.url)}
+                              >
+                                {sendingUrls.has(row.url)
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : <Send className="h-3.5 w-3.5" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="text-xs">Enviar para indexação</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-[10px] text-success">✓</span>
+                        )}
                       </td>
                     </tr>
                   ))}
