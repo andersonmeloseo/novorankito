@@ -162,7 +162,7 @@ export function LinksTab({ projectId }: Props) {
 
       {/* Tabs */}
       <AnimatedContainer delay={0.2}>
-        <Tabs defaultValue="top-pages">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 bg-muted/50">
             <TabsTrigger value="top-pages" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-foreground">
               <TrendingUp className="h-3.5 w-3.5" />
