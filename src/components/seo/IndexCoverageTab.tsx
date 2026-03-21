@@ -246,10 +246,33 @@ export function IndexCoverageTab({ projectId }: Props) {
     const v = verdictMap[verdict] || verdictMap.VERDICT_UNSPECIFIED;
     const Icon = v.icon;
     return (
-      <Badge className={`text-[10px] gap-1 ${v.color}`}>
-        <Icon className="h-3 w-3" />
-        {v.label}
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge className={`text-[10px] gap-1 cursor-help ${v.color}`}>
+            <Icon className="h-3 w-3" />
+            {v.label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          <p>{v.explanation}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  const renderCoverageState = (state: string | null) => {
+    if (!state) return <span>—</span>;
+    const entry = coverageStateMap[state];
+    if (!entry) return <span>{state}</span>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">{entry.label}</span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          <p>{entry.tip}</p>
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
