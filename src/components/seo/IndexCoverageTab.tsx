@@ -286,7 +286,26 @@ export function IndexCoverageTab({ projectId }: Props) {
     { key: "crawled_as", label: "Rastreado como" },
     { key: "last_crawl_time", label: "Último Rastreio" },
     { key: "inspected_at", label: "Inspecionado em" },
+    { key: "_action", label: "Ação" },
   ];
+
+  const sendToIndex = async (url: string) => {
+    setSendingUrls(prev => new Set(prev).add(url));
+    try {
+      const { data, error } = await supabase.functions.invoke("gsc-indexing", {
+        body: { project_id: projectId, action: "submit", urls: [url], request_type: "URL_UPDATED" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Enviada para indexação", description: url });
+      queryClient.invalidateQueries({ queryKey: ["indexing-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["indexing-requests"] });
+    } catch (e: any) {
+      toast({ title: "Erro ao enviar", description: e.message, variant: "destructive" });
+    } finally {
+      setSendingUrls(prev => { const n = new Set(prev); n.delete(url); return n; });
+    }
+  };
 
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
   const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
