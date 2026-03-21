@@ -182,6 +182,8 @@ export function LinksTab({ projectId }: Props) {
               linkKey="page"
               showDomainBadge
               showProgressBar="clicks"
+              onRowClick={(row) => handlePageClick(row.page)}
+              rowClickTooltip="Clique para ver queries desta página"
             />
           </TabsContent>
 
