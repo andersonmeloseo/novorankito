@@ -168,7 +168,7 @@ export function PositionHistoryTab({ projectId }: Props) {
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                      <YAxis yAxisId="position" orientation="right" reversed domain={["dataMin - 1", "dataMax + 1"]} tick={{ fontSize: 10 }} label={{ value: "Posição ↑ melhor", angle: 90, position: "insideRight", style: { fontSize: 9, fill: "hsl(var(--muted-foreground))" } }} />
+                      <YAxis yAxisId="position" orientation="right" domain={["dataMin - 1", "dataMax + 1"]} tick={{ fontSize: 10 }} label={{ value: "Posição (menor é melhor)", angle: 90, position: "insideRight", style: { fontSize: 9, fill: "hsl(var(--muted-foreground))" } }} />
                       <YAxis yAxisId="clicks" orientation="left" tick={{ fontSize: 10 }} label={{ value: "Cliques / Impressões", angle: -90, position: "insideLeft", style: { fontSize: 9, fill: "hsl(var(--muted-foreground))" } }} />
                       <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(value: any, name: string) => {
                         if (name === "CTR") return [`${value}%`, name];
