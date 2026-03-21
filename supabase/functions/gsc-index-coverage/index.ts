@@ -70,16 +70,42 @@ serve(async (req) => {
     if (action === "scan") {
       const accessToken = await getAccessToken({ client_email: conn.client_email, private_key: conn.private_key });
 
-      // Get URLs to inspect from site_urls
-      const { data: siteUrls, error: urlErr } = await supabase
+      // Get URLs to inspect — try site_urls first, fallback to seo_metrics (page dimension)
+      let siteUrls: { url: string; owner_id: string }[] = [];
+
+      const { data: suData, error: urlErr } = await supabase
         .from("site_urls")
         .select("url, owner_id")
         .eq("project_id", project_id)
-        .limit(50); // Batch of 50 to stay within edge function timeout
-
+        .limit(50);
       if (urlErr) throw urlErr;
-      if (!siteUrls || siteUrls.length === 0) {
-        return new Response(JSON.stringify({ error: "No URLs found in site_urls. Import URLs first via Sitemaps or URL management." }), {
+
+      if (suData && suData.length > 0) {
+        siteUrls = suData;
+      } else {
+        // Fallback: extract unique page URLs from seo_metrics
+        const { data: metricPages, error: mpErr } = await supabase
+          .from("seo_metrics")
+          .select("dimension_value, owner_id")
+          .eq("project_id", project_id)
+          .eq("dimension_type", "page")
+          .order("clicks", { ascending: false })
+          .limit(50);
+        if (mpErr) throw mpErr;
+
+        if (metricPages && metricPages.length > 0) {
+          const seen = new Set<string>();
+          for (const row of metricPages) {
+            if (row.dimension_value && !seen.has(row.dimension_value)) {
+              seen.add(row.dimension_value);
+              siteUrls.push({ url: row.dimension_value, owner_id: row.owner_id });
+            }
+          }
+        }
+      }
+
+      if (siteUrls.length === 0) {
+        return new Response(JSON.stringify({ error: "Nenhuma URL encontrada. Sincronize os dados do GSC primeiro ou importe URLs via Sitemaps." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
