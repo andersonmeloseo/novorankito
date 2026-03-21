@@ -143,20 +143,41 @@ export function IndexCoverageTab({ projectId }: Props) {
 
   const toggleSchedule = useMutation({
     mutationFn: async (enable: boolean) => {
-      // Re-fetch to avoid stale cache causing duplicate insert
-      const { data: existing } = await supabase
+      const { data: cronSchedule, error: fetchError } = await supabase
         .from("indexing_schedules")
-        .select("id")
+        .select("id, actions, enabled")
         .eq("project_id", projectId!)
-        .contains("actions", ["coverage_scan"])
+        .eq("schedule_type", "cron")
         .maybeSingle();
 
-      if (existing) {
-        const { error } = await supabase
-          .from("indexing_schedules")
-          .update({ enabled: enable, updated_at: new Date().toISOString() })
-          .eq("id", existing.id);
-        if (error) throw error;
+      if (fetchError) throw fetchError;
+
+      if (cronSchedule) {
+        const currentActions = Array.isArray(cronSchedule.actions) ? cronSchedule.actions : [];
+
+        if (enable) {
+          const nextActions = Array.from(new Set([...currentActions, "coverage_scan"]));
+          const { error } = await supabase
+            .from("indexing_schedules")
+            .update({
+              actions: nextActions,
+              enabled: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", cronSchedule.id);
+          if (error) throw error;
+        } else {
+          const nextActions = currentActions.filter((action) => action !== "coverage_scan");
+          const { error } = await supabase
+            .from("indexing_schedules")
+            .update({
+              actions: nextActions,
+              enabled: nextActions.length > 0 ? cronSchedule.enabled : false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", cronSchedule.id);
+          if (error) throw error;
+        }
       } else if (enable) {
         const { error } = await supabase
           .from("indexing_schedules")
