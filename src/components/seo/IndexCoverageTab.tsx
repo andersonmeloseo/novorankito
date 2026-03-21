@@ -489,5 +489,5 @@ export function IndexCoverageTab({ projectId }: Props) {
         </AnimatedContainer>
       )}
     </div>
-  );
+    </TooltipProvider>
 }
