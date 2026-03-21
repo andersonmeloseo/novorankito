@@ -110,7 +110,12 @@ export function LinksTable({ columns, rows, onExport, linkKey, showDomainBadge, 
               </tr>
             ) : (
               paginated.map((row, i) => (
-                <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors group">
+                <tr
+                  key={i}
+                  className={`border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors group ${onRowClick ? "cursor-pointer" : ""}`}
+                  onClick={() => onRowClick?.(row)}
+                  title={rowClickTooltip}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3">
                       {col.key === linkKey ? (
