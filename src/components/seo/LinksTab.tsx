@@ -19,6 +19,12 @@ interface Props {
 
 export function LinksTab({ projectId }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("top-pages");
+
+  const handlePageClick = useCallback((row: any) => {
+    setSearchTerm(row.page);
+    setActiveTab("coverage");
+  }, []);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["gsc-links", projectId],

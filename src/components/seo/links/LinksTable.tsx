@@ -22,7 +22,9 @@ interface Props {
   onExport: () => void;
   linkKey?: string;
   showDomainBadge?: boolean;
-  showProgressBar?: string; // key for the progress bar relative metric
+  showProgressBar?: string;
+  onRowClick?: (row: any) => void;
+  rowClickTooltip?: string;
 }
 
 function extractDomain(url: string) {
