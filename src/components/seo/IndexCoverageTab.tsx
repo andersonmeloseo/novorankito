@@ -3,8 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -13,8 +15,9 @@ import { ExportMenu } from "@/components/ui/export-menu";
 import { exportCSV as exportCSVUtil, exportXML } from "@/lib/export-utils";
 import { toast } from "@/hooks/use-toast";
 import {
-  Shield, Loader2, Download, ArrowUpDown, ChevronLeft, ChevronRight,
+  Shield, Loader2, ArrowUpDown, ChevronLeft, ChevronRight,
   Search, Play, CheckCircle, XCircle, AlertTriangle, MinusCircle, RefreshCw,
+  Info, Clock, Zap, Users, CalendarClock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -25,6 +28,7 @@ interface Props {
 
 type SortDir = "asc" | "desc";
 const PAGE_SIZE = 20;
+const URLS_PER_ACCOUNT = 20;
 
 function sortData(data: any[], key: string, dir: SortDir) {
   return [...data].sort((a, b) => {
@@ -95,12 +99,80 @@ function translateField(value: string | null, map: Record<string, string>): stri
 }
 
 export function IndexCoverageTab({ projectId }: Props) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: "inspected_at", dir: "desc" });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [scanning, setScanning] = useState(false);
+
+  // Fetch GSC connections count for this project
+  const { data: gscConnections } = useQuery({
+    queryKey: ["gsc-connections-count", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("gsc_connections")
+        .select("id, connection_name")
+        .eq("project_id", projectId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Check existing scheduled scan
+  const { data: scheduledScan } = useQuery({
+    queryKey: ["coverage-schedule", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("indexing_schedules")
+        .select("*")
+        .eq("project_id", projectId!)
+        .contains("actions", ["coverage_scan"])
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+
+  const toggleSchedule = useMutation({
+    mutationFn: async (enable: boolean) => {
+      if (scheduledScan) {
+        const { error } = await supabase
+          .from("indexing_schedules")
+          .update({ enabled: enable, updated_at: new Date().toISOString() })
+          .eq("id", scheduledScan.id);
+        if (error) throw error;
+      } else if (enable) {
+        const { error } = await supabase
+          .from("indexing_schedules")
+          .insert({
+            project_id: projectId!,
+            owner_id: user!.id,
+            schedule_type: "recurring",
+            cron_time: "0 6 * * *",
+            actions: ["coverage_scan"],
+            label: "Varredura automática de cobertura",
+            enabled: true,
+            max_urls: accountsCount * URLS_PER_ACCOUNT,
+          } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, enable) => {
+      queryClient.invalidateQueries({ queryKey: ["coverage-schedule", projectId] });
+      toast({ title: enable ? "Varredura programada ativada" : "Varredura programada desativada", description: enable ? "A varredura será executada diariamente às 06:00 UTC." : "" });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const accountsCount = gscConnections?.length || 1;
+  const totalQuota = accountsCount * URLS_PER_ACCOUNT;
+  const isScheduleEnabled = scheduledScan?.enabled ?? false;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["index-coverage", projectId],
@@ -118,7 +190,6 @@ export function IndexCoverageTab({ projectId }: Props) {
 
   const allRows = data?.rows || [];
 
-  // KPIs
   const kpis = useMemo(() => {
     const total = allRows.length;
     const indexed = allRows.filter((r: any) => r.verdict === "PASS").length;
@@ -143,7 +214,6 @@ export function IndexCoverageTab({ projectId }: Props) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      
       if (data?.message) {
         toast({ title: "Varredura", description: data.message });
       } else {
@@ -162,20 +232,12 @@ export function IndexCoverageTab({ projectId }: Props) {
 
   const doExportCSV = () => {
     const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
-    const exportRows = rows.map((r: any) => {
-      const obj: any = {};
-      headers.forEach(h => obj[h] = r[h] || "");
-      return obj;
-    });
+    const exportRows = rows.map((r: any) => { const obj: any = {}; headers.forEach(h => obj[h] = r[h] || ""); return obj; });
     exportCSVUtil(exportRows, "cobertura-indexacao");
   };
   const doExportXML = () => {
     const headers = ["url", "verdict", "coverage_state", "indexing_state", "page_fetch_state", "crawled_as", "last_crawl_time", "sitemap", "inspected_at"];
-    const exportRows = rows.map((r: any) => {
-      const obj: any = {};
-      headers.forEach(h => obj[h] = r[h] || "");
-      return obj;
-    });
+    const exportRows = rows.map((r: any) => { const obj: any = {}; headers.forEach(h => obj[h] = r[h] || ""); return obj; });
     exportXML(exportRows, "cobertura-indexacao", "indexCoverage", "url");
   };
 
@@ -214,6 +276,29 @@ export function IndexCoverageTab({ projectId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Explanation Card */}
+      <AnimatedContainer>
+        <Card className="p-4 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex gap-3">
+            <div className="mt-0.5 rounded-lg bg-primary/10 p-2 h-fit">
+              <Info className="h-4 w-4 text-primary" />
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <h3 className="text-sm font-semibold text-foreground">O que é a Cobertura de Indexação?</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A cobertura de indexação inspeciona cada URL do seu site diretamente na API do Google Search Console 
+                para verificar se está indexada, excluída ou com erro. Com isso, você identifica rapidamente problemas 
+                que impedem suas páginas de aparecer nos resultados de busca — como bloqueios por robots.txt, 
+                erros 404, soft 404, redirecionamentos incorretos e tags noindex acidentais.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Dica:</strong> Ative a varredura programada para monitorar automaticamente a saúde do seu índice todos os dias.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </AnimatedContainer>
+
       {/* KPIs */}
       <StaggeredGrid className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Total Inspecionadas" value={kpis.total} change={0} />
@@ -222,20 +307,56 @@ export function IndexCoverageTab({ projectId }: Props) {
         <KpiCard label="Com Erro" value={kpis.errors} change={0} />
       </StaggeredGrid>
 
-      {/* Scan button + info */}
+      {/* Scan Control Card */}
       <AnimatedContainer>
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs">
-              <Shield className="h-4 w-4 text-primary" />
-              <span className="text-foreground font-medium">Cobertura de Indexação:</span>
-              <span className="text-muted-foreground">Inspeciona suas URLs para verificar o status no índice do Google. Limite: ~20 URLs por varredura (cota da API).</span>
+        <Card className="p-4 space-y-3">
+          {/* Quota info row */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-border">
+              <Users className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-foreground">{accountsCount}</span>
+              <span className="text-xs text-muted-foreground">conta{accountsCount !== 1 ? "s" : ""} GSC</span>
             </div>
-            <Button onClick={startScan} disabled={scanning} size="sm" className="gap-1.5 text-xs">
-              {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-              {scanning ? "Varrendo..." : "Iniciar Varredura"}
-            </Button>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-border">
+              <Zap className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-medium text-foreground">{totalQuota}</span>
+              <span className="text-xs text-muted-foreground">URLs por varredura</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-border">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Refresca a cada 24h</span>
+            </div>
           </div>
+
+          {/* Scan + Schedule row */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Button onClick={startScan} disabled={scanning} size="sm" className="gap-1.5 text-xs">
+                {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                {scanning ? "Varrendo..." : "Iniciar Varredura"}
+              </Button>
+              <span className="text-[10px] text-muted-foreground">
+                ~{URLS_PER_ACCOUNT} URLs × {accountsCount} conta{accountsCount !== 1 ? "s" : ""} = <strong className="text-foreground">{totalQuota} URLs</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/30 border border-border">
+              <CalendarClock className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs text-muted-foreground">Varredura diária automática</span>
+              <Switch
+                checked={isScheduleEnabled}
+                onCheckedChange={(checked) => toggleSchedule.mutate(checked)}
+                disabled={toggleSchedule.isPending}
+                className="ml-1"
+              />
+            </div>
+          </div>
+
+          {isScheduleEnabled && (
+            <div className="text-[10px] text-muted-foreground bg-success/5 border border-success/20 rounded px-3 py-1.5">
+              ✓ Varredura programada ativa — execução diária às 06:00 UTC inspecionando até {totalQuota} URLs automaticamente.
+            </div>
+          )}
         </Card>
       </AnimatedContainer>
 
