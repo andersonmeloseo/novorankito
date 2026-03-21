@@ -495,7 +495,7 @@ export function IndexCoverageTab({ projectId }: Props) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-primary hover:text-primary"
+                                className="h-7 w-7 p-0 text-primary hover:bg-primary hover:text-primary-foreground"
                                 disabled={sendingUrls.has(row.url)}
                                 onClick={() => sendToIndex(row.url)}
                               >
