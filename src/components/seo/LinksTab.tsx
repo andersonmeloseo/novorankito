@@ -221,12 +221,9 @@ export function LinksTab({ projectId }: Props) {
           </TabsContent>
 
           <TabsContent value="coverage">
-            <LinksTable
-              columns={coverageColumns}
+            <CoverageTable
               rows={internalLinks}
-              onExport={() => exportCSV(internalLinks, "query-coverage")}
-              linkKey="page"
-              showProgressBar="clicks"
+              onExport={() => exportCSV(internalLinks.map(({ queries, ...rest }: any) => rest), "query-coverage")}
             />
           </TabsContent>
         </Tabs>
