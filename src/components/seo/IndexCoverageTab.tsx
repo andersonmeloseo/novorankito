@@ -46,23 +46,23 @@ const verdictMap: Record<string, { label: string; color: string; icon: any; expl
   VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle, explanation: "O Google ainda não determinou o status desta URL ou a inspeção não retornou informação suficiente. Tente inspecionar novamente." },
 };
 
-const coverageStateMap: Record<string, string> = {
-  "Submitted and indexed": "Enviada e indexada",
-  "Crawled - currently not indexed": "Rastreada — não indexada no momento",
-  "Discovered - currently not indexed": "Descoberta — não indexada no momento",
-  "Page with redirect": "Página com redirecionamento",
-  "Not found (404)": "Não encontrada (404)",
-  "Soft 404": "Soft 404",
-  "Blocked by robots.txt": "Bloqueada por robots.txt",
-  "Blocked due to unauthorized request (401)": "Bloqueada — não autorizada (401)",
-  "Excluded by 'noindex' tag": "Excluída por tag 'noindex'",
-  "Alternate page with proper canonical tag": "Página alternativa com canonical correto",
-  "Duplicate without user-selected canonical": "Duplicada sem canonical selecionado",
-  "Duplicate, Google chose different canonical than user": "Duplicada — Google escolheu canonical diferente",
-  "Server error (5xx)": "Erro no servidor (5xx)",
-  "Blocked due to access forbidden (403)": "Bloqueada — acesso proibido (403)",
-  "Blocked due to other 4xx issue": "Bloqueada — outro erro 4xx",
-  "URL is unknown to Google": "URL desconhecida pelo Google",
+const coverageStateMap: Record<string, { label: string; tip: string }> = {
+  "Submitted and indexed": { label: "Enviada e indexada", tip: "A URL foi enviada e aceita pelo Google no índice." },
+  "Crawled - currently not indexed": { label: "Rastreada — não indexada", tip: "O Google rastreou a página mas decidiu não indexá-la. Pode ser conteúdo de baixa qualidade, duplicado ou pouco relevante." },
+  "Discovered - currently not indexed": { label: "Descoberta — não indexada", tip: "O Google sabe que a URL existe mas ainda não a rastreou. Pode indicar baixa prioridade de rastreio." },
+  "Page with redirect": { label: "Página com redirecionamento", tip: "A URL redireciona para outra página. O Google indexa o destino final, não esta URL." },
+  "Not found (404)": { label: "Não encontrada (404)", tip: "A página retornou erro 404. Remova links internos apontando para ela ou crie o conteúdo." },
+  "Soft 404": { label: "Soft 404", tip: "A página existe mas o Google a interpreta como se não existisse (conteúdo vazio ou muito fino)." },
+  "Blocked by robots.txt": { label: "Bloqueada por robots.txt", tip: "O arquivo robots.txt do seu site está impedindo o Google de rastrear esta URL." },
+  "Blocked due to unauthorized request (401)": { label: "Bloqueada — não autorizada (401)", tip: "A página requer autenticação. O Google não consegue acessá-la." },
+  "Excluded by 'noindex' tag": { label: "Excluída por tag 'noindex'", tip: "A página tem uma tag meta noindex, instruindo o Google a não indexá-la. Remova a tag se quiser que seja indexada." },
+  "Alternate page with proper canonical tag": { label: "Alternativa com canonical correto", tip: "Esta é uma versão alternativa (ex: mobile) e o canonical aponta para a versão principal. Comportamento esperado." },
+  "Duplicate without user-selected canonical": { label: "Duplicada sem canonical", tip: "O Google detectou conteúdo duplicado e não há tag canonical definida. Adicione um canonical para indicar a versão preferida." },
+  "Duplicate, Google chose different canonical than user": { label: "Duplicada — canonical diferente", tip: "Você definiu um canonical, mas o Google escolheu outra URL como a versão principal. Revise se o canonical está correto." },
+  "Server error (5xx)": { label: "Erro no servidor (5xx)", tip: "O servidor retornou erro ao Google. Verifique a estabilidade do seu servidor." },
+  "Blocked due to access forbidden (403)": { label: "Bloqueada — acesso proibido (403)", tip: "O servidor recusou o acesso do Google. Verifique permissões e firewalls." },
+  "Blocked due to other 4xx issue": { label: "Bloqueada — outro erro 4xx", tip: "Outro tipo de erro de cliente impediu o acesso." },
+  "URL is unknown to Google": { label: "URL desconhecida pelo Google", tip: "O Google nunca viu esta URL. Envie-a para indexação ou adicione-a ao sitemap." },
 };
 
 const indexingStateMap: Record<string, string> = {
