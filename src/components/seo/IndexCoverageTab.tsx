@@ -39,11 +39,11 @@ function sortData(data: any[], key: string, dir: SortDir) {
   });
 }
 
-const verdictMap: Record<string, { label: string; color: string; icon: any }> = {
-  PASS: { label: "Válida", color: "bg-success text-success-foreground", icon: CheckCircle },
-  NEUTRAL: { label: "Excluída", color: "bg-muted text-muted-foreground", icon: MinusCircle },
-  FAIL: { label: "Erro", color: "bg-destructive text-destructive-foreground", icon: XCircle },
-  VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle },
+const verdictMap: Record<string, { label: string; color: string; icon: any; explanation: string }> = {
+  PASS: { label: "Válida", color: "bg-success text-success-foreground", icon: CheckCircle, explanation: "Esta URL foi rastreada pelo Google e está incluída no índice de busca. Ela pode aparecer nos resultados de pesquisa normalmente." },
+  NEUTRAL: { label: "Excluída", color: "bg-muted text-muted-foreground", icon: MinusCircle, explanation: "O Google conhece esta URL mas decidiu não indexá-la. Motivos comuns: página duplicada, canonical apontando para outra URL, bloqueio por noindex, redirect, ou o Google considerou outra versão mais relevante." },
+  FAIL: { label: "Erro", color: "bg-destructive text-destructive-foreground", icon: XCircle, explanation: "O Google tentou acessar esta URL mas encontrou um erro que impediu a indexação. Pode ser erro 404 (não encontrada), 5xx (servidor), bloqueio por robots.txt ou problemas de acesso." },
+  VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle, explanation: "O Google ainda não determinou o status desta URL ou a inspeção não retornou informação suficiente. Tente inspecionar novamente." },
 };
 
 const coverageStateMap: Record<string, string> = {
