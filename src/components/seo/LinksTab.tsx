@@ -6,32 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Link2, Loader2, ExternalLink, Download, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Link2, Loader2, Search, TrendingUp, Hash, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LinksInfoCard } from "./links/LinksInfoCard";
+import { LinksKpiCards } from "./links/LinksKpiCards";
+import { LinksTable } from "./links/LinksTable";
+import { LinksDomainSummary } from "./links/LinksDomainSummary";
 
 interface Props {
   projectId: string | undefined;
 }
 
-type SortDir = "asc" | "desc";
-const PAGE_SIZE = 20;
-
-function sortData(data: any[], key: string, dir: SortDir) {
-  return [...data].sort((a, b) => {
-    const av = a[key], bv = b[key];
-    if (typeof av === "number" && typeof bv === "number") return dir === "desc" ? bv - av : av - bv;
-    return dir === "desc" ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv));
-  });
-}
-
 export function LinksTab({ projectId }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [topPagesSort, setTopPagesSort] = useState<{ key: string; dir: SortDir }>({ key: "clicks", dir: "desc" });
-  const [coverageSort, setCoverageSort] = useState<{ key: string; dir: SortDir }>({ key: "queryCount", dir: "desc" });
-  const [topPagesPage, setTopPagesPage] = useState(1);
-  const [coveragePage, setCoveragePage] = useState(1);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["gsc-links", projectId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("gsc-links", {
@@ -49,10 +38,11 @@ export function LinksTab({ projectId }: Props) {
       page: r.page,
       clicks: Number(r.clicks) || 0,
       impressions: Number(r.impressions) || 0,
+      ctr: Number(r.impressions) > 0 ? ((Number(r.clicks) / Number(r.impressions)) * 100) : 0,
     }));
     if (searchTerm) rows = rows.filter((r: any) => r.page.toLowerCase().includes(searchTerm.toLowerCase()));
-    return sortData(rows, topPagesSort.key, topPagesSort.dir);
-  }, [data, searchTerm, topPagesSort]);
+    return rows;
+  }, [data, searchTerm]);
 
   const internalLinks = useMemo(() => {
     let rows = (data?.internalLinks || []).map((r: any) => ({
@@ -62,202 +52,150 @@ export function LinksTab({ projectId }: Props) {
       impressions: Number(r.impressions) || 0,
     }));
     if (searchTerm) rows = rows.filter((r: any) => r.page.toLowerCase().includes(searchTerm.toLowerCase()));
-    return sortData(rows, coverageSort.key, coverageSort.dir);
-  }, [data, searchTerm, coverageSort]);
+    return rows;
+  }, [data, searchTerm]);
 
   const exportCSV = (rows: any[], filename: string) => {
     if (rows.length === 0) return;
     const headers = Object.keys(rows[0]);
-    const csv = [headers.join(","), ...rows.map((r: any) => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r: any) => headers.map((h) => `"${r[h]}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `${filename}.csv`; a.click();
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   };
 
+  const topPagesColumns = [
+    { key: "page", label: "Página", tooltip: "URL da página indexada no Google", width: "45%" },
+    { key: "clicks", label: "Cliques", tooltip: "Total de cliques orgânicos nos últimos 90 dias" },
+    { key: "impressions", label: "Impressões", tooltip: "Quantas vezes a página apareceu nos resultados de busca" },
+    { key: "ctr", label: "CTR", tooltip: "Taxa de cliques: proporção entre cliques e impressões" },
+  ];
+
+  const coverageColumns = [
+    { key: "page", label: "Página", tooltip: "URL da página analisada", width: "40%" },
+    { key: "queryCount", label: "Queries", tooltip: "Quantidade de termos de busca diferentes que levam a esta página" },
+    { key: "clicks", label: "Cliques", tooltip: "Total de cliques vindos de todos os termos" },
+    { key: "impressions", label: "Impressões", tooltip: "Total de impressões para todos os termos" },
+  ];
+
   if (isLoading) {
     return (
-      <Card className="p-8 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </Card>
+      <div className="space-y-4">
+        <LinksInfoCard />
+        <Card className="p-12 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-xs text-muted-foreground">Carregando dados de links do Google Search Console...</p>
+        </Card>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="p-4 border-destructive/30 bg-destructive/5">
-        <div className="text-destructive text-sm">{(error as Error).message}</div>
-      </Card>
+      <div className="space-y-4">
+        <LinksInfoCard />
+        <Card className="p-6 border-destructive/30 bg-destructive/5">
+          <div className="text-sm text-destructive font-medium mb-1">Erro ao carregar dados</div>
+          <div className="text-xs text-destructive/80">{(error as Error).message}</div>
+          <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={() => refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1.5" /> Tentar novamente
+          </Button>
+        </Card>
+      </div>
     );
   }
 
   if (topPages.length === 0 && internalLinks.length === 0 && !searchTerm) {
     return (
-      <EmptyState
-        icon={Link2}
-        title="Sem dados de links"
-        description="Os dados de links serão exibidos quando houver dados disponíveis no GSC."
-      />
+      <div className="space-y-4">
+        <LinksInfoCard />
+        <EmptyState
+          icon={Link2}
+          title="Sem dados de links"
+          description="Os dados de links serão exibidos quando houver dados disponíveis no Google Search Console."
+        />
+      </div>
     );
   }
 
-  const topPagesColumns = [
-    { key: "page", label: "Página" },
-    { key: "clicks", label: "Cliques" },
-    { key: "impressions", label: "Impressões" },
-  ];
-
-  const coverageColumns = [
-    { key: "page", label: "Página" },
-    { key: "queryCount", label: "Queries" },
-    { key: "clicks", label: "Cliques" },
-    { key: "impressions", label: "Impressões" },
-  ];
-
   return (
     <div className="space-y-4">
-      {/* Search filter */}
+      {/* Info Card */}
       <AnimatedContainer>
-        <div className="max-w-sm space-y-1">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Buscar Página</label>
-          <div className="relative">
+        <LinksInfoCard />
+      </AnimatedContainer>
+
+      {/* KPI Cards */}
+      <AnimatedContainer delay={0.05}>
+        <LinksKpiCards topPages={topPages} internalLinks={internalLinks} />
+      </AnimatedContainer>
+
+      {/* Search + Refresh */}
+      <AnimatedContainer delay={0.1}>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar páginas..."
+              placeholder="Filtrar por URL da página..."
               value={searchTerm}
-              onChange={e => { setSearchTerm(e.target.value); setTopPagesPage(1); setCoveragePage(1); }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 h-9 text-xs"
             />
           </div>
+          <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
         </div>
       </AnimatedContainer>
 
-      <Tabs defaultValue="top-pages">
-        <TabsList className="mb-4">
-          <TabsTrigger value="top-pages" className="text-xs">Top Páginas (Performance)</TabsTrigger>
-          <TabsTrigger value="coverage" className="text-xs">Cobertura de Queries</TabsTrigger>
-        </TabsList>
+      {/* Domain Summary */}
+      {topPages.length > 0 && (
+        <AnimatedContainer delay={0.15}>
+          <LinksDomainSummary topPages={topPages} />
+        </AnimatedContainer>
+      )}
 
-        <TabsContent value="top-pages">
-          <AnimatedContainer>
-            <SortableLinksTable
+      {/* Tabs */}
+      <AnimatedContainer delay={0.2}>
+        <Tabs defaultValue="top-pages">
+          <TabsList className="mb-4 bg-muted/50">
+            <TabsTrigger value="top-pages" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Top Páginas
+            </TabsTrigger>
+            <TabsTrigger value="coverage" className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Hash className="h-3.5 w-3.5" />
+              Cobertura de Queries
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="top-pages">
+            <LinksTable
               columns={topPagesColumns}
               rows={topPages}
-              sort={topPagesSort}
-              onSort={(key) => { setTopPagesSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setTopPagesPage(1); }}
-              page={topPagesPage}
-              onPageChange={setTopPagesPage}
-              onExport={() => exportCSV(topPages, "top-pages")}
+              onExport={() => exportCSV(topPages, "top-pages-performance")}
               linkKey="page"
+              showDomainBadge
+              showProgressBar="clicks"
             />
-          </AnimatedContainer>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="coverage">
-          <AnimatedContainer>
-            <SortableLinksTable
+          <TabsContent value="coverage">
+            <LinksTable
               columns={coverageColumns}
               rows={internalLinks}
-              sort={coverageSort}
-              onSort={(key) => { setCoverageSort(prev => ({ key, dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc" })); setCoveragePage(1); }}
-              page={coveragePage}
-              onPageChange={setCoveragePage}
               onExport={() => exportCSV(internalLinks, "query-coverage")}
+              linkKey="page"
+              showProgressBar="clicks"
             />
-          </AnimatedContainer>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </AnimatedContainer>
     </div>
-  );
-}
-
-function SortableLinksTable({
-  columns, rows, sort, onSort, page, onPageChange, onExport, linkKey,
-}: {
-  columns: { key: string; label: string }[];
-  rows: any[];
-  sort: { key: string; dir: SortDir };
-  onSort: (key: string) => void;
-  page: number;
-  onPageChange: (p: number) => void;
-  onExport: () => void;
-  linkKey?: string;
-}) {
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
-  const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-        <span className="text-xs text-muted-foreground">{rows.length} resultados</span>
-        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={onExport}>
-          <Download className="h-3.5 w-3.5 mr-1" /> CSV
-        </Button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              {columns.map(col => (
-                <th
-                  key={col.key}
-                  className="px-4 py-3 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => onSort(col.key)}
-                >
-                  <span className="flex items-center gap-1">
-                    {col.label}
-                    <ArrowUpDown className={`h-3 w-3 ${sort.key === col.key ? "text-primary" : "opacity-40"}`} />
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.length === 0 ? (
-              <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">Sem dados</td></tr>
-            ) : (
-              paginated.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0 table-row-hover">
-                  {columns.map(col => (
-                    <td key={col.key} title={col.key === "page" || col.key === linkKey ? row[col.key] : undefined} className={`px-4 py-3 text-xs ${col.key === "page" ? "font-mono text-foreground max-w-[400px] truncate" : col.key === "queryCount" ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                      {col.key === linkKey ? (
-                        <a href={row[col.key]} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
-                          {row[col.key]}
-                          <ExternalLink className="h-3 w-3 opacity-40 shrink-0" />
-                        </a>
-                      ) : (
-                        typeof row[col.key] === "number" ? Number(row[col.key]).toLocaleString() : row[col.key]
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border">
-          <span className="text-xs text-muted-foreground">Página {page} de {totalPages}</span>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const p = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-              return (
-                <Button key={p} variant={p === page ? "default" : "ghost"} size="sm" className="h-7 w-7 p-0 text-xs" onClick={() => onPageChange(p)}>
-                  {p}
-                </Button>
-              );
-            })}
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
   );
 }
