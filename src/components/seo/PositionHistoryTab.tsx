@@ -101,8 +101,22 @@ export function PositionHistoryTab({ projectId }: Props) {
       )}
 
       {error && (
-        <Card className="p-4 border-destructive/30 bg-destructive/5">
-          <div className="text-destructive text-sm">{(error as Error).message}</div>
+        <Card className="p-4 border-warning/30 bg-warning/5">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-warning shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {(error as Error).message?.includes("No GSC connection")
+                  ? "Conexão GSC não encontrada"
+                  : "Não foi possível carregar os dados"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {(error as Error).message?.includes("No GSC connection")
+                  ? "Nenhuma conta do Google Search Console está conectada a este projeto. Configure a integração nas configurações do projeto."
+                  : (error as Error).message}
+              </p>
+            </div>
+          </div>
         </Card>
       )}
 
