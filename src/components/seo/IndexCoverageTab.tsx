@@ -155,12 +155,13 @@ export function IndexCoverageTab({ projectId }: Props) {
           .insert({
             project_id: projectId!,
             owner_id: user!.id,
-            schedule_type: "recurring",
+            schedule_type: "cron",
             cron_time: "0 6 * * *",
             actions: ["coverage_scan"],
             label: "Varredura automática de cobertura",
             enabled: true,
             max_urls: accountsCount * URLS_PER_ACCOUNT,
+            status: "active",
           } as any);
         if (error) throw error;
       }
@@ -494,7 +495,7 @@ export function IndexCoverageTab({ projectId }: Props) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-primary hover:text-primary"
+                                className="h-7 w-7 p-0 text-primary hover:bg-primary hover:text-primary-foreground"
                                 disabled={sendingUrls.has(row.url)}
                                 onClick={() => sendToIndex(row.url)}
                               >
