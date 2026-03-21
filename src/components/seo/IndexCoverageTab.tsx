@@ -107,6 +107,7 @@ export function IndexCoverageTab({ projectId }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [scanning, setScanning] = useState(false);
+  const [sendingUrls, setSendingUrls] = useState<Set<string>>(new Set());
 
   // Fetch GSC connections count for this project
   const { data: gscConnections } = useQuery({
