@@ -299,6 +299,7 @@ export function IndexCoverageTab({ projectId }: Props) {
   }
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4">
       {/* Explanation Card */}
       <AnimatedContainer>
