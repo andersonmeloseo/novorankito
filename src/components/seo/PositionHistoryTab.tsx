@@ -136,7 +136,15 @@ export function PositionHistoryTab({ projectId }: Props) {
         />
       )}
 
-      {searchKeyword && !isLoading && !error && rows.length === 0 && (
+      {searchKeyword && !isLoading && !error && noConnection && (
+        <EmptyState
+          icon={History}
+          title="Conexão não encontrada"
+          description="Não encontramos uma conexão do Google Search Console neste projeto. Configure a integração para analisar o histórico de posição."
+        />
+      )}
+
+      {searchKeyword && !isLoading && !error && !noConnection && rows.length === 0 && (
         <EmptyState
           icon={History}
           title="Sem dados para esta keyword"
