@@ -20,6 +20,7 @@ import {
   Info, Clock, Zap, Users, CalendarClock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, parseISO } from "date-fns";
 
 interface Props {
