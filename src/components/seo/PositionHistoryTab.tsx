@@ -31,7 +31,14 @@ export function PositionHistoryTab({ projectId }: Props) {
       const { data, error } = await supabase.functions.invoke("gsc-position-history", {
         body: { project_id: projectId, query: searchKeyword, days: parseInt(days) },
       });
-      if (error) throw error;
+
+      if (error) {
+        if (error.message?.includes("No GSC connection found")) {
+          return { query: searchKeyword, rows: [], noConnection: true };
+        }
+        throw error;
+      }
+
       if (data?.error) throw new Error(data.error);
       return data;
     },
@@ -40,6 +47,7 @@ export function PositionHistoryTab({ projectId }: Props) {
   });
 
   const rows = data?.rows || [];
+  const noConnection = Boolean(data?.noConnection);
   const chartData = rows.map((r: any) => ({
     ...r,
     dateLabel: format(parseISO(r.date), "dd MMM", { locale: ptBR }),
@@ -128,7 +136,15 @@ export function PositionHistoryTab({ projectId }: Props) {
         />
       )}
 
-      {searchKeyword && !isLoading && !error && rows.length === 0 && (
+      {searchKeyword && !isLoading && !error && noConnection && (
+        <EmptyState
+          icon={History}
+          title="Conexão não encontrada"
+          description="Não encontramos uma conexão do Google Search Console neste projeto. Configure a integração para analisar o histórico de posição."
+        />
+      )}
+
+      {searchKeyword && !isLoading && !error && !noConnection && rows.length === 0 && (
         <EmptyState
           icon={History}
           title="Sem dados para esta keyword"
