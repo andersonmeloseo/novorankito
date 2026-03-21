@@ -146,9 +146,9 @@ export function PositionHistoryTab({ projectId }: Props) {
 
       {searchKeyword && !isLoading && !error && !noConnection && rows.length === 0 && (
         <EmptyState
-          icon={History}
-          title="Sem dados para esta keyword"
-          description={`Nenhum dado encontrado para "${searchKeyword}" no período selecionado.`}
+          icon={SearchIcon}
+          title="Palavra não encontrada"
+          description={`A keyword "${searchKeyword}" não foi encontrada no histórico do Google Search Console nos últimos ${days} dias. Tente outra palavra-chave ou aumente o período de análise.`}
         />
       )}
 
