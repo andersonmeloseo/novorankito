@@ -487,6 +487,28 @@ export function IndexCoverageTab({ projectId }: Props) {
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {row.inspected_at ? format(parseISO(row.inspected_at), "dd/MM/yyyy HH:mm") : "—"}
                       </td>
+                      <td className="px-4 py-3">
+                        {row.verdict !== "PASS" ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-primary hover:text-primary"
+                                disabled={sendingUrls.has(row.url)}
+                                onClick={() => sendToIndex(row.url)}
+                              >
+                                {sendingUrls.has(row.url)
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : <Send className="h-3.5 w-3.5" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="text-xs">Enviar para indexação</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-[10px] text-success">✓</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
