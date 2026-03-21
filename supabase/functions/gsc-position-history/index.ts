@@ -42,6 +42,8 @@ serve(async (req) => {
       });
     }
 
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
     const { data: conn, error: connErr } = await supabase
       .from("gsc_connections")
       .select("client_email, private_key, site_url")
