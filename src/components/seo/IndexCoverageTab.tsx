@@ -20,6 +20,7 @@ import {
   Info, Clock, Zap, Users, CalendarClock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, parseISO } from "date-fns";
 
 interface Props {
@@ -38,30 +39,30 @@ function sortData(data: any[], key: string, dir: SortDir) {
   });
 }
 
-const verdictMap: Record<string, { label: string; color: string; icon: any }> = {
-  PASS: { label: "Válida", color: "bg-success text-success-foreground", icon: CheckCircle },
-  NEUTRAL: { label: "Excluída", color: "bg-muted text-muted-foreground", icon: MinusCircle },
-  FAIL: { label: "Erro", color: "bg-destructive text-destructive-foreground", icon: XCircle },
-  VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle },
+const verdictMap: Record<string, { label: string; color: string; icon: any; explanation: string }> = {
+  PASS: { label: "Válida", color: "bg-success text-success-foreground", icon: CheckCircle, explanation: "Esta URL foi rastreada pelo Google e está incluída no índice de busca. Ela pode aparecer nos resultados de pesquisa normalmente." },
+  NEUTRAL: { label: "Excluída", color: "bg-muted text-muted-foreground", icon: MinusCircle, explanation: "O Google conhece esta URL mas decidiu não indexá-la. Motivos comuns: página duplicada, canonical apontando para outra URL, bloqueio por noindex, redirect, ou o Google considerou outra versão mais relevante." },
+  FAIL: { label: "Erro", color: "bg-destructive text-destructive-foreground", icon: XCircle, explanation: "O Google tentou acessar esta URL mas encontrou um erro que impediu a indexação. Pode ser erro 404 (não encontrada), 5xx (servidor), bloqueio por robots.txt ou problemas de acesso." },
+  VERDICT_UNSPECIFIED: { label: "Desconhecido", color: "bg-muted text-muted-foreground", icon: AlertTriangle, explanation: "O Google ainda não determinou o status desta URL ou a inspeção não retornou informação suficiente. Tente inspecionar novamente." },
 };
 
-const coverageStateMap: Record<string, string> = {
-  "Submitted and indexed": "Enviada e indexada",
-  "Crawled - currently not indexed": "Rastreada — não indexada no momento",
-  "Discovered - currently not indexed": "Descoberta — não indexada no momento",
-  "Page with redirect": "Página com redirecionamento",
-  "Not found (404)": "Não encontrada (404)",
-  "Soft 404": "Soft 404",
-  "Blocked by robots.txt": "Bloqueada por robots.txt",
-  "Blocked due to unauthorized request (401)": "Bloqueada — não autorizada (401)",
-  "Excluded by 'noindex' tag": "Excluída por tag 'noindex'",
-  "Alternate page with proper canonical tag": "Página alternativa com canonical correto",
-  "Duplicate without user-selected canonical": "Duplicada sem canonical selecionado",
-  "Duplicate, Google chose different canonical than user": "Duplicada — Google escolheu canonical diferente",
-  "Server error (5xx)": "Erro no servidor (5xx)",
-  "Blocked due to access forbidden (403)": "Bloqueada — acesso proibido (403)",
-  "Blocked due to other 4xx issue": "Bloqueada — outro erro 4xx",
-  "URL is unknown to Google": "URL desconhecida pelo Google",
+const coverageStateMap: Record<string, { label: string; tip: string }> = {
+  "Submitted and indexed": { label: "Enviada e indexada", tip: "A URL foi enviada e aceita pelo Google no índice." },
+  "Crawled - currently not indexed": { label: "Rastreada — não indexada", tip: "O Google rastreou a página mas decidiu não indexá-la. Pode ser conteúdo de baixa qualidade, duplicado ou pouco relevante." },
+  "Discovered - currently not indexed": { label: "Descoberta — não indexada", tip: "O Google sabe que a URL existe mas ainda não a rastreou. Pode indicar baixa prioridade de rastreio." },
+  "Page with redirect": { label: "Página com redirecionamento", tip: "A URL redireciona para outra página. O Google indexa o destino final, não esta URL." },
+  "Not found (404)": { label: "Não encontrada (404)", tip: "A página retornou erro 404. Remova links internos apontando para ela ou crie o conteúdo." },
+  "Soft 404": { label: "Soft 404", tip: "A página existe mas o Google a interpreta como se não existisse (conteúdo vazio ou muito fino)." },
+  "Blocked by robots.txt": { label: "Bloqueada por robots.txt", tip: "O arquivo robots.txt do seu site está impedindo o Google de rastrear esta URL." },
+  "Blocked due to unauthorized request (401)": { label: "Bloqueada — não autorizada (401)", tip: "A página requer autenticação. O Google não consegue acessá-la." },
+  "Excluded by 'noindex' tag": { label: "Excluída por tag 'noindex'", tip: "A página tem uma tag meta noindex, instruindo o Google a não indexá-la. Remova a tag se quiser que seja indexada." },
+  "Alternate page with proper canonical tag": { label: "Alternativa com canonical correto", tip: "Esta é uma versão alternativa (ex: mobile) e o canonical aponta para a versão principal. Comportamento esperado." },
+  "Duplicate without user-selected canonical": { label: "Duplicada sem canonical", tip: "O Google detectou conteúdo duplicado e não há tag canonical definida. Adicione um canonical para indicar a versão preferida." },
+  "Duplicate, Google chose different canonical than user": { label: "Duplicada — canonical diferente", tip: "Você definiu um canonical, mas o Google escolheu outra URL como a versão principal. Revise se o canonical está correto." },
+  "Server error (5xx)": { label: "Erro no servidor (5xx)", tip: "O servidor retornou erro ao Google. Verifique a estabilidade do seu servidor." },
+  "Blocked due to access forbidden (403)": { label: "Bloqueada — acesso proibido (403)", tip: "O servidor recusou o acesso do Google. Verifique permissões e firewalls." },
+  "Blocked due to other 4xx issue": { label: "Bloqueada — outro erro 4xx", tip: "Outro tipo de erro de cliente impediu o acesso." },
+  "URL is unknown to Google": { label: "URL desconhecida pelo Google", tip: "O Google nunca viu esta URL. Envie-a para indexação ou adicione-a ao sitemap." },
 };
 
 const indexingStateMap: Record<string, string> = {
@@ -245,10 +246,33 @@ export function IndexCoverageTab({ projectId }: Props) {
     const v = verdictMap[verdict] || verdictMap.VERDICT_UNSPECIFIED;
     const Icon = v.icon;
     return (
-      <Badge className={`text-[10px] gap-1 ${v.color}`}>
-        <Icon className="h-3 w-3" />
-        {v.label}
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge className={`text-[10px] gap-1 cursor-help ${v.color}`}>
+            <Icon className="h-3 w-3" />
+            {v.label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          <p>{v.explanation}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  const renderCoverageState = (state: string | null) => {
+    if (!state) return <span>—</span>;
+    const entry = coverageStateMap[state];
+    if (!entry) return <span>{state}</span>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">{entry.label}</span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          <p>{entry.tip}</p>
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
@@ -275,6 +299,7 @@ export function IndexCoverageTab({ projectId }: Props) {
   }
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4">
       {/* Explanation Card */}
       <AnimatedContainer>
@@ -432,7 +457,7 @@ export function IndexCoverageTab({ projectId }: Props) {
                         <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{row.url}</a>
                       </td>
                       <td className="px-4 py-3">{renderVerdict(row.verdict)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={row.coverage_state || ""}>{translateField(row.coverage_state, coverageStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate">{renderCoverageState(row.coverage_state)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.indexing_state, indexingStateMap)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.page_fetch_state, pageFetchStateMap)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.crawled_as, crawledAsMap)}</td>
@@ -464,5 +489,6 @@ export function IndexCoverageTab({ projectId }: Props) {
         </AnimatedContainer>
       )}
     </div>
+    </TooltipProvider>
   );
 }
