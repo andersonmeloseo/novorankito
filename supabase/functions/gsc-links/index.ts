@@ -96,25 +96,31 @@ serve(async (req) => {
 
     if (internalRes.ok) {
       const data = await internalRes.json();
-      // Aggregate: count how many unique queries link to each page
-      const pageQueryCount = new Map<string, { queries: Set<string>; clicks: number; impressions: number }>();
+      const pageQueryCount = new Map<string, { queries: Map<string, { clicks: number; impressions: number; position: number }>; clicks: number; impressions: number }>();
       for (const row of data.rows || []) {
         const page = row.keys[0];
         const query = row.keys[1];
         if (!pageQueryCount.has(page)) {
-          pageQueryCount.set(page, { queries: new Set(), clicks: 0, impressions: 0 });
+          pageQueryCount.set(page, { queries: new Map(), clicks: 0, impressions: 0 });
         }
         const entry = pageQueryCount.get(page)!;
-        entry.queries.add(query);
+        entry.queries.set(query, {
+          clicks: row.clicks || 0,
+          impressions: row.impressions || 0,
+          position: row.position || 0,
+        });
         entry.clicks += row.clicks || 0;
         entry.impressions += row.impressions || 0;
       }
       internalLinks = Array.from(pageQueryCount.entries())
-        .map(([page, data]) => ({
+        .map(([page, d]) => ({
           page,
-          queryCount: data.queries.size,
-          clicks: data.clicks,
-          impressions: data.impressions,
+          queryCount: d.queries.size,
+          clicks: d.clicks,
+          impressions: d.impressions,
+          queries: Array.from(d.queries.entries())
+            .map(([q, stats]) => ({ query: q, clicks: stats.clicks, impressions: stats.impressions, position: Math.round(stats.position * 10) / 10 }))
+            .sort((a, b) => b.clicks - a.clicks),
         }))
         .sort((a, b) => b.queryCount - a.queryCount)
         .slice(0, 100);
