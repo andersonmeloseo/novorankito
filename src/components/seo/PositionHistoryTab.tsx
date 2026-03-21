@@ -168,13 +168,17 @@ export function PositionHistoryTab({ projectId }: Props) {
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                      <YAxis yAxisId="position" orientation="right" reversed tick={{ fontSize: 10 }} domain={["dataMin - 1", "dataMax + 1"]} />
-                      <YAxis yAxisId="clicks" orientation="left" tick={{ fontSize: 10 }} />
-                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                      <YAxis yAxisId="position" orientation="right" reversed domain={["dataMin - 1", "dataMax + 1"]} tick={{ fontSize: 10 }} label={{ value: "Posição ↑ melhor", angle: 90, position: "insideRight", style: { fontSize: 9, fill: "hsl(var(--muted-foreground))" } }} />
+                      <YAxis yAxisId="clicks" orientation="left" tick={{ fontSize: 10 }} label={{ value: "Cliques / Impressões", angle: -90, position: "insideLeft", style: { fontSize: 9, fill: "hsl(var(--muted-foreground))" } }} />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(value: any, name: string) => {
+                        if (name === "CTR") return [`${value}%`, name];
+                        return [value?.toLocaleString(), name];
+                      }} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line yAxisId="position" type="monotone" dataKey="position" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} name="Posição" />
                       <Line yAxisId="clicks" type="monotone" dataKey="clicks" stroke="hsl(var(--chart-2))" strokeWidth={1.5} dot={false} name="Cliques" />
                       <Line yAxisId="clicks" type="monotone" dataKey="impressions" stroke="hsl(var(--chart-3))" strokeWidth={1} dot={false} name="Impressões" strokeDasharray="4 2" />
+                      <Line yAxisId="clicks" type="monotone" dataKey="ctr" stroke="hsl(var(--chart-4))" strokeWidth={1.5} dot={false} name="CTR" strokeDasharray="2 2" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
