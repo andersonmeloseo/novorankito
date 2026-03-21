@@ -31,7 +31,14 @@ export function PositionHistoryTab({ projectId }: Props) {
       const { data, error } = await supabase.functions.invoke("gsc-position-history", {
         body: { project_id: projectId, query: searchKeyword, days: parseInt(days) },
       });
-      if (error) throw error;
+
+      if (error) {
+        if (error.message?.includes("No GSC connection found")) {
+          return { query: searchKeyword, rows: [], noConnection: true };
+        }
+        throw error;
+      }
+
       if (data?.error) throw new Error(data.error);
       return data;
     },
