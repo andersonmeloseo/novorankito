@@ -253,7 +253,7 @@ export function IndexCoverageTab({ projectId }: Props) {
             {v.label}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-sm p-3 text-xs leading-relaxed">
+        <TooltipContent side="top" className="max-w-md p-3 text-xs leading-relaxed whitespace-normal">
           <p>{v.explanation}</p>
         </TooltipContent>
       </Tooltip>
