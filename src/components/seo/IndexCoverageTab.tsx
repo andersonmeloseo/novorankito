@@ -456,7 +456,7 @@ export function IndexCoverageTab({ projectId }: Props) {
                         <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{row.url}</a>
                       </td>
                       <td className="px-4 py-3">{renderVerdict(row.verdict)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate" title={row.coverage_state || ""}>{translateField(row.coverage_state, coverageStateMap)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate">{renderCoverageState(row.coverage_state)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.indexing_state, indexingStateMap)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.page_fetch_state, pageFetchStateMap)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{translateField(row.crawled_as, crawledAsMap)}</td>
