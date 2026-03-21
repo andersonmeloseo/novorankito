@@ -250,7 +250,7 @@ export function IndexCoverageTab({ projectId }: Props) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={`text-[10px] gap-1 cursor-help ${v.color}`}>
+          <Badge className={`text-[10px] gap-1 cursor-help ${v.color} hover:bg-primary hover:text-primary-foreground transition-colors`}>
             <Icon className="h-3 w-3" />
             {v.label}
           </Badge>
