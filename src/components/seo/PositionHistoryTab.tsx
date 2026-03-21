@@ -47,6 +47,7 @@ export function PositionHistoryTab({ projectId }: Props) {
   });
 
   const rows = data?.rows || [];
+  const noConnection = Boolean(data?.noConnection);
   const chartData = rows.map((r: any) => ({
     ...r,
     dateLabel: format(parseISO(r.date), "dd MMM", { locale: ptBR }),
