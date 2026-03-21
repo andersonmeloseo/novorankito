@@ -151,12 +151,37 @@ export function LinksTab({ projectId }: Props) {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 h-9 text-xs"
             />
+            {searchTerm && (
+              <button
+                onClick={() => { setSearchTerm(""); setActiveTab("top-pages"); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                title="Limpar filtro"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-          <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5" onClick={() => refetch()} disabled={isFetching}>
+          {searchTerm && (
+            <Button variant="secondary" size="sm" className="h-9 text-xs gap-1.5" onClick={() => { setSearchTerm(""); setActiveTab("top-pages"); }}>
+              <ArrowLeft className="h-3 w-3" /> Voltar para todas
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 ml-auto" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
+        {searchTerm && (
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs gap-1.5 py-1 px-2.5">
+              <Search className="h-3 w-3" />
+              Filtrando: <span className="font-semibold text-foreground truncate max-w-[300px]">{searchTerm}</span>
+              <button onClick={() => { setSearchTerm(""); setActiveTab("top-pages"); }} className="ml-1 hover:text-destructive transition-colors">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
       </AnimatedContainer>
 
       {/* Domain Summary */}
