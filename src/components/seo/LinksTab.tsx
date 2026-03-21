@@ -13,6 +13,7 @@ import { LinksInfoCard } from "./links/LinksInfoCard";
 import { LinksKpiCards } from "./links/LinksKpiCards";
 import { LinksTable } from "./links/LinksTable";
 import { LinksDomainSummary } from "./links/LinksDomainSummary";
+import { CoverageTable } from "./links/CoverageTable";
 
 interface Props {
   projectId: string | undefined;
@@ -220,12 +221,9 @@ export function LinksTab({ projectId }: Props) {
           </TabsContent>
 
           <TabsContent value="coverage">
-            <LinksTable
-              columns={coverageColumns}
+            <CoverageTable
               rows={internalLinks}
-              onExport={() => exportCSV(internalLinks, "query-coverage")}
-              linkKey="page"
-              showProgressBar="clicks"
+              onExport={() => exportCSV(internalLinks.map(({ queries, ...rest }: any) => rest), "query-coverage")}
             />
           </TabsContent>
         </Tabs>
