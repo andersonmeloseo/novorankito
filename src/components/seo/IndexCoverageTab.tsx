@@ -269,7 +269,7 @@ export function IndexCoverageTab({ projectId }: Props) {
         <TooltipTrigger asChild>
           <span className="cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">{entry.label}</span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-xs">
+        <TooltipContent side="top" className="max-w-sm p-3 text-xs leading-relaxed">
           <p>{entry.tip}</p>
         </TooltipContent>
       </Tooltip>
