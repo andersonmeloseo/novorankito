@@ -101,6 +101,62 @@ export function SitemapsTab({ projectId }: Props) {
     }
   };
 
+  const discoverSitemaps = async () => {
+    if (!newSitemapUrl.trim()) {
+      toast({ title: "Informe a URL", description: "Digite a URL do sitemap principal (ex: https://seusite.com/sitemap.xml)", variant: "destructive" });
+      return;
+    }
+    setDiscovering(true);
+    setDiscoveredSitemaps(null);
+    setSubmittedDiscovered(new Set());
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-sitemap", {
+        body: { url: newSitemapUrl.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const processed = data?.sitemaps_processed || [];
+      if (processed.length <= 1) {
+        toast({ title: "Nenhum sub-sitemap encontrado", description: `Encontradas ${data?.total || 0} URLs neste sitemap.` });
+      } else {
+        const subSitemaps = processed.map((url: string) => ({ loc: url }));
+        setDiscoveredSitemaps(subSitemaps);
+        toast({ title: `${processed.length} sitemaps descobertos!`, description: `Total de ${data?.total || 0} URLs encontradas.` });
+      }
+    } catch (e: any) {
+      toast({ title: "Erro ao descobrir sitemaps", description: e.message, variant: "destructive" });
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const submitDiscoveredSitemap = async (sitemapUrl: string) => {
+    if (!projectId) return;
+    setSubmittingDiscovered(prev => new Set(prev).add(sitemapUrl));
+    try {
+      const { data, error } = await supabase.functions.invoke("gsc-sitemaps", {
+        body: { project_id: projectId, action: "submit", sitemap_url: sitemapUrl },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setSubmittedDiscovered(prev => new Set(prev).add(sitemapUrl));
+    } catch (e: any) {
+      toast({ title: "Erro ao enviar", description: `${sitemapUrl}: ${e.message}`, variant: "destructive" });
+    } finally {
+      setSubmittingDiscovered(prev => { const s = new Set(prev); s.delete(sitemapUrl); return s; });
+    }
+  };
+
+  const submitAllDiscovered = async () => {
+    if (!discoveredSitemaps || !projectId) return;
+    const toSubmit = discoveredSitemaps.filter(s => !submittedDiscovered.has(s.loc));
+    for (const sm of toSubmit) {
+      await submitDiscoveredSitemap(sm.loc);
+    }
+    queryClient.invalidateQueries({ queryKey: ["gsc-sitemaps"] });
+    toast({ title: "Todos os sitemaps enviados!", description: `${toSubmit.length} sitemaps submetidos ao Google.` });
+  };
+
   const statusBadge = (status: string) => {
     if (status === "success") return <Badge variant="default" className="text-[10px] bg-success">Sucesso</Badge>;
     if (status === "pending") return <Badge variant="secondary" className="text-[10px]">Pendente</Badge>;
@@ -133,11 +189,58 @@ export function SitemapsTab({ projectId }: Props) {
             </div>
             <Button onClick={submitSitemap} disabled={submitting || !newSitemapUrl.trim()} className="gap-2">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Enviar Sitemap
+              Enviar
+            </Button>
+            <Button onClick={discoverSitemaps} disabled={discovering || !newSitemapUrl.trim()} variant="outline" className="gap-2">
+              {discovering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              Descobrir Sitemaps
             </Button>
           </div>
         </Card>
       </AnimatedContainer>
+
+      {/* Discovered sitemaps panel */}
+      {discoveredSitemaps && discoveredSitemaps.length > 0 && (
+        <AnimatedContainer delay={0.03}>
+          <Card className="overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{discoveredSitemaps.length} sitemaps descobertos</span>
+                <Badge variant="secondary" className="text-[10px]">{submittedDiscovered.size} enviados</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="h-7 text-xs gap-1.5" onClick={submitAllDiscovered} disabled={submittedDiscovered.size === discoveredSitemaps.length}>
+                  <Plus className="h-3 w-3" />
+                  Enviar Todos
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setDiscoveredSitemaps(null)}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto divide-y divide-border">
+              {discoveredSitemaps.map((sm, i) => {
+                const done = submittedDiscovered.has(sm.loc);
+                const loading = submittingDiscovered.has(sm.loc);
+                return (
+                  <div key={i} className="px-4 py-2 flex items-center justify-between hover:bg-muted/20 transition-colors">
+                    <span className="text-xs font-mono truncate max-w-[70%]" title={sm.loc}>{sm.loc}</span>
+                    {done ? (
+                      <Badge variant="default" className="text-[10px] bg-success gap-1"><CheckCircle2 className="h-3 w-3" />Enviado</Badge>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => submitDiscoveredSitemap(sm.loc)} disabled={loading}>
+                        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        Enviar
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </AnimatedContainer>
+      )}
 
       {/* Search filter */}
       <div className="relative max-w-sm">
