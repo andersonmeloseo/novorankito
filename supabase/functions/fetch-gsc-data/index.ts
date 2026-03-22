@@ -57,6 +57,21 @@ async function getAccessToken(credentials: { client_email: string; private_key: 
   return tokenData.access_token;
 }
 
+function normalizeDomain(input: string): string {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^sc-domain:/, "")
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]
+    .replace(/^www\./, "")
+    .replace(/:\d+$/, "");
+}
+
+function getDomainFromPropertyUrl(siteUrl: string): string {
+  return normalizeDomain(siteUrl);
+}
+
 // Fetch all paginated rows from GSC for given dimensions
 async function fetchGscDimension(
   apiUrl: string,
@@ -137,11 +152,61 @@ serve(async (req) => {
       private_key: conn.private_key,
     });
 
-    const siteUrl = conn.site_url;
-    if (!siteUrl) {
+    const configuredSiteUrl = conn.site_url;
+    if (!configuredSiteUrl) {
       return new Response(JSON.stringify({ error: "Nenhuma propriedade selecionada na conexão GSC." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const sitesRes = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!sitesRes.ok) {
+      const errText = await sitesRes.text();
+      throw new Error(`GSC sites API error [${sitesRes.status}]: ${errText}`);
+    }
+
+    const sitesData = await sitesRes.json();
+    const accessibleSiteUrls: string[] = (sitesData.siteEntry || [])
+      .map((s: any) => String(s?.siteUrl || ""))
+      .filter(Boolean);
+
+    let selectedSiteUrl = configuredSiteUrl;
+
+    if (!accessibleSiteUrls.includes(configuredSiteUrl)) {
+      const configuredDomain = getDomainFromPropertyUrl(configuredSiteUrl);
+      const { data: project } = await supabase
+        .from("projects")
+        .select("domain")
+        .eq("id", project_id)
+        .maybeSingle();
+
+      const projectDomain = normalizeDomain(project?.domain || "");
+      const targetDomain = projectDomain || configuredDomain;
+
+      const fallbackSiteUrl = accessibleSiteUrls.find((url: string) => getDomainFromPropertyUrl(url) === targetDomain);
+
+      if (fallbackSiteUrl) {
+        selectedSiteUrl = fallbackSiteUrl;
+        await supabase
+          .from("gsc_connections")
+          .update({ site_url: fallbackSiteUrl })
+          .eq("id", conn.id);
+        console.log(`Auto-adjusted GSC property from ${configuredSiteUrl} to ${fallbackSiteUrl}`);
+      } else {
+        const preview = accessibleSiteUrls.slice(0, 5).join(", ") || "nenhuma";
+        return new Response(
+          JSON.stringify({
+            error: `Sem acesso à propriedade ${configuredSiteUrl}. Esta Service Account (${conn.client_email}) enxerga: ${preview}`,
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     const endDate = new Date();
@@ -151,7 +216,7 @@ serve(async (req) => {
     const startStr = fmtDate(startDate);
     const endStr = fmtDate(endDate);
 
-    const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`;
+    const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(selectedSiteUrl)}/searchAnalytics/query`;
 
     // Fetch data with separate dimension groups for accuracy
     // 1. "date" only → accurate daily totals for KPIs and trend chart
