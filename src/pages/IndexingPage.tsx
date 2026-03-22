@@ -110,7 +110,57 @@ export default function IndexingPage() {
   const [submittedDiscovered, setSubmittedDiscovered] = useState<Set<string>>(new Set());
   const INV_PAGE_SIZE = 50;
 
-  const handleSort = (col: string) => {
+  const handleDiscoverSitemaps = async () => {
+    if (!discoverUrl.trim()) return;
+    setDiscovering(true);
+    setDiscoveredSitemaps([]);
+    setSubmittedDiscovered(new Set());
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-sitemap", {
+        body: { url: discoverUrl.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const processed = (data?.sitemaps_processed || []) as string[];
+      if (processed.length === 0) {
+        toast.info("Nenhum sitemap encontrado nesta URL");
+      } else {
+        setDiscoveredSitemaps(processed);
+        toast.success(`${processed.length} sitemaps descobertos (${data?.total || 0} URLs)`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro ao descobrir: ${e.message}`);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleSubmitDiscoveredSitemap = async (sitemapUrl: string) => {
+    if (!projectId) return;
+    setSubmittingDiscovered(prev => new Set(prev).add(sitemapUrl));
+    try {
+      const { data, error } = await supabase.functions.invoke("gsc-sitemaps", {
+        body: { project_id: projectId, action: "submit", sitemap_url: sitemapUrl },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setSubmittedDiscovered(prev => new Set(prev).add(sitemapUrl));
+    } catch (e: any) {
+      toast.error(`Erro: ${sitemapUrl} — ${e.message}`);
+    } finally {
+      setSubmittingDiscovered(prev => { const s = new Set(prev); s.delete(sitemapUrl); return s; });
+    }
+  };
+
+  const handleSubmitAllDiscovered = async () => {
+    const toSubmit = discoveredSitemaps.filter(s => !submittedDiscovered.has(s));
+    for (const sm of toSubmit) {
+      await handleSubmitDiscoveredSitemap(sm);
+    }
+    queryClient.invalidateQueries({ queryKey: ["gsc-sitemaps-list", projectId] });
+    toast.success(`${toSubmit.length} sitemaps enviados ao GSC!`);
+  };
+
     if (sortCol === col) {
       setSortDir(d => d === "asc" ? "desc" : "asc");
     } else {
