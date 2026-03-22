@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Plus, Trash2, RefreshCw, XCircle, FileText, ArrowUpDown, Search } from "lucide-react";
+import { MapPin, Loader2, Plus, Trash2, RefreshCw, XCircle, FileText, ArrowUpDown, Search, Globe, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 
@@ -32,6 +32,10 @@ export function SitemapsTab({ projectId }: Props) {
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({ key: "path", dir: "asc" });
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveredSitemaps, setDiscoveredSitemaps] = useState<{ loc: string; lastmod?: string }[] | null>(null);
+  const [submittingDiscovered, setSubmittingDiscovered] = useState<Set<string>>(new Set());
+  const [submittedDiscovered, setSubmittedDiscovered] = useState<Set<string>>(new Set());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["gsc-sitemaps", projectId],
