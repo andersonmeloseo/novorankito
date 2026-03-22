@@ -990,10 +990,93 @@ export default function IndexingPage() {
                       </>
                     )}
 
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-xs"
+                      onClick={() => setDiscoverOpen(true)}
+                    >
+                      <Globe className="h-3 w-3" />
+                      Descobrir Sitemaps
+                    </Button>
+
                     <span className="text-[10px] text-muted-foreground ml-auto">
                       {selectedSmUrls.size > 0 ? `${selectedSmUrls.size} de ${sitemaps.length} selecionado(s)` : `${filteredSm.length} sitemap(s)`}
                     </span>
                   </div>
+
+                  {/* Discover Sitemaps Dialog */}
+                  <Dialog open={discoverOpen} onOpenChange={setDiscoverOpen}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" />Descobrir Sitemaps</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="URL do sitemap principal (ex: https://seusite.com/sitemap.xml)"
+                            value={discoverUrl}
+                            onChange={e => setDiscoverUrl(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter" && discoverUrl.trim()) {
+                                handleDiscoverSitemaps();
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleDiscoverSitemaps}
+                            disabled={discovering || !discoverUrl.trim()}
+                            className="gap-1.5"
+                          >
+                            {discovering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Buscar
+                          </Button>
+                        </div>
+                        {discoveredSitemaps.length > 0 && (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{discoveredSitemaps.length} sitemaps encontrados</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-[10px]">{submittedDiscovered.size} enviados</Badge>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={handleSubmitAllDiscovered}
+                                  disabled={submittedDiscovered.size === discoveredSitemaps.length}
+                                >
+                                  <Send className="h-3 w-3" />
+                                  Enviar Todos ao GSC
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto border rounded-md divide-y divide-border max-h-[400px]">
+                              {discoveredSitemaps.map((smUrl, i) => {
+                                const done = submittedDiscovered.has(smUrl);
+                                const loading = submittingDiscovered.has(smUrl);
+                                return (
+                                  <div key={i} className="px-3 py-2 flex items-center justify-between hover:bg-muted/20 transition-colors">
+                                    <span className="text-xs font-mono truncate max-w-[70%]" title={smUrl}>{smUrl}</span>
+                                    {done ? (
+                                      <Badge variant="default" className="text-[10px] bg-success gap-1"><CheckCircle2 className="h-3 w-3" />Enviado</Badge>
+                                    ) : (
+                                      <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => handleSubmitDiscoveredSitemap(smUrl)} disabled={loading}>
+                                        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                        Enviar
+                                      </Button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                        {discoveredSitemaps.length === 0 && !discovering && discoverUrl && (
+                          <p className="text-xs text-muted-foreground text-center py-4">Digite a URL do sitemap principal e clique em Buscar para descobrir todos os sub-sitemaps.</p>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
                   {/* Sitemaps Table */}
                   <Card className="overflow-hidden">
