@@ -102,6 +102,12 @@ export default function IndexingPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedSitemap, setExpandedSitemap] = useState<string | null>(null);
   const [selectedSmUrls, setSelectedSmUrls] = useState<Set<string>>(new Set());
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [discoverUrl, setDiscoverUrl] = useState("");
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveredSitemaps, setDiscoveredSitemaps] = useState<string[]>([]);
+  const [submittingDiscovered, setSubmittingDiscovered] = useState<Set<string>>(new Set());
+  const [submittedDiscovered, setSubmittedDiscovered] = useState<Set<string>>(new Set());
   const INV_PAGE_SIZE = 50;
 
   const handleSort = (col: string) => {
