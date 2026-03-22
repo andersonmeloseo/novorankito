@@ -76,22 +76,32 @@ serve(async (req) => {
     const sitemapsProcessed: string[] = [];
     const queue: string[] = [url];
     const visited = new Set<string>();
-    const MAX_SITEMAPS = 200;
+    const MAX_SITEMAPS = 500;
+    const CONCURRENCY = 10;
 
     while (queue.length > 0 && sitemapsProcessed.length < MAX_SITEMAPS) {
-      const currentUrl = queue.shift()!;
-      if (visited.has(currentUrl)) continue;
-      visited.add(currentUrl);
+      const batch: string[] = [];
+      while (batch.length < CONCURRENCY && queue.length > 0) {
+        const next = queue.shift()!;
+        if (!visited.has(next)) {
+          visited.add(next);
+          batch.push(next);
+        }
+      }
+      if (batch.length === 0) break;
 
-      const content = await fetchSitemapContent(currentUrl);
-      if (!content) continue;
+      const results = await Promise.all(
+        batch.map(u => fetchSitemapContent(u).then(content => ({ url: u, content })))
+      );
 
-      sitemapsProcessed.push(currentUrl);
-
-      if (isSitemapIndex(content)) {
-        queue.push(...parseSitemapIndexUrls(content));
-      } else {
-        allUrls.push(...parseUrlsFromSitemap(content));
+      for (const { url: batchUrl, content } of results) {
+        if (!content) continue;
+        sitemapsProcessed.push(batchUrl);
+        if (isSitemapIndex(content)) {
+          queue.push(...parseSitemapIndexUrls(content));
+        } else {
+          allUrls.push(...parseUrlsFromSitemap(content));
+        }
       }
     }
 
